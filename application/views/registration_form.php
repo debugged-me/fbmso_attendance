@@ -43,16 +43,16 @@
               <h4>PERSONAL INFORMATION</h4>
               <div class="row">
                 <div class="col-sm-4 form-group">
-                  <label for="StudentNumber">Student ID / Number <span style="color:red;">*</span></label>
+                  <label for="StudentNumber">STUDENT ID <span style="color:red;">*</span></label>
                   <input type="text"
                     id="StudentNumber"
                     class="form-control"
                     name="StudentNumber"
-                    placeholder="Student ID"
+                    placeholder="example: 2023-0446"
                     minlength="4"
                     maxlength="20"
                     pattern="[A-Za-z0-9\-]+"
-                    title="Use letters, numbers, and hyphen only."
+                    title="Make sure its the same with your ID."
                     required>
                   <small class="form-text text-muted">This will be your username. make sure to match it to your school id.</small>
                 </div>
@@ -64,19 +64,19 @@
               <!-- Name (3 + 3 + 3 + 3 = 12) -->
               <div class="row">
                 <div class="col-sm-3 form-group">
-                  <label for="FirstName">First Name <span style="color:red;">*</span></label>
+                  <label for="FirstName"> FIRST NAME <span style="color:red;">*</span></label>
                   <input type="text" id="FirstName" class="form-control" name="FirstName" style="text-transform: uppercase;" required>
                 </div>
                 <div class="col-sm-3 form-group">
-                  <label for="MiddleName">Middle Name</label>
+                  <label for="MiddleName">MIDDLE NAME </label>
                   <input type="text" id="MiddleName" class="form-control" name="MiddleName" style="text-transform: uppercase;">
                 </div>
                 <div class="col-sm-3 form-group">
-                  <label for="LastName">Last Name <span style="color:red;">*</span></label>
+                  <label for="LastName">LAST NAME <span style="color:red;">*</span></label>
                   <input type="text" id="LastName" class="form-control" name="LastName" style="text-transform: uppercase;" required>
                 </div>
                 <div class="col-sm-3 form-group">
-                  <label for="nameExtn">Name Extn.</label>
+                  <label for="nameExtn">NAME EXTNT.</label>
                   <input type="text" id="nameExtn" placeholder="e.g. Jr., Sr." class="form-control" name="nameExtn" style="text-transform: uppercase;">
                 </div>
               </div>
@@ -84,24 +84,25 @@
               <!-- Sex / Civil Status / Birth Date / Age (3 + 3 + 4 + 2 = 12) -->
               <div class="row">
                 <div class="col-sm-3 form-group">
-                  <label for="Sex">Sex <span style="color:red;">*</span></label>
+                  <label for="Sex">SEX <span style="color:red;">*</span></label>
                   <select class="form-control" id="Sex" name="Sex" required>
                     <option value=""></option>
                     <option>Female</option>
                     <option>Male</option>
+                    <option>Others</option>
                   </select>
                 </div>
 
                 <div class="col-sm-3 form-group">
-                  <label for="bday">Birth Date <span style="color:red;">*</span></label>
+                  <label for="bday">DATE OF BIRTH <span style="color:red;">*</span></label>
                   <input type="date" id="bday" class="form-control" name="birthDate" onchange="submitBday()" required>
                 </div>
                 <div class="col-sm-3 form-group">
-                  <label for="email">E-mail Address <span style="color:red;">*</span></label>
+                  <label for="email">E-MAIL ADDRESS <span style="color:red;">*</span></label>
                   <input type="email" id="email" class="form-control" name="email" required>
                 </div>
                 <div class="col-sm-3 form-group">
-                  <label for="contactNo">Mobile No. <span style="color:red;">*</span></label>
+                  <label for="contactNo">MOBILE NO. <span style="color:red;">*</span></label>
                   <input type="text" id="contactNo" class="form-control" name="contactNo" required>
                 </div>
                 <!-- <label for="resultBday">Age <span style="color:red;">*</span></label> -->
@@ -115,7 +116,7 @@
               <!-- Academic (Course + Year + Section) -->
               <div class="row">
                 <div class="col-sm-4 form-group">
-                  <label for="course1">Course/Program <span style="color:red;">*</span></label>
+                  <label for="course1">COURSE / PROGRAM <span style="color:red;">*</span></label>
                   <select name="Course1" id="course1" class="form-control" required>
                     <option value="">Select Course</option>
                     <?php foreach ($course as $row) {
@@ -124,7 +125,7 @@
                   </select>
                 </div>
                 <div class="col-sm-4 form-group">
-                  <label for="yearLevel">Year Level <span style="color:red;">*</span></label>
+                  <label for="yearLevel">YEAR LEVEL <span style="color:red;">*</span></label>
                   <select class="form-control" name="yearLevel" id="yearLevel" required>
                     <option value="">Select Year Level</option>
                     <option value="1st">1st</option>
@@ -132,15 +133,13 @@
                     <option value="3rd">3rd</option>
                     <option value="4th">4th</option>
                   </select>
-                  <small class="text-muted d-block mt-1">Format: 1st / 2nd / 3rd / 4th</small>
                 </div>
                 <div class="col-sm-4 form-group">
-                  <label for="section">Section <span style="color:red;">*</span></label>
+                  <label for="section">SECTION <span style="color:red;">*</span></label>
                   <select class="form-control" name="section" id="section" required>
                     <option value="">Select Section</option>
                     <!-- Populated by AJAX based on Course/Program + Year Level -->
                   </select>
-                  <small class="text-muted d-block mt-1">Sections depend on Course/Program &amp; Year Level.</small>
                 </div>
               </div>
               <input type="hidden" name="Major1" id="major1">

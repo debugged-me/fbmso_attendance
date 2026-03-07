@@ -372,7 +372,7 @@ class Login extends CI_Controller
         if ($findemail) {
             $this->Login_model->sendpassword($findemail);
         } else {
-            $this->session->set_flashdata('msg', ' Email not found!');
+            $this->session->set_flashdata('auth_error', 'Email not found!');
             redirect(base_url() . 'login', 'refresh');
         }
     }

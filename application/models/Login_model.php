@@ -170,12 +170,16 @@ class Login_model extends CI_Model
       $this->email->to($email);
       $this->email->subject('Temporary Password - ' . $schoolName);
       $this->email->message($mail_message);
-      $this->email->send();
+      $sent = $this->email->send();
 
-      $this->session->set_flashdata('msg', '<div class="alert alert-success text-center">A temporary password has been sent to your email.</div>');
+      if ($sent) {
+        $this->session->set_flashdata('info_message', 'A temporary password has been sent to your email.');
+      } else {
+        $this->session->set_flashdata('auth_error', 'Password was reset, but email sending failed. Please contact support.');
+      }
       redirect(base_url('login'), 'refresh');
     } else {
-      $this->session->set_flashdata('msg', '<div class="alert alert-danger text-center">Email not found!</div>');
+      $this->session->set_flashdata('auth_error', 'Email not found!');
       redirect(base_url('login'), 'refresh');
     }
   }
