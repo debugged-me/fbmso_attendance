@@ -11,6 +11,7 @@ class Accounting extends CI_Controller
 		$this->load->database();
 		$this->load->helper(['url', 'form']);
 		$this->load->library(['session', 'form_validation']);
+		$this->load->model('SettingsModel');
 
 		if ($this->session->userdata('logged_in') !== TRUE) {
 			redirect('login');
@@ -130,6 +131,224 @@ class Accounting extends CI_Controller
 		}
 
 		return '00001';
+	}
+
+
+
+	public function expenses()
+	{
+		$data['data'] = $this->SettingsModel->expenses();
+		$data['data1'] = $this->SettingsModel->get_expensesCategory();
+
+		$this->load->view('expenses', $data);
+
+		if ($this->input->post('save')) {
+			$data = array(
+				'Description' => $this->input->post('Description'),
+				'Amount' => $this->input->post('Amount'),
+				'Responsible' => $this->input->post('Responsible'),
+				'ExpenseDate' => $this->input->post('ExpenseDate'),
+				'Category' => $this->input->post('Category')
+			);
+			$this->SettingsModel->insertexpenses($data);
+
+			// Redirect back to the expenses page after saving
+			redirect('Accounting/expenses');
+		}
+	}
+
+
+	public function updateexpenses()
+	{
+		$expensesid = $this->input->get('expensesid');
+		$result['data'] = $this->SettingsModel->getexpensesbyId($expensesid);
+		$data['data1'] = $this->SettingsModel->get_expensesCategory();
+
+		// Merge both result and data1 arrays and pass them to the view
+		$this->load->view('updateexpenses', array_merge($result, $data));
+
+		if ($this->input->post('update')) {
+
+			$Description = $this->input->post('Description');
+			$Amount = $this->input->post('Amount');
+			$Responsible = $this->input->post('Responsible');
+			$ExpenseDate = $this->input->post('ExpenseDate');
+			$Category = $this->input->post('Category');
+
+			$this->SettingsModel->updateexpenses($expensesid, $Description, $Amount, $Responsible, $ExpenseDate, $Category);
+			$this->session->set_flashdata('expenses', 'Record updated successfully');
+			redirect("Accounting/expenses");
+		}
+	}
+
+
+
+	public function Deleteexpenses()
+	{
+		$expensesid = $this->input->get('expensesid');
+		if ($expensesid) {
+			$this->SettingsModel->Delete_expenses($expensesid);
+			$this->session->set_flashdata('expenses', 'Record deleted successfully');
+		} else {
+			$this->session->set_flashdata('expenses', 'Error deleting record');
+		}
+
+		redirect("Accounting/expenses");
+	}
+
+
+	public function expensescategory()
+	{
+		$data['data'] = $this->SettingsModel->get_expensesCategory();
+		$this->load->view('expensescategory', $data);
+
+		if ($this->input->post('save')) {
+			$data = array(
+				'Category' => $this->input->post('Category'),
+			);
+			$this->SettingsModel->insertexpensesCategory($data);
+
+			// Redirect back to the expenses category page after saving
+			redirect('Accounting/expensescategory');
+		}
+	}
+
+	public function updateexpensescategory()
+	{
+		$categoryID = $this->input->get('categoryID');
+		$result['data'] = $this->SettingsModel->getexpensescategorybyId($categoryID);
+		$this->load->view('updateexpensescategory', $result);
+
+		if ($this->input->post('update')) {
+
+			$Category = $this->input->post('Category');
+
+
+			$this->SettingsModel->updateexpensescategory($categoryID, $Category);
+			$this->session->set_flashdata('expenses', 'Record updated successfully');
+			redirect("Accounting/expensescategory");
+		}
+	}
+
+
+	public function Deleteexpensescategory()
+	{
+		$categoryID = $this->input->get('categoryID');
+		if ($categoryID) {
+			$this->SettingsModel->Delete_expensescategory($categoryID);
+			$this->session->set_flashdata('expensescategory', 'Record deleted successfully');
+		} else {
+			$this->session->set_flashdata('expensescategory', 'Error deleting record');
+		}
+
+		redirect("Accounting/expensescategory");
+	}
+
+
+	public function expensesReport()
+	{
+		$this->load->model('SettingsModel');
+
+		$data['data'] = $this->SettingsModel->get_expenses();
+		$data['categories'] = $this->SettingsModel->get_categories(); // Fetch categories
+
+		// Convert categories array to a simpler format if needed
+		$data['categories'] = array_column($data['categories'], 'Category');
+
+		$this->load->view('expensesReport', $data);
+	}
+
+
+	public function expenseSGenerate()
+	{
+		// Get parameters from the URL
+		$category = $this->input->get('category');
+		$fromDate = $this->input->get('from');
+		$toDate = $this->input->get('to');
+
+		// Load the database library if it's not already loaded
+		$this->load->database();
+
+		// Fetch data from the database based on the passed parameters
+		$this->db->select('*');
+		$this->db->from('expenses');
+		if ($category) {
+			$this->db->where('Category', $category);
+		}
+		if ($fromDate && $toDate) {
+			$this->db->where('ExpenseDate >=', $fromDate);
+			$this->db->where('ExpenseDate <=', $toDate);
+		}
+		$query = $this->db->get();
+		$result = $query->result();
+
+		// Pass the data to the view
+		$data['category'] = $category;
+		$data['fromDate'] = $fromDate;
+		$data['toDate'] = $toDate;
+		$data['result'] = $result;
+
+		// Load the view and pass the data
+		$this->load->view('filtered_expenses', $data);
+	}
+
+
+	public function get_expenses()
+	{
+		$query = $this->db->get('expenses');
+		return $query->result();
+	}
+
+	public function insertexpenses($data)
+	{
+		return $this->db->insert('expenses', $data);
+	}
+
+	public function getexpensesbyId($expensesid)
+	{
+		$query = $this->db->query("SELECT * FROM expenses WHERE expensesid = '" . $expensesid . "'");
+		return $query->result();
+	}
+
+	public function Delete_expenses($expensesid)
+	{
+		$this->db->where('expensesid', $expensesid);
+		$this->db->delete('expenses');
+	}
+
+
+	public function get_expensesCategory()
+	{
+		$query = $this->db->get('expensescategory');
+		return $query->result();
+	}
+
+	public function insertexpensesCategory($data)
+	{
+		return $this->db->insert('expensescategory', $data);
+	}
+
+	public function getexpensescategorybyId($categoryID)
+	{
+		$query = $this->db->query("SELECT * FROM expensescategory WHERE categoryID = '" . $categoryID . "'");
+		return $query->result();
+	}
+
+
+	public function Delete_expensescategory($categoryID)
+	{
+		$this->db->where('categoryID', $categoryID);
+		$this->db->delete('expensescategory');
+	}
+
+
+	public function get_categories()
+	{
+		$this->db->distinct();
+		$this->db->select('Category');
+		$this->db->from('expenses');
+		$query = $this->db->get();
+		return $query->result_array(); // Fetches categories as an array
 	}
 
 	private function reserveOrNumber($candidate = '')

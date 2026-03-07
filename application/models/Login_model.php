@@ -24,19 +24,51 @@ class Login_model extends CI_Model
     $username = trim((string)$username);
     $password = (string)$password;
 
-    $sql = "
-      SELECT *
-      FROM o_users
-      WHERE (
-        TRIM(username) = TRIM(?)
-        OR TRIM(IDNumber) = TRIM(?)
-      )
-      AND password = ?
-      AND LOWER(TRIM(acctStat)) = 'active'
-      LIMIT 1
-    ";
+    // Empty credentials: return empty result set.
+    if ($username === '' || $password === '') {
+      return $this->db->query("SELECT * FROM o_users WHERE 1=0");
+    }
 
-    return $this->db->query($sql, [$username, $username, $password]);
+    // 1) Strict username-first lookup (deterministic and avoids IDNumber collisions).
+    $byUsername = $this->db->query(
+      "
+        SELECT *
+        FROM o_users
+        WHERE TRIM(username) = TRIM(?)
+          AND password = ?
+          AND LOWER(TRIM(acctStat)) = 'active'
+        LIMIT 1
+      ",
+      [$username, $password]
+    );
+
+    if ($byUsername->num_rows() > 0) {
+      return $byUsername;
+    }
+
+    // 2) Fallback lookup for ID/student-number input.
+    //    Accept both dashed and non-dashed forms (e.g., 2024-0194 / 20240194).
+    $normalizedInput = preg_replace('/[\s-]+/', '', $username);
+
+    return $this->db->query(
+      "
+        SELECT *
+        FROM o_users
+        WHERE (
+          TRIM(IDNumber) = TRIM(?)
+          OR REPLACE(REPLACE(TRIM(IDNumber), '-', ''), ' ', '') = ?
+          OR REPLACE(REPLACE(TRIM(username), '-', ''), ' ', '') = ?
+        )
+          AND password = ?
+          AND LOWER(TRIM(acctStat)) = 'active'
+        ORDER BY
+          CASE WHEN TRIM(username) = TRIM(?) THEN 0 ELSE 1 END,
+          CASE WHEN REPLACE(REPLACE(TRIM(username), '-', ''), ' ', '') = ? THEN 1 ELSE 2 END,
+          dateCreated DESC
+        LIMIT 1
+      ",
+      [$username, $normalizedInput, $normalizedInput, $password, $username, $normalizedInput]
+    );
   }
 
   public function forgotPassword($email)

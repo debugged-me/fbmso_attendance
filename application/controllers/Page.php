@@ -1028,6 +1028,110 @@ class Page extends CI_Controller
 		}
 	}
 
+	public function studentAccountingRecords()
+	{
+		$level = (string)$this->session->userdata('level');
+		if (!in_array($level, ['Student', 'Stude Applicant', 'Student Applicant'], true)) {
+			show_error('Access Denied', 403);
+			return;
+		}
+
+		$studentNumber = trim((string)($this->session->userdata('StudentNumber') ?: $this->session->userdata('username')));
+		if ($studentNumber === '') {
+			show_error('Missing student number.', 400);
+			return;
+		}
+
+		$filterSy  = trim((string)$this->input->get('sy', true));
+		$filterSem = trim((string)$this->input->get('sem', true));
+
+		$this->db->select('ID, PDate, pTime, ORNumber, Amount, description, PaymentType, CollectionSource, Sem, SY, ORStatus, refNo');
+		$this->db->from('paymentsaccounts');
+		$this->db->where('StudentNumber', $studentNumber);
+		if ($filterSy !== '') {
+			$this->db->where('SY', $filterSy);
+		}
+		if ($filterSem !== '') {
+			$this->db->where('Sem', $filterSem);
+		}
+		$this->db->order_by('PDate', 'DESC');
+		$this->db->order_by('pTime', 'DESC');
+		$this->db->order_by('ID', 'DESC');
+		$payments = $this->db->get()->result();
+
+		$totalValid = 0.0;
+		$totalAll   = 0.0;
+		foreach ($payments as $row) {
+			$amount = (float)($row->Amount ?? 0);
+			$totalAll += $amount;
+			if (strcasecmp(trim((string)($row->ORStatus ?? '')), 'Valid') === 0) {
+				$totalValid += $amount;
+			}
+		}
+
+		// Term-level account summary (same StudentNumber key used in accounting module).
+		$accountTerms = $this->StudentModel->studeaccountById(
+			$studentNumber,
+			$filterSy !== '' ? $filterSy : null,
+			$filterSem !== '' ? $filterSem : null
+		);
+
+		$termRows = $this->db->select('SY, Sem')
+			->from('paymentsaccounts')
+			->where('StudentNumber', $studentNumber)
+			->group_by(['SY', 'Sem'])
+			->order_by('SY', 'DESC')
+			->get()->result();
+
+		$syOptions  = [];
+		$semOptions = [];
+		foreach ($termRows as $t) {
+			$syVal = trim((string)($t->SY ?? ''));
+			$semVal = trim((string)($t->Sem ?? ''));
+			if ($syVal !== '') {
+				$syOptions[$syVal] = $syVal;
+			}
+			if ($semVal !== '') {
+				$semOptions[$semVal] = $semVal;
+			}
+		}
+		foreach ($accountTerms as $t) {
+			$syVal = trim((string)($t->SY ?? ''));
+			$semVal = trim((string)($t->Sem ?? ''));
+			if ($syVal !== '') {
+				$syOptions[$syVal] = $syVal;
+			}
+			if ($semVal !== '') {
+				$semOptions[$semVal] = $semVal;
+			}
+		}
+		$syOptions = array_values($syOptions);
+		rsort($syOptions, SORT_NATURAL);
+		$semOptions = array_values($semOptions);
+
+		$profile = $this->db->select('FirstName, MiddleName, LastName')
+			->from('studeprofile')
+			->where('StudentNumber', $studentNumber)
+			->limit(1)
+			->get()
+			->row();
+
+		$data = [
+			'studentNumber' => $studentNumber,
+			'profile'       => $profile,
+			'payments'      => $payments,
+			'accountTerms'  => $accountTerms,
+			'totalValid'    => $totalValid,
+			'totalAll'      => $totalAll,
+			'filterSy'      => $filterSy,
+			'filterSem'     => $filterSem,
+			'syOptions'     => $syOptions,
+			'semOptions'    => $semOptions
+		];
+
+		$this->load->view('student_accounting_records', $data);
+	}
+
 
 	//stude account - Admin Access
 	function studeaccountAdmin()

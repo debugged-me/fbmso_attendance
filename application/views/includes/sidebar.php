@@ -132,10 +132,24 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     <li>
                         <a href="<?= base_url('reports'); ?>" class="waves-effect">
                             <i class="bi bi-bar-chart-line"></i>
-                            <span> Reports </span>
+                            <span>Activities Reports </span>
                         </a>
                     </li>
                     <?php
+                    $is = static function ($prefix) use ($currentUri) {
+                        return stripos($currentUri, trim($prefix, '/')) === 0;
+                    };
+                    $active = static function ($prefix) use ($is) {
+                        return $is($prefix) ? 'mm-active active' : '';
+                    };
+                    $expensesOpen = (
+                        $is('Accounting/expenses') ||
+                        $is('Accounting/expensescategory') ||
+                        $is('Accounting/expensesReport')
+                    );
+                    $expensesExpanded = $expensesOpen ? 'true' : 'false';
+                    $expensesShow     = $expensesOpen ? 'mm-show' : '';
+
                     $billingOpen = (
                         stripos($currentUri, 'Accounting/Payment') === 0 ||
                         stripos($currentUri, 'Accounting/receipt') === 0 ||
@@ -149,6 +163,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     $billingShow   = $billingOpen ? 'mm-show' : '';
                     $billingActive = $billingOpen ? 'mm-active mm-open' : '';
                     ?>
+
                     <li class="<?= $billingActive; ?>">
                         <a href="javascript:void(0);" class="waves-effect has-arrow" aria-expanded="<?= $billingExpand; ?>">
                             <i class="ion ion-ios-cash"></i>
@@ -161,7 +176,25 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                             <li><a href="<?= base_url('Accounting/collectionReport'); ?>">Collection Report</a></li>
                         </ul>
                     </li>
-
+                    <!-- School Expenses -->
+                    <li class="<?= $expensesShow ? 'mm-active' : '' ?>">
+                        <a href="javascript:void(0);" class="waves-effect" aria-expanded="<?= $expensesExpanded; ?>">
+                            <i class="fas fa-receipt"></i>
+                            <span> School Expenses </span>
+                            <span class="menu-arrow"></span>
+                        </a>
+                        <ul class="nav-second-level nav <?= $expensesShow; ?>" aria-expanded="<?= $expensesExpanded; ?>">
+                            <li class="<?= $active('Accounting/expenses'); ?>">
+                                <a href="<?= base_url('Accounting/expenses'); ?>">Expenses</a>
+                            </li>
+                            <li class="<?= $active('Accounting/expensescategory'); ?>">
+                                <a href="<?= base_url('Accounting/expensescategory'); ?>">Expenses Category</a>
+                            </li>
+                            <li class="<?= $active('Accounting/expensesReport'); ?>">
+                                <a href="<?= base_url('Accounting/expensesReport'); ?>">Expenses Reports</a>
+                            </li>
+                        </ul>
+                    </li>
                     <!-- To Do (keep visible) -->
                     <!-- <li>
                 <a href="javascript: void(0);" class="waves-effect">
@@ -1192,6 +1225,8 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         </a>
                     </li>
 
+
+
                     <li>
                         <a href="javascript: void(0);" class="waves-effect">
                             <i class="mdi mdi-account-circle-outline"></i>
@@ -1202,7 +1237,12 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                             <li><a href="<?= base_url('Page/studentProfile'); ?>">View/Edit Profile</a></li>
                         </ul>
                     </li>
-
+                    <li>
+                        <a href="<?= base_url('Page/studentAccountingRecords'); ?>" class="waves-effect">
+                            <i class="ion ion-ios-cash"></i>
+                            <span> My Payment Records </span>
+                        </a>
+                    </li>
 
                     <li>
                         <a href="<?= site_url('student/my_qr'); ?>" class="waves-effect" title="My QR Code">
