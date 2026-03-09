@@ -7,6 +7,25 @@
         <?php include('includes/top-nav-bar.php'); ?>
         <?php include('includes/sidebar.php'); ?>
 
+        <style>
+            @media (max-width: 767.98px) {
+                .navbar-custom {
+                    z-index: 10050 !important;
+                }
+
+                .navbar-custom .button-menu-mobile {
+                    position: relative;
+                    z-index: 10051 !important;
+                    pointer-events: auto !important;
+                }
+
+                .content-page {
+                    position: relative;
+                    z-index: 1;
+                }
+            }
+        </style>
+
         <div class="content-page">
             <div class="content">
                 <div class="container-fluid">
@@ -110,7 +129,6 @@
                                         <thead>
                                             <tr>
                                                 <th>OR No.</th>
-
                                                 <th>Payment Date</th>
                                                 <th>Time</th>
                                                 <th>Description</th>
@@ -120,13 +138,8 @@
                                         </thead>
                                         <tbody>
                                             <?php foreach (($payments ?? []) as $row): ?>
-                                                <?php
-                                                $status = trim((string)($row->ORStatus ?? ''));
-                                                $badgeClass = (strcasecmp($status, 'Valid') === 0) ? 'badge-success' : 'badge-secondary';
-                                                ?>
                                                 <tr>
                                                     <td><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-
                                                     <td><?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td><?= htmlspecialchars((string)($row->pTime ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
@@ -143,69 +156,36 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- <div class="row">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-body table-responsive">
-                                    <h4 class="m-t-0 header-title mb-3">Term Account Summary</h4>
-                                    <table class="table table-bordered table-striped mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th>SY</th>
-                                                <th>Semester</th>
-                                                <th class="text-right">Account Total</th>
-                                                <th class="text-right">Discount</th>
-                                                <th class="text-right">Total Payments</th>
-                                                <th class="text-right">Current Balance</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach (($accountTerms ?? []) as $acc): ?>
-                                                <tr>
-                                                    <td><?= htmlspecialchars((string)($acc->SY ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                    <td><?= htmlspecialchars((string)($acc->Sem ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                    <td class="text-right"><?= number_format((float)($acc->AcctTotal ?? 0), 2); ?></td>
-                                                    <td class="text-right"><?= number_format((float)($acc->Discount ?? 0), 2); ?></td>
-                                                    <td class="text-right"><?= number_format((float)($acc->TotalPayments ?? 0), 2); ?></td>
-                                                    <td class="text-right font-weight-bold"><?= number_format((float)($acc->CurrentBalance ?? 0), 2); ?></td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                    <?php if (empty($accountTerms)): ?>
-                                        <div class="alert alert-light mb-0 mt-3">No term account summary available yet.</div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div> -->
-                    <?php include('includes/footer.php'); ?>
                 </div>
             </div>
 
-            <?php include('includes/themecustomizer.php'); ?>
+            <?php include('includes/footer.php'); ?>
+        </div>
+    </div>
 
-            <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
-            <link href="<?= base_url(); ?>assets/libs/datatables/dataTables.bootstrap4.min.css" rel="stylesheet" />
-            <link href="<?= base_url(); ?>assets/libs/datatables/responsive.bootstrap4.min.css" rel="stylesheet" />
-            <script src="<?= base_url(); ?>assets/libs/datatables/jquery.dataTables.min.js"></script>
-            <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.bootstrap4.min.js"></script>
-            <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.responsive.min.js"></script>
-            <script src="<?= base_url(); ?>assets/libs/datatables/responsive.bootstrap4.min.js"></script>
-            <script>
-                $(function() {
-                    $('#studentPaymentsTable').DataTable({
-                        pageLength: 15,
-                        order: [
-                            [0, 'desc'],
-                            [1, 'desc']
-                        ]
-                    });
-                });
-            </script>
+    <?php include('includes/themecustomizer.php'); ?>
+
+    <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
+    <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
+
+    <link href="<?= base_url(); ?>assets/libs/datatables/dataTables.bootstrap4.min.css" rel="stylesheet" />
+    <link href="<?= base_url(); ?>assets/libs/datatables/responsive.bootstrap4.min.css" rel="stylesheet" />
+    <script src="<?= base_url(); ?>assets/libs/datatables/jquery.dataTables.min.js"></script>
+    <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.bootstrap4.min.js"></script>
+    <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.responsive.min.js"></script>
+    <script src="<?= base_url(); ?>assets/libs/datatables/responsive.bootstrap4.min.js"></script>
+    <script>
+        $(function() {
+            $('#studentPaymentsTable').DataTable({
+                pageLength: 15,
+                order: [
+                    [0, 'desc'],
+                    [1, 'desc']
+                ]
+            });
+        });
+
+    </script>
 </body>
 
 </html>
