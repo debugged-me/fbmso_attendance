@@ -100,37 +100,108 @@ class Accounting extends CI_Controller
 		return (int)($row->max_id ?? 0) + 1;
 	}
 
-	private function orNumberExists($orNumber)
+	private function orNumberExists($orNumber, $excludeId = 0)
 	{
-		return $this->db->where('ORNumber', $orNumber)->count_all_results('paymentsaccounts') > 0;
+		$this->db->from('paymentsaccounts')->where('ORNumber', $orNumber);
+		if ($excludeId > 0) {
+			$this->db->where('ID !=', (int)$excludeId);
+		}
+
+		return $this->db->count_all_results() > 0;
 	}
 
-	private function generateNextOrNumber()
+	private function resolveOrYear($source = '')
 	{
-		$rowNumeric = $this->db->select('ORNumber')
+		$source = trim((string)$source);
+
+		if (preg_match('/^\d{4}$/', $source) === 1) {
+			return $source;
+		}
+
+		if ($this->isValidDate($source)) {
+			return substr($source, 0, 4);
+		}
+
+		$now = new DateTime('now', new DateTimeZone('Asia/Manila'));
+		return $now->format('Y');
+	}
+
+	private function formatOrNumber($year, $sequence)
+	{
+		return sprintf('%04d-%04d', (int)$year, (int)$sequence);
+	}
+
+	private function normalizeOrNumber($orNumber, $paymentDate = '')
+	{
+		$orNumber = strtoupper(trim((string)$orNumber));
+		if ($orNumber === '') {
+			return '';
+		}
+
+		$orNumber = preg_replace('/\s+/', '', $orNumber);
+		$orNumber = str_replace('/', '-', $orNumber);
+
+		if (preg_match('/^(\d{4})-(\d+)$/', $orNumber, $matches) === 1) {
+			return $this->formatOrNumber($matches[1], $matches[2]);
+		}
+
+		if (preg_match('/^\d+$/', $orNumber) === 1) {
+			return $this->formatOrNumber($this->resolveOrYear($paymentDate), $orNumber);
+		}
+
+		return $orNumber;
+	}
+
+	private function isValidOrNumberFormat($orNumber)
+	{
+		if (preg_match('/^\d{4}-(\d{4,})$/', (string)$orNumber, $matches) !== 1) {
+			return false;
+		}
+
+		return (int)$matches[1] > 0;
+	}
+
+	private function generateNextOrNumber($source = '')
+	{
+		$year = $this->resolveOrYear($source);
+		$pattern = '^' . $year . '-[0-9]{4,}$';
+
+		$row = $this->db->select("MAX(CAST(SUBSTRING_INDEX(ORNumber, '-', -1) AS UNSIGNED)) AS max_sequence", false)
 			->from('paymentsaccounts')
-			->where("ORNumber REGEXP '^[0-9]+$'", null, false)
-			->order_by('CAST(ORNumber AS UNSIGNED)', 'DESC', false)
-			->limit(1)
+			->where('ORNumber <>', '')
+			->where('ORNumber IS NOT NULL', null, false)
+			->where('ORNumber REGEXP ' . $this->db->escape($pattern), null, false)
 			->get()
 			->row();
 
-		if ($rowNumeric && $rowNumeric->ORNumber !== '') {
-			return str_pad((string)(((int)$rowNumeric->ORNumber) + 1), 5, '0', STR_PAD_LEFT);
+		$nextSequence = (int)($row->max_sequence ?? 0) + 1;
+		return $this->formatOrNumber($year, $nextSequence);
+	}
+
+	private function paymentFormStateFromPost(array $overrides = [])
+	{
+		$description = trim((string)$this->input->post('description', true));
+		if ($description === '') {
+			$description = trim((string)$this->input->post('descriptionField', true));
 		}
 
-		$rowAny = $this->db->select('ORNumber')
-			->from('paymentsaccounts')
-			->order_by('ID', 'DESC')
-			->limit(1)
-			->get()
-			->row();
+		$state = [
+			'StudentNumber' => trim((string)$this->input->post('StudentNumber', true)),
+			'ORNumber'      => trim((string)$this->input->post('ORNumber', true)),
+			'PDate'         => trim((string)$this->input->post('PDate', true)),
+			'description'   => $description,
+			'Amount'        => trim((string)$this->input->post('Amount', true)),
+		];
 
-		if ($rowAny && preg_match('/(\d+)(?!.*\d)/', (string)$rowAny->ORNumber, $m)) {
-			return str_pad((string)(((int)$m[1]) + 1), 5, '0', STR_PAD_LEFT);
-		}
+		return array_merge($state, $overrides);
+	}
 
-		return '00001';
+	private function isDuplicateDbError($dbError)
+	{
+		$code = (int)($dbError['code'] ?? 0);
+		$message = (string)($dbError['message'] ?? '');
+
+		return $code === 1062 || stripos($message, 'Duplicate entry') !== false;
 	}
 
 
@@ -351,27 +422,22 @@ class Accounting extends CI_Controller
 		return $query->result_array(); // Fetches categories as an array
 	}
 
-	private function reserveOrNumber($candidate = '')
+	private function reserveOrNumber($candidate = '', $paymentDate = '')
 	{
-		$orNumber = trim((string)$candidate);
+		$orNumber = $this->normalizeOrNumber($candidate, $paymentDate);
 		if ($orNumber === '') {
-			$orNumber = $this->generateNextOrNumber();
+			return $this->generateNextOrNumber($paymentDate);
 		}
 
-		if (!$this->orNumberExists($orNumber)) {
-			return $orNumber;
+		if (!$this->isValidOrNumberFormat($orNumber)) {
+			return '';
 		}
 
-		if (preg_match('/^\d+$/', $orNumber)) {
-			$next = (int)$orNumber;
-			do {
-				$next++;
-				$orNumber = str_pad((string)$next, 5, '0', STR_PAD_LEFT);
-			} while ($this->orNumberExists($orNumber));
-			return $orNumber;
+		if ($this->orNumberExists($orNumber)) {
+			return '';
 		}
 
-		return '';
+		return $orNumber;
 	}
 
 	private function getStudentsForPayment($sem, $sy)
@@ -587,6 +653,7 @@ class Accounting extends CI_Controller
 			$this->form_validation->set_rules('PDate', 'Payment Date', 'required|trim');
 
 			if ($this->form_validation->run() === false) {
+				$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
 				$this->session->set_flashdata('danger', strip_tags(validation_errors(' ', ' ')));
 				redirect('Accounting/Payment');
 				return;
@@ -611,6 +678,7 @@ class Accounting extends CI_Controller
 			}
 
 			if (!$this->isValidDate($pDateInput)) {
+				$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
 				$this->session->set_flashdata('danger', 'Invalid payment date.');
 				redirect('Accounting/Payment');
 				return;
@@ -626,9 +694,25 @@ class Accounting extends CI_Controller
 			}
 
 			$orCandidate = trim((string)$this->input->post('ORNumber', true));
-			$orNumber = $this->reserveOrNumber($orCandidate);
-			if ($orNumber === '') {
-				$this->session->set_flashdata('danger', 'O.R. number already exists. Please retry.');
+			$orNumber = $this->reserveOrNumber($orCandidate, $pDateInput);
+			if ($orNumber === '' && $orCandidate !== '') {
+				$normalizedOrNumber = $this->normalizeOrNumber($orCandidate, $pDateInput);
+				$this->session->set_flashdata(
+					'payment_form_old',
+					$this->paymentFormStateFromPost([
+						'ORNumber' => $normalizedOrNumber !== '' ? $normalizedOrNumber : $orCandidate
+					])
+				);
+
+				if (!$this->isValidOrNumberFormat($normalizedOrNumber)) {
+					$this->session->set_flashdata('danger', 'Invalid O.R. number format. Use YYYY-0001.');
+				} else {
+					$this->session->set_flashdata(
+						'danger',
+						'O.R. number already exists. Next available is ' . $this->generateNextOrNumber($pDateInput) . '.'
+					);
+				}
+
 				redirect('Accounting/Payment');
 				return;
 			}
@@ -665,10 +749,11 @@ class Accounting extends CI_Controller
 				'refNo'            => $refNo
 			];
 
-			$this->db->trans_start();
-			$this->db->insert('paymentsaccounts', $paymentData);
+			$this->db->trans_begin();
+			$insertOk = $this->db->insert('paymentsaccounts', $paymentData);
+			$insertError = $this->db->error();
 
-			if ($sem !== '' && $sy !== '') {
+			if ($insertOk && $sem !== '' && $sy !== '') {
 				$amountSql = $this->db->escape($amount);
 				$this->db->set('TotalPayments', "COALESCE(TotalPayments,0) + {$amountSql}", false);
 				$this->db->set('CurrentBalance', "GREATEST(COALESCE(AcctTotal,0) - COALESCE(Discount,0) - (COALESCE(TotalPayments,0) + {$amountSql}), 0)", false);
@@ -678,13 +763,27 @@ class Accounting extends CI_Controller
 					->update('studeaccount');
 			}
 
-			$this->db->trans_complete();
+			if (!$insertOk || $this->db->trans_status() === false) {
+				$this->db->trans_rollback();
+				$this->session->set_flashdata(
+					'payment_form_old',
+					$this->paymentFormStateFromPost(['ORNumber' => $orNumber])
+				);
 
-			if ($this->db->trans_status() === false) {
-				$this->session->set_flashdata('danger', 'Unable to save payment. Please try again.');
+				if ($this->isDuplicateDbError($insertError)) {
+					$this->session->set_flashdata(
+						'danger',
+						'O.R. number already exists. Next available is ' . $this->generateNextOrNumber($pDateInput) . '.'
+					);
+				} else {
+					$this->session->set_flashdata('danger', 'Unable to save payment. Please try again.');
+				}
+
 				redirect('Accounting/Payment');
 				return;
 			}
+
+			$this->db->trans_commit();
 
 			$this->session->set_flashdata('success', 'Payment saved successfully. O.R. #' . $orNumber);
 			redirect('Accounting/Payment');
@@ -692,6 +791,10 @@ class Accounting extends CI_Controller
 		}
 
 		$now = new DateTime('now', new DateTimeZone('Asia/Manila'));
+		$oldPaymentForm = $this->session->flashdata('payment_form_old');
+		if (!is_array($oldPaymentForm)) {
+			$oldPaymentForm = [];
+		}
 
 		$settings = $this->db->select('SchoolName, SchoolAddress, telNo, cashier, cashierPosition, letterhead_web')
 			->from('o_srms_settings')
@@ -703,14 +806,55 @@ class Accounting extends CI_Controller
 			'semester'             => $sem,
 			'sy'                   => $sy,
 			'default_payment_date' => $now->format('Y-m-d'),
-			'next_or_number'       => $this->generateNextOrNumber(),
+			'next_or_number'       => $this->generateNextOrNumber($now->format('Y-m-d')),
 			'students'             => $this->getStudentsForPayment($sem, $sy),
 			'recent_payments'      => $this->getRecentPayments($sem, $sy),
 			'fee_templates'        => $this->getFeeTemplates(),
-			'settings'             => $settings
+			'settings'             => $settings,
+			'payment_form_old'     => $oldPaymentForm,
+			'open_payment_modal'   => !empty($oldPaymentForm),
 		];
 
 		$this->load->view('accounting_payment', $data);
+	}
+
+	public function ajaxOrNumberStatus()
+	{
+		$this->ensureAccess();
+
+		$paymentDate = trim((string)$this->input->get('payment_date', true));
+		$orInput = trim((string)$this->input->get('or_number', true));
+		$normalized = $this->normalizeOrNumber($orInput, $paymentDate);
+		$suggested = $this->generateNextOrNumber($paymentDate);
+
+		$response = [
+			'input'          => $orInput,
+			'normalized'     => $normalized,
+			'normalized_new' => ($normalized !== '' && $normalized !== $orInput),
+			'suggested'      => $suggested,
+			'valid_format'   => true,
+			'available'      => true,
+			'exists'         => false,
+			'message'        => '',
+		];
+
+		if ($orInput === '') {
+			$response['message'] = 'Next available O.R. number: ' . $suggested . '.';
+		} elseif (!$this->isValidOrNumberFormat($normalized)) {
+			$response['valid_format'] = false;
+			$response['available'] = false;
+			$response['message'] = 'Use the O.R. number format YYYY-0001.';
+		} elseif ($this->orNumberExists($normalized)) {
+			$response['available'] = false;
+			$response['exists'] = true;
+			$response['message'] = 'O.R. number already exists. Next available is ' . $suggested . '.';
+		} else {
+			$response['message'] = 'O.R. number is available.';
+		}
+
+		$this->output
+			->set_content_type('application/json')
+			->set_output(json_encode($response));
 	}
 
 	public function receipt($id = null)

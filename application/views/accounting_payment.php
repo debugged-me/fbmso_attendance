@@ -13,6 +13,8 @@
                     <?php
                     $flashSuccess = $this->session->flashdata('success');
                     $flashDanger  = $this->session->flashdata('danger');
+                    $paymentFormOld = isset($payment_form_old) && is_array($payment_form_old) ? $payment_form_old : [];
+                    $openPaymentModal = !empty($open_payment_modal);
                     ?>
 
                     <div class="row">
@@ -197,7 +199,16 @@
                             <div class="form-group col-md-6">
                                 <label for="orNumber">O.R. Number</label>
                                 <input type="text" class="form-control" id="orNumber" name="ORNumber"
-                                    value="<?= htmlspecialchars((string)$next_or_number, ENT_QUOTES, 'UTF-8'); ?>" readonly>
+                                    value="<?= htmlspecialchars((string)$next_or_number, ENT_QUOTES, 'UTF-8'); ?>"
+                                    placeholder="2026-0001"
+                                    pattern="\d{4}-\d{4,}"
+                                    inputmode="numeric"
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                    aria-describedby="orNumberStatus">
+                                <small id="orNumberStatus" class="form-text text-muted">
+                                    Format: YYYY-0001. Default uses the payment date year.
+                                </small>
                             </div>
                             <div class="form-group col-md-6">
                                 <label for="paymentDate">Payment Date</label>
@@ -404,6 +415,17 @@
         (function() {
             var baseUrl = <?= json_encode(base_url()); ?>;
             var schoolName = <?= json_encode((string)($settings->SchoolName ?? 'School')); ?>;
+            var defaultOrNumber = <?= json_encode((string)$next_or_number); ?>;
+            var defaultPaymentDate = <?= json_encode((string)$default_payment_date); ?>;
+            var restoredPaymentForm = <?= json_encode($paymentFormOld); ?>;
+            var autoOpenPaymentModal = <?= $openPaymentModal ? 'true' : 'false'; ?>;
+            var defaultOrHelp = 'Format: YYYY-0001. Default uses the payment date year.';
+            var lastSuggestedOrNumber = defaultOrNumber;
+            var useRestoredPaymentState = autoOpenPaymentModal;
+            var orNumberEditedManually = false;
+            var orCheckTimer = null;
+            var orCheckRequest = null;
+            var paymentFormSubmitting = false;
 
             function initTooltips() {
                 if ($.fn.tooltip) {
@@ -482,6 +504,229 @@
                 return true;
             }
 
+            function setSelectValue($select, value) {
+                var normalized = $.trim(value || '');
+
+                if (!normalized) {
+                    $select.val('').trigger('change');
+                    return;
+                }
+
+                var hasOption = false;
+                $select.find('option').each(function() {
+                    if ($(this).val() === normalized) {
+                        hasOption = true;
+                        return false;
+                    }
+                });
+
+                if (!hasOption) {
+                    $select.append($('<option>', {
+                        value: normalized,
+                        text: normalized
+                    }));
+                }
+
+                $select.val(normalized).trigger('change');
+            }
+
+            function setOrNumberStatus(state, message) {
+                var $input = $('#orNumber');
+                var $status = $('#orNumberStatus');
+
+                $input.removeClass('is-invalid is-valid');
+                $status.removeClass('text-danger text-success text-muted');
+
+                if (state === 'error') {
+                    $input.addClass('is-invalid');
+                    $status.addClass('text-danger').text(message || 'Invalid O.R. number.');
+                    return;
+                }
+
+                if (state === 'success') {
+                    $input.addClass('is-valid');
+                    $status.addClass('text-success').text(message || 'O.R. number is available.');
+                    return;
+                }
+
+                $status.addClass('text-muted').text(message || defaultOrHelp);
+            }
+
+            function applySuggestedOrNumber(orNumber) {
+                if (!orNumber) {
+                    return;
+                }
+
+                $('#orNumber').val(orNumber);
+                lastSuggestedOrNumber = orNumber;
+                orNumberEditedManually = false;
+            }
+
+            function shouldCheckOrNumber(orNumber) {
+                return orNumber === '' || /^\d+$/.test(orNumber) || /^\d{4}-\d+$/.test(orNumber);
+            }
+
+            function fetchOrNumberStatus(orNumber, paymentDate) {
+                if (orCheckRequest && orCheckRequest.readyState !== 4) {
+                    orCheckRequest.abort();
+                }
+
+                orCheckRequest = $.ajax({
+                    url: baseUrl + 'Accounting/ajaxOrNumberStatus',
+                    dataType: 'json',
+                    data: {
+                        or_number: orNumber,
+                        payment_date: paymentDate
+                    }
+                });
+
+                return orCheckRequest;
+            }
+
+            function validateOrNumber(options) {
+                var deferred = $.Deferred();
+                var settings = options || {};
+                var normalizeField = settings.normalizeField !== false;
+                var orNumber = $.trim($('#orNumber').val() || '');
+                var paymentDate = $.trim($('#paymentDate').val() || '');
+
+                if (orNumber !== '' && !shouldCheckOrNumber(orNumber)) {
+                    setOrNumberStatus('error', 'Use the O.R. number format YYYY-0001.');
+                    deferred.resolve(false);
+                    return deferred.promise();
+                }
+
+                fetchOrNumberStatus(orNumber, paymentDate)
+                    .done(function(resp) {
+                        resp = resp || {};
+
+                        if (normalizeField && resp.normalized_new && resp.normalized) {
+                            $('#orNumber').val(resp.normalized);
+                            orNumber = resp.normalized;
+                        }
+
+                        if (!orNumber && resp.suggested) {
+                            applySuggestedOrNumber(resp.suggested);
+                            setOrNumberStatus('neutral', resp.message || defaultOrHelp);
+                            deferred.resolve(true);
+                            return;
+                        }
+
+                        if (resp.valid_format === false) {
+                            setOrNumberStatus('error', resp.message || 'Use the O.R. number format YYYY-0001.');
+                            deferred.resolve(false);
+                            return;
+                        }
+
+                        if (resp.available === false) {
+                            setOrNumberStatus('error', resp.message || 'O.R. number already exists.');
+                            deferred.resolve(false);
+                            return;
+                        }
+
+                        if (resp.suggested) {
+                            lastSuggestedOrNumber = resp.suggested;
+                        }
+
+                        var successMessage = resp.message || 'O.R. number is available.';
+                        if (resp.normalized_new && resp.normalized) {
+                            successMessage = 'Will be saved as ' + resp.normalized + '. ' + successMessage;
+                        }
+
+                        setOrNumberStatus('success', successMessage);
+                        deferred.resolve(true);
+                    })
+                    .fail(function(xhr, textStatus) {
+                        if (textStatus !== 'abort') {
+                            setOrNumberStatus('neutral', defaultOrHelp);
+                        }
+                        deferred.resolve(false);
+                    });
+
+                return deferred.promise();
+            }
+
+            function refreshSuggestedOrNumber() {
+                var paymentDate = $.trim($('#paymentDate').val() || '');
+
+                fetchOrNumberStatus('', paymentDate)
+                    .done(function(resp) {
+                        if (resp && resp.suggested) {
+                            applySuggestedOrNumber(resp.suggested);
+                            setOrNumberStatus('neutral', resp.message || defaultOrHelp);
+                        }
+                    })
+                    .fail(function(xhr, textStatus) {
+                        if (textStatus !== 'abort') {
+                            setOrNumberStatus('neutral', defaultOrHelp);
+                        }
+                    });
+            }
+
+            function resetPaymentForm() {
+                if ($('#paymentForm').length && $('#paymentForm')[0]) {
+                    $('#paymentForm')[0].reset();
+                }
+
+                $('#orNumber').val(defaultOrNumber);
+                $('#paymentDate').val(defaultPaymentDate);
+                $('#amount').val('');
+                $('#descriptionHidden').val('');
+                $('#feeWarning').hide();
+
+                if ($('#studentSelect').data('select2')) {
+                    $('#studentSelect').val('').trigger('change');
+                }
+
+                if ($('#descriptionField').data('select2')) {
+                    setSelectValue($('#descriptionField'), '');
+                }
+
+                if (orCheckTimer) {
+                    window.clearTimeout(orCheckTimer);
+                    orCheckTimer = null;
+                }
+
+                if (orCheckRequest && orCheckRequest.readyState !== 4) {
+                    orCheckRequest.abort();
+                }
+
+                paymentFormSubmitting = false;
+                lastSuggestedOrNumber = defaultOrNumber;
+                orNumberEditedManually = false;
+                setOrNumberStatus('neutral', defaultOrHelp);
+            }
+
+            function restorePaymentForm() {
+                var state = restoredPaymentForm || {};
+                var restoredOrNumber = $.trim(state.ORNumber || '') || defaultOrNumber;
+                var restoredPaymentDate = $.trim(state.PDate || '') || defaultPaymentDate;
+
+                $('#paymentDate').val(restoredPaymentDate);
+                $('#orNumber').val(restoredOrNumber);
+                $('#amount').val($.trim(state.Amount || ''));
+                $('#descriptionHidden').val($.trim(state.description || ''));
+                $('#feeWarning').hide();
+
+                if ($('#studentSelect').data('select2')) {
+                    $('#studentSelect').val($.trim(state.StudentNumber || '')).trigger('change');
+                } else {
+                    $('#studentSelect').val($.trim(state.StudentNumber || ''));
+                }
+
+                setSelectValue($('#descriptionField'), $.trim(state.description || ''));
+                $('#descriptionHidden').val($.trim(state.description || ''));
+                $('#amount').val($.trim(state.Amount || ''));
+
+                paymentFormSubmitting = false;
+                lastSuggestedOrNumber = defaultOrNumber;
+                orNumberEditedManually = restoredOrNumber !== '' && restoredOrNumber !== defaultOrNumber;
+                setOrNumberStatus('neutral', defaultOrHelp);
+                validateOrNumber({
+                    normalizeField: true
+                });
+            }
+
             $(function() {
                 // DataTable
                 var dt = $('#recentPaymentsTable').DataTable({
@@ -511,15 +756,19 @@
                         dropdownParent: $('#paymentModal')
                     });
                     loadFeesToBothSelects().then(function() {
-                        $('#descriptionHidden').val('');
-                        $('#feeWarning').hide();
+                        if (useRestoredPaymentState) {
+                            restorePaymentForm();
+                            useRestoredPaymentState = false;
+                            return;
+                        }
+
+                        resetPaymentForm();
+                        refreshSuggestedOrNumber();
                     });
                 });
 
                 $('#paymentModal').on('hidden.bs.modal', function() {
-                    $('#paymentForm')[0].reset();
-                    $('#orNumber').val(<?= json_encode((string)$next_or_number); ?>);
-                    $('#paymentDate').val(<?= json_encode((string)$default_payment_date); ?>);
+                    resetPaymentForm();
 
                     if ($.fn.select2) {
                         try {
@@ -529,16 +778,82 @@
                             $('#descriptionField').select2('destroy');
                         } catch (e) {}
                     }
-                    $('#descriptionHidden').val('');
-                    $('#feeWarning').hide();
+                    useRestoredPaymentState = false;
                 });
 
                 $(document).on('change', '#descriptionField', function() {
                     applyDescriptionSelection($('#descriptionField'), $('#descriptionHidden'), $('#amount'), $('#feeWarning'));
                 });
 
+                $('#orNumber').on('input', function() {
+                    var value = $.trim($(this).val() || '');
+                    orNumberEditedManually = value !== '' && value !== lastSuggestedOrNumber;
+
+                    if (orCheckTimer) {
+                        window.clearTimeout(orCheckTimer);
+                        orCheckTimer = null;
+                    }
+
+                    if (value === '') {
+                        setOrNumberStatus('neutral', defaultOrHelp);
+                        return;
+                    }
+
+                    if (!shouldCheckOrNumber(value)) {
+                        setOrNumberStatus('neutral', 'Use the O.R. number format YYYY-0001.');
+                        return;
+                    }
+
+                    orCheckTimer = window.setTimeout(function() {
+                        validateOrNumber({
+                            normalizeField: false
+                        });
+                    }, 350);
+                });
+
+                $('#orNumber').on('blur', function() {
+                    validateOrNumber({
+                        normalizeField: true
+                    });
+                });
+
+                $('#paymentDate').on('change', function() {
+                    var currentOrNumber = $.trim($('#orNumber').val() || '');
+
+                    if (!currentOrNumber || !orNumberEditedManually || currentOrNumber === lastSuggestedOrNumber) {
+                        refreshSuggestedOrNumber();
+                        return;
+                    }
+
+                    validateOrNumber({
+                        normalizeField: true
+                    });
+                });
+
                 $('#paymentForm').on('submit', function(e) {
-                    if (!validateDesc($('#descriptionHidden'), $('#feeWarning'))) e.preventDefault();
+                    var $form = $(this);
+
+                    if (paymentFormSubmitting) {
+                        return;
+                    }
+
+                    if (!validateDesc($('#descriptionHidden'), $('#feeWarning'))) {
+                        e.preventDefault();
+                        return;
+                    }
+
+                    e.preventDefault();
+                    validateOrNumber({
+                        normalizeField: true
+                    }).done(function(isValid) {
+                        if (!isValid) {
+                            paymentFormSubmitting = false;
+                            return;
+                        }
+
+                        paymentFormSubmitting = true;
+                        $form[0].submit();
+                    });
                 });
 
                 // EDIT open
@@ -635,6 +950,10 @@
 
                     $('#printReceiptModal').modal('show');
                 });
+
+                if (autoOpenPaymentModal) {
+                    $('#paymentModal').modal('show');
+                }
             });
         })();
 
