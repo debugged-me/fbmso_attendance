@@ -48,7 +48,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     <li class="<?= $isActive('mass-announcement'); ?>">
                         <a href="<?= base_url('mass-announcement'); ?>" class="waves-effect">
                             <i class="mdi mdi-bullhorn-outline"></i>
-                            <span> Mass Announcement </span>
+                            <span> Email Announcement </span>
                         </a>
                     </li>
 
@@ -82,7 +82,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                 </ul>
             </div>
 
-        <!-- System Administrator -->
+            <!-- System Administrator -->
         <?php elseif ($this->session->userdata('level') === 'Admin'): ?>
             <?php
             $currentUri = trim(uri_string(), '/');
@@ -194,7 +194,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     <li class="<?= (stripos($currentUri, 'mass-announcement') === 0 ? 'mm-active active' : ''); ?>">
                         <a href="<?= base_url('mass-announcement'); ?>" class="waves-effect">
                             <i class="mdi mdi-bullhorn-outline"></i>
-                            <span> Mass Announcement </span>
+                            <span> Email Announcement </span>
                         </a>
                     </li>
                     <li>
