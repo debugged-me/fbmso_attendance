@@ -93,46 +93,6 @@
                         </div>
                     </div>
 
-                    <div class="card report-sheet mb-3">
-                        <div class="card-body">
-                            <div class="report-sheet-kicker">Financial Collection Report</div>
-                            <div class="report-sheet-school"><?= htmlspecialchars($schoolName, ENT_QUOTES, 'UTF-8'); ?></div>
-                            <?php if ($schoolAddress !== ''): ?>
-                                <div class="report-sheet-line"><?= htmlspecialchars($schoolAddress, ENT_QUOTES, 'UTF-8'); ?></div>
-                            <?php endif; ?>
-                            <?php if ($schoolTel !== ''): ?>
-                                <div class="report-sheet-line"><?= htmlspecialchars($schoolTel, ENT_QUOTES, 'UTF-8'); ?></div>
-                            <?php endif; ?>
-                            <div class="report-sheet-title"><?= htmlspecialchars((string)$report_title, ENT_QUOTES, 'UTF-8'); ?></div>
-
-                            <div class="row report-metrics mt-3">
-                                <div class="col-md-4 mb-2 mb-md-0">
-                                    <div class="report-metric">
-                                        <div class="report-metric-label">Coverage</div>
-                                        <div class="report-metric-value"><?= htmlspecialchars($reportPeriod, ENT_QUOTES, 'UTF-8'); ?></div>
-                                    </div>
-                                </div>
-                                <div class="col-md-2 col-6">
-                                    <div class="report-metric">
-                                        <div class="report-metric-label">Transactions</div>
-                                        <div class="report-metric-value"><?= (int)$total_count; ?></div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3 col-6">
-                                    <div class="report-metric">
-                                        <div class="report-metric-label">Total Collection</div>
-                                        <div class="report-metric-value">PHP <?= number_format((float)$total_amount, 2); ?></div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3 mt-2 mt-md-0">
-                                    <div class="report-metric">
-                                        <div class="report-metric-label">Generated</div>
-                                        <div class="report-metric-value"><?= htmlspecialchars($generatedAt, ENT_QUOTES, 'UTF-8'); ?></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Table -->
                     <div class="row">
@@ -377,20 +337,17 @@
                                 doc.content[0].text = reportMeta.title;
                             }
 
-                            doc.content.splice(1, 0,
-                                {
-                                    text: reportMeta.period,
-                                    alignment: 'center',
-                                    color: '#475569',
-                                    margin: [0, 0, 0, 2]
-                                },
-                                {
-                                    text: 'Transactions: ' + reportMeta.totalCount + ' | Total Collection: ' + reportMeta.totalAmountText + ' | Generated: ' + reportMeta.generatedAt,
-                                    alignment: 'center',
-                                    color: '#475569',
-                                    margin: [0, 0, 0, 10]
-                                }
-                            );
+                            doc.content.splice(1, 0, {
+                                text: reportMeta.period,
+                                alignment: 'center',
+                                color: '#475569',
+                                margin: [0, 0, 0, 2]
+                            }, {
+                                text: 'Transactions: ' + reportMeta.totalCount + ' | Total Collection: ' + reportMeta.totalAmountText + ' | Generated: ' + reportMeta.generatedAt,
+                                alignment: 'center',
+                                color: '#475569',
+                                margin: [0, 0, 0, 10]
+                            });
 
                             var tableNode = null;
                             for (var i = 0; i < doc.content.length; i++) {
@@ -543,15 +500,6 @@
             box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
         }
 
-        .report-sheet-kicker {
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: #2563eb;
-            margin-bottom: 10px;
-        }
-
         .report-sheet-school {
             font-size: 24px;
             font-weight: 700;
@@ -564,11 +512,8 @@
             margin-top: 4px;
         }
 
-        .report-sheet-title {
-            margin-top: 14px;
-            font-size: 18px;
-            font-weight: 700;
-            color: #1e293b;
+        .report-sheet-print-title {
+            display: none;
         }
 
         .report-metric {
@@ -616,6 +561,7 @@
         }
 
         @media print {
+
             #wrapper .topbar,
             #wrapper .left-side-menu,
             .page-title-box,
@@ -653,6 +599,14 @@
                 margin-bottom: 14px !important;
                 border: 0 !important;
                 box-shadow: none !important;
+            }
+
+            .report-sheet-print-title {
+                display: block !important;
+                margin-top: 12px;
+                font-size: 18px;
+                font-weight: 700;
+                color: #1e293b !important;
             }
 
             .table-responsive {
