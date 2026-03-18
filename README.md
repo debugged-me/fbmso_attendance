@@ -1,1 +1,2 @@
-# srms-wcm-college
+# FBMSO_Attendance Porta
+# FACULTY OF BUSINESS MANAGEMENT STUDENT ORGANIZATION
