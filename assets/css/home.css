@@ -31,25 +31,14 @@
         radial-gradient(ellipse 70% 50% at 85% 80%, #e4edff 0%, transparent 55%),
         #f0f4ff;
       z-index: 0;
-      animation: meshShift 12s ease-in-out infinite alternate;
     }
 
-    @keyframes meshShift {
-      from {
-        filter: hue-rotate(0deg);
-      }
-
-      to {
-        filter: hue-rotate(8deg);
-      }
-    }
-
+    
     .blob {
       position: fixed;
       border-radius: 50%;
       pointer-events: none;
       z-index: 0;
-      animation: blobFloat var(--d, 10s) ease-in-out infinite alternate;
     }
 
     .blob-a {
@@ -72,16 +61,7 @@
       filter: blur(50px);
     }
 
-    @keyframes blobFloat {
-      from {
-        transform: translate(0, 0) scale(1);
-      }
-
-      to {
-        transform: translate(40px, 30px) scale(1.1);
-      }
-    }
-
+    
     /* ── card ── */
     .card {
       position: relative;
@@ -100,21 +80,9 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       overflow: hidden;
-      animation: cardIn .7s cubic-bezier(.16, 1, .3, 1) both;
     }
 
-    @keyframes cardIn {
-      from {
-        opacity: 0;
-        transform: translateY(28px) scale(.97);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-
+    
     @media (max-width: 700px) {
       .card {
         grid-template-columns: 1fr;
@@ -154,19 +122,9 @@
         linear-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, .05) 1px, transparent 1px);
       background-size: 40px 40px;
-      animation: gridSlide 20s linear infinite;
     }
 
-    @keyframes gridSlide {
-      from {
-        background-position: 0 0;
-      }
-
-      to {
-        background-position: 40px 40px;
-      }
-    }
-
+    
     .art-content {
       position: relative;
       z-index: 1;
@@ -178,21 +136,9 @@
       height: 160px;
       margin: 0 auto 32px;
       position: relative;
-      animation: qrFloat 5s ease-in-out infinite;
     }
 
-    @keyframes qrFloat {
-
-      0%,
-      100% {
-        transform: translateY(0);
-      }
-
-      50% {
-        transform: translateY(-10px);
-      }
-    }
-
+    
     .qr-box svg {
       width: 100%;
       height: 100%;
@@ -206,30 +152,10 @@
       background: linear-gradient(90deg, transparent, #7eb8ff, #a0cdff, #7eb8ff, transparent);
       border-radius: 2px;
       top: 8px;
-      animation: scanBeam 2.8s ease-in-out infinite;
       box-shadow: 0 0 8px 2px rgba(126, 184, 255, .5);
     }
 
-    @keyframes scanBeam {
-      0% {
-        top: 12px;
-        opacity: 0;
-      }
-
-      10% {
-        opacity: 1;
-      }
-
-      90% {
-        opacity: 1;
-      }
-
-      100% {
-        top: calc(100% - 12px);
-        opacity: 0;
-      }
-    }
-
+    
     .qr-corner {
       position: absolute;
       width: 20px;
@@ -301,7 +227,6 @@
       height: 260px;
       top: -60px;
       right: -60px;
-      animation: ringPulse 6s ease-in-out infinite;
     }
 
     .ring-2 {
@@ -309,23 +234,9 @@
       height: 180px;
       bottom: -30px;
       left: -40px;
-      animation: ringPulse 8s ease-in-out infinite reverse;
     }
 
-    @keyframes ringPulse {
-
-      0%,
-      100% {
-        transform: scale(1);
-        opacity: .6;
-      }
-
-      50% {
-        transform: scale(1.08);
-        opacity: 1;
-      }
-    }
-    .side-form {
+        .side-form {
       padding: 52px 48px;
       display: flex;
       flex-direction: column;
@@ -337,7 +248,6 @@
       align-items: center;
       gap: 10px;
       margin-bottom: 36px;
-      animation: fadeUp .5s .1s ease both;
     }
 
     .brand-icon {
@@ -378,28 +288,15 @@
       color: #0d1b4b;
       line-height: 1.1;
       margin-bottom: 6px;
-      animation: fadeUp .5s .15s ease both;
     }
 
     .form-caption {
       font-size: .82rem;
       color: #8fa0c8;
       margin-bottom: 30px;
-      animation: fadeUp .5s .2s ease both;
     }
 
-    @keyframes fadeUp {
-      from {
-        opacity: 0;
-        transform: translateY(14px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
+    
     .flash {
       background: #fff2f2;
       border: 1px solid #ffd6d6;
@@ -413,7 +310,6 @@
 
     .field-group {
       margin-bottom: 16px;
-      animation: fadeUp .5s ease both;
     }
 
     .field-group:nth-child(1) {
@@ -448,7 +344,6 @@
       font-size: .88rem;
       color: #0d1b4b;
       outline: none;
-      transition: all .2s ease;
     }
 
     .field::placeholder {
@@ -476,7 +371,6 @@
       cursor: pointer;
       font-size: .85rem;
       padding: 4px;
-      transition: color .2s;
       line-height: 1;
     }
 
@@ -487,7 +381,6 @@
     .forgot-row {
       text-align: right;
       margin: 10px 0 24px;
-      animation: fadeUp .5s .38s ease both;
     }
 
     .forgot-link {
@@ -495,7 +388,6 @@
       font-weight: 600;
       color: #8fa0c8;
       text-decoration: none;
-      transition: color .2s;
     }
 
     .forgot-link:hover {
@@ -518,8 +410,6 @@
       overflow: hidden;
       background: linear-gradient(135deg, #2a4090, #4266d4, #3b5fd4);
       background-size: 200% 100%;
-      transition: transform .2s, box-shadow .2s, background-position .4s;
-      animation: fadeUp .5s .44s ease both;
       box-shadow: 0 12px 28px rgba(42, 64, 144, .3), 0 4px 8px rgba(42, 64, 144, .2);
     }
 
@@ -542,23 +432,9 @@
       height: 200%;
       background: linear-gradient(105deg, transparent, rgba(255, 255, 255, .22), transparent);
       transform: skewX(-20deg);
-      animation: btnShine 3.5s ease-in-out infinite;
     }
 
-    @keyframes btnShine {
-      0% {
-        left: -80%;
-      }
-
-      40% {
-        left: 130%;
-      }
-
-      100% {
-        left: 130%;
-      }
-    }
-
+    
     .btn-main span {
       position: relative;
       z-index: 1;
@@ -569,7 +445,6 @@
       margin-top: 20px;
       font-size: .78rem;
       color: #8fa0c8;
-      animation: fadeUp .5s .5s ease both;
     }
 
     .signup-note a {
@@ -578,7 +453,6 @@
       text-decoration: none;
       border-bottom: 1.5px solid #c0d0ff;
       padding-bottom: 1px;
-      transition: border-color .2s, color .2s;
     }
 
     .signup-note a:hover {
@@ -642,7 +516,6 @@
       text-decoration: none;
       border-bottom: 1.5px solid #c5d4ff;
       padding-bottom: 1px;
-      transition: color .2s, border-color .2s;
     }
 
     .reset-alt-link:hover {
@@ -686,7 +559,6 @@
         radial-gradient(ellipse 70% 50% at 85% 80%, #e4edff 0%, transparent 55%),
         #f0f4ff;
       z-index: 0;
-      animation: meshShift 12s ease-in-out infinite alternate;
       pointer-events: none;
     }
     .card {

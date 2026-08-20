@@ -34,18 +34,7 @@ body::before {
     radial-gradient(ellipse 70% 50% at 85% 80%, #e4edff 0%, transparent 55%),
     #f0f4ff;
   z-index: 0;
-  animation: meshShift 12s ease-in-out infinite alternate;
   pointer-events: none;
-}
-
-@keyframes meshShift {
-  from {
-    filter: hue-rotate(0deg);
-  }
-
-  to {
-    filter: hue-rotate(8deg);
-  }
 }
 
 .blob {
@@ -53,7 +42,6 @@ body::before {
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
-  animation: blobFloat var(--d, 10s) ease-in-out infinite alternate;
 }
 
 .blob-a {
@@ -76,16 +64,6 @@ body::before {
   filter: blur(50px);
 }
 
-@keyframes blobFloat {
-  from {
-    transform: translate(0, 0) scale(1);
-  }
-
-  to {
-    transform: translate(40px, 30px) scale(1.1);
-  }
-}
-
 /* ── Portal Header ── */
 .portal-header {
   position: relative;
@@ -94,7 +72,6 @@ body::before {
   align-items: center;
   gap: 14px;
   margin-bottom: 28px;
-  animation: fadeUp .5s ease both;
 }
 
 .portal-logo {
@@ -145,19 +122,6 @@ body::before {
     0 40px 80px rgba(100, 130, 200, .16),
     0 8px 20px rgba(100, 130, 200, .1);
   overflow: hidden;
-  animation: cardIn .7s cubic-bezier(.16, 1, .3, 1) both;
-}
-
-@keyframes cardIn {
-  from {
-    opacity: 0;
-    transform: translateY(28px) scale(.97);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }
 
 /* ── Card Banner ── */
@@ -188,17 +152,6 @@ body::before {
     linear-gradient(rgba(255, 255, 255, .04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, .04) 1px, transparent 1px);
   background-size: 40px 40px;
-  animation: gridSlide 20s linear infinite;
-}
-
-@keyframes gridSlide {
-  from {
-    background-position: 0 0;
-  }
-
-  to {
-    background-position: 40px 40px;
-  }
 }
 
 .banner-text {
@@ -234,20 +187,7 @@ body::before {
   z-index: 1;
   width: 110px;
   height: 110px;
-  animation: qrFloat 5s ease-in-out infinite;
   flex-shrink: 0;
-}
-
-@keyframes qrFloat {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-8px);
-  }
 }
 
 .banner-qr svg {
@@ -263,28 +203,7 @@ body::before {
   background: linear-gradient(90deg, transparent, #7eb8ff, #a0cdff, #7eb8ff, transparent);
   border-radius: 2px;
   top: 8px;
-  animation: scanBeam 2.8s ease-in-out infinite;
   box-shadow: 0 0 8px 2px rgba(126, 184, 255, .5);
-}
-
-@keyframes scanBeam {
-  0% {
-    top: 12px;
-    opacity: 0;
-  }
-
-  10% {
-    opacity: 1;
-  }
-
-  90% {
-    opacity: 1;
-  }
-
-  100% {
-    top: calc(100% - 12px);
-    opacity: 0;
-  }
 }
 
 .qr-corner {
@@ -336,7 +255,6 @@ body::before {
   height: 220px;
   top: -60px;
   right: -40px;
-  animation: ringPulse 6s ease-in-out infinite;
 }
 
 .ring-2 {
@@ -344,21 +262,6 @@ body::before {
   height: 150px;
   bottom: -30px;
   left: 200px;
-  animation: ringPulse 9s ease-in-out infinite reverse;
-}
-
-@keyframes ringPulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: .5;
-  }
-
-  50% {
-    transform: scale(1.08);
-    opacity: 1;
-  }
 }
 
 /* ── Form Body ── */
@@ -496,7 +399,6 @@ body::before {
   font-size: .83rem;
   color: #112556;
   outline: none;
-  transition: border-color .2s, background .2s, box-shadow .2s;
   appearance: none;
   -webkit-appearance: none;
 }
@@ -589,7 +491,6 @@ select.field {
   overflow: hidden;
   background: linear-gradient(135deg, #2a4090, #4266d4, #3b5fd4);
   background-size: 200% 100%;
-  transition: transform .2s, box-shadow .2s, background-position .4s;
   box-shadow: 0 10px 28px rgba(42, 64, 144, .28), 0 4px 8px rgba(42, 64, 144, .18);
 }
 
@@ -612,21 +513,6 @@ select.field {
   height: 200%;
   background: linear-gradient(105deg, transparent, rgba(255, 255, 255, .2), transparent);
   transform: skewX(-20deg);
-  animation: btnShine 3.5s ease-in-out infinite;
-}
-
-@keyframes btnShine {
-  0% {
-    left: -80%;
-  }
-
-  40% {
-    left: 130%;
-  }
-
-  100% {
-    left: 130%;
-  }
 }
 
 .btn-submit svg {
@@ -659,32 +545,17 @@ select.field {
 }
 
 /* ── Animations ── */
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 .fade-1 {
-  animation: fadeUp .5s .1s ease both;
 }
 
 .fade-2 {
-  animation: fadeUp .5s .2s ease both;
 }
 
 .fade-3 {
-  animation: fadeUp .5s .3s ease both;
 }
 
 .fade-4 {
-  animation: fadeUp .5s .4s ease both;
 }
 
 /* ── Responsive ── */

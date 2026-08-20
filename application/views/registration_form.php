@@ -11,10 +11,10 @@
   <link href="<?= base_url(); ?>assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" id="bootstrap-stylesheet" />
   <link href="<?= base_url(); ?>assets/css/icons.min.css" rel="stylesheet" type="text/css" />
   <link href="<?= base_url(); ?>assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=20260820" rel="stylesheet">
 
   <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
-  <link href="<?= base_url(); ?>assets/css/registration_form.css" rel="stylesheet" type="text/css" />
+  <link href="<?= base_url(); ?>assets/css/registration_form.css?v=20260820" rel="stylesheet" type="text/css" />
 </head>
 
 <body data-layout="horizontal">
@@ -264,8 +264,26 @@
   <script src="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.js"></script>
   <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
-  <script src="<?= base_url(); ?>assets/js/registration_form.js"></script>
-  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  <script src="<?= base_url(); ?>assets/js/registration_form.js?v=20260820"></script>
+  <script>
+  // Lazy-load reCAPTCHA only when the user interacts with the form,
+  // instead of blocking page load with the external Google script.
+  (function() {
+    var loaded = false;
+    function loadRecaptcha() {
+      if (loaded) return;
+      loaded = true;
+      var s = document.createElement('script');
+      s.src = 'https://www.google.com/recaptcha/api.js';
+      s.async = true;
+      s.defer = true;
+      document.body.appendChild(s);
+    }
+    ['focus', 'click', 'touchstart', 'keydown'].forEach(function(evt) {
+      document.addEventListener(evt, loadRecaptcha, { once: true, passive: true });
+    });
+  })();
+  </script>
 
 </body>
 

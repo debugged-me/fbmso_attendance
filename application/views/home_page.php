@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="<?= base_url(); ?>assets/vendor/bootstrap/css/bootstrap.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/fonts/font-awesome-4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.css">
-  <link rel="stylesheet" href="<?= base_url(); ?>assets/css/home.css">
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="<?= base_url(); ?>assets/css/home.css?v=20260820">
+  <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=20260820" rel="stylesheet">
 
 </head>
 
@@ -231,7 +231,7 @@
       checkResetEmailUrl: <?= json_encode(site_url('login/check_reset_email')); ?>
     };
   </script>
-  <script src="<?= base_url(); ?>assets/js/home.js"></script>
+  <script src="<?= base_url(); ?>assets/js/home.js?v=20260820"></script>
 
 </body>
 

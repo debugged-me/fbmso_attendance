@@ -4,6 +4,13 @@ RewriteEngine On
 RewriteCond %{HTTP_HOST} ^(www\.)?fbmso\.softtechco\.biz$ [NC]
 RewriteRule ^(.*)$ https://fbmso.srmsportal.com/$1 [R=301,L]
 
+# Disable browser caching for CSS and JS during development
+<FilesMatch "\.(css|js)$">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+  Header set Pragma "no-cache"
+  Header set Expires "0"
+</FilesMatch>
+
 # Uncomment the line below if the app is deployed in a subdirectory.
 # RewriteBase /subdir/
 
