@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+.DS_Store?
+._*
+
+# Logs
+error_log
+*.log
+
+# Composer dependencies
+vendor/
+
+# PHP unit / temp
+.phpunit.result.cache
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sensitive config (uncomment if you want to stop tracking credentials)
+# application/config/database.php
+# application/config/email.php
+
+# System temp files
+Thumbs.db
+ehthumbs.db
