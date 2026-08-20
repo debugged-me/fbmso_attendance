@@ -645,5 +645,7 @@
     Swal.fire(opts);
     var fb = document.getElementById('login-error-message');
     if (fb) fb.style.display = 'none';
+    var infoFb = document.getElementById('login-info-message');
+    if (infoFb) infoFb.style.display = 'none';
   }
 })();

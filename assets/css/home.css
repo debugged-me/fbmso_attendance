@@ -308,6 +308,12 @@
       margin-bottom: 18px;
     }
 
+    .flash-success {
+      background: #f0fff4;
+      border-color: #c6f6d5;
+      color: #2f855a;
+    }
+
     .field-group {
       margin-bottom: 16px;
     }

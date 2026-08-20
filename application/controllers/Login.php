@@ -12,6 +12,11 @@ class Login extends CI_Controller
 
     function index()
     {
+        // Prevent browser caching so flashdata messages always show after redirect
+        $this->output->set_header('Cache-Control: no-cache, no-store, must-revalidate');
+        $this->output->set_header('Pragma: no-cache');
+        $this->output->set_header('Expires: 0');
+
         $settings = $this->Login_model->loginImage(); // returns an array of result objects
         $result['data'] = $settings;
 

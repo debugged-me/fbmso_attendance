@@ -5,6 +5,9 @@
   <?php include('includes/title.php'); ?>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <link rel="icon" type="image/png" href="<?= base_url(); ?>assets/images/Attendance.png" />
   <link rel="stylesheet" href="<?= base_url(); ?>assets/vendor/bootstrap/css/bootstrap.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/fonts/font-awesome-4.7.0/css/font-awesome.min.css">
@@ -121,6 +124,9 @@
       ?>
       <?php if (!empty($loginErrorText)): ?>
         <div class="flash" id="login-error-message"><?= htmlspecialchars($loginErrorText, ENT_QUOTES, 'UTF-8'); ?></div>
+      <?php endif; ?>
+      <?php if (!empty($infoMessage)): ?>
+        <div class="flash flash-success" id="login-info-message"><?= htmlspecialchars($infoMessage, ENT_QUOTES, 'UTF-8'); ?></div>
       <?php endif; ?>
 
       <form action="<?= site_url('Login/auth'); ?>" method="post" novalidate>
