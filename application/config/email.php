@@ -3,13 +3,13 @@
 
 
 $config['protocol']     = 'smtp';
-$config['smtp_host']    = 'mail.softtechco.biz';
-$config['smtp_user']    = 'fbmso@softtechco.biz';
+$config['smtp_host']    = 'fbmso.srmsportal.com';
+$config['smtp_user']    = 'attendance@fbmso.srmsportal.com';
 $config['smtp_pass']    = getenv('FBMSO_SMTP_PASSWORD') ?: 'moth34board';
 $config['smtp_port']    = 465;
 $config['smtp_crypto']  = 'ssl';
 
-$config['smtp_timeout'] = 5;
+$config['smtp_timeout'] = 10;
 $config['mailtype']     = 'html';
 $config['charset']      = 'utf-8';
 $config['newline']      = "\r\n";
