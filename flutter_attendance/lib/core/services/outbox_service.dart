@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -27,7 +28,11 @@ class OutboxService {
   static bool _flushing = false;
 
   /// Called once at startup to open the DB and begin auto-flushing.
+  ///
+  /// On web (used only for development preview) sqflite is unavailable, so
+  /// the outbox is disabled — writes go straight to the network instead.
   static Future<void> initialize() async {
+    if (kIsWeb) return;
     await _database();
     _connectivitySub?.cancel();
     _connectivitySub = ConnectivityService.connectionStream.listen((online) {
@@ -83,6 +88,19 @@ class OutboxService {
     Map<String, dynamic>? payload,
     String contentType = 'application/json',
   }) async {
+    // Web preview: no SQLite — send directly, drop on failure.
+    if (kIsWeb) {
+      await _send(
+        method: method.toUpperCase(),
+        url: url,
+        token: token,
+        idemKey: idemKey,
+        payload: payload ?? {},
+        contentType: contentType,
+      );
+      return 0;
+    }
+
     final db = await _database();
     final now = DateTime.now().millisecondsSinceEpoch;
     final id = await db.insert(_table, {
@@ -113,6 +131,7 @@ class OutboxService {
   /// Drain all queued rows in FIFO order. Safe to call repeatedly; concurrent
   /// calls are coalesced via [_flushing].
   static Future<void> flush() async {
+    if (kIsWeb) return;
     if (_flushing) return;
     _flushing = true;
     try {
@@ -243,6 +262,7 @@ class OutboxService {
   // ─── Introspection (for the outbox viewer UI) ───────────────────────────
 
   static Future<int> queuedCount() async {
+    if (kIsWeb) return 0;
     final db = await _database();
     final rows = await db.rawQuery(
         "SELECT COUNT(*) AS c FROM $_table WHERE status = 'queued'");
@@ -250,6 +270,7 @@ class OutboxService {
   }
 
   static Future<int> conflictCount() async {
+    if (kIsWeb) return 0;
     final db = await _database();
     final rows = await db.rawQuery(
         "SELECT COUNT(*) AS c FROM $_table WHERE status = 'conflict'");
@@ -257,6 +278,7 @@ class OutboxService {
   }
 
   static Future<List<Map<String, dynamic>>> allRows() async {
+    if (kIsWeb) return [];
     final db = await _database();
     return db.query(_table, orderBy: 'id ASC');
   }

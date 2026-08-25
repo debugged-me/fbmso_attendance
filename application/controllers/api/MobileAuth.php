@@ -27,6 +27,32 @@ class MobileAuth extends CI_Controller
         $this->load->library('session');
         $this->load->model('Login_model');
         $this->load->model('MobileTokenModel');
+        $this->send_cors_headers();
+    }
+
+    /**
+     * CORS support so the Flutter web build (dev preview on another port)
+     * can call the API. Native mobile apps don't need CORS. OPTIONS
+     * preflights are answered immediately with 204.
+     */
+    private function send_cors_headers(): void
+    {
+        $origin = $this->input->get_request_header('Origin');
+        if ($origin) {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Vary: Origin');
+        } else {
+            header('Access-Control-Allow-Origin: *');
+        }
+        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Idempotency-Key');
+        header('Access-Control-Max-Age: 86400');
+
+        if ($this->input->method(true) === 'OPTIONS') {
+            $this->output->set_status_header(204);
+            $this->output->_display();
+            exit;
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────────
