@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_icons.dart';
+import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../activities/presentation/activities_screen.dart';
@@ -13,7 +14,10 @@ import '../../attendance/presentation/manage_activities_screen.dart';
 import '../../attendance/presentation/scan_screen.dart';
 import '../../auth/domain/app_session.dart';
 import '../../auth/presentation/auth_controller.dart';
-import '../../misc/presentation/announcements_screen.dart';
+import '../../misc/presentation/announcements_manage_screen.dart';
+import '../../misc/presentation/departments_screen.dart';
+import '../../misc/presentation/reports_screen.dart';
+import '../../misc/presentation/sections_screen.dart';
 import '../../misc/presentation/expenses_screen.dart';
 import '../../misc/presentation/notes_screen.dart';
 import '../../misc/presentation/personnel_manage_screen.dart';
@@ -129,7 +133,7 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.receipt_long_outlined,
           title: 'Expenses',
-          subtitle: 'Recent accounting expenses',
+          subtitle: 'Accounting expenses & categories',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -140,15 +144,54 @@ class _AdminShellState extends State<AdminShell> {
           },
         ),
         DrawerItem(
+          icon: Icons.school_outlined,
+          title: 'Departments',
+          subtitle: 'Manage courses / programs',
+          onTap: (ctx) {
+            Navigator.of(ctx).pop();
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (_) => DepartmentsScreen(session: widget.session),
+              ),
+            );
+          },
+        ),
+        DrawerItem(
+          icon: Icons.group_outlined,
+          title: 'Sections',
+          subtitle: 'Manage class sections',
+          onTap: (ctx) {
+            Navigator.of(ctx).pop();
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (_) => SectionsScreen(session: widget.session),
+              ),
+            );
+          },
+        ),
+        DrawerItem(
+          icon: Icons.assessment_outlined,
+          title: 'Reports',
+          subtitle: 'Enrollment & attendance reports',
+          onTap: (ctx) {
+            Navigator.of(ctx).pop();
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (_) => ReportsScreen(session: widget.session),
+              ),
+            );
+          },
+        ),
+        DrawerItem(
           icon: Icons.campaign_outlined,
           title: 'Announcements',
-          subtitle: 'School-wide notices',
+          subtitle: 'Post & manage announcements',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
               MaterialPageRoute(
                 builder: (_) =>
-                    AnnouncementsScreen(session: widget.session),
+                    AnnouncementsManageScreen(session: widget.session),
               ),
             );
           },
@@ -731,9 +774,9 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
                                 final studentNo =
                                     (log['student_number'] ?? '').toString();
                                 final checkedIn =
-                                    (log['checked_in_at'] ?? '').toString();
+                                    to12HourFromDateTime((log['checked_in_at'] ?? '').toString());
                                 final checkedOut =
-                                    (log['checked_out_at'] ?? '').toString();
+                                    to12HourFromDateTime((log['checked_out_at'] ?? '').toString());
                                 final sessionLabel =
                                     (log['session_label'] ?? '—').toString();
                                 final source =

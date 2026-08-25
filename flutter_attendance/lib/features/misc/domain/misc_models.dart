@@ -327,3 +327,126 @@ class RegisteredStudent {
         enrollmentDate: (j['enrollment_date'] ?? '').toString(),
       );
 }
+
+/// A department/course from the course_table.
+class Department {
+  const Department({
+    required this.id,
+    required this.courseCode,
+    required this.courseDescription,
+    required this.major,
+    required this.duration,
+    required this.recogNo,
+    required this.seriesYear,
+    required this.programHead,
+    required this.idNumber,
+  });
+
+  final int id;
+  final String courseCode;
+  final String courseDescription;
+  final String major;
+  final String duration;
+  final String recogNo;
+  final String seriesYear;
+  final String programHead;
+  final String idNumber;
+
+  factory Department.fromJson(Map<String, dynamic> j) => Department(
+        id: int.tryParse((j['id'] ?? '0').toString()) ?? 0,
+        courseCode: (j['course_code'] ?? '').toString(),
+        courseDescription: (j['course_description'] ?? '').toString(),
+        major: (j['major'] ?? '').toString(),
+        duration: (j['duration'] ?? '').toString(),
+        recogNo: (j['recog_no'] ?? '').toString(),
+        seriesYear: (j['series_year'] ?? '').toString(),
+        programHead: (j['program_head'] ?? '').toString(),
+        idNumber: (j['id_number'] ?? '').toString(),
+      );
+}
+
+/// A section from course_sections.
+class Section {
+  const Section({
+    required this.id,
+    required this.courseId,
+    required this.courseName,
+    required this.yearLevel,
+    required this.section,
+    required this.isActive,
+  });
+
+  final int id;
+  final String courseId;
+  final String courseName;
+  final String yearLevel;
+  final String section;
+  final int isActive;
+
+  factory Section.fromJson(Map<String, dynamic> j) => Section(
+        id: int.tryParse((j['id'] ?? '0').toString()) ?? 0,
+        courseId: (j['course_id'] ?? '').toString(),
+        courseName: (j['course_name'] ?? '').toString(),
+        yearLevel: (j['year_level'] ?? '').toString(),
+        section: (j['section'] ?? '').toString(),
+        isActive: int.tryParse((j['is_active'] ?? '1').toString()) ?? 1,
+      );
+}
+
+/// Reports summary.
+class ReportSummary {
+  const ReportSummary({
+    required this.sy,
+    required this.sem,
+    required this.byYearLevel,
+    required this.byCourse,
+    required this.sectionsCount,
+    required this.eventsTotal,
+    required this.eventScans,
+  });
+
+  final String sy;
+  final String sem;
+  final List<ReportRow> byYearLevel;
+  final List<ReportRow> byCourse;
+  final List<ReportRow> sectionsCount;
+  final int eventsTotal;
+  final int eventScans;
+
+  factory ReportSummary.fromJson(Map<String, dynamic> j) => ReportSummary(
+        sy: (j['sy'] ?? '').toString(),
+        sem: (j['sem'] ?? '').toString(),
+        byYearLevel: ((j['by_year_level'] ?? []) as List)
+            .map((e) => ReportRow.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        byCourse: ((j['by_course'] ?? []) as List)
+            .map((e) => ReportRow.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        sectionsCount: ((j['sections_count'] ?? []) as List)
+            .map((e) => ReportRow.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        eventsTotal: int.tryParse((j['events_total'] ?? '0').toString()) ?? 0,
+        eventScans: int.tryParse((j['event_scans'] ?? '0').toString()) ?? 0,
+      );
+}
+
+class ReportRow {
+  const ReportRow({
+    this.yearLevel = '',
+    this.course = '',
+    this.count = 0,
+    this.sections = 0,
+  });
+
+  final String yearLevel;
+  final String course;
+  final int count;
+  final int sections;
+
+  factory ReportRow.fromJson(Map<String, dynamic> j) => ReportRow(
+        yearLevel: (j['year_level'] ?? '').toString(),
+        course: (j['course'] ?? '').toString(),
+        count: int.tryParse((j['count'] ?? '0').toString()) ?? 0,
+        sections: int.tryParse((j['sections'] ?? '0').toString()) ?? 0,
+      );
+}

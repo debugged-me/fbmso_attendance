@@ -182,6 +182,30 @@ class AuthController extends ChangeNotifier {
     return result;
   }
 
+  /// Fetch sections for a specific course + year level.
+  Future<List<String>> registrationSections({
+    required String course,
+    required String yearLevel,
+  }) async {
+    return _api.registrationSections(
+      baseUrl: _baseUrl,
+      course: course,
+      yearLevel: yearLevel,
+    );
+  }
+
+  /// Check if a Student ID or email already exists.
+  Future<({bool exists, String message})> checkAvailability({
+    required String field,
+    required String value,
+  }) async {
+    return _api.checkAvailability(
+      baseUrl: _baseUrl,
+      field: field,
+      value: value,
+    );
+  }
+
   Future<String?> register({
     required String studentNumber,
     required String firstName,

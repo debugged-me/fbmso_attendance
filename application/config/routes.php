@@ -76,6 +76,7 @@ $route['admin/fbmso-personnels']  = 'FbmsoPersonnels/manage';
 $route['api/mobile/config']                       = 'api/MobileAuth/config';
 $route['api/mobile/registration/options']         = 'api/MobileAuth/registration_options';
 $route['api/mobile/registration/sections']        = 'api/MobileAuth/registration_sections';
+$route['api/mobile/registration/check-availability'] = 'api/MobileAuth/registration_check_availability';
 $route['api/mobile/auth/login']                   = 'api/MobileAuth/login';
 $route['api/mobile/auth/me']                      = 'api/MobileAuth/me';
 $route['api/mobile/auth/logout']                  = 'api/MobileAuth/logout';
@@ -138,3 +139,24 @@ $route['api/mobile/users/create']                 = 'api/MobileMisc/user_account
 $route['api/mobile/users/delete']                 = 'api/MobileMisc/user_accounts_delete';
 $route['api/mobile/registered-students']          = 'api/MobileMisc/registered_students';
 $route['api/mobile/registered-students/delete']   = 'api/MobileMisc/registered_students_delete';
+
+// Departments / Courses (Settings/Department)
+$route['api/mobile/departments']                  = 'api/MobileMisc/departments';
+$route['api/mobile/departments/create']           = 'api/MobileMisc/departments_create';
+$route['api/mobile/departments/update']           = 'api/MobileMisc/departments_update';
+$route['api/mobile/departments/delete']           = 'api/MobileMisc/departments_delete';
+
+// Sections (Page/manageSections)
+$route['api/mobile/sections']                     = 'api/MobileMisc/sections';
+$route['api/mobile/sections/create']              = 'api/MobileMisc/sections_create';
+$route['api/mobile/sections/delete']              = 'api/MobileMisc/sections_delete';
+
+// Announcements CRUD (admin)
+$route['api/mobile/announcements/all']            = 'api/MobileMisc/announcements_all';
+$route['api/mobile/announcements/create']         = 'api/MobileMisc/announcements_create';
+$route['api/mobile/announcements/update']         = 'api/MobileMisc/announcements_update';
+$route['api/mobile/announcements/delete']         = 'api/MobileMisc/announcements_delete';
+
+// Reports
+$route['api/mobile/reports/summary']              = 'api/MobileMisc/reports_summary';
+$route['api/mobile/reports/attendance']           = 'api/MobileMisc/reports_attendance';

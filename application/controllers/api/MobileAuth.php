@@ -143,6 +143,7 @@ class MobileAuth extends CI_Controller
 
     /**
      * Sections for a specific course + year level.
+     * Mirrors Registration::getSectionsByCourseYear on the web.
      */
     public function registration_sections()
     {
@@ -150,38 +151,98 @@ class MobileAuth extends CI_Controller
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
 
-        $course = (string)$this->input->get('course', true);
-        $yearLevel = (string)$this->input->get('year_level', true);
+        $courseByName = trim((string)$this->input->get('course', true));
+        $courseid     = trim((string)$this->input->get('courseid', true));
+        $yearLevel    = trim((string)$this->input->get('year_level', true));
 
-        $sections = [];
-        $this->load->model('StudentModel');
-        try {
-            if (method_exists($this->StudentModel, 'get_sections')) {
-                $rows = $this->StudentModel->get_sections($course, $yearLevel);
-                foreach ($rows as $r) {
-                    $sections[] = (string)($r->section ?? $r->Section ?? '');
-                }
-            }
-        } catch (\Throwable $e) {
-            // ignore
+        // If courseid is not numeric, ignore it (the mobile form sends CourseDescription)
+        if ($courseid !== '' && !ctype_digit($courseid)) {
+            $courseid = '';
         }
 
-        // Fallback: direct query
-        if (empty($sections) && $this->db->table_exists('course_sections')) {
-            $this->db->distinct()->select('section');
-            if ($course !== '') $this->db->where('courseid', $course);
-            if ($yearLevel !== '') $this->db->where('year_level', $yearLevel);
-            $rows = $this->db->get('course_sections')->result();
-            foreach ($rows as $r) {
-                $s = trim((string)($r->section ?? ''));
-                if ($s !== '') $sections[] = $s;
+        // Resolve numeric courseid from CourseDescription
+        if ($courseid === '' && $courseByName !== '') {
+            $row = $this->db->select('courseid')
+                ->from('course_table')
+                ->where('CourseDescription', $courseByName)
+                ->limit(1)->get()->row();
+            if ($row) $courseid = (string)$row->courseid;
+        }
+
+        $sections = [];
+
+        if ($this->db->table_exists('course_sections') && $courseid !== '' && $yearLevel !== '') {
+            $q = $this->db->select('section')
+                ->from('course_sections')
+                ->where('courseid', (int)$courseid)
+                ->where('year_level', $yearLevel)
+                ->where('is_active', 1)
+                ->order_by('section', 'ASC')
+                ->get();
+            foreach ($q->result() as $r) {
+                $sections[] = (string)$r->section;
             }
+        }
+
+        // Fallback so the form always works even if no rows match
+        if (empty($sections)) {
+            $sections = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
         }
 
         return $this->json([
             'ok'       => true,
             'sections' => array_values(array_filter(array_unique($sections))),
         ]);
+    }
+
+    /**
+     * Check if a Student ID or email already exists.
+     * Mirrors Registration::checkAvailability on the web.
+     */
+    public function registration_check_availability()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+
+        $field = strtolower(trim((string)$this->input->get('field', true)));
+        $value = trim((string)$this->input->get('value', true));
+
+        $response = [
+            'ok'      => true,
+            'field'   => $field,
+            'exists'  => false,
+            'message' => ''
+        ];
+
+        if ($field === 'studentnumber' || $field === 'student_id' || $field === 'student') {
+            $studentNumber = strtoupper($value);
+            if ($studentNumber !== '') {
+                $exists = (
+                    $this->db->where('username', $studentNumber)->count_all_results('o_users') > 0
+                ) || (
+                    $this->db->where('StudentNumber', $studentNumber)->count_all_results('studentsignup') > 0
+                );
+                $response['exists'] = $exists;
+                $response['message'] = $exists ? 'Student ID already exists.' : 'Student ID is available.';
+            }
+        } elseif ($field === 'email') {
+            $email = trim($value);
+            if ($email !== '') {
+                $exists = (
+                    $this->db->where('email', $email)->count_all_results('o_users') > 0
+                ) || (
+                    $this->db->where('email', $email)->count_all_results('studentsignup') > 0
+                );
+                $response['exists'] = $exists;
+                $response['message'] = $exists ? 'Email already exists.' : 'Email is available.';
+            }
+        } else {
+            $response['ok'] = false;
+            $response['message'] = 'Unsupported field.';
+        }
+
+        return $this->json($response);
     }
 
     /** Login with the same credentials the web Login::auth() accepts. */
@@ -859,7 +920,7 @@ class MobileAuth extends CI_Controller
     {
         $avatar = trim($avatar);
         if ($avatar === '') {
-            return '';
+            $avatar = 'avatar.png';
         }
         if (preg_match('#^https?://#i', $avatar)) {
             return $avatar;

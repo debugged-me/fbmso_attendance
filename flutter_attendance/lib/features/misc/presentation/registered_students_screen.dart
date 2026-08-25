@@ -296,12 +296,13 @@ class _StudentCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 3),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
                       Text(student.studentNumber,
                           style: const TextStyle(fontSize: 12, color: AppInk.muted)),
-                      if (student.course.isNotEmpty) ...[
-                        const SizedBox(width: 8),
+                      if (student.course.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
@@ -314,12 +315,9 @@ class _StudentCard extends StatelessWidget {
                                   fontWeight: FontWeight.w600,
                                   color: AppInk.accent)),
                         ),
-                      ],
-                      if (student.yearLevel.isNotEmpty) ...[
-                        const SizedBox(width: 4),
+                      if (student.yearLevel.isNotEmpty)
                         Text('${student.yearLevel} yr',
                             style: const TextStyle(fontSize: 11, color: AppInk.muted)),
-                      ],
                     ],
                   ),
                   if (student.email.isNotEmpty) ...[

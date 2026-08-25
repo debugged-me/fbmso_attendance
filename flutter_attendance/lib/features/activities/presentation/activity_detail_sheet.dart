@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
+import '../../../core/utils/time_format.dart';
 import '../../auth/domain/app_session.dart';
 import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
@@ -407,9 +408,9 @@ class _ActivityLogViewState extends State<ActivityLogView> {
                                 final studentNo =
                                     (log['student_number'] ?? '').toString();
                                 final checkedIn =
-                                    (log['checked_in_at'] ?? '').toString();
+                                    to12HourFromDateTime((log['checked_in_at'] ?? '').toString());
                                 final checkedOut =
-                                    (log['checked_out_at'] ?? '').toString();
+                                    to12HourFromDateTime((log['checked_out_at'] ?? '').toString());
                                 final source =
                                     (log['source'] ?? '').toString();
 

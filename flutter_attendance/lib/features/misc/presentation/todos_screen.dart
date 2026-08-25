@@ -49,9 +49,11 @@ class _TodosScreenState extends State<TodosScreen> {
   }
 
   Future<void> _add() async {
-    final result = await showDialog<({String task, String dueDate})>(
+    final result = await showModalBottomSheet<({String task, String dueDate})>(
       context: context,
-      builder: (ctx) => const _TodoDialog(),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const _TodoSheet(),
     );
     if (result == null) return;
 
@@ -288,14 +290,14 @@ class _TodoTile extends StatelessWidget {
   }
 }
 
-class _TodoDialog extends StatefulWidget {
-  const _TodoDialog();
+class _TodoSheet extends StatefulWidget {
+  const _TodoSheet();
 
   @override
-  State<_TodoDialog> createState() => _TodoDialogState();
+  State<_TodoSheet> createState() => _TodoSheetState();
 }
 
-class _TodoDialogState extends State<_TodoDialog> {
+class _TodoSheetState extends State<_TodoSheet> {
   late final TextEditingController _task;
   DateTime? _dueDate;
 
@@ -316,97 +318,133 @@ class _TodoDialogState extends State<_TodoDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('New task'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppInput(controller: _task, label: 'Task', hint: 'What needs doing?'),
-          const SizedBox(height: 14),
-          InkWell(
-            onTap: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: DateTime.now(),
-                firstDate:
-                    DateTime.now().subtract(const Duration(days: 365)),
-                lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-              );
-              if (picked != null) setState(() => _dueDate = picked);
-            },
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppInk.rule, width: 1.5),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.calendar_today_outlined,
-                      size: 20, color: AppInk.muted),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Due date',
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontFamily,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppInk.muted,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _dueDate == null ? 'Select a date' : _formatDate(_dueDate!),
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontFamily,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: _dueDate == null
-                                ? const Color(0xFF94A3B8)
-                                : AppInk.heading,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded,
-                      size: 22, color: Color(0xFFCBD5E1)),
-                ],
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        24, 12, 24,
+        32 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppInk.rule,
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+            const Text('New Task',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppInk.heading)),
+            const SizedBox(height: 20),
+            AppInput(
+              controller: _task,
+              label: 'Task',
+              hint: 'What needs doing?',
+              prefixIcon: Icons.task_outlined,
+            ),
+            const SizedBox(height: 14),
+            InkWell(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate:
+                      DateTime.now().subtract(const Duration(days: 365)),
+                  lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+                );
+                if (picked != null) setState(() => _dueDate = picked);
+              },
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppInk.rule, width: 1.5),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_today_outlined,
+                        size: 20, color: AppInk.muted),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Due date',
+                            style: TextStyle(
+                              fontFamily: AppTheme.fontFamily,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppInk.muted,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _dueDate == null ? 'Select a date' : _formatDate(_dueDate!),
+                            style: TextStyle(
+                              fontFamily: AppTheme.fontFamily,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: _dueDate == null
+                                  ? const Color(0xFF94A3B8)
+                                  : AppInk.heading,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded,
+                        size: 22, color: Color(0xFFCBD5E1)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: AppButton(
+                    label: 'Cancel',
+                    style: AppButtonStyle.ghost,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AppButton(
+                    label: 'Add',
+                    style: AppButtonStyle.primary,
+                    onTap: () {
+                      if (_task.text.trim().isEmpty || _dueDate == null) return;
+                      final d = _dueDate!;
+                      Navigator.pop(context, (
+                        task: _task.text.trim(),
+                        dueDate: _formatDate(d),
+                      ));
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-      actions: [
-        AppButton(
-          label: 'Cancel',
-          style: AppButtonStyle.ghost,
-          size: AppButtonSize.sm,
-          onTap: () => Navigator.pop(context),
-        ),
-        AppButton(
-          label: 'Add',
-          style: AppButtonStyle.primary,
-          size: AppButtonSize.sm,
-          onTap: () {
-            if (_task.text.trim().isEmpty || _dueDate == null) return;
-            final d = _dueDate!;
-            Navigator.pop(context, (
-              task: _task.text.trim(),
-              dueDate: _formatDate(d),
-            ));
-          },
-        ),
-      ],
     );
   }
 }

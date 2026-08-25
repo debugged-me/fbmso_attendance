@@ -226,6 +226,59 @@ class AuthApi {
     );
   }
 
+  /// Fetch sections for a specific course + year level (cascading dropdown).
+  Future<List<String>> registrationSections({
+    required String baseUrl,
+    required String course,
+    required String yearLevel,
+  }) async {
+    final qs =
+        'course=${Uri.encodeComponent(course)}&year_level=${Uri.encodeComponent(yearLevel)}';
+    final response = await _safeRequest(
+      () => _client.get(
+        _uri(baseUrl, '/api/mobile/registration/sections?$qs'),
+        headers: _jsonHeaders,
+      ),
+    );
+    final data = _decode(response);
+    if (data['ok'] != true) {
+      throw ApiException(
+          (data['message'] ?? 'Failed to load sections').toString(),
+          statusCode: response.statusCode);
+    }
+    return (data['sections'] as List? ?? [])
+        .map((e) => e.toString())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  /// Check if a Student ID or email already exists.
+  /// Returns (exists, message).
+  Future<({bool exists, String message})> checkAvailability({
+    required String baseUrl,
+    required String field,
+    required String value,
+  }) async {
+    final qs =
+        'field=${Uri.encodeComponent(field)}&value=${Uri.encodeComponent(value)}';
+    final response = await _safeRequest(
+      () => _client.get(
+        _uri(baseUrl, '/api/mobile/registration/check-availability?$qs'),
+        headers: _jsonHeaders,
+      ),
+    );
+    final data = _decode(response);
+    if (data['ok'] != true) {
+      throw ApiException(
+          (data['message'] ?? 'Check failed').toString(),
+          statusCode: response.statusCode);
+    }
+    return (
+      exists: (data['exists'] as bool?) ?? false,
+      message: (data['message'] ?? '').toString(),
+    );
+  }
+
   /// Register a new student account.
   Future<void> register({
     required String baseUrl,

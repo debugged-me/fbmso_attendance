@@ -49,9 +49,11 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   Future<void> _editOrCreate({Note? note}) async {
-    final result = await showDialog<({String title, String content})>(
+    final result = await showModalBottomSheet<({String title, String content})>(
       context: context,
-      builder: (ctx) => _NoteDialog(note: note),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _NoteSheet(note: note),
     );
     if (result == null) return;
 
@@ -235,15 +237,15 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 }
 
-class _NoteDialog extends StatefulWidget {
-  const _NoteDialog({this.note});
+class _NoteSheet extends StatefulWidget {
+  const _NoteSheet({this.note});
   final Note? note;
 
   @override
-  State<_NoteDialog> createState() => _NoteDialogState();
+  State<_NoteSheet> createState() => _NoteSheetState();
 }
 
-class _NoteDialogState extends State<_NoteDialog> {
+class _NoteSheetState extends State<_NoteSheet> {
   late final TextEditingController _title;
   late final TextEditingController _content;
 
@@ -264,44 +266,84 @@ class _NoteDialogState extends State<_NoteDialog> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.note != null;
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text(isEdit ? 'Edit note' : 'New note'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppInput(controller: _title, label: 'Title', hint: 'Note title'),
-          const SizedBox(height: 14),
-          AppInput(
-            controller: _content,
-            label: 'Content',
-            hint: 'Write something...',
-            maxLines: 4,
-          ),
-        ],
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      actions: [
-        AppButton(
-          label: 'Cancel',
-          style: AppButtonStyle.ghost,
-          size: AppButtonSize.sm,
-          onTap: () => Navigator.pop(context),
+      padding: EdgeInsets.fromLTRB(
+        24, 12, 24,
+        32 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppInk.rule,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              isEdit ? 'Edit Note' : 'New Note',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppInk.heading,
+              ),
+            ),
+            const SizedBox(height: 20),
+            AppInput(
+              controller: _title,
+              label: 'Title',
+              hint: 'Note title',
+              prefixIcon: Icons.title_rounded,
+            ),
+            const SizedBox(height: 14),
+            AppInput(
+              controller: _content,
+              label: 'Content',
+              hint: 'Write something...',
+              maxLines: 6,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: AppButton(
+                    label: 'Cancel',
+                    style: AppButtonStyle.ghost,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AppButton(
+                    label: isEdit ? 'Save' : 'Create',
+                    style: AppButtonStyle.primary,
+                    onTap: () {
+                      if (_title.text.trim().isEmpty ||
+                          _content.text.trim().isEmpty) {
+                        return;
+                      }
+                      Navigator.pop(context, (
+                        title: _title.text.trim(),
+                        content: _content.text.trim(),
+                      ));
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-        AppButton(
-          label: isEdit ? 'Save' : 'Create',
-          style: AppButtonStyle.primary,
-          size: AppButtonSize.sm,
-          onTap: () {
-            if (_title.text.trim().isEmpty || _content.text.trim().isEmpty) {
-              return;
-            }
-            Navigator.pop(context, (
-              title: _title.text.trim(),
-              content: _content.text.trim(),
-            ));
-          },
-        ),
-      ],
+      ),
     );
   }
 }

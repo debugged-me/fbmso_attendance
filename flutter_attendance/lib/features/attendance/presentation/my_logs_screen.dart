@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
+import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
@@ -165,10 +166,7 @@ class _LogTile extends StatelessWidget {
 
   String _shortTime(String dt) {
     if (dt.isEmpty) return '—';
-    // "2026-08-25 18:24:10" → "18:24"
-    final parts = dt.split(' ');
-    if (parts.length >= 2) return parts[1].substring(0, 5);
-    return dt;
+    return to12HourFromDateTime(dt);
   }
 }
 

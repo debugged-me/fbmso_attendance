@@ -4,8 +4,8 @@ import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
-import '../../misc/data/misc_api.dart';
-import '../../misc/domain/misc_models.dart';
+import '../data/misc_api.dart';
+import '../domain/misc_models.dart';
 
 /// Manage Users screen — admin can view, create, and delete user accounts.
 /// Mirrors the web Page/userAccounts page.
@@ -20,16 +20,37 @@ class UserAccountsScreen extends StatefulWidget {
 
 class _UserAccountsScreenState extends State<UserAccountsScreen> {
   late final MiscApi _api;
-  List<UserAccount> _users = [];
+  final List<UserAccount> _rows = [];
+  int _total = 0;
   bool _loading = true;
+  bool _loadingMore = false;
   String? _error;
   String _search = '';
+  final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
+  static const _pageSize = 50;
 
   @override
   void initState() {
     super.initState();
     _api = MiscApi();
+    _scrollController.addListener(_onScroll);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
   }
 
   Future<void> _load() async {
@@ -38,13 +59,19 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
       _error = null;
     });
     try {
-      final list = await _api.userAccounts(
+      final result = await _api.userAccounts(
         baseUrl: widget.session.baseUrl,
         token: widget.session.token,
+        limit: _pageSize,
+        offset: 0,
+        search: _search,
       );
       if (!mounted) return;
       setState(() {
-        _users = list;
+        _rows
+          ..clear()
+          ..addAll(result.rows);
+        _total = result.total;
         _loading = false;
       });
     } catch (e) {
@@ -56,15 +83,32 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
     }
   }
 
-  List<UserAccount> get _filtered {
-    if (_search.isEmpty) return _users;
-    final q = _search.toLowerCase();
-    return _users.where((u) {
-      return u.fullName.toLowerCase().contains(q) ||
-          u.username.toLowerCase().contains(q) ||
-          u.email.toLowerCase().contains(q) ||
-          u.position.toLowerCase().contains(q);
-    }).toList();
+  Future<void> _loadMore() async {
+    if (_loadingMore || _rows.length >= _total) return;
+    setState(() => _loadingMore = true);
+    try {
+      final result = await _api.userAccounts(
+        baseUrl: widget.session.baseUrl,
+        token: widget.session.token,
+        limit: _pageSize,
+        offset: _rows.length,
+        search: _search,
+      );
+      if (!mounted) return;
+      setState(() {
+        _rows.addAll(result.rows);
+        _total = result.total;
+        _loadingMore = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
+    }
+  }
+
+  void _onSearchChanged(String v) {
+    _search = v;
+    _load();
   }
 
   Future<void> _delete(UserAccount u) async {
@@ -112,8 +156,6 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final users = _filtered;
-
     return AppScaffold(
       title: 'Manage Users',
       showBackButton: true,
@@ -129,10 +171,20 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: TextField(
-              onChanged: (v) => setState(() => _search = v),
+              controller: _searchController,
+              onChanged: _onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Search name, username, email...',
                 prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppInk.muted),
+                suffixIcon: _search.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          _onSearchChanged('');
+                        },
+                      )
+                    : null,
                 filled: true,
                 fillColor: const Color(0xFFF8FAFC),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -147,6 +199,22 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
               ),
             ),
           ),
+          if (!_loading && _error == null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+              child: Row(
+                children: [
+                  Text(
+                    '${_rows.length} of $_total users',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppInk.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _load,
@@ -163,7 +231,7 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
                             onAction: _load,
                           ),
                         ])
-                      : users.isEmpty
+                      : _rows.isEmpty
                           ? ListView(children: [
                               const SizedBox(height: 80),
                               const AppEmptyState(
@@ -173,10 +241,22 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
                               ),
                             ])
                           : ListView.builder(
+                              controller: _scrollController,
                               padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                              itemCount: users.length,
+                              itemCount: _rows.length + (_loadingMore ? 1 : 0),
                               itemBuilder: (context, i) {
-                                final u = users[i];
+                                if (i >= _rows.length) {
+                                  return const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 24, height: 24,
+                                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                final u = _rows[i];
                                 return _UserCard(
                                   user: u,
                                   currentUser: widget.session.username,
@@ -241,29 +321,33 @@ class _UserCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 3),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
                       Text(user.username,
                           style: const TextStyle(fontSize: 12, color: AppInk.muted)),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppInk.accent.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(6),
+                      if (user.position.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppInk.accent.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(user.position,
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppInk.accent)),
                         ),
-                        child: Text(user.position,
-                            style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: AppInk.accent)),
-                      ),
                     ],
                   ),
                   if (user.email.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(user.email,
-                        style: const TextStyle(fontSize: 12, color: AppInk.muted)),
+                        style: const TextStyle(fontSize: 12, color: AppInk.muted),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
                   ],
                 ],
               ),

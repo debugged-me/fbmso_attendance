@@ -879,12 +879,42 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
-        $rows = $this->db->select('username, IDNumber, fName, mName, lName, email, position, acctStat, dateCreated, avatar')
-            ->order_by('dateCreated', 'DESC')
-            ->get('o_users')->result();
+        $limit = (int)$this->input->get('limit', true) ?: 50;
+        $offset = (int)$this->input->get('offset', true) ?: 0;
+        $search = trim((string)$this->input->get('search', true));
+
+        // Count
+        $this->db->from('o_users');
+        if ($search !== '') {
+            $this->db->group_start()
+                ->like('username', $search)
+                ->or_like('fName', $search)
+                ->or_like('lName', $search)
+                ->or_like('email', $search)
+                ->or_like('position', $search)
+                ->group_end();
+        }
+        $total = $this->db->count_all_results();
+
+        // Rows
+        $this->db->select('username, IDNumber, fName, mName, lName, email, position, acctStat, dateCreated, avatar');
+        if ($search !== '') {
+            $this->db->group_start()
+                ->like('username', $search)
+                ->or_like('fName', $search)
+                ->or_like('lName', $search)
+                ->or_like('email', $search)
+                ->or_like('position', $search)
+                ->group_end();
+        }
+        $this->db->order_by('dateCreated', 'DESC')
+            ->limit($limit, $offset);
+        $rows = $this->db->get('o_users')->result();
 
         $out = [];
         foreach ($rows as $r) {
+            $av = trim((string)($r->avatar ?? ''));
+            if ($av === '') $av = 'avatar.png';
             $out[] = [
                 'id'          => 0,
                 'username'    => (string)($r->username ?? ''),
@@ -897,10 +927,16 @@ class MobileMisc extends MobileApi
                 'position'    => (string)($r->position ?? ''),
                 'status'      => (string)($r->acctStat ?? ''),
                 'date_created'=> (string)($r->dateCreated ?? ''),
-                'avatar'      => $this->file_url('upload/' . ltrim((string)($r->avatar ?? 'avatar.png'), '/')),
+                'avatar'      => $this->file_url('upload/profile/' . ltrim($av, '/')),
             ];
         }
-        return $this->json(['ok' => true, 'users' => $out]);
+        return $this->json([
+            'ok' => true,
+            'users' => $out,
+            'total' => (int)$total,
+            'limit' => $limit,
+            'offset' => $offset,
+        ]);
     }
 
     /** Admin: create a new user account. */
@@ -996,10 +1032,11 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
-        $limit = (int)$this->input->get('limit', true) ?: 100;
+        $limit = (int)$this->input->get('limit', true) ?: 50;
         $offset = (int)$this->input->get('offset', true) ?: 0;
         $search = trim((string)$this->input->get('search', true));
 
+        // Count total with search filter
         $this->db->from('studentsignup');
         if ($search !== '') {
             $this->db->group_start()
@@ -1009,13 +1046,22 @@ class MobileMisc extends MobileApi
                 ->or_like('email', $search)
                 ->group_end();
         }
-        $total = $this->db->count_all_results('', false);
+        $total = $this->db->count_all_results();
 
-        $this->db->select('StudentNumber, FirstName, MiddleName, LastName, nameExtn, birthDate, email, contactNo, Course1, Major1, yearLevel, section, Status, EnrollmentDate')
-            ->order_by('LastName', 'ASC')
+        // Query rows with search filter
+        $this->db->select('StudentNumber, FirstName, MiddleName, LastName, nameExtn, birthDate, email, contactNo, Course1, Major1, yearLevel, section, Status, EnrollmentDate');
+        if ($search !== '') {
+            $this->db->group_start()
+                ->like('StudentNumber', $search)
+                ->or_like('LastName', $search)
+                ->or_like('FirstName', $search)
+                ->or_like('email', $search)
+                ->group_end();
+        }
+        $this->db->order_by('LastName', 'ASC')
             ->order_by('FirstName', 'ASC')
             ->limit($limit, $offset);
-        $rows = $this->db->get()->result();
+        $rows = $this->db->get('studentsignup')->result();
 
         $out = [];
         foreach ($rows as $r) {
@@ -1273,5 +1319,479 @@ class MobileMisc extends MobileApi
         $scheme  = $xfProto ?: ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http');
         $host    = $xfHost  ?: ($_SERVER['HTTP_HOST'] ?? parse_url(base_url(), PHP_URL_HOST) ?? '');
         return rtrim($scheme . '://' . $host, '/');
+    }
+
+    // ─── Departments / Courses (Settings/Department) ───────────────────────
+
+    /** Admin: list departments (course_table). */
+    public function departments()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $limit = (int)$this->input->get('limit', true) ?: 100;
+        $offset = (int)$this->input->get('offset', true) ?: 0;
+        $search = trim((string)$this->input->get('search', true));
+
+        $this->db->from('course_table');
+        if ($search !== '') {
+            $this->db->group_start()
+                ->like('CourseCode', $search)
+                ->or_like('CourseDescription', $search)
+                ->or_like('Major', $search)
+                ->group_end();
+        }
+        $total = $this->db->count_all_results();
+
+        $this->db->select('courseid, CourseCode, CourseDescription, Major, Duration, recogNo, SeriesYear, ProgramHead, IDNumber');
+        if ($search !== '') {
+            $this->db->group_start()
+                ->like('CourseCode', $search)
+                ->or_like('CourseDescription', $search)
+                ->or_like('Major', $search)
+                ->group_end();
+        }
+        $this->db->order_by('CourseDescription', 'ASC')->limit($limit, $offset);
+        $rows = $this->db->get('course_table')->result();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'id'                  => (int)($r->courseid ?? 0),
+                'course_code'         => (string)($r->CourseCode ?? ''),
+                'course_description'  => (string)($r->CourseDescription ?? ''),
+                'major'               => (string)($r->Major ?? ''),
+                'duration'            => (string)($r->Duration ?? ''),
+                'recog_no'            => (string)($r->recogNo ?? ''),
+                'series_year'         => (string)($r->SeriesYear ?? ''),
+                'program_head'        => (string)($r->ProgramHead ?? ''),
+                'id_number'           => (string)($r->IDNumber ?? ''),
+            ];
+        }
+        return $this->json(['ok' => true, 'departments' => $out, 'total' => (int)$total, 'limit' => $limit, 'offset' => $offset]);
+    }
+
+    /** Admin: create a department/course. */
+    public function departments_create()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $code = trim((string)($p['CourseCode'] ?? ''));
+        $desc = trim((string)($p['CourseDescription'] ?? ''));
+        if ($code === '' || $desc === '') {
+            return $this->json(['ok' => false, 'message' => 'Course Code and Description are required.'], 422);
+        }
+
+        $ok = $this->db->insert('course_table', [
+            'CourseCode'        => $code,
+            'CourseDescription' => $desc,
+            'Major'             => trim((string)($p['Major'] ?? '')),
+            'Duration'          => trim((string)($p['Duration'] ?? '')),
+            'recogNo'           => trim((string)($p['recogNo'] ?? '')),
+            'SeriesYear'        => trim((string)($p['SeriesYear'] ?? '')),
+            'ProgramHead'       => trim((string)($p['ProgramHead'] ?? '')),
+            'IDNumber'          => trim((string)($p['IDNumber'] ?? '')),
+        ]);
+        return $this->json(['ok' => (bool)$ok, 'message' => $ok ? 'Department saved.' : 'Failed to save.']);
+    }
+
+    /** Admin: update a department/course. */
+    public function departments_update()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $id = (int)($p['courseid'] ?? 0);
+        if ($id <= 0) {
+            return $this->json(['ok' => false, 'message' => 'Invalid ID.'], 422);
+        }
+
+        $data = [];
+        foreach (['CourseCode', 'CourseDescription', 'Major', 'Duration', 'recogNo', 'SeriesYear', 'ProgramHead', 'IDNumber'] as $f) {
+            if (isset($p[$f])) $data[$f] = trim((string)$p[$f]);
+        }
+        if (empty($data)) {
+            return $this->json(['ok' => false, 'message' => 'Nothing to update.'], 422);
+        }
+
+        $this->db->where('courseid', $id)->update('course_table', $data);
+        return $this->json(['ok' => true, 'message' => 'Department updated.']);
+    }
+
+    /** Admin: delete a department/course. */
+    public function departments_delete()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $id = (int)($p['courseid'] ?? 0);
+        if ($id <= 0) {
+            return $this->json(['ok' => false, 'message' => 'Invalid ID.'], 422);
+        }
+
+        $this->db->where('courseid', $id)->delete('course_table');
+        return $this->json(['ok' => true, 'message' => 'Department deleted.']);
+    }
+
+    // ─── Sections (Page/manageSections) ────────────────────────────────────
+
+    /** Admin: list all sections. */
+    public function sections()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $limit = (int)$this->input->get('limit', true) ?: 200;
+        $offset = (int)$this->input->get('offset', true) ?: 0;
+        $search = trim((string)$this->input->get('search', true));
+
+        $this->db->from('course_sections');
+        if ($search !== '') {
+            $this->db->group_start()
+                ->like('section', $search)
+                ->or_like('courseid', $search)
+                ->or_like('year_level', $search)
+                ->group_end();
+        }
+        $total = $this->db->count_all_results();
+
+        $this->db->select('id, courseid, year_level, section, is_active');
+        if ($search !== '') {
+            $this->db->group_start()
+                ->like('section', $search)
+                ->or_like('courseid', $search)
+                ->or_like('year_level', $search)
+                ->group_end();
+        }
+        $this->db->order_by('section', 'ASC')->limit($limit, $offset);
+        $rows = $this->db->get('course_sections')->result();
+
+        // Also get course descriptions for display
+        $courses = [];
+        $cRows = $this->db->select('courseid, CourseDescription')->get('course_table')->result();
+        foreach ($cRows as $c) {
+            $courses[(int)$c->courseid] = (string)$c->CourseDescription;
+        }
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'id'         => (int)($r->id ?? 0),
+                'course_id'  => (string)($r->courseid ?? ''),
+                'course_name'=> $courses[(int)($r->courseid ?? 0)] ?? (string)($r->courseid ?? ''),
+                'year_level' => (string)($r->year_level ?? ''),
+                'section'    => (string)($r->section ?? ''),
+                'is_active'  => (int)($r->is_active ?? 1),
+            ];
+        }
+        return $this->json(['ok' => true, 'sections' => $out, 'total' => (int)$total, 'limit' => $limit, 'offset' => $offset]);
+    }
+
+    /** Admin: create a section. */
+    public function sections_create()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $section = trim((string)($p['section'] ?? ''));
+        $courseid = trim((string)($p['courseid'] ?? ''));
+        $yearLevel = trim((string)($p['year_level'] ?? ''));
+        if ($section === '') {
+            return $this->json(['ok' => false, 'message' => 'Section name is required.'], 422);
+        }
+
+        $ok = $this->db->insert('course_sections', [
+            'courseid'   => $courseid,
+            'year_level' => $yearLevel,
+            'section'    => $section,
+            'is_active'  => 1,
+        ]);
+        return $this->json(['ok' => (bool)$ok, 'message' => $ok ? 'Section saved.' : 'Failed to save.']);
+    }
+
+    /** Admin: delete a section. */
+    public function sections_delete()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $id = (int)($p['id'] ?? 0);
+        if ($id <= 0) {
+            return $this->json(['ok' => false, 'message' => 'Invalid ID.'], 422);
+        }
+
+        $this->db->where('id', $id)->delete('course_sections');
+        return $this->json(['ok' => true, 'message' => 'Section deleted.']);
+    }
+
+    // ─── Announcements CRUD ────────────────────────────────────────────────
+
+    /** Admin: list all announcements (including expired). */
+    public function announcements_all()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $this->load->model('AnnouncementModel');
+        $rows = $this->AnnouncementModel->getAnnouncements();
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'id'          => (int)($r->aID ?? $r->id ?? 0),
+                'title'       => (string)($r->title ?? ''),
+                'message'     => (string)($r->message ?? ''),
+                'audience'    => (string)($r->audience ?? ''),
+                'author'      => (string)($r->author ?? ''),
+                'date_posted' => (string)($r->datePosted ?? ''),
+                'date_expire' => (string)($r->date_expire ?? ''),
+                'image'       => (string)($r->image ?? ''),
+                'image_url'   => $this->file_url('upload/announcements/' . ltrim((string)($r->image ?? ''), '/')),
+            ];
+        }
+        return $this->json(['ok' => true, 'announcements' => $out]);
+    }
+
+    /** Admin: create an announcement. */
+    public function announcements_create()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $title = trim((string)($p['title'] ?? ''));
+        $message = trim((string)($p['message'] ?? ''));
+        $audience = trim((string)($p['audience'] ?? 'all'));
+        $dateExpire = trim((string)($p['date_expire'] ?? ''));
+        if ($title === '' || $message === '') {
+            return $this->json(['ok' => false, 'message' => 'Title and message are required.'], 422);
+        }
+
+        $expireVal = $dateExpire !== '' ? date('Y-m-d', strtotime($dateExpire)) : null;
+
+        $this->load->model('AnnouncementModel');
+        $ok = $this->AnnouncementModel->insertAnnouncement([
+            'title'       => $title,
+            'message'     => $message,
+            'image'       => null,
+            'author'      => (string)$tokenRow['username'],
+            'datePosted'  => date('Y-m-d'),
+            'audience'    => $audience,
+            'date_expire' => $expireVal,
+        ]);
+        return $this->json(['ok' => (bool)$ok, 'message' => $ok ? 'Announcement posted.' : 'Failed to post.']);
+    }
+
+    /** Admin: update an announcement. */
+    public function announcements_update()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $id = (int)($p['aID'] ?? $p['id'] ?? 0);
+        if ($id <= 0) {
+            return $this->json(['ok' => false, 'message' => 'Invalid ID.'], 422);
+        }
+
+        $data = [];
+        if (isset($p['title'])) $data['title'] = trim((string)$p['title']);
+        if (isset($p['message'])) $data['message'] = trim((string)$p['message']);
+        if (isset($p['audience'])) $data['audience'] = trim((string)$p['audience']);
+        if (isset($p['date_expire'])) {
+            $dv = trim((string)$p['date_expire']);
+            $data['date_expire'] = $dv !== '' ? date('Y-m-d', strtotime($dv)) : null;
+        }
+        if (empty($data)) {
+            return $this->json(['ok' => false, 'message' => 'Nothing to update.'], 422);
+        }
+
+        $this->load->model('AnnouncementModel');
+        $this->AnnouncementModel->updateAnnouncement($id, $data);
+        return $this->json(['ok' => true, 'message' => 'Announcement updated.']);
+    }
+
+    /** Admin: delete an announcement. */
+    public function announcements_delete()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $id = (int)($p['aID'] ?? $p['id'] ?? 0);
+        if ($id <= 0) {
+            return $this->json(['ok' => false, 'message' => 'Invalid ID.'], 422);
+        }
+
+        $this->load->model('AnnouncementModel');
+        $this->AnnouncementModel->deleteAnnouncement($id);
+        return $this->json(['ok' => true, 'message' => 'Announcement deleted.']);
+    }
+
+    // ─── Reports (reports/index) ───────────────────────────────────────────
+
+    /** Admin: enrollment + attendance summary report. */
+    public function reports_summary()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $this->load->model('ReportsModel');
+
+        // Active SY/sem from settings
+        $settings = $this->db->select('active_sy, active_sem')->get('o_srms_settings')->row();
+        $sy = (string)($settings->active_sy ?? '');
+        $sem = (string)($settings->active_sem ?? '');
+
+        $byYear = $this->ReportsModel->students_by_yearlevel($sy, $sem);
+        $byCourse = $this->ReportsModel->students_by_course($sy, $sem);
+        $eventsTotal = $this->ReportsModel->events_total($sy, $sem);
+        $eventScans = $this->ReportsModel->event_scans_total($sy, $sem);
+        $sectionsCount = $this->ReportsModel->sections_count_by_course();
+
+        $yearRows = [];
+        foreach ($byYear as $r) {
+            $yearRows[] = [
+                'year_level' => (string)($r->yearLevel ?? $r->year_level ?? ''),
+                'count'      => (int)($r->count ?? $r->total ?? 0),
+            ];
+        }
+        $courseRows = [];
+        foreach ($byCourse as $r) {
+            $courseRows[] = [
+                'course' => (string)($r->CourseDescription ?? $r->course ?? ''),
+                'count'  => (int)($r->count ?? $r->total ?? 0),
+            ];
+        }
+        $sectionRows = [];
+        foreach ($sectionsCount as $r) {
+            $sectionRows[] = [
+                'course'  => (string)($r->CourseDescription ?? ''),
+                'sections'=> (int)($r->sections ?? $r->section_count ?? 0),
+            ];
+        }
+
+        return $this->json([
+            'ok' => true,
+            'sy' => $sy,
+            'sem' => $sem,
+            'by_year_level' => $yearRows,
+            'by_course' => $courseRows,
+            'sections_count' => $sectionRows,
+            'events_total' => (int)($eventsTotal ?? 0),
+            'event_scans' => (int)($eventScans ?? 0),
+        ]);
+    }
+
+    /** Admin: recent attendance for reports. */
+    public function reports_attendance()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $this->load->model('ReportsModel');
+        $settings = $this->db->select('active_sy, active_sem')->get('o_srms_settings')->row();
+        $sy = (string)($settings->active_sy ?? '');
+        $sem = (string)($settings->active_sem ?? '');
+
+        $limit = (int)$this->input->get('limit', true) ?: 100;
+        $offset = (int)$this->input->get('offset', true) ?: 0;
+
+        $rows = $this->ReportsModel->attendance_recent($sy, $sem, $limit);
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'student_name'   => (string)($r->student_name ?? trim(($r->LastName ?? '') . ', ' . ($r->FirstName ?? ''))),
+                'student_number' => (string)($r->StudentNumber ?? $r->student_number ?? ''),
+                'activity_title' => (string)($r->title ?? $r->activity_title ?? ''),
+                'checked_in_at'  => (string)($r->checked_in_at ?? $r->check_in ?? ''),
+                'checked_out_at' => (string)($r->checked_out_at ?? $r->check_out ?? ''),
+                'source'         => (string)($r->source ?? ''),
+            ];
+        }
+        return $this->json(['ok' => true, 'rows' => $out, 'limit' => $limit, 'offset' => $offset]);
     }
 }

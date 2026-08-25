@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -10,9 +12,9 @@ import 'login_screen.dart';
 ///
 /// Web layout:
 /// - Gradient banner: "New Student Account" / "Create Your Profile"
-/// - Section 1: Student Credentials (Student ID, Password, Confirm Password)
-/// - Section 2: Personal Information (First, Middle, Last, Ext, Sex, DOB, Email, Mobile)
-/// - Section 3: Academic Information (Course, Year Level, Section)
+/// - Section 1: Student Credentials (Student ID + availability, Password, Confirm)
+/// - Section 2: Personal Information (First, Middle, Last, Ext, Sex, DOB, Email + availability, Mobile)
+/// - Section 3: Academic Information (Course, Year Level, Section — cascading)
 /// - Submit button: "Create My Account"
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key, required this.controller});
@@ -48,7 +50,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   List<String> _courses = [];
   List<String> _yearLevels = ['1st', '2nd', '3rd', '4th'];
+
+  // Cascading sections for the selected course + year level
   List<String> _sections = [];
+  bool _loadingSections = false;
+
+  // Availability check state
+  String? _studentIdStatus; // null = not checked, message string
+  bool? _studentIdAvailable; // true = available, false = taken
+  bool _checkingStudentId = false;
+  String? _emailStatus;
+  bool? _emailAvailable;
+  bool _checkingEmail = false;
+
+  Timer? _studentIdTimer;
+  Timer? _emailTimer;
 
   @override
   void initState() {
@@ -62,11 +78,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _contactNo = TextEditingController();
     _password = TextEditingController();
     _confirmPassword = TextEditingController();
+    _studentNumber.addListener(_onStudentIdChanged);
+    _email.addListener(_onEmailChanged);
     _loadOptions();
   }
 
   @override
   void dispose() {
+    _studentIdTimer?.cancel();
+    _emailTimer?.cancel();
     _studentNumber.dispose();
     _firstName.dispose();
     _middleName.dispose();
@@ -85,13 +105,134 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       setState(() {
         _courses = opts.courses;
-        _yearLevels = opts.yearLevels.isNotEmpty ? opts.yearLevels : ['1st', '2nd', '3rd', '4th'];
-        _sections = opts.sections;
+        _yearLevels =
+            opts.yearLevels.isNotEmpty ? opts.yearLevels : ['1st', '2nd', '3rd', '4th'];
         _loadingOptions = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() => _loadingOptions = false);
+    }
+  }
+
+  // ── Availability checkers (debounced) ──────────────────────────────────
+
+  void _onStudentIdChanged() {
+    _studentIdTimer?.cancel();
+    final value = _studentNumber.text.trim();
+    if (value.length < 4) {
+      setState(() {
+        _studentIdStatus = null;
+        _studentIdAvailable = null;
+        _checkingStudentId = false;
+      });
+      return;
+    }
+    setState(() {
+      _checkingStudentId = true;
+      _studentIdStatus = null;
+      _studentIdAvailable = null;
+    });
+    _studentIdTimer = Timer(const Duration(milliseconds: 600), () {
+      _checkStudentId(value);
+    });
+  }
+
+  Future<void> _checkStudentId(String value) async {
+    try {
+      final result = await widget.controller.checkAvailability(
+        field: 'studentnumber',
+        value: value,
+      );
+      if (!mounted) return;
+      setState(() {
+        _checkingStudentId = false;
+        _studentIdStatus = result.message;
+        _studentIdAvailable = !result.exists;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _checkingStudentId = false;
+        _studentIdStatus = null;
+        _studentIdAvailable = null;
+      });
+    }
+  }
+
+  void _onEmailChanged() {
+    _emailTimer?.cancel();
+    final value = _email.text.trim();
+    if (!value.contains('@') || value.length < 5) {
+      setState(() {
+        _emailStatus = null;
+        _emailAvailable = null;
+        _checkingEmail = false;
+      });
+      return;
+    }
+    setState(() {
+      _checkingEmail = true;
+      _emailStatus = null;
+      _emailAvailable = null;
+    });
+    _emailTimer = Timer(const Duration(milliseconds: 600), () {
+      _checkEmail(value);
+    });
+  }
+
+  Future<void> _checkEmail(String value) async {
+    try {
+      final result = await widget.controller.checkAvailability(
+        field: 'email',
+        value: value,
+      );
+      if (!mounted) return;
+      setState(() {
+        _checkingEmail = false;
+        _emailStatus = result.message;
+        _emailAvailable = !result.exists;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _checkingEmail = false;
+        _emailStatus = null;
+        _emailAvailable = null;
+      });
+    }
+  }
+
+  // ── Cascading sections ─────────────────────────────────────────────────
+
+  Future<void> _loadSections() async {
+    if (_course.isEmpty || _yearLevel.isEmpty) {
+      setState(() {
+        _sections = [];
+        _section = '';
+      });
+      return;
+    }
+    setState(() {
+      _loadingSections = true;
+      _section = '';
+    });
+    try {
+      final sections = await widget.controller.registrationSections(
+        course: _course,
+        yearLevel: _yearLevel,
+      );
+      if (!mounted) return;
+      setState(() {
+        _sections = sections;
+        _loadingSections = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _sections = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+        _loadingSections = false;
+      });
     }
   }
 
@@ -110,12 +251,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
     FocusScope.of(context).unfocus();
     HapticFeedback.mediumImpact();
 
+    // Validate availability
+    if (_studentIdAvailable == false) {
+      setState(() => _error = 'Student ID already exists. Please choose a different one.');
+      return;
+    }
+    if (_emailAvailable == false) {
+      setState(() => _error = 'Email already exists. Please use a different email.');
+      return;
+    }
+
     if (_studentNumber.text.trim().isEmpty ||
         _firstName.text.trim().isEmpty ||
         _lastName.text.trim().isEmpty ||
         _email.text.trim().isEmpty ||
         _password.text.isEmpty ||
-        _yearLevel.isEmpty) {
+        _yearLevel.isEmpty ||
+        _course.isEmpty) {
       setState(() => _error = 'Please fill in all required fields.');
       return;
     }
@@ -181,6 +333,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  InputDecoration _dropdownDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 20, color: AppInk.muted),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFB7C9F3), width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppInk.accent, width: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -188,14 +358,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Top bar ──────────────────────────────────────────────
+            // ── Top bar ──
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded,
-                        color: AppInk.heading),
+                    icon: const Icon(Icons.arrow_back_rounded, color: AppInk.heading),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   const Spacer(),
@@ -203,25 +372,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
 
-            // ── Scrollable form ──────────────────────────────────────
+            // ── Scrollable form ──
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ── Gradient Banner ──────────────────────────────
                     _Banner(),
                     const SizedBox(height: 24),
 
-                    // ── Glassmorphism card body ──────────────────────
+                    // ── Glassmorphism card body ──
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            width: 1),
+                            color: Colors.white.withValues(alpha: 0.9), width: 1),
                         boxShadow: [
                           BoxShadow(
                             color: const Color(0xFF6482C8).withValues(alpha: 0.10),
@@ -234,7 +401,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // ── Error / Success ──────────────────────────
                           if (_error != null) ...[
                             _BannerMsg(message: _error!, isError: true),
                             const SizedBox(height: 16),
@@ -244,7 +410,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             const SizedBox(height: 16),
                           ],
 
-                          // ── Section 1: Student Credentials ──────────
+                          // ── Section 1: Student Credentials ──
                           _SectionHeader(label: 'Student Credentials'),
                           const SizedBox(height: 16),
                           AppInput(
@@ -255,12 +421,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             textInputAction: TextInputAction.next,
                             autofillHints: const ['username'],
                           ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'This becomes your username — match it to your school ID.',
-                            style: TextStyle(
-                                fontSize: 11, color: AppInk.muted, height: 1.4),
-                          ),
+                          // Availability indicator
+                          if (_checkingStudentId ||
+                              _studentIdStatus != null) ...[
+                            const SizedBox(height: 6),
+                            _AvailabilityIndicator(
+                              checking: _checkingStudentId,
+                              available: _studentIdAvailable,
+                              message: _studentIdStatus,
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 6),
+                            const Text(
+                              'This becomes your username — match it to your school ID.',
+                              style: TextStyle(
+                                  fontSize: 11, color: AppInk.muted, height: 1.4),
+                            ),
+                          ],
                           const SizedBox(height: 14),
                           AppInput(
                             controller: _password,
@@ -271,12 +448,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             textInputAction: TextInputAction.next,
                             autofillHints: const ['new-password'],
                             suffixIcon: GestureDetector(
-                              onTap: () => setState(
-                                  () => _obscurePassword = !_obscurePassword),
+                              onTap: () =>
+                                  setState(() => _obscurePassword = !_obscurePassword),
                               child: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
+                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
                                 size: 20,
                                 color: AppInk.muted,
                               ),
@@ -292,12 +467,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             textInputAction: TextInputAction.next,
                             autofillHints: const ['new-password'],
                             suffixIcon: GestureDetector(
-                              onTap: () => setState(
-                                  () => _obscureConfirm = !_obscureConfirm),
+                              onTap: () =>
+                                  setState(() => _obscureConfirm = !_obscureConfirm),
                               child: Icon(
-                                _obscureConfirm
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
+                                _obscureConfirm ? Icons.visibility_off : Icons.visibility,
                                 size: 20,
                                 color: AppInk.muted,
                               ),
@@ -305,7 +478,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           const SizedBox(height: 28),
 
-                          // ── Section 2: Personal Information ──────────
+                          // ── Section 2: Personal Information ──
                           _SectionHeader(label: 'Personal Information'),
                           const SizedBox(height: 16),
                           AppInput(
@@ -342,11 +515,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 14),
                           DropdownButtonFormField<String>(
                             initialValue: _sex.isEmpty ? null : _sex,
-                            decoration: _dropdownDecoration('Sex *',
-                                Icons.wc_rounded),
+                            decoration: _dropdownDecoration('Sex *', Icons.wc_rounded),
                             items: ['Female', 'Male', 'Others']
-                                .map((s) =>
-                                    DropdownMenuItem(value: s, child: Text(s)))
+                                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                                 .toList(),
                             onChanged: (v) => setState(() => _sex = v ?? ''),
                           ),
@@ -376,6 +547,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             textInputAction: TextInputAction.next,
                             autofillHints: const ['email'],
                           ),
+                          // Email availability indicator
+                          if (_checkingEmail || _emailStatus != null) ...[
+                            const SizedBox(height: 6),
+                            _AvailabilityIndicator(
+                              checking: _checkingEmail,
+                              available: _emailAvailable,
+                              message: _emailStatus,
+                            ),
+                          ],
                           const SizedBox(height: 14),
                           AppInput(
                             controller: _contactNo,
@@ -387,7 +567,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           const SizedBox(height: 28),
 
-                          // ── Section 3: Academic Information ──────────
+                          // ── Section 3: Academic Information ──
                           _SectionHeader(label: 'Academic Information'),
                           const SizedBox(height: 16),
                           _loadingOptions
@@ -397,63 +577,83 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     child: SizedBox(
                                       width: 24,
                                       height: 24,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2.5),
+                                      child: CircularProgressIndicator(strokeWidth: 2.5),
                                     ),
                                   ),
                                 )
                               : Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
                                     DropdownButtonFormField<String>(
-                                      initialValue:
-                                          _course.isEmpty ? null : _course,
+                                      initialValue: _course.isEmpty ? null : _course,
                                       decoration: _dropdownDecoration(
-                                          'Course / Program *',
-                                          Icons.school_outlined),
+                                          'Course / Program *', Icons.school_outlined),
                                       items: _courses
-                                          .map((s) => DropdownMenuItem(
-                                              value: s, child: Text(s)))
+                                          .map((s) =>
+                                              DropdownMenuItem(value: s, child: Text(s)))
                                           .toList(),
-                                      onChanged: (v) =>
-                                          setState(() => _course = v ?? ''),
+                                      onChanged: (v) {
+                                        setState(() => _course = v ?? '');
+                                        _loadSections();
+                                      },
                                     ),
                                     const SizedBox(height: 14),
                                     DropdownButtonFormField<String>(
-                                      initialValue: _yearLevel.isEmpty
-                                          ? null
-                                          : _yearLevel,
+                                      initialValue:
+                                          _yearLevel.isEmpty ? null : _yearLevel,
                                       decoration: _dropdownDecoration(
-                                          'Year Level *',
-                                          Icons.stairs_outlined),
+                                          'Year Level *', Icons.stairs_outlined),
                                       items: _yearLevels
                                           .map((s) => DropdownMenuItem(
-                                              value: s,
-                                              child: Text('$s Year')))
+                                              value: s, child: Text('$s Year')))
                                           .toList(),
-                                      onChanged: (v) =>
-                                          setState(() => _yearLevel = v ?? ''),
+                                      onChanged: (v) {
+                                        setState(() => _yearLevel = v ?? '');
+                                        _loadSections();
+                                      },
                                     ),
                                     const SizedBox(height: 14),
-                                    DropdownButtonFormField<String>(
-                                      initialValue:
-                                          _section.isEmpty ? null : _section,
-                                      decoration: _dropdownDecoration(
-                                          'Section *',
-                                          Icons.group_outlined),
-                                      items: _sections
-                                          .map((s) => DropdownMenuItem(
-                                              value: s, child: Text(s)))
-                                          .toList(),
-                                      onChanged: (v) =>
-                                          setState(() => _section = v ?? ''),
-                                    ),
+                                    // Section dropdown — cascading, depends on course + year
+                                    _loadingSections
+                                        ? const Padding(
+                                            padding: EdgeInsets.symmetric(vertical: 12),
+                                            child: Center(
+                                              child: SizedBox(
+                                                width: 22,
+                                                height: 22,
+                                                child: CircularProgressIndicator(
+                                                    strokeWidth: 2.5),
+                                              ),
+                                            ),
+                                          )
+                                        : DropdownButtonFormField<String>(
+                                            initialValue:
+                                                _section.isEmpty ? null : _section,
+                                            decoration: _dropdownDecoration(
+                                                'Section *', Icons.group_outlined),
+                                            items: _sections
+                                                .map((s) => DropdownMenuItem(
+                                                    value: s, child: Text(s)))
+                                                .toList(),
+                                            onChanged: (v) =>
+                                                setState(() => _section = v ?? ''),
+                                          ),
+                                    if (_course.isEmpty || _yearLevel.isEmpty)
+                                      const Padding(
+                                        padding: EdgeInsets.only(top: 6),
+                                        child: Text(
+                                          'Select Course and Year Level to load sections.',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: AppInk.muted,
+                                              height: 1.4),
+                                        ),
+                                      ),
                                   ],
                                 ),
                           const SizedBox(height: 28),
 
-                          // ── Submit ─────────────────────────────────────
+                          // ── Submit ──
                           Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(14),
@@ -498,13 +698,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 16),
                           Center(
                             child: TextButton(
-                              onPressed: () =>
-                                  Navigator.of(context).pop(),
+                              onPressed: () => Navigator.of(context).pop(),
                               child: const Text.rich(
                                 TextSpan(
                                   text: 'Already have an account? ',
-                                  style: TextStyle(
-                                      color: AppInk.muted, fontSize: 13),
+                                  style: TextStyle(color: AppInk.muted, fontSize: 13),
                                   children: [
                                     TextSpan(
                                       text: 'Sign in',
@@ -531,23 +729,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
+}
 
-  InputDecoration _dropdownDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, size: 20, color: AppInk.muted),
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFB7C9F3), width: 1.5),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppInk.accent, width: 2),
-      ),
+/// Availability indicator widget — shows checking spinner, available (green),
+/// or taken (red) with message.
+class _AvailabilityIndicator extends StatelessWidget {
+  const _AvailabilityIndicator({
+    required this.checking,
+    required this.available,
+    required this.message,
+  });
+  final bool checking;
+  final bool? available;
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    if (checking) {
+      return Row(
+        children: [
+          const SizedBox(
+            width: 14, height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 8),
+          Text('Checking...',
+              style: const TextStyle(fontSize: 12, color: AppInk.muted)),
+        ],
+      );
+    }
+    final isAvailable = available == true;
+    final color = isAvailable ? AppInk.positive : AppInk.critical;
+    return Row(
+      children: [
+        Icon(
+          isAvailable ? Icons.check_circle_rounded : Icons.cancel_rounded,
+          size: 14,
+          color: color,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          message ?? '',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -598,7 +827,6 @@ class _Banner extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          // QR-like decoration
           Row(
             children: [
               for (int i = 0; i < 3; i++)
@@ -633,8 +861,8 @@ class _SectionHeader extends StatelessWidget {
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
               colors: [Color(0xFF2A4090), Color(0xFF4266D4)],
             ),
             shape: BoxShape.circle,
@@ -656,10 +884,7 @@ class _SectionHeader extends StatelessWidget {
             height: 1,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  const Color(0xFFE2E9FF),
-                  Colors.transparent,
-                ],
+                colors: [const Color(0xFFE2E9FF), Colors.transparent],
               ),
             ),
           ),

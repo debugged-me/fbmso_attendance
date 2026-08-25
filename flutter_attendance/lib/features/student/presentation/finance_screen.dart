@@ -60,7 +60,6 @@ class _FinanceScreenState extends State<FinanceScreen> {
   Widget build(BuildContext context) {
     final validPayments = _payments.where((p) => p.isValid).toList();
     final totalValid = validPayments.fold<double>(0, (s, p) => s + p.amount);
-    final totalAll = _payments.fold<double>(0, (s, p) => s + p.amount);
 
     return AppScaffold(
       title: 'Finance',
@@ -78,27 +77,12 @@ class _FinanceScreenState extends State<FinanceScreen> {
                       : ListView(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                           children: [
-                            // ── Summary cards ────────────────────────────
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _SummaryCard(
-                                    label: 'Valid Payments',
-                                    value: _formatAmount(totalValid),
-                                    tone: AppInk.positive,
-                                    icon: Icons.check_circle_outline,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: _SummaryCard(
-                                    label: 'Total Payments',
-                                    value: _formatAmount(totalAll),
-                                    tone: AppInk.accent,
-                                    icon: Icons.account_balance_wallet_outlined,
-                                  ),
-                                ),
-                              ],
+                            // ── Single summary card ─────────────────────
+                            _SummaryCard(
+                              label: 'Total Valid Payments',
+                              value: _formatAmount(totalValid),
+                              tone: AppInk.positive,
+                              icon: Icons.check_circle_outline,
                             ),
                             const SizedBox(height: 24),
 
@@ -152,36 +136,42 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard.elevated(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.all(20),
+      child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: tone.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, size: 20, color: tone),
+            child: Icon(icon, size: 24, color: tone),
           ),
-          const SizedBox(height: 14),
-          Text(
-            label.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppInk.muted,
-              letterSpacing: 0.6,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: AppInk.heading,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppInk.muted,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: AppInk.heading,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
