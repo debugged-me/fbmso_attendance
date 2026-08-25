@@ -166,6 +166,22 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Fetch registration form options (courses, year levels, sections).
+  ({List<String> courses, List<String> yearLevels, List<String> sections})?
+      _regOptionsCache;
+
+  Future<
+      ({
+        List<String> courses,
+        List<String> yearLevels,
+        List<String> sections
+      })> registrationOptions() async {
+    if (_regOptionsCache != null) return _regOptionsCache!;
+    final result = await _api.registrationOptions(baseUrl: _baseUrl);
+    _regOptionsCache = result;
+    return result;
+  }
+
   Future<String?> register({
     required String studentNumber,
     required String firstName,

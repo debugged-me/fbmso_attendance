@@ -195,6 +195,37 @@ class AuthApi {
     }
   }
 
+  /// Fetch registration form options (courses, year levels, sections).
+  Future<({List<String> courses, List<String> yearLevels, List<String> sections})>
+      registrationOptions({required String baseUrl}) async {
+    final response = await _safeRequest(
+      () => _client.get(
+        _uri(baseUrl, '/api/mobile/registration/options'),
+        headers: _jsonHeaders,
+      ),
+    );
+    final data = _decode(response);
+    if (data['ok'] != true) {
+      throw ApiException(
+          (data['message'] ?? 'Failed to load options').toString(),
+          statusCode: response.statusCode);
+    }
+    return (
+      courses: (data['courses'] as List? ?? [])
+          .map((e) => e.toString())
+          .where((s) => s.isNotEmpty)
+          .toList(),
+      yearLevels: (data['year_levels'] as List? ?? [])
+          .map((e) => e.toString())
+          .where((s) => s.isNotEmpty)
+          .toList(),
+      sections: (data['sections'] as List? ?? [])
+          .map((e) => e.toString())
+          .where((s) => s.isNotEmpty)
+          .toList(),
+    );
+  }
+
   /// Register a new student account.
   Future<void> register({
     required String baseUrl,
