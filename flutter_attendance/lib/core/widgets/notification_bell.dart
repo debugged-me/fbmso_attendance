@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/services/notification_service.dart';
-import '../../core/theme/app_theme.dart';
-import '../features/notifications/presentation/notifications_screen.dart';
+import '../../features/notifications/presentation/notifications_screen.dart';
 
 /// Bell icon with an unread badge. Tapping opens the notifications screen.
 /// Uses a [StreamBuilder] so the badge updates in real time.

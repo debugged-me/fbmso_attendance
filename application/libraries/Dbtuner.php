@@ -145,7 +145,8 @@ class Dbtuner
         $db  = $this->CI->db;
         $log = array();
 
-        $tables = array_flip($db->list_tables());
+        $tables  = array_flip($db->list_tables());
+        $existing = $this->existing_indexes();
 
         foreach ($this->indexes as $spec) {
             list($table, $name, $columns) = $spec;
@@ -163,7 +164,16 @@ class Dbtuner
                 continue;
             }
 
-            if ($this->index_exists($table, $name, $cols[0])) {
+            $key      = strtolower($table);
+            $names    = isset($existing[$key]['names']) ? $existing[$key]['names'] : array();
+            $leading  = isset($existing[$key]['leading']) ? $existing[$key]['leading'] : array();
+
+            // Skip when the name is taken, or when some other index already
+            // leads with this column — a production database may well have its
+            // own index here under a different name.
+            if (in_array(strtolower($name), $names, true)
+                || in_array(strtolower($cols[0]), $leading, true)
+            ) {
                 $log[] = "ok    $table.$name";
                 continue;
             }
@@ -193,35 +203,47 @@ class Dbtuner
     // ------------------------------------------------------------------
 
     /**
-     * True when the index name is taken, or some other index already leads
-     * with this column — in which case adding ours would just duplicate work.
+     * Every index in this schema, in one query.
+     *
+     * This used to be a SHOW INDEX per table. That is fine on the happy path —
+     * it runs once ever — but if the database user cannot create the state
+     * table, the marker never persists and the pass repeats on every request.
+     * One information_schema read keeps even that degraded case cheap.
+     *
+     * @return array table => ['names' => [...], 'leading' => [...]]
      */
-    protected function index_exists($table, $name, $first_column)
+    protected function existing_indexes()
     {
-        $db  = $this->CI->db;
-        $sql = 'SHOW INDEX FROM `' . str_replace('`', '', $table) . '`';
-
+        $db   = $this->CI->db;
         $prev = $db->db_debug;
         $db->db_debug = false;
-        $query = $db->query($sql);
+        $q = $db->query(
+            'SELECT LOWER(TABLE_NAME) AS t, LOWER(INDEX_NAME) AS i,'
+                . ' LOWER(COLUMN_NAME) AS c, SEQ_IN_INDEX AS s'
+                . ' FROM information_schema.STATISTICS'
+                . ' WHERE TABLE_SCHEMA = DATABASE()'
+        );
         $db->db_debug = $prev;
 
-        if (!$query) {
-            return true; // cannot inspect it; leave the table alone
+        $out = array();
+        if (!$q) {
+            return $out;
         }
 
-        foreach ($query->result_array() as $row) {
-            if (isset($row['Key_name']) && strcasecmp($row['Key_name'], $name) === 0) {
-                return true;
+        foreach ($q->result_array() as $row) {
+            $t = $row['t'];
+            if (!isset($out[$t])) {
+                $out[$t] = array('names' => array(), 'leading' => array());
             }
-            if (isset($row['Seq_in_index'], $row['Column_name'])
-                && (int)$row['Seq_in_index'] === 1
-                && strcasecmp($row['Column_name'], $first_column) === 0
-            ) {
-                return true;
+            if (!in_array($row['i'], $out[$t]['names'], true)) {
+                $out[$t]['names'][] = $row['i'];
+            }
+            if ((int)$row['s'] === 1 && !in_array($row['c'], $out[$t]['leading'], true)) {
+                $out[$t]['leading'][] = $row['c'];
             }
         }
-        return false;
+
+        return $out;
     }
 
     /** Editing $indexes changes this, which is what triggers another pass. */

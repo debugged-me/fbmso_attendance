@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import 'connectivity_service.dart';
+import 'notification_service.dart';
 import 'outbox_service.dart';
 
 /// Coordinates the offline→online sync and exposes a single status stream
@@ -25,6 +26,8 @@ class SyncOrchestrator extends SyncStatusNotifier {
   SyncStatus _status = SyncStatus.synced;
   int _queued = 0;
   int _conflicts = 0;
+  bool _wasOffline = false;
+  int _lastQueued = 0;
 
   SyncStatus get status => _status;
   int get queuedCount => _queued;
@@ -43,8 +46,22 @@ class SyncOrchestrator extends SyncStatusNotifier {
 
   void _onConnectivity(bool online) {
     if (online) {
+      if (_wasOffline && _queued > 0) {
+        NotificationService.instance.add(
+          title: 'Back online',
+          body: 'Syncing $_queued pending item(s)…',
+          type: 'sync',
+        );
+      }
       OutboxService.flush();
+    } else {
+      NotificationService.instance.add(
+        title: 'You are offline',
+        body: 'Changes will be saved locally and synced when you reconnect.',
+        type: 'warning',
+      );
     }
+    _wasOffline = !online;
     refresh();
   }
 
@@ -56,11 +73,21 @@ class SyncOrchestrator extends SyncStatusNotifier {
 
     if (!online) {
       _status = SyncStatus.offline;
+      _wasOffline = true;
     } else if (_queued > 0) {
       _status = SyncStatus.pending;
     } else {
       _status = SyncStatus.synced;
+      // Notify when the queue drains to zero (was pending, now synced).
+      if (_lastQueued > 0) {
+        NotificationService.instance.add(
+          title: 'Sync complete',
+          body: 'All $_lastQueued pending item(s) synced successfully.',
+          type: 'success',
+        );
+      }
     }
+    _lastQueued = _queued;
     notify();
   }
 

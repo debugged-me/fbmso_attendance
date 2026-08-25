@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/biometric_service.dart';
 import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../activities/presentation/activities_screen.dart';
 import '../../auth/domain/app_session.dart';
@@ -172,7 +174,10 @@ class _ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(
+        title: const Text('Profile'),
+        actions: const [NotificationBell()],
+      ),
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -198,6 +203,8 @@ class _ProfilePage extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                const _BiometricToggle(),
                 const SizedBox(height: 16),
                 FilledButton.icon(
                   onPressed: () => _logout(context),
@@ -252,7 +259,72 @@ class _ProfilePage extends StatelessWidget {
       ),
     );
     if (ok == true) {
+      await BiometricService.disable();
       await controller.logout();
     }
+  }
+}
+
+class _BiometricToggle extends StatefulWidget {
+  const _BiometricToggle();
+
+  @override
+  State<_BiometricToggle> createState() => _BiometricToggleState();
+}
+
+class _BiometricToggleState extends State<_BiometricToggle> {
+  bool _available = false;
+  bool _enabled = false;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final available = await BiometricService.isAvailable;
+    final enabled = await BiometricService.isEnabled;
+    if (!mounted) return;
+    setState(() {
+      _available = available;
+      _enabled = enabled;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const SizedBox.shrink();
+    if (!_available) {
+      return Card(
+        child: ListTile(
+          leading: const Icon(Icons.fingerprint, color: AppTheme.textMuted),
+          title: const Text('Biometric Unlock'),
+          subtitle: const Text('Not available on this device.'),
+        ),
+      );
+    }
+    return Card(
+      child: SwitchListTile(
+        secondary: const Icon(Icons.fingerprint),
+        title: const Text('Biometric Unlock'),
+        subtitle: Text(_enabled
+            ? 'App will require biometrics on startup.'
+            : 'Require fingerprint/face to open the app.'),
+        value: _enabled,
+        onChanged: (v) async {
+          if (v) {
+            final ok = await BiometricService.authenticate(
+              reason: 'Authenticate to enable biometric unlock.',
+            );
+            if (!ok) return;
+          }
+          await BiometricService.setEnabled(v);
+          setState(() => _enabled = v);
+        },
+      ),
+    );
   }
 }

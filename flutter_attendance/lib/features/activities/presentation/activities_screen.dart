@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../../attendance/data/attendance_api.dart';
@@ -96,7 +97,10 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Activities')),
+      appBar: AppBar(
+        title: const Text('Activities'),
+        actions: const [NotificationBell()],
+      ),
       body: Column(
         children: [
           const SyncStatusBanner(),
