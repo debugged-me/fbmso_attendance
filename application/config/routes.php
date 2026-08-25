@@ -68,3 +68,14 @@ $route['Page/editSignup/(:any)'] = 'Page/editSignup/$1';
 $route['reports'] = 'Reports/index';
 $route['fbmso-personnels']        = 'FbmsoPersonnels/index';
 $route['admin/fbmso-personnels']  = 'FbmsoPersonnels/manage';
+
+// ──────────────────────────────────────────────────────────────────────────
+//  Mobile API (native Flutter app) — Bearer-token authenticated JSON.
+//  Reuses Login_model::validate() so web credentials work on mobile.
+// ──────────────────────────────────────────────────────────────────────────
+$route['api/mobile/config']                       = 'api/MobileAuth/config';
+$route['api/mobile/auth/login']                   = 'api/MobileAuth/login';
+$route['api/mobile/auth/me']                      = 'api/MobileAuth/me';
+$route['api/mobile/auth/logout']                  = 'api/MobileAuth/logout';
+$route['api/mobile/auth/change-password']         = 'api/MobileAuth/change_password';
+$route['api/mobile/auth/forgot-password']         = 'api/MobileAuth/forgot_password';

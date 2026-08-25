@@ -1,13 +1,13 @@
-# --- CodeIgniter on LiteSpeed/Apache ---
+# Nothing under application/ is ever served over HTTP.
+# CodeIgniter loads these files from disk; the web server must not reach them.
+# Without this, application/views/*.php renders directly from the URL bar.
+
 Options -Indexes -MultiViews
 
-RewriteEngine On
-RewriteBase /
-
-# Block direct access to system/application folders (optional safety)
-RewriteRule ^(system|application) - [F,L,NC]
-
-# Send everything that's not a real file/dir to index.php
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ index.php?/$1 [L,QSA]
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

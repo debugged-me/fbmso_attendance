@@ -1,0 +1,710 @@
+/* ==========================================================================
+   UI Kit — shared modal + notifications
+   Loaded on every page via application/views/includes/head.php.
+
+   Performance notes:
+   - Animation touches only `transform` and `opacity`, so every frame stays on
+     the compositor. Nothing here animates width/height/top/left.
+   - `will-change` is applied only while an element is entering or leaving,
+     never permanently, so idle pages hold no extra compositor layers.
+   - Everything is namespaced `uk-` and scoped, so it cannot bleed into the
+     Hyper theme or Bootstrap.
+   ========================================================================== */
+
+:root {
+    --uk-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    --uk-surface: #ffffff;
+    --uk-surface-2: #f7f9fc;
+    --uk-text: #1f2d3d;
+    --uk-text-soft: #5b6b7c;
+    --uk-border: #e6ebf1;
+    --uk-shadow: 0 24px 64px rgba(20, 32, 46, .18), 0 2px 8px rgba(20, 32, 46, .06);
+
+    --uk-success: #10b981;
+    --uk-error: #ef4444;
+    --uk-warning: #f59e0b;
+    --uk-info: #2563eb;
+    --uk-neutral: #64748b;
+
+    --uk-radius: 16px;
+    --uk-radius-sm: 10px;
+
+    --uk-ease: cubic-bezier(.22, 1, .36, 1);
+    --uk-dur: .26s;
+
+    --uk-z-modal: 21000;
+    --uk-z-toast: 21500;
+}
+
+/* ==========================================================================
+   Scroll lock
+   ========================================================================== */
+
+html.uk-locked,
+body.uk-locked {
+    overflow: hidden !important;
+}
+
+/* ==========================================================================
+   Modal
+   ========================================================================== */
+
+.uk-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: var(--uk-z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    background: rgba(15, 23, 34, .52);
+    opacity: 0;
+    transition: opacity var(--uk-dur) var(--uk-ease);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Backdrop blur is expensive on large viewports; only opt in where the
+   browser can do it cheaply and the user has not asked for less motion. */
+@supports (backdrop-filter: blur(2px)) {
+    .uk-backdrop {
+        backdrop-filter: blur(3px);
+    }
+}
+
+.uk-backdrop.uk-in {
+    opacity: 1;
+}
+
+.uk-modal {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    margin: auto;
+    background: var(--uk-surface);
+    border-radius: var(--uk-radius);
+    box-shadow: var(--uk-shadow);
+    transform: translate3d(0, 14px, 0) scale(.97);
+    opacity: 0;
+    transition: transform var(--uk-dur) var(--uk-ease), opacity var(--uk-dur) var(--uk-ease);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 48px);
+    outline: 0;
+}
+
+.uk-backdrop.uk-in .uk-modal {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+}
+
+.uk-modal.uk-animating {
+    will-change: transform, opacity;
+}
+
+.uk-modal-sm {
+    max-width: 380px;
+}
+
+.uk-modal-lg {
+    max-width: 720px;
+}
+
+.uk-modal-xl {
+    max-width: 1000px;
+}
+
+.uk-modal-full {
+    max-width: calc(100vw - 32px);
+}
+
+/* --- header --- */
+
+.uk-modal-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 22px 22px 0;
+}
+
+.uk-modal-icon {
+    flex: 0 0 auto;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: rgba(37, 99, 235, .10);
+    color: var(--uk-info);
+}
+
+.uk-modal-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.uk-modal-icon.uk-success {
+    background: rgba(16, 185, 129, .12);
+    color: var(--uk-success);
+}
+
+.uk-modal-icon.uk-error {
+    background: rgba(239, 68, 68, .12);
+    color: var(--uk-error);
+}
+
+.uk-modal-icon.uk-warning {
+    background: rgba(245, 158, 11, .14);
+    color: var(--uk-warning);
+}
+
+.uk-modal-icon.uk-info {
+    background: rgba(37, 99, 235, .10);
+    color: var(--uk-info);
+}
+
+.uk-modal-titles {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-top: 2px;
+}
+
+.uk-modal-title {
+    margin: 0;
+    font: 700 1.12rem/1.35 var(--uk-font);
+    color: var(--uk-text);
+    letter-spacing: -.2px;
+    word-break: break-word;
+}
+
+.uk-modal-sub {
+    margin: 3px 0 0;
+    font: 400 .88rem/1.5 var(--uk-font);
+    color: var(--uk-text-soft);
+}
+
+.uk-modal-x {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    padding: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: #97a6b5;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: background .15s ease, color .15s ease;
+}
+
+.uk-modal-x:hover {
+    background: var(--uk-surface-2);
+    color: var(--uk-text);
+}
+
+.uk-modal-x svg {
+    width: 17px;
+    height: 17px;
+}
+
+/* --- body --- */
+
+.uk-modal-body {
+    padding: 16px 22px 4px;
+    font: 400 .95rem/1.62 var(--uk-font);
+    color: var(--uk-text-soft);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    flex: 1 1 auto;
+}
+
+.uk-modal-head+.uk-modal-body {
+    padding-left: 82px;
+}
+
+.uk-modal-head.uk-no-icon+.uk-modal-body {
+    padding-left: 22px;
+}
+
+.uk-modal-body>:first-child {
+    margin-top: 0;
+}
+
+.uk-modal-body>:last-child {
+    margin-bottom: 0;
+}
+
+.uk-modal-body label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: .85rem;
+    color: var(--uk-text);
+}
+
+.uk-input {
+    width: 100%;
+    padding: 10px 13px;
+    border: 1px solid var(--uk-border);
+    border-radius: var(--uk-radius-sm);
+    font: 400 .95rem/1.5 var(--uk-font);
+    color: var(--uk-text);
+    background: var(--uk-surface);
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.uk-input:focus {
+    outline: 0;
+    border-color: var(--uk-info);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .14);
+}
+
+/* --- footer --- */
+
+.uk-modal-foot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 9px;
+    flex-wrap: wrap;
+    padding: 18px 22px 20px;
+}
+
+.uk-btn {
+    -webkit-appearance: none;
+    appearance: none;
+    border: 1px solid transparent;
+    border-radius: var(--uk-radius-sm);
+    padding: 9px 18px;
+    font: 600 .92rem/1.4 var(--uk-font);
+    cursor: pointer;
+    transition: transform .12s var(--uk-ease), box-shadow .15s ease, background .15s ease, color .15s ease;
+    white-space: nowrap;
+}
+
+.uk-btn:active {
+    transform: translateY(1px);
+}
+
+.uk-btn:focus-visible {
+    outline: 2px solid var(--uk-info);
+    outline-offset: 2px;
+}
+
+.uk-btn-ghost {
+    background: var(--uk-surface-2);
+    color: var(--uk-text-soft);
+}
+
+.uk-btn-ghost:hover {
+    background: #eef2f7;
+    color: var(--uk-text);
+}
+
+.uk-btn-primary {
+    background: var(--uk-info);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, .26);
+}
+
+.uk-btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.uk-btn-danger {
+    background: var(--uk-error);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(239, 68, 68, .26);
+}
+
+.uk-btn-danger:hover {
+    background: #dc2626;
+}
+
+.uk-btn-success {
+    background: var(--uk-success);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(16, 185, 129, .26);
+}
+
+.uk-btn-success:hover {
+    background: #059669;
+}
+
+.uk-btn-warning {
+    background: var(--uk-warning);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(245, 158, 11, .26);
+}
+
+.uk-btn-warning:hover {
+    background: #d97706;
+}
+
+.uk-btn[disabled] {
+    opacity: .6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* --- busy state --- */
+
+.uk-spinner {
+    width: 15px;
+    height: 15px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    vertical-align: -2px;
+    margin-right: 8px;
+    animation: uk-spin .6s linear infinite;
+}
+
+@keyframes uk-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.uk-modal-busy {
+    text-align: center;
+    padding: 30px 22px 34px;
+}
+
+.uk-modal-busy .uk-spinner {
+    width: 30px;
+    height: 30px;
+    border-width: 3px;
+    margin: 0 0 14px;
+    color: var(--uk-info);
+    display: block;
+    margin-inline: auto;
+}
+
+/* ==========================================================================
+   Toasts
+   ========================================================================== */
+
+.uk-toasts {
+    position: fixed;
+    z-index: var(--uk-z-toast);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    padding: 18px;
+    max-width: 400px;
+    width: 100%;
+}
+
+.uk-toasts[data-pos="top-right"] {
+    top: 0;
+    right: 0;
+    align-items: flex-end;
+}
+
+.uk-toasts[data-pos="top-left"] {
+    top: 0;
+    left: 0;
+    align-items: flex-start;
+}
+
+.uk-toasts[data-pos="bottom-right"] {
+    bottom: 0;
+    right: 0;
+    align-items: flex-end;
+    flex-direction: column-reverse;
+}
+
+.uk-toasts[data-pos="bottom-left"] {
+    bottom: 0;
+    left: 0;
+    align-items: flex-start;
+    flex-direction: column-reverse;
+}
+
+.uk-toasts[data-pos="top-center"] {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    align-items: center;
+}
+
+.uk-toast {
+    pointer-events: auto;
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 14px;
+    background: var(--uk-surface);
+    border-radius: 13px;
+    border: 1px solid var(--uk-border);
+    box-shadow: 0 12px 32px rgba(20, 32, 46, .14), 0 1px 3px rgba(20, 32, 46, .06);
+    opacity: 0;
+    transform: translate3d(0, -10px, 0) scale(.98);
+    transition: opacity .24s var(--uk-ease), transform .24s var(--uk-ease);
+    overflow: hidden;
+}
+
+.uk-toasts[data-pos^="bottom"] .uk-toast {
+    transform: translate3d(0, 10px, 0) scale(.98);
+}
+
+.uk-toast.uk-in {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+}
+
+.uk-toast.uk-out {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0) scale(.98);
+}
+
+.uk-toast.uk-animating {
+    will-change: transform, opacity;
+}
+
+/* left accent bar, drawn with a pseudo element so it costs no extra node */
+.uk-toast::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--uk-neutral);
+}
+
+.uk-toast.uk-t-success::before {
+    background: var(--uk-success);
+}
+
+.uk-toast.uk-t-error::before {
+    background: var(--uk-error);
+}
+
+.uk-toast.uk-t-warning::before {
+    background: var(--uk-warning);
+}
+
+.uk-toast.uk-t-info::before {
+    background: var(--uk-info);
+}
+
+.uk-toast-icon {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    margin-left: 4px;
+}
+
+.uk-toast-icon svg {
+    width: 17px;
+    height: 17px;
+}
+
+.uk-t-success .uk-toast-icon {
+    background: rgba(16, 185, 129, .12);
+    color: var(--uk-success);
+}
+
+.uk-t-error .uk-toast-icon {
+    background: rgba(239, 68, 68, .12);
+    color: var(--uk-error);
+}
+
+.uk-t-warning .uk-toast-icon {
+    background: rgba(245, 158, 11, .14);
+    color: var(--uk-warning);
+}
+
+.uk-t-info .uk-toast-icon {
+    background: rgba(37, 99, 235, .10);
+    color: var(--uk-info);
+}
+
+.uk-toast-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-top: 1px;
+}
+
+.uk-toast-title {
+    margin: 0;
+    font: 700 .89rem/1.4 var(--uk-font);
+    color: var(--uk-text);
+    word-break: break-word;
+}
+
+.uk-toast-msg {
+    margin: 2px 0 0;
+    font: 400 .845rem/1.5 var(--uk-font);
+    color: var(--uk-text-soft);
+    word-break: break-word;
+}
+
+.uk-toast-action {
+    margin-top: 8px;
+    border: 0;
+    background: none;
+    padding: 0;
+    font: 700 .83rem/1 var(--uk-font);
+    color: var(--uk-info);
+    cursor: pointer;
+}
+
+.uk-toast-action:hover {
+    text-decoration: underline;
+}
+
+.uk-toast-x {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    border: 0;
+    padding: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: #a8b6c4;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: background .15s ease, color .15s ease;
+}
+
+.uk-toast-x:hover {
+    background: var(--uk-surface-2);
+    color: var(--uk-text);
+}
+
+.uk-toast-x svg {
+    width: 13px;
+    height: 13px;
+}
+
+/* Timer bar. Driven by a CSS animation rather than a JS interval, so a page
+   with several toasts still costs zero timer ticks per frame. */
+.uk-toast-timer {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    width: 100%;
+    transform-origin: left center;
+    background: currentColor;
+    opacity: .28;
+    animation: uk-drain linear forwards;
+}
+
+.uk-t-success .uk-toast-timer {
+    color: var(--uk-success);
+}
+
+.uk-t-error .uk-toast-timer {
+    color: var(--uk-error);
+}
+
+.uk-t-warning .uk-toast-timer {
+    color: var(--uk-warning);
+}
+
+.uk-t-info .uk-toast-timer {
+    color: var(--uk-info);
+}
+
+.uk-toast:hover .uk-toast-timer {
+    animation-play-state: paused;
+}
+
+@keyframes uk-drain {
+    from {
+        transform: scaleX(1);
+    }
+
+    to {
+        transform: scaleX(0);
+    }
+}
+
+@media (max-width: 575.98px) {
+    .uk-toasts {
+        max-width: none;
+        padding: 12px;
+    }
+
+    .uk-toasts[data-pos="top-center"] {
+        transform: none;
+        left: 0;
+    }
+
+    .uk-modal {
+        max-width: none;
+    }
+
+    .uk-modal-foot {
+        justify-content: stretch;
+    }
+
+    .uk-modal-foot .uk-btn {
+        flex: 1 1 auto;
+    }
+}
+
+/* ==========================================================================
+   Reduced motion — honour the OS setting, and cut animation cost entirely
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .uk-backdrop,
+    .uk-modal,
+    .uk-toast,
+    .uk-btn {
+        transition-duration: .01ms !important;
+    }
+
+    .uk-toast-timer,
+    .uk-spinner {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+
+    .uk-toast-timer {
+        display: none;
+    }
+}
+
+/* ==========================================================================
+   Dark scheme
+
+   Deliberately NOT keyed to prefers-color-scheme. This app's dark mode is an
+   opt-in stylesheet swap in the theme customizer, not an OS preference, so
+   following the OS would drop a dark modal on top of a light page. ui-kit.js
+   mirrors the app's own theme onto <html data-uk-theme> and this follows it.
+   Force it yourself with UI.theme('dark' | 'light' | 'auto').
+   ========================================================================== */
+
+:root[data-uk-theme="dark"] {
+    --uk-surface: #1a2029;
+    --uk-surface-2: #232c37;
+    --uk-text: #e6edf5;
+    --uk-text-soft: #9fb0c2;
+    --uk-border: #2a3440;
+    --uk-shadow: 0 24px 64px rgba(0, 0, 0, .55), 0 2px 8px rgba(0, 0, 0, .3);
+}
+
+:root[data-uk-theme="dark"] .uk-backdrop {
+    background: rgba(6, 10, 15, .66);
+}
+
+:root[data-uk-theme="dark"] .uk-btn-ghost:hover {
+    background: #2b3543;
+}

@@ -1,0 +1,28 @@
+# Uploaded files are user-supplied: serve them, never execute them,
+# and never list the directory.
+
+Options -Indexes -ExecCGI
+
+# Block every scripting handler for anything stored here.
+<FilesMatch "\.(?:php[0-9]*|phtml|phar|pht|phps|cgi|pl|py|sh|bash|asp|aspx|jsp|htaccess)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+RemoveHandler .php .phtml .phar .pht .phps .cgi .pl .py
+RemoveType .php .phtml .phar .pht .phps

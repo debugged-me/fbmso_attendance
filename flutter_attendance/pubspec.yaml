@@ -1,0 +1,69 @@
+name: flutter_attendance
+description: "FBMSO Attendance — native mobile app (one app, many clients)."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  http: ^1.2.2
+  shared_preferences: ^2.3.2
+  url_launcher: ^6.3.1
+  file_picker: ^8.1.3
+  package_info_plus: ^8.1.0
+  mobile_scanner: ^6.0.2
+  qr_flutter: ^4.1.0
+  local_auth: ^2.3.0
+  flutter_secure_storage: ^9.2.2
+  connectivity_plus: ^6.1.0
+  image_picker: ^1.1.2
+  phosphor_flutter: ^2.1.0
+  path_provider: ^2.1.4
+  flutter_svg: ^2.0.10+1
+  sqflite: ^2.4.1
+  path: ^1.9.0
+  webview_flutter: ^4.10.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  fonts:
+    - family: InstrumentSans
+      fonts:
+        - asset: assets/fonts/instrument-sans/InstrumentSans-Regular.ttf
+        - asset: assets/fonts/instrument-sans/InstrumentSans-Italic.ttf
+          style: italic
+    - family: Karla
+      fonts:
+        - asset: assets/fonts/karla/Karla-ExtraLight.ttf
+          weight: 200
+        - asset: assets/fonts/karla/Karla-Light.ttf
+          weight: 300
+        - asset: assets/fonts/karla/Karla-Regular.ttf
+        - asset: assets/fonts/karla/Karla-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/karla/Karla-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/karla/Karla-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/karla/Karla-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/karla/Karla-Italic.ttf
+          style: italic
+        - asset: assets/fonts/karla/Karla-BoldItalic.ttf
+          weight: 700
+          style: italic
+
+  assets:
+    - assets/avatar.png

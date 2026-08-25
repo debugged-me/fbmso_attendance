@@ -15,6 +15,8 @@
 
   <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
   <link href="<?= base_url(); ?>assets/css/registration_form.css?v=20260820" rel="stylesheet" type="text/css" />
+
+  <?php include(APPPATH . 'views/includes/ui_kit.php'); ?>
 </head>
 
 <body data-layout="horizontal">

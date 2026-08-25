@@ -15,6 +15,8 @@
   <link rel="stylesheet" href="<?= base_url(); ?>assets/css/home.css?v=20260820">
   <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=20260820" rel="stylesheet">
 
+
+  <?php include(APPPATH . 'views/includes/ui_kit.php'); ?>
 </head>
 
 <body>
