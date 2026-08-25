@@ -300,6 +300,489 @@ class MiscApi {
     }
   }
 
+  // ─── Admin: masterlist + accounting (staff only) ───────────────────────
+
+  /// Enrolled students masterlist. Admin only.
+  Future<({int total, List<MasterlistEntry> rows})> masterlist({
+    required String baseUrl,
+    required String token,
+    int limit = 200,
+    int offset = 0,
+    String course = '',
+  }) async {
+    final params = <String, String>{
+      'limit': '$limit',
+      'offset': '$offset',
+      if (course.isNotEmpty) 'course': course,
+    };
+    final qs = params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&');
+    final url = '${_n(baseUrl)}/api/mobile/masterlist/enrolled?$qs';
+    try {
+      final response = await _client.get(Uri.parse(url), headers: _h(token));
+      final data = _decode(response);
+      if (data['ok'] == true) {
+        final list = (data['rows'] as List? ?? [])
+            .map((e) => MasterlistEntry.fromJson(e as Map<String, dynamic>))
+            .toList();
+        return (total: (data['total'] as num?)?.toInt() ?? 0, rows: list);
+      }
+      throw ApiException((data['message'] ?? 'Failed').toString());
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// Recent expenses (admin/accounting). Read-only.
+  Future<List<ExpenseEntry>> expenses({
+    required String baseUrl,
+    required String token,
+    int limit = 50,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/accounting/expenses?limit=$limit';
+    try {
+      final response = await _client.get(Uri.parse(url), headers: _h(token));
+      final data = _decode(response);
+      if (data['ok'] == true) {
+        return (data['expenses'] as List? ?? [])
+            .map((e) => ExpenseEntry.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      throw ApiException((data['message'] ?? 'Failed').toString());
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  // ─── Admin: expenses CRUD ───────────────────────────────────────────────
+
+  /// Create an expense.
+  Future<void> expenseCreate({
+    required String baseUrl,
+    required String token,
+    required String description,
+    required String amount,
+    String responsible = '',
+    required String expenseDate,
+    String category = '',
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/accounting/expenses/create';
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode({
+          'Description': description,
+          'Amount': amount,
+          'Responsible': responsible,
+          'ExpenseDate': expenseDate,
+          'Category': category,
+        }),
+      );
+      final data = _decode(response);
+      if (data['ok'] != true) {
+        throw ApiException((data['message'] ?? 'Failed').toString());
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// Update an expense.
+  Future<void> expenseUpdate({
+    required String baseUrl,
+    required String token,
+    required int expensesid,
+    String? description,
+    String? amount,
+    String? responsible,
+    String? expenseDate,
+    String? category,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/accounting/expenses/update';
+    try {
+      final body = <String, dynamic>{'expensesid': expensesid};
+      if (description != null) body['Description'] = description;
+      if (amount != null) body['Amount'] = amount;
+      if (responsible != null) body['Responsible'] = responsible;
+      if (expenseDate != null) body['ExpenseDate'] = expenseDate;
+      if (category != null) body['Category'] = category;
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode(body),
+      );
+      final data = _decode(response);
+      if (data['ok'] != true) {
+        throw ApiException((data['message'] ?? 'Failed').toString());
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// Delete an expense.
+  Future<void> expenseDelete({
+    required String baseUrl,
+    required String token,
+    required int expensesid,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/accounting/expenses/delete';
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode({'expensesid': expensesid}),
+      );
+      final data = _decode(response);
+      if (data['ok'] != true) {
+        throw ApiException((data['message'] ?? 'Failed').toString());
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// List expense categories.
+  Future<List<ExpenseCategory>> expenseCategories({
+    required String baseUrl,
+    required String token,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/accounting/expenses/categories';
+    try {
+      final response = await _client.get(Uri.parse(url), headers: _h(token));
+      final data = _decode(response);
+      if (data['ok'] == true) {
+        return (data['categories'] as List? ?? [])
+            .map((e) =>
+                ExpenseCategory.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      throw ApiException((data['message'] ?? 'Failed').toString());
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// Create an expense category.
+  Future<void> expenseCategoryCreate({
+    required String baseUrl,
+    required String token,
+    required String category,
+  }) async {
+    final url =
+        '${_n(baseUrl)}/api/mobile/accounting/expenses/categories/create';
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode({'Category': category}),
+      );
+      final data = _decode(response);
+      if (data['ok'] != true) {
+        throw ApiException((data['message'] ?? 'Failed').toString());
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// Delete an expense category.
+  Future<void> expenseCategoryDelete({
+    required String baseUrl,
+    required String token,
+    required int categoryID,
+  }) async {
+    final url =
+        '${_n(baseUrl)}/api/mobile/accounting/expenses/categories/delete';
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode({'categoryID': categoryID}),
+      );
+      final data = _decode(response);
+      if (data['ok'] != true) {
+        throw ApiException((data['message'] ?? 'Failed').toString());
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  // ─── Admin: personnel CRUD ──────────────────────────────────────────────
+
+  /// All personnel (including inactive). Admin only.
+  Future<List<Personnel>> personnelAll({
+    required String baseUrl,
+    required String token,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/personnel/all';
+    try {
+      final response = await _client.get(Uri.parse(url), headers: _h(token));
+      final data = _decode(response);
+      if (data['ok'] == true) {
+        return (data['personnel'] as List? ?? [])
+            .map((e) => Personnel.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      throw ApiException((data['message'] ?? 'Failed').toString());
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// Save (create or update) a personnel. Admin only.
+  Future<void> personnelSave({
+    required String baseUrl,
+    required String token,
+    int id = 0,
+    required String fullName,
+    required String title,
+    String bio = '',
+    int sortOrder = 100,
+    int isActive = 1,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/personnel/save';
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode({
+          'id': id,
+          'full_name': fullName,
+          'title': title,
+          'bio': bio,
+          'sort_order': sortOrder,
+          'is_active': isActive,
+        }),
+      );
+      final data = _decode(response);
+      if (data['ok'] != true) {
+        throw ApiException((data['message'] ?? 'Failed').toString());
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// Delete a personnel. Admin only.
+  Future<void> personnelDelete({
+    required String baseUrl,
+    required String token,
+    required int id,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/personnel/delete';
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode({'id': id}),
+      );
+      final data = _decode(response);
+      if (data['ok'] != true) {
+        throw ApiException((data['message'] ?? 'Failed').toString());
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// Toggle personnel active/inactive. Admin only.
+  Future<void> personnelToggle({
+    required String baseUrl,
+    required String token,
+    required int id,
+    required int isActive,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/personnel/toggle';
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode({'id': id, 'is_active': isActive}),
+      );
+      final data = _decode(response);
+      if (data['ok'] != true) {
+        throw ApiException((data['message'] ?? 'Failed').toString());
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  // ─── Admin: user accounts ───────────────────────────────────────────────
+
+  /// List all user accounts. Admin only.
+  Future<List<UserAccount>> userAccounts({
+    required String baseUrl,
+    required String token,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/users';
+    try {
+      final response = await _client.get(Uri.parse(url), headers: _h(token));
+      final data = _decode(response);
+      if (data['ok'] == true) {
+        return (data['users'] as List? ?? [])
+            .map((e) => UserAccount.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      throw ApiException((data['message'] ?? 'Failed').toString());
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// Create a new user account. Admin only.
+  Future<void> userAccountCreate({
+    required String baseUrl,
+    required String token,
+    required String username,
+    required String idNumber,
+    required String password,
+    required String acctLevel,
+    required String fName,
+    String mName = '',
+    required String lName,
+    required String email,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/users/create';
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode({
+          'username': username,
+          'IDNumber': idNumber,
+          'password': password,
+          'acctLevel': acctLevel,
+          'fName': fName,
+          'mName': mName,
+          'lName': lName,
+          'email': email,
+        }),
+      );
+      final data = _decode(response);
+      if (data['ok'] != true) {
+        throw ApiException((data['message'] ?? 'Failed').toString());
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// Delete a user account. Admin only.
+  Future<void> userAccountDelete({
+    required String baseUrl,
+    required String token,
+    required String username,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/users/delete';
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode({'username': username}),
+      );
+      final data = _decode(response);
+      if (data['ok'] != true) {
+        throw ApiException((data['message'] ?? 'Failed').toString());
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  // ─── Admin: registered students ─────────────────────────────────────────
+
+  /// Registered students list (paginated). Admin only.
+  Future<({int total, List<RegisteredStudent> rows})> registeredStudents({
+    required String baseUrl,
+    required String token,
+    int limit = 100,
+    int offset = 0,
+    String search = '',
+  }) async {
+    final params = <String, String>{
+      'limit': '$limit',
+      'offset': '$offset',
+      if (search.isNotEmpty) 'search': search,
+    };
+    final qs = params.entries
+        .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+        .join('&');
+    final url = '${_n(baseUrl)}/api/mobile/registered-students?$qs';
+    try {
+      final response = await _client.get(Uri.parse(url), headers: _h(token));
+      final data = _decode(response);
+      if (data['ok'] == true) {
+        final list = (data['rows'] as List? ?? [])
+            .map((e) =>
+                RegisteredStudent.fromJson(e as Map<String, dynamic>))
+            .toList();
+        return (total: (data['total'] as num?)?.toInt() ?? 0, rows: list);
+      }
+      throw ApiException((data['message'] ?? 'Failed').toString());
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// Delete a registered student. Admin only.
+  Future<void> registeredStudentDelete({
+    required String baseUrl,
+    required String token,
+    required String studentNumber,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/registered-students/delete';
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode({'student_number': studentNumber}),
+      );
+      final data = _decode(response);
+      if (data['ok'] != true) {
+        throw ApiException((data['message'] ?? 'Failed').toString());
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
   // ─── internals ──────────────────────────────────────────────────────────
 
   Map<String, String> _h(String token) => {

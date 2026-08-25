@@ -166,6 +166,86 @@ class AuthApi {
     }
   }
 
+  /// Manual password reset — email + username/ID + new password.
+  Future<void> forgotPasswordManual({
+    required String baseUrl,
+    required String email,
+    required String identifier,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final response = await _safeRequest(
+      () => _client.post(
+        _uri(baseUrl, '/api/mobile/auth/forgot-password/manual'),
+        headers: _jsonHeaders,
+        body: jsonEncode({
+          'email': email,
+          'identifier': identifier,
+          'new_password': newPassword,
+          'confirm_password': confirmPassword,
+        }),
+      ),
+    );
+
+    final data = _decode(response);
+    if (data['ok'] != true) {
+      throw ApiException(
+          (data['message'] ?? 'Unable to reset password').toString(),
+          statusCode: response.statusCode);
+    }
+  }
+
+  /// Register a new student account.
+  Future<void> register({
+    required String baseUrl,
+    required String studentNumber,
+    required String firstName,
+    String middleName = '',
+    required String lastName,
+    String nameExtn = '',
+    String sex = '',
+    String birthDate = '',
+    required String email,
+    String contactNo = '',
+    String course1 = '',
+    String major1 = '',
+    required String yearLevel,
+    String section = '',
+    required String password,
+    required String confirmPassword,
+  }) async {
+    final response = await _safeRequest(
+      () => _client.post(
+        _uri(baseUrl, '/api/mobile/auth/register'),
+        headers: _jsonHeaders,
+        body: jsonEncode({
+          'StudentNumber': studentNumber,
+          'FirstName': firstName,
+          'MiddleName': middleName,
+          'LastName': lastName,
+          'nameExtn': nameExtn,
+          'Sex': sex,
+          'birthDate': birthDate,
+          'email': email,
+          'contactNo': contactNo,
+          'Course1': course1,
+          'Major1': major1,
+          'yearLevel': yearLevel,
+          'section': section,
+          'password': password,
+          'confirm_password': confirmPassword,
+        }),
+      ),
+    );
+
+    final data = _decode(response);
+    if (data['ok'] != true) {
+      throw ApiException(
+          (data['message'] ?? 'Registration failed').toString(),
+          statusCode: response.statusCode);
+    }
+  }
+
   /// Fetch the current user's avatar URL from `GET /api/mobile/auth/avatar`.
   Future<String> fetchAvatar({
     required String baseUrl,

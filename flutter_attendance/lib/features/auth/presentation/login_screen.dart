@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../domain/mobile_config.dart';
 import 'auth_controller.dart';
 import 'forgot_password_screen.dart';
+import 'register_screen.dart';
 import 'welcome_screen.dart';
 
 /// Credential entry. The base URL was already chosen on the welcome screen.
@@ -70,9 +71,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (ok) {
-      // The root AnimatedBuilder will rebuild and swap to the role shell.
-      // Do NOT call setState here — it can race with the parent rebuild
-      // on web and cause the screen to get stuck.
+      // The root ListenableBuilder will rebuild and swap to the role shell.
+      // Reset busy state so there's no stuck spinner if the rebuild is
+      // delayed by a frame on web.
+      if (mounted) setState(() => _busy = false);
       return;
     }
 
@@ -199,7 +201,41 @@ class _LoginScreenState extends State<LoginScreen> {
                       disabled: _busy,
                       onTap: _signIn,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+
+                    // ── Register link (prominent, right after sign-in) ─
+                    Center(
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  RegisterScreen(controller: widget.controller),
+                            ),
+                          );
+                        },
+                        child: const Text.rich(
+                          TextSpan(
+                            text: 'No account? ',
+                            style: TextStyle(
+                              color: AppInk.muted,
+                              fontSize: 14,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: 'Create one',
+                                style: TextStyle(
+                                  color: AppInk.accent,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
 
                     // ── Links ────────────────────────────────────────
                     Wrap(

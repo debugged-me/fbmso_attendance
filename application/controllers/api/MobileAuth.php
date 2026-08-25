@@ -84,6 +84,106 @@ class MobileAuth extends CI_Controller
         ]);
     }
 
+    /**
+     * Registration form options — courses, year levels, and sections.
+     * Public (no token needed) so the registration form can populate
+     * dropdowns before the user has an account.
+     */
+    public function registration_options()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+
+        $this->load->model('StudentModel');
+
+        $courses = [];
+        try {
+            $rows = $this->StudentModel->getCourse();
+            foreach ($rows as $r) {
+                $courses[] = (string)($r->CourseDescription ?? '');
+            }
+        } catch (\Throwable $e) {
+            // ignore — return empty list
+        }
+
+        $yearLevels = ['1st', '2nd', '3rd', '4th'];
+
+        // Sections depend on course + year level, so we return them
+        // as a flat list of all sections for simplicity. The mobile
+        // form can filter client-side or just show all.
+        $sections = [];
+        try {
+            if (method_exists($this->StudentModel, 'get_all_sections')) {
+                $secRows = $this->StudentModel->get_all_sections();
+                foreach ($secRows as $r) {
+                    $sections[] = (string)($r->section ?? $r->Section ?? '');
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
+        // If no sections from model, try a direct query
+        if (empty($sections) && $this->db->table_exists('course_sections')) {
+            $secRows = $this->db->distinct()->select('section')->get('course_sections')->result();
+            foreach ($secRows as $r) {
+                $s = trim((string)($r->section ?? ''));
+                if ($s !== '') $sections[] = $s;
+            }
+        }
+
+        return $this->json([
+            'ok'         => true,
+            'courses'    => array_values(array_filter($courses)),
+            'year_levels'=> $yearLevels,
+            'sections'   => array_values(array_filter($sections)),
+        ]);
+    }
+
+    /**
+     * Sections for a specific course + year level.
+     */
+    public function registration_sections()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+
+        $course = (string)$this->input->get('course', true);
+        $yearLevel = (string)$this->input->get('year_level', true);
+
+        $sections = [];
+        $this->load->model('StudentModel');
+        try {
+            if (method_exists($this->StudentModel, 'get_sections')) {
+                $rows = $this->StudentModel->get_sections($course, $yearLevel);
+                foreach ($rows as $r) {
+                    $sections[] = (string)($r->section ?? $r->Section ?? '');
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
+        // Fallback: direct query
+        if (empty($sections) && $this->db->table_exists('course_sections')) {
+            $this->db->distinct()->select('section');
+            if ($course !== '') $this->db->where('courseid', $course);
+            if ($yearLevel !== '') $this->db->where('year_level', $yearLevel);
+            $rows = $this->db->get('course_sections')->result();
+            foreach ($rows as $r) {
+                $s = trim((string)($r->section ?? ''));
+                if ($s !== '') $sections[] = $s;
+            }
+        }
+
+        return $this->json([
+            'ok'       => true,
+            'sections' => array_values(array_filter(array_unique($sections))),
+        ]);
+    }
+
     /** Login with the same credentials the web Login::auth() accepts. */
     public function login()
     {
@@ -342,6 +442,232 @@ class MobileAuth extends CI_Controller
         }
 
         return $this->json(['ok' => true, 'message' => 'If that email exists, a temporary password has been sent.']);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  Registration — mirrors Registration::index() public signup flow
+    // ──────────────────────────────────────────────────────────────────────
+
+    public function register()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+
+        $p = $this->read_payload();
+
+        $studentNumber = strtoupper(trim((string)($p['StudentNumber'] ?? '')));
+        $firstName     = strtoupper(trim((string)($p['FirstName'] ?? '')));
+        $middleName    = strtoupper(trim((string)($p['MiddleName'] ?? '')));
+        $lastName      = strtoupper(trim((string)($p['LastName'] ?? '')));
+        $nameExtn      = strtoupper(trim((string)($p['nameExtn'] ?? '')));
+        $sex           = trim((string)($p['Sex'] ?? ''));
+        $birthDate     = trim((string)($p['birthDate'] ?? ''));
+        $email         = trim((string)($p['email'] ?? ''));
+        $contactNo     = trim((string)($p['contactNo'] ?? ''));
+        $course1       = trim((string)($p['Course1'] ?? ''));
+        $major1        = trim((string)($p['Major1'] ?? ''));
+        $yearLevel     = trim((string)($p['yearLevel'] ?? ''));
+        $section       = trim((string)($p['section'] ?? ''));
+        $passwordRaw   = (string)($p['password'] ?? '');
+        $confirmPass   = (string)($p['confirm_password'] ?? '');
+
+        // Validate required fields
+        $errors = [];
+        if ($studentNumber === '') $errors[] = 'Student ID/Number is required.';
+        if (!preg_match('/^[A-Z0-9\-]+$/', $studentNumber)) $errors[] = 'Student ID may only contain letters, numbers, and hyphen.';
+        if ($firstName === '') $errors[] = 'First name is required.';
+        if ($lastName === '') $errors[] = 'Last name is required.';
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'A valid email is required.';
+        if ($passwordRaw === '') $errors[] = 'Password is required.';
+        if (strlen($passwordRaw) < 8) $errors[] = 'Password must be at least 8 characters.';
+        if ($passwordRaw !== $confirmPass) $errors[] = 'Passwords do not match.';
+
+        $validLevels = ['1st', '2nd', '3rd', '4th'];
+        $yearLevelNormalized = preg_replace('/\s*Year$/i', '', $yearLevel);
+        if (!in_array($yearLevelNormalized, $validLevels, true)) {
+            $errors[] = 'Please select a valid Year Level.';
+        }
+
+        if (!empty($errors)) {
+            return $this->json(['ok' => false, 'message' => implode(' ', $errors)], 422);
+        }
+
+        // Duplicate checks
+        $studentIdExists = ($this->db->where('username', $studentNumber)->count_all_results('o_users') > 0)
+            || ($this->db->where('StudentNumber', $studentNumber)->count_all_results('studentsignup') > 0);
+        $emailExists = ($this->db->where('email', $email)->count_all_results('o_users') > 0)
+            || ($this->db->where('email', $email)->count_all_results('studentsignup') > 0);
+
+        if ($studentIdExists || $emailExists) {
+            $parts = [];
+            if ($studentIdExists) $parts[] = 'Student ID already exists.';
+            if ($emailExists) $parts[] = 'Email already exists.';
+            return $this->json(['ok' => false, 'message' => implode(' ', $parts)], 409);
+        }
+
+        // Compute age
+        $age = 0;
+        if ($birthDate !== '') {
+            $dob = DateTime::createFromFormat('Y-m-d', $birthDate);
+            if ($dob instanceof DateTime) {
+                $today = new DateTime('today');
+                $age = (int)$dob->diff($today)->y;
+            }
+        }
+
+        $studentData = [
+            'StudentNumber'   => $studentNumber,
+            'FirstName'       => $firstName,
+            'MiddleName'      => $middleName,
+            'LastName'        => $lastName,
+            'nameExtn'        => $nameExtn,
+            'Sex'             => $sex,
+            'birthDate'       => $birthDate,
+            'age'             => $age,
+            'contactNo'       => $contactNo,
+            'email'           => $email,
+            'section'         => $section,
+            'working'         => 'No',
+            'VaccStat'        => '',
+            'nationality'     => 'Filipino',
+            'yearLevel'       => $yearLevelNormalized,
+            'Course1'         => $course1,
+            'Major1'          => $major1,
+            'EnrollmentDate'  => date('Y-m-d'),
+            'BirthPlace'      => '',
+            'CivilStatus'     => 'Single',
+            'Religion'        => '',
+            'province'        => '',
+            'city'            => '',
+            'brgy'            => '',
+            'sitio'           => '',
+            'Course2'         => '',
+            'Course3'         => '',
+            'Major2'          => '',
+            'Major3'          => '',
+            'Status'          => 'Pending',
+            'graduationDate'  => '',
+            'guardian'        => '',
+            'guardianRelationship' => '',
+            'guardianContact' => '',
+            'guardianAddress' => '',
+            'father'          => '',
+            'fOccupation'     => '',
+            'fatherAddress'   => '',
+            'fatherContact'   => '',
+            'mother'          => '',
+            'mOccupation'     => '',
+            'motherAddress'   => '',
+            'motherContact'   => '',
+        ];
+
+        $fullName = trim($firstName . ' ' . $middleName . ' ' . $lastName);
+        $passwordHash = sha1($passwordRaw);
+
+        $this->db->trans_start();
+        $this->db->insert('studentsignup', $studentData);
+        $this->db->insert('o_users', [
+            'username'    => $studentNumber,
+            'IDNumber'    => $studentNumber,
+            'fName'       => $firstName,
+            'mName'       => $middleName,
+            'lName'       => $lastName,
+            'name'        => $fullName,
+            'password'    => $passwordHash,
+            'position'    => 'Student',
+            'email'       => $email,
+            'acctStat'    => 'active',
+            'dateCreated' => date('Y-m-d'),
+        ]);
+        $this->db->trans_complete();
+
+        if (!$this->db->trans_status()) {
+            return $this->json(['ok' => false, 'message' => 'Registration failed. Please try again.'], 500);
+        }
+
+        // Create semesterstude profiling row
+        $settings = $this->current_settings();
+        $sy = $settings->SY ?? (date('Y') . '-' . (date('Y') + 1));
+        $semester = $settings->Semester ?? 'First Semester';
+
+        $existingSem = $this->db->get_where('semesterstude', [
+            'StudentNumber' => $studentNumber,
+            'SY' => $sy,
+            'Semester' => $semester,
+        ])->row();
+
+        $profiling = [
+            'StudentNumber' => $studentNumber,
+            'Course' => $course1,
+            'YearLevel' => $yearLevelNormalized,
+            'Status' => 'Enrolled',
+            'Semester' => $semester,
+            'SY' => $sy,
+            'Section' => $section,
+            'StudeStatus' => 'New',
+            'Major' => $major1,
+            'settingsID' => 1,
+            'enroledDate' => date('Y-m-d'),
+        ];
+
+        if (!$existingSem) {
+            $this->db->insert('semesterstude', $profiling);
+        }
+
+        return $this->json([
+            'ok' => true,
+            'message' => 'Registration successful. You can now sign in with your Student ID and password.',
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  Forgot password — manual mode (set password without email)
+    // ──────────────────────────────────────────────────────────────────────
+
+    public function forgot_password_manual()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+
+        $p = $this->read_payload();
+        $email      = trim((string)($p['email'] ?? ''));
+        $identifier = trim((string)($p['identifier'] ?? ''));
+        $newPassword = (string)($p['new_password'] ?? '');
+        $confirmPassword = (string)($p['confirm_password'] ?? '');
+
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $this->json(['ok' => false, 'message' => 'A valid email is required.'], 422);
+        }
+        if ($identifier === '') {
+            return $this->json(['ok' => false, 'message' => 'Username or Student ID is required.'], 422);
+        }
+        if ($newPassword === '') {
+            return $this->json(['ok' => false, 'message' => 'New password is required.'], 422);
+        }
+        if (strlen($newPassword) < 8) {
+            return $this->json(['ok' => false, 'message' => 'Password must be at least 8 characters.'], 422);
+        }
+        if ($newPassword !== $confirmPassword) {
+            return $this->json(['ok' => false, 'message' => 'Passwords do not match.'], 422);
+        }
+
+        $user = $this->Login_model->findUserForReset($email, $identifier);
+        if (!$user) {
+            return $this->json(['ok' => false, 'message' => 'No account matched that email and username/student ID.'], 404);
+        }
+
+        if (strtolower(trim((string)($user['acctStat'] ?? ''))) !== 'active') {
+            return $this->json(['ok' => false, 'message' => 'Your account is not active. Please contact support.'], 403);
+        }
+
+        $updated = $this->Login_model->updatePasswordByUsername($user['username'], sha1($newPassword));
+        if (!$updated) {
+            return $this->json(['ok' => false, 'message' => 'Unable to reset password right now. Please try again.'], 500);
+        }
+
+        return $this->json(['ok' => true, 'message' => 'Password updated. You can sign in now.']);
     }
 
     // ──────────────────────────────────────────────────────────────────────

@@ -329,6 +329,11 @@ class MobileAttendance extends MobileApi
             return $this->json(['ok' => false, 'rows' => [], 'message' => 'Invalid activity id.']);
         }
 
+        // Pagination support
+        $limit  = (int)$this->input->get('limit', true) ?: 0;  // 0 = all
+        $offset = (int)$this->input->get('offset', true) ?: 0;
+        $search = trim((string)$this->input->get('search', true));
+
         // Reuse the same join logic as the web Attendance::logs().
         $this->db->from('activity_attendance aa');
         $this->db->select('aa.id, aa.activity_id, aa.student_number, aa.checked_in_at, aa.checked_out_at, aa.checked_in_by, aa.source, aa.remarks, aa.session');
@@ -352,7 +357,22 @@ class MobileAttendance extends MobileApi
         }
 
         $this->db->where('aa.activity_id', $activityId);
+
+        // Search filter
+        if ($search !== '') {
+            $this->db->group_start()
+                ->like('aa.student_number', $search)
+                ->or_like($studentNameExpr ?? 'aa.student_number', $search)
+                ->group_end();
+        }
+
+        // Count total (before limit/offset)
+        $total = $this->db->count_all_results('', false);
+
         $this->db->order_by('aa.checked_in_at', 'DESC');
+        if ($limit > 0) {
+            $this->db->limit($limit, $offset);
+        }
         $rows = $this->db->get()->result_array();
 
         $out = [];
@@ -366,7 +386,13 @@ class MobileAttendance extends MobileApi
             $out[] = $r;
         }
 
-        return $this->json(['ok' => true, 'rows' => $out]);
+        return $this->json([
+            'ok' => true,
+            'rows' => $out,
+            'total' => (int)$total,
+            'limit' => $limit,
+            'offset' => $offset,
+        ]);
     }
 
     // ─── Activity management (staff only) ──────────────────────────────────

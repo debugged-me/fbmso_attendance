@@ -10,8 +10,7 @@ import '../features/auth/domain/app_session.dart';
 import '../features/auth/presentation/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/welcome_screen.dart';
-import '../features/shell/presentation/instructor_shell.dart';
-import '../features/shell/presentation/staff_shell.dart';
+import '../features/shell/presentation/admin_shell.dart';
 import '../features/shell/presentation/student_shell.dart';
 
 class FlutterAttendanceApp extends StatefulWidget {
@@ -71,16 +70,7 @@ class _FlutterAttendanceAppState extends State<FlutterAttendanceApp> {
           if (!snapshot.hasData) {
             return const _SplashScreen();
           }
-          return AnimatedBuilder(
-            animation: snapshot.data!.controller,
-            builder: (context, _) {
-              final c = snapshot.data!.controller;
-              if (c.bootstrapping) {
-                return const _SplashScreen();
-              }
-              return _AuthFlow(controller: c);
-            },
-          );
+          return _AuthFlow(controller: snapshot.data!.controller);
         },
       ),
     );
@@ -93,25 +83,37 @@ class _AuthFlow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Authenticated → role-based shell.
-    if (controller.isAuthenticated && controller.session != null) {
-      return _RoleShell(
-        session: controller.session as AppSession,
-        controller: controller,
-      );
-    }
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        // Still bootstrapping → splash.
+        if (controller.bootstrapping) {
+          return const _SplashScreen();
+        }
 
-    // Paired with a school URL but not signed in → login.
-    if (controller.baseUrl.isNotEmpty && controller.config != null) {
-      return LoginScreen(controller: controller);
-    }
+        // Authenticated → role-based shell.
+        if (controller.isAuthenticated && controller.session != null) {
+          return _RoleShell(
+            session: controller.session as AppSession,
+            controller: controller,
+          );
+        }
 
-    // First run / unpaired → URL entry.
-    return WelcomeScreen(controller: controller);
+        // Paired with a school URL but not signed in → login.
+        if (controller.baseUrl.isNotEmpty && controller.config != null) {
+          return LoginScreen(controller: controller);
+        }
+
+        // First run / unpaired → URL entry.
+        return WelcomeScreen(controller: controller);
+      },
+    );
   }
 }
 
 /// Picks the shell based on the user's role bucket.
+/// Only two roles exist in the system: Student and Admin (which includes
+/// Super Admin). Everything else falls back to Admin.
 class _RoleShell extends StatelessWidget {
   const _RoleShell({required this.session, required this.controller});
   final AppSession session;
@@ -119,16 +121,11 @@ class _RoleShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final role = session.role;
-    if (role.isStudentLike) {
+    if (session.role.isStudentLike) {
       return StudentShell(session: session, controller: controller);
     }
-    if (role.isInstructorLike) {
-      return InstructorShell(session: session, controller: controller);
-    }
-    // Admin, registrar, accounting, HR, guidance, medical, librarian,
-    // custodian, encoder, IT, academic officer, staff, unknown → StaffShell.
-    return StaffShell(session: session, controller: controller);
+    // Admin, Super Admin, and any other non-student role → AdminShell.
+    return AdminShell(session: session, controller: controller);
   }
 }
 

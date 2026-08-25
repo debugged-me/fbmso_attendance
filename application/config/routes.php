@@ -74,6 +74,8 @@ $route['admin/fbmso-personnels']  = 'FbmsoPersonnels/manage';
 //  Reuses Login_model::validate() so web credentials work on mobile.
 // ──────────────────────────────────────────────────────────────────────────
 $route['api/mobile/config']                       = 'api/MobileAuth/config';
+$route['api/mobile/registration/options']         = 'api/MobileAuth/registration_options';
+$route['api/mobile/registration/sections']        = 'api/MobileAuth/registration_sections';
 $route['api/mobile/auth/login']                   = 'api/MobileAuth/login';
 $route['api/mobile/auth/me']                      = 'api/MobileAuth/me';
 $route['api/mobile/auth/logout']                  = 'api/MobileAuth/logout';
@@ -81,6 +83,8 @@ $route['api/mobile/auth/change-password']         = 'api/MobileAuth/change_passw
 $route['api/mobile/auth/change-avatar']           = 'api/MobileAuth/change_avatar';
 $route['api/mobile/auth/avatar']                  = 'api/MobileAuth/avatar';
 $route['api/mobile/auth/forgot-password']         = 'api/MobileAuth/forgot_password';
+$route['api/mobile/auth/forgot-password/manual']  = 'api/MobileAuth/forgot_password_manual';
+$route['api/mobile/auth/register']                = 'api/MobileAuth/register';
 
 // Mobile attendance + activities
 $route['api/mobile/activities']                   = 'api/MobileAttendance/activities';
@@ -117,5 +121,20 @@ $route['api/mobile/todos/create']                 = 'api/MobileMisc/todos_create
 $route['api/mobile/todos/toggle/(:num)']          = 'api/MobileMisc/todos_toggle/$1';
 $route['api/mobile/todos/delete/(:num)']          = 'api/MobileMisc/todos_delete/$1';
 $route['api/mobile/personnel']                    = 'api/MobileMisc/personnel';
+$route['api/mobile/personnel/all']                = 'api/MobileMisc/personnel_all';
+$route['api/mobile/personnel/save']               = 'api/MobileMisc/personnel_save';
+$route['api/mobile/personnel/delete']             = 'api/MobileMisc/personnel_delete';
+$route['api/mobile/personnel/toggle']             = 'api/MobileMisc/personnel_toggle';
 $route['api/mobile/masterlist/enrolled']          = 'api/MobileMisc/masterlist_enrolled';
-$route['api/mobile/accounting/expenses']          = 'api/MobileMisc/accounting_expenses';
+$route['api/mobile/accounting/expenses']              = 'api/MobileMisc/accounting_expenses';
+$route['api/mobile/accounting/expenses/create']       = 'api/MobileMisc/expenses_create';
+$route['api/mobile/accounting/expenses/update']       = 'api/MobileMisc/expenses_update';
+$route['api/mobile/accounting/expenses/delete']       = 'api/MobileMisc/expenses_delete';
+$route['api/mobile/accounting/expenses/categories']   = 'api/MobileMisc/expenses_categories';
+$route['api/mobile/accounting/expenses/categories/create']  = 'api/MobileMisc/expenses_categories_create';
+$route['api/mobile/accounting/expenses/categories/delete']  = 'api/MobileMisc/expenses_categories_delete';
+$route['api/mobile/users']                        = 'api/MobileMisc/user_accounts';
+$route['api/mobile/users/create']                 = 'api/MobileMisc/user_accounts_create';
+$route['api/mobile/users/delete']                 = 'api/MobileMisc/user_accounts_delete';
+$route['api/mobile/registered-students']          = 'api/MobileMisc/registered_students';
+$route['api/mobile/registered-students/delete']   = 'api/MobileMisc/registered_students_delete';

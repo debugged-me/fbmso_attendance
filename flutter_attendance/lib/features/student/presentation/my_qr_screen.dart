@@ -5,6 +5,7 @@ import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/sync_status_banner.dart';
+import '../../attendance/presentation/poster_scan_screen.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/student_api.dart';
 import '../domain/student_models.dart';
@@ -14,9 +15,10 @@ import '../domain/student_models.dart';
 ///
 /// Issue/revoke buttons queue through the outbox when offline.
 class MyQrScreen extends StatefulWidget {
-  const MyQrScreen({super.key, required this.session});
+  const MyQrScreen({super.key, required this.session, this.menuButton});
 
   final AppSession session;
+  final Widget? menuButton;
 
   @override
   State<MyQrScreen> createState() => _MyQrScreenState();
@@ -119,6 +121,7 @@ class _MyQrScreenState extends State<MyQrScreen> {
     return AppScaffold(
       title: 'My QR',
       showBackButton: false,
+      leading: widget.menuButton,
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -158,6 +161,7 @@ class _MyQrScreenState extends State<MyQrScreen> {
                               qr: _qr!,
                               displayName: widget.session.displayName,
                               onIssue: _issue,
+                              session: widget.session,
                             ),
             ),
           ),
@@ -168,10 +172,11 @@ class _MyQrScreenState extends State<MyQrScreen> {
 }
 
 class _QrView extends StatelessWidget {
-  const _QrView({required this.qr, required this.displayName, required this.onIssue});
+  const _QrView({required this.qr, required this.displayName, required this.onIssue, required this.session});
   final StudentQr qr;
   final String displayName;
   final VoidCallback onIssue;
+  final AppSession session;
 
   @override
   Widget build(BuildContext context) {
@@ -239,9 +244,24 @@ class _QrView extends StatelessWidget {
           style: AppButtonStyle.outline,
           onTap: onIssue,
         ),
+        const SizedBox(height: 12),
+        AppButton(
+          label: 'Scan Poster QR',
+          icon: Icons.qr_code_scanner_rounded,
+          fullWidth: true,
+          size: AppButtonSize.lg,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => PosterScanScreen(session: session),
+              ),
+            );
+          },
+        ),
         const SizedBox(height: 16),
         const Text(
-          'Show this QR to the scanner at any activity to check in or out.',
+          'Show this QR to the scanner at any activity to check in or out.\n'
+          'Or tap "Scan Poster QR" to scan an activity poster for self check-in.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 12.5,

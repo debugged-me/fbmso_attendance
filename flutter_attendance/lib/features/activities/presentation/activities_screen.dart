@@ -7,22 +7,22 @@ import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
+import 'activity_detail_sheet.dart';
 
-/// Activities list (read-only for students). Students show their QR to an
-/// instructor who scans it — there are no self-check-in buttons here.
-/// Reads are cache-first so the list renders even with no signal.
-///
-/// When [showWelcomeHeader] is true (used by the student Dashboard tab), a
-/// welcome header with the student's name is shown above the list.
+/// Activities list. Tapping an activity opens a detail sheet with actions:
+/// - Students: "Show my QR" or "Scan Poster QR" (for self check-in).
+/// - Admins: "Scan Students" or "View Attendance Logs".
 class ActivitiesScreen extends StatefulWidget {
   const ActivitiesScreen({
     super.key,
     required this.session,
     this.showWelcomeHeader = false,
+    this.menuButton,
   });
 
   final AppSession session;
   final bool showWelcomeHeader;
+  final Widget? menuButton;
 
   @override
   State<ActivitiesScreen> createState() => _ActivitiesScreenState();
@@ -65,6 +65,10 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
     }
   }
 
+  void _openActivitySheet(Activity activity) {
+    showActivityDetailSheet(context, activity, widget.session);
+  }
+
   @override
   Widget build(BuildContext context) {
     final open = _activities.where((a) => a.isOpen).toList();
@@ -73,6 +77,7 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
     return AppScaffold(
       title: 'Activities',
       showBackButton: false,
+      leading: widget.menuButton,
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -97,11 +102,19 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
                             ],
                             if (open.isNotEmpty) ...[
                               const _SectionLabel('Happening now'),
-                              ...open.map((a) => _ActivityCard(activity: a)),
+                              ...open.map((a) => _ActivityCard(
+                                    activity: a,
+                                    session: widget.session,
+                                    onTap: () => _openActivitySheet(a),
+                                  )),
                             ],
                             if (closed.isNotEmpty) ...[
                               const _SectionLabel('Closed'),
-                              ...closed.map((a) => _ActivityCard(activity: a)),
+                              ...closed.map((a) => _ActivityCard(
+                                    activity: a,
+                                    session: widget.session,
+                                    onTap: () => _openActivitySheet(a),
+                                  )),
                             ],
                             if (_activities.isEmpty &&
                                 !widget.showWelcomeHeader)
@@ -262,68 +275,93 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _ActivityCard extends StatelessWidget {
-  const _ActivityCard({required this.activity});
+  const _ActivityCard({
+    required this.activity,
+    required this.session,
+    required this.onTap,
+  });
 
   final Activity activity;
+  final AppSession session;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final isOpen = activity.isOpen;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppInk.rule),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    activity.title,
-                    style: const TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppInk.heading,
-                      height: 1.3,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                _StatusPill(isOpen: isOpen),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 14,
-              runSpacing: 4,
-              children: [
-                if (activity.activityDate.isNotEmpty)
-                  _Meta(icon: Icons.event_rounded, text: activity.activityDate),
-                if (activity.startTime.isNotEmpty)
-                  _Meta(
-                      icon: Icons.schedule_rounded,
-                      text: _timeRange(activity)),
-                if (activity.location.isNotEmpty)
-                  _Meta(
-                      icon: Icons.place_rounded, text: activity.location),
-              ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppInk.rule),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      activity.title,
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppInk.heading,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  _StatusPill(isOpen: isOpen),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 14,
+                runSpacing: 4,
+                children: [
+                  if (activity.activityDate.isNotEmpty)
+                    _Meta(icon: Icons.event_rounded, text: activity.activityDate),
+                  if (activity.startTime.isNotEmpty)
+                    _Meta(
+                        icon: Icons.schedule_rounded,
+                        text: _timeRange(activity)),
+                  if (activity.location.isNotEmpty)
+                    _Meta(
+                        icon: Icons.place_rounded, text: activity.location),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    'Tap for actions',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppInk.accent.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.chevron_right_rounded,
+                      size: 16, color: AppInk.accent.withValues(alpha: 0.8)),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -459,3 +497,4 @@ class _ErrorView extends StatelessWidget {
     );
   }
 }
+

@@ -175,6 +175,48 @@ class AttendanceApi {
     );
   }
 
+  /// Per-activity attendance log (staff). Returns raw rows.
+  Future<({int total, List<Map<String, dynamic>> rows})> activityLogs({
+    required String baseUrl,
+    required String token,
+    required int activityId,
+    int limit = 0,
+    int offset = 0,
+    String search = '',
+  }) async {
+    final params = <String, String>{
+      if (limit > 0) 'limit': '$limit',
+      if (offset > 0) 'offset': '$offset',
+      if (search.isNotEmpty) 'search': search,
+    };
+    final qs = params.entries
+        .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+        .join('&');
+    final url =
+        '${_normalize(baseUrl)}/api/mobile/attendance/logs/$activityId${qs.isNotEmpty ? '?$qs' : ''}';
+    try {
+      final response = await _client.get(
+        Uri.parse(url),
+        headers: _headers(token),
+      );
+      final data = _decode(response);
+      if (data['ok'] == true) {
+        final list = (data['rows'] as List? ?? [])
+            .map((e) => e as Map<String, dynamic>)
+            .toList();
+        return (
+          total: (data['total'] as num?)?.toInt() ?? list.length,
+          rows: list,
+        );
+      }
+      throw ApiException((data['message'] ?? 'Failed').toString());
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
   // ─── Activity management (staff) ────────────────────────────────────────
 
   /// Create a new activity. Staff only.

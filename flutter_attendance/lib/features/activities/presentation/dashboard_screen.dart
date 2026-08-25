@@ -9,13 +9,15 @@ import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
 import '../../misc/data/misc_api.dart';
 import '../../misc/domain/misc_models.dart';
+import 'activity_detail_sheet.dart';
 
 /// Student dashboard: welcome header, quick stats, announcements feed,
 /// and a link to the full activities list.
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, required this.session});
+  const DashboardScreen({super.key, required this.session, this.menuButton});
 
   final AppSession session;
+  final Widget? menuButton;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -69,11 +71,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final openCount = _activities.where((a) => a.isOpen).length;
-
     return AppScaffold(
       title: 'Dashboard',
       showBackButton: false,
+      leading: widget.menuButton,
       actions: const [NotificationBell()],
       body: Column(
         children: [
@@ -109,31 +110,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         // ── Welcome header ──────────────────────────────
                         _WelcomeHeader(
                           name: widget.session.displayName,
-                          school: widget.session.schoolName,
-                        ),
-                        const SizedBox(height: 20),
-
-                        // ── Quick stats ────────────────────────────────
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _StatCard(
-                                icon: Icons.event_available_rounded,
-                                label: 'Open now',
-                                value: '$openCount',
-                                tone: AppInk.positive,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _StatCard(
-                                icon: Icons.event_note_rounded,
-                                label: 'Total',
-                                value: '${_activities.length}',
-                                tone: AppInk.accent,
-                              ),
-                            ),
-                          ],
                         ),
                         const SizedBox(height: 24),
 
@@ -157,7 +133,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           const SizedBox(height: 10),
                           ..._activities
                               .take(3)
-                              .map((a) => _ActivityMiniCard(activity: a)),
+                              .map((a) => _ActivityMiniCard(
+                                    activity: a,
+                                    session: widget.session,
+                                  )),
                         ],
                       ],
                     ),
@@ -170,115 +149,107 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 class _WelcomeHeader extends StatelessWidget {
-  const _WelcomeHeader({required this.name, required this.school});
+  const _WelcomeHeader({required this.name});
   final String name;
-  final String school;
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    if (hour < 21) return 'Good evening';
+    return 'Good night';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(
-          'Welcome,',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppInk.muted,
+        const _WavingHand(),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${_greeting()},',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppInk.muted,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: AppInk.heading,
+                  height: 1.15,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          name,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            color: AppInk.heading,
-            height: 1.15,
-          ),
-        ),
-        if (school.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            school,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppInk.muted,
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
       ],
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.tone,
-  });
+/// Animated waving hand emoji.
+class _WavingHand extends StatefulWidget {
+  const _WavingHand();
 
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color tone;
+  @override
+  State<_WavingHand> createState() => _WavingHandState();
+}
+
+class _WavingHandState extends State<_WavingHand>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    // Wave 3 times then stop.
+    _ctrl.addStatusListener((status) {
+      if (status == AnimationStatus.completed && _ctrl.value < 1.0) {
+        // no-op
+      }
+    });
+    _ctrl.repeat(reverse: true);
+    // Stop after ~4 seconds.
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) _ctrl.stop();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppInk.rule),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: tone.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: tone, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppInk.heading,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppInk.muted,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) {
+        return Transform.rotate(
+          angle: (_ctrl.value - 0.5) * 0.6,
+          child: child,
+        );
+      },
+      child: const Text(
+        '👋',
+        style: TextStyle(fontSize: 32),
       ),
     );
   }
@@ -433,80 +404,87 @@ class _AnnouncementCard extends StatelessWidget {
 }
 
 class _ActivityMiniCard extends StatelessWidget {
-  const _ActivityMiniCard({required this.activity});
+  const _ActivityMiniCard({required this.activity, required this.session});
   final Activity activity;
+  final AppSession session;
 
   @override
   Widget build(BuildContext context) {
     final isOpen = activity.isOpen;
     final color = isOpen ? AppInk.positive : AppInk.muted;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppInk.rule),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  activity.title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppInk.heading,
+    return GestureDetector(
+      onTap: () => showActivityDetailSheet(context, activity, session),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppInk.rule),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    activity.title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppInk.heading,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  activity.activityDate,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppInk.muted,
+                  const SizedBox(height: 3),
+                  Text(
+                    activity.activityDate,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppInk.muted,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  isOpen ? 'Open' : 'Closed',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: color,
+                  const SizedBox(width: 5),
+                  Text(
+                    isOpen ? 'Open' : 'Closed',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 6),
+            Icon(Icons.chevron_right_rounded,
+                size: 18, color: AppInk.muted),
+          ],
+        ),
       ),
     );
   }

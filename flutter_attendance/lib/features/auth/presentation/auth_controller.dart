@@ -140,6 +140,80 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  Future<String?> forgotPasswordManual({
+    required String email,
+    required String identifier,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    _error = null;
+    if (_baseUrl.isEmpty) {
+      return 'No school URL set. Go back and enter your school URL.';
+    }
+    try {
+      await _api.forgotPasswordManual(
+        baseUrl: _baseUrl,
+        email: email.trim(),
+        identifier: identifier.trim(),
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
+      );
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<String?> register({
+    required String studentNumber,
+    required String firstName,
+    String middleName = '',
+    required String lastName,
+    String nameExtn = '',
+    String sex = '',
+    String birthDate = '',
+    required String email,
+    String contactNo = '',
+    String course1 = '',
+    String major1 = '',
+    required String yearLevel,
+    String section = '',
+    required String password,
+    required String confirmPassword,
+  }) async {
+    _error = null;
+    if (_baseUrl.isEmpty) {
+      return 'No school URL set. Go back and enter your school URL.';
+    }
+    try {
+      await _api.register(
+        baseUrl: _baseUrl,
+        studentNumber: studentNumber,
+        firstName: firstName,
+        middleName: middleName,
+        lastName: lastName,
+        nameExtn: nameExtn,
+        sex: sex,
+        birthDate: birthDate,
+        email: email,
+        contactNo: contactNo,
+        course1: course1,
+        major1: major1,
+        yearLevel: yearLevel,
+        section: section,
+        password: password,
+        confirmPassword: confirmPassword,
+      );
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
   Future<void> logout() async {
     final s = _session;
     if (s != null) {

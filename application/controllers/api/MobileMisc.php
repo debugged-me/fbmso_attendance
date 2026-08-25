@@ -593,6 +593,493 @@ class MobileMisc extends MobileApi
         return $this->json(['ok' => true, 'expenses' => $out, 'count' => count($out)]);
     }
 
+    // ─── Expenses management (admin CRUD) ──────────────────────────────────
+
+    /** Admin: create an expense. */
+    public function expenses_create()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $desc       = trim((string)($p['Description'] ?? ''));
+        $amount     = trim((string)($p['Amount'] ?? ''));
+        $responsible= trim((string)($p['Responsible'] ?? ''));
+        $date       = trim((string)($p['ExpenseDate'] ?? ''));
+        $category   = trim((string)($p['Category'] ?? ''));
+
+        if ($desc === '' || $amount === '' || $date === '') {
+            return $this->json(['ok' => false, 'message' => 'Description, amount, and date are required.'], 422);
+        }
+
+        $ok = $this->db->insert('expenses', [
+            'Description' => $desc,
+            'Amount' => $amount,
+            'Responsible' => $responsible,
+            'ExpenseDate' => $date,
+            'Category' => $category,
+        ]);
+        if (!$ok) {
+            return $this->json(['ok' => false, 'message' => 'Failed to save.'], 500);
+        }
+        return $this->json(['ok' => true, 'message' => 'Expense saved.']);
+    }
+
+    /** Admin: update an expense. */
+    public function expenses_update()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $id = (int)($p['expensesid'] ?? 0);
+        if ($id <= 0) {
+            return $this->json(['ok' => false, 'message' => 'Invalid expense ID.'], 422);
+        }
+
+        $data = [];
+        if (isset($p['Description'])) $data['Description'] = trim((string)$p['Description']);
+        if (isset($p['Amount'])) $data['Amount'] = trim((string)$p['Amount']);
+        if (isset($p['Responsible'])) $data['Responsible'] = trim((string)$p['Responsible']);
+        if (isset($p['ExpenseDate'])) $data['ExpenseDate'] = trim((string)$p['ExpenseDate']);
+        if (isset($p['Category'])) $data['Category'] = trim((string)$p['Category']);
+
+        if (empty($data)) {
+            return $this->json(['ok' => false, 'message' => 'Nothing to update.'], 422);
+        }
+
+        $this->db->where('expensesid', $id)->update('expenses', $data);
+        return $this->json(['ok' => true, 'message' => 'Expense updated.']);
+    }
+
+    /** Admin: delete an expense. */
+    public function expenses_delete()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $id = (int)($p['expensesid'] ?? 0);
+        if ($id <= 0) {
+            return $this->json(['ok' => false, 'message' => 'Invalid expense ID.'], 422);
+        }
+
+        $this->db->where('expensesid', $id)->delete('expenses');
+        return $this->json(['ok' => true, 'message' => 'Expense deleted.']);
+    }
+
+    /** Admin: list expense categories. */
+    public function expenses_categories()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $rows = $this->db->get('expensescategory')->result();
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'id' => (int)($r->categoryID ?? $r->id ?? 0),
+                'category' => (string)($r->Category ?? $r->category ?? ''),
+            ];
+        }
+        return $this->json(['ok' => true, 'categories' => $out]);
+    }
+
+    /** Admin: create an expense category. */
+    public function expenses_categories_create()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $category = trim((string)($p['Category'] ?? ''));
+        if ($category === '') {
+            return $this->json(['ok' => false, 'message' => 'Category name is required.'], 422);
+        }
+
+        $this->db->insert('expensescategory', ['Category' => $category]);
+        return $this->json(['ok' => true, 'message' => 'Category saved.']);
+    }
+
+    /** Admin: delete an expense category. */
+    public function expenses_categories_delete()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $id = (int)($p['categoryID'] ?? 0);
+        if ($id <= 0) {
+            return $this->json(['ok' => false, 'message' => 'Invalid category ID.'], 422);
+        }
+
+        $this->db->where('categoryID', $id)->delete('expensescategory');
+        return $this->json(['ok' => true, 'message' => 'Category deleted.']);
+    }
+
+    // ─── Personnel management (admin CRUD) ─────────────────────────────────
+
+    /** Admin: list ALL personnel (including inactive). */
+    public function personnel_all()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $rows = $this->db->order_by('sort_order', 'ASC')
+            ->order_by('full_name', 'ASC')
+            ->get('fbmso_personnels')->result();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'id'         => (int)$r->id,
+                'full_name'  => (string)$r->full_name,
+                'title'      => (string)$r->title,
+                'bio'        => (string)($r->bio ?? ''),
+                'photo_url'  => $this->file_url('upload/banners/' . ltrim((string)($r->photo ?? ''), '/')),
+                'sort_order' => (int)$r->sort_order,
+                'is_active'  => (int)($r->is_active ?? 1),
+            ];
+        }
+        return $this->json(['ok' => true, 'personnel' => $out]);
+    }
+
+    /** Admin: save (create or update) a personnel. */
+    public function personnel_save()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $id = (int)($p['id'] ?? 0);
+        $data = [
+            'full_name'  => trim((string)($p['full_name'] ?? '')),
+            'title'      => trim((string)($p['title'] ?? '')),
+            'bio'        => (string)($p['bio'] ?? ''),
+            'sort_order' => (int)($p['sort_order'] ?? 100),
+            'is_active'  => (int)($p['is_active'] ?? 1),
+        ];
+
+        if ($data['full_name'] === '') {
+            return $this->json(['ok' => false, 'message' => 'Full name is required.'], 422);
+        }
+
+        if ($id > 0) {
+            $this->db->where('id', $id)->update('fbmso_personnels', $data);
+        } else {
+            $this->db->insert('fbmso_personnels', $data);
+            $id = (int)$this->db->insert_id();
+        }
+
+        return $this->json(['ok' => true, 'id' => $id, 'message' => 'Saved successfully.']);
+    }
+
+    /** Admin: delete a personnel. */
+    public function personnel_delete()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $id = (int)($p['id'] ?? 0);
+        if ($id <= 0) {
+            return $this->json(['ok' => false, 'message' => 'Invalid ID.'], 422);
+        }
+        $this->db->where('id', $id)->delete('fbmso_personnels');
+        return $this->json(['ok' => true, 'message' => 'Removed.']);
+    }
+
+    /** Admin: toggle personnel active/inactive. */
+    public function personnel_toggle()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $id = (int)($p['id'] ?? 0);
+        $active = (int)($p['is_active'] ?? 1);
+        if ($id <= 0) {
+            return $this->json(['ok' => false, 'message' => 'Invalid ID.'], 422);
+        }
+        $this->db->where('id', $id)->update('fbmso_personnels', ['is_active' => $active]);
+        return $this->json(['ok' => true, 'message' => 'Toggled.']);
+    }
+
+    // ─── User Accounts (admin) ─────────────────────────────────────────────
+
+    /** Admin: list all user accounts. */
+    public function user_accounts()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $rows = $this->db->select('username, IDNumber, fName, mName, lName, email, position, acctStat, dateCreated, avatar')
+            ->order_by('dateCreated', 'DESC')
+            ->get('o_users')->result();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'id'          => 0,
+                'username'    => (string)($r->username ?? ''),
+                'id_number'   => (string)($r->IDNumber ?? ''),
+                'first_name'  => (string)($r->fName ?? ''),
+                'middle_name' => (string)($r->mName ?? ''),
+                'last_name'   => (string)($r->lName ?? ''),
+                'full_name'   => trim(($r->lName ?? '') . ', ' . ($r->fName ?? '')),
+                'email'       => (string)($r->email ?? ''),
+                'position'    => (string)($r->position ?? ''),
+                'status'      => (string)($r->acctStat ?? ''),
+                'date_created'=> (string)($r->dateCreated ?? ''),
+                'avatar'      => $this->file_url('upload/' . ltrim((string)($r->avatar ?? 'avatar.png'), '/')),
+            ];
+        }
+        return $this->json(['ok' => true, 'users' => $out]);
+    }
+
+    /** Admin: create a new user account. */
+    public function user_accounts_create()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $username  = trim((string)($p['username'] ?? ''));
+        $idNumber  = trim((string)($p['IDNumber'] ?? ''));
+        $password  = (string)($p['password'] ?? '');
+        $acctLevel = trim((string)($p['acctLevel'] ?? ''));
+        $fName     = trim((string)($p['fName'] ?? ''));
+        $mName     = trim((string)($p['mName'] ?? ''));
+        $lName     = trim((string)($p['lName'] ?? ''));
+        $email     = trim((string)($p['email'] ?? ''));
+
+        if ($username === '' || $password === '' || $acctLevel === '' || $fName === '' || $lName === '' || $email === '' || $idNumber === '') {
+            return $this->json(['ok' => false, 'message' => 'Missing required fields.'], 422);
+        }
+
+        $exists = $this->db->where('username', $username)->count_all_results('o_users') > 0;
+        if ($exists) {
+            return $this->json(['ok' => false, 'message' => 'The username is already taken.'], 409);
+        }
+
+        $ok = $this->db->insert('o_users', [
+            'username'    => $username,
+            'password'    => sha1($password),
+            'position'    => $acctLevel,
+            'fName'       => $fName,
+            'mName'       => $mName,
+            'lName'       => $lName,
+            'email'       => $email,
+            'avatar'      => 'avatar.png',
+            'acctStat'    => 'active',
+            'dateCreated' => date('Y-m-d'),
+            'IDNumber'    => $idNumber,
+        ]);
+
+        if (!$ok) {
+            return $this->json(['ok' => false, 'message' => 'Failed to create account.'], 500);
+        }
+        return $this->json(['ok' => true, 'message' => 'Account created successfully.']);
+    }
+
+    /** Admin: delete a user account. */
+    public function user_accounts_delete()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $username = trim((string)($p['username'] ?? ''));
+
+        if ($username === '') {
+            return $this->json(['ok' => false, 'message' => 'Username is required.'], 422);
+        }
+
+        // Prevent self-deletion
+        if ($username === (string)($tokenRow['username'] ?? '')) {
+            return $this->json(['ok' => false, 'message' => 'You cannot delete your own account.'], 403);
+        }
+
+        $this->db->where('username', $username)->delete('o_users');
+        return $this->json(['ok' => true, 'message' => 'Account deleted.']);
+    }
+
+    // ─── Registered Students (profileList) ─────────────────────────────────
+
+    /** Admin: list registered students (from studentsignup). */
+    public function registered_students()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $limit = (int)$this->input->get('limit', true) ?: 100;
+        $offset = (int)$this->input->get('offset', true) ?: 0;
+        $search = trim((string)$this->input->get('search', true));
+
+        $this->db->from('studentsignup');
+        if ($search !== '') {
+            $this->db->group_start()
+                ->like('StudentNumber', $search)
+                ->or_like('LastName', $search)
+                ->or_like('FirstName', $search)
+                ->or_like('email', $search)
+                ->group_end();
+        }
+        $total = $this->db->count_all_results('', false);
+
+        $this->db->select('StudentNumber, FirstName, MiddleName, LastName, nameExtn, birthDate, email, contactNo, Course1, Major1, yearLevel, section, Status, EnrollmentDate')
+            ->order_by('LastName', 'ASC')
+            ->order_by('FirstName', 'ASC')
+            ->limit($limit, $offset);
+        $rows = $this->db->get()->result();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $ln = trim((string)($r->LastName ?? ''));
+            $fn = trim((string)($r->FirstName ?? ''));
+            $mn = trim((string)($r->MiddleName ?? ''));
+            $out[] = [
+                'student_number'  => (string)($r->StudentNumber ?? ''),
+                'first_name'      => $fn,
+                'middle_name'     => $mn,
+                'last_name'       => $ln,
+                'name_extn'       => (string)($r->nameExtn ?? ''),
+                'full_name'       => trim($ln . ($ln ? ', ' : '') . $fn . ($mn ? ' ' . $mn : '')),
+                'birth_date'      => (string)($r->birthDate ?? ''),
+                'email'           => (string)($r->email ?? ''),
+                'contact_no'      => (string)($r->contactNo ?? ''),
+                'course'          => (string)($r->Course1 ?? ''),
+                'major'           => (string)($r->Major1 ?? ''),
+                'year_level'      => (string)($r->yearLevel ?? ''),
+                'section'         => (string)($r->section ?? ''),
+                'status'          => (string)($r->Status ?? ''),
+                'enrollment_date' => (string)($r->EnrollmentDate ?? ''),
+            ];
+        }
+
+        return $this->json([
+            'ok' => true,
+            'total' => (int)$total,
+            'rows' => $out,
+            'limit' => $limit,
+            'offset' => $offset,
+        ]);
+    }
+
+    /** Admin: delete a registered student (from studentsignup + o_users). */
+    public function registered_students_delete()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $p = $this->read_payload();
+        $studentNumber = trim((string)($p['student_number'] ?? ''));
+
+        if ($studentNumber === '') {
+            return $this->json(['ok' => false, 'message' => 'Student number is required.'], 422);
+        }
+
+        $this->db->trans_start();
+        $this->db->where('StudentNumber', $studentNumber)->delete('studentsignup');
+        $this->db->where('username', $studentNumber)->delete('o_users');
+        $this->db->trans_complete();
+
+        if (!$this->db->trans_status()) {
+            return $this->json(['ok' => false, 'message' => 'Failed to delete.'], 500);
+        }
+        return $this->json(['ok' => true, 'message' => 'Student deleted.']);
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────
 
     private function audience_for(string $position): string

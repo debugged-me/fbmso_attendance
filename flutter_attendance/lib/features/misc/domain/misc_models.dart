@@ -126,6 +126,7 @@ class Personnel {
     required this.bio,
     required this.photoUrl,
     required this.sortOrder,
+    this.isActive = 1,
   });
 
   final int id;
@@ -134,14 +135,16 @@ class Personnel {
   final String bio;
   final String photoUrl;
   final int sortOrder;
+  final int isActive;
 
   factory Personnel.fromJson(Map<String, dynamic> j) => Personnel(
-        id: (j['id'] as num?)?.toInt() ?? 0,
+        id: int.tryParse((j['id'] ?? '0').toString()) ?? 0,
         fullName: (j['full_name'] ?? '').toString(),
         title: (j['title'] ?? '').toString(),
         bio: (j['bio'] ?? '').toString(),
         photoUrl: (j['photo_url'] ?? '').toString(),
-        sortOrder: (j['sort_order'] as num?)?.toInt() ?? 100,
+        sortOrder: int.tryParse((j['sort_order'] ?? '100').toString()) ?? 100,
+        isActive: int.tryParse((j['is_active'] ?? '1').toString()) ?? 1,
       );
 
   Map<String, dynamic> toJson() => {
@@ -151,5 +154,176 @@ class Personnel {
         'bio': bio,
         'photo_url': photoUrl,
         'sort_order': sortOrder,
+        'is_active': isActive,
       };
+}
+
+/// One row from the enrolled-students masterlist.
+class MasterlistEntry {
+  const MasterlistEntry({
+    required this.studentNumber,
+    required this.firstName,
+    required this.lastName,
+    required this.fullName,
+    required this.course,
+    required this.major,
+    required this.status,
+    required this.enrollmentDate,
+  });
+
+  final String studentNumber;
+  final String firstName;
+  final String lastName;
+  final String fullName;
+  final String course;
+  final String major;
+  final String status;
+  final String enrollmentDate;
+
+  factory MasterlistEntry.fromJson(Map<String, dynamic> j) => MasterlistEntry(
+        studentNumber: (j['student_number'] ?? '').toString(),
+        firstName: (j['first_name'] ?? '').toString(),
+        lastName: (j['last_name'] ?? '').toString(),
+        fullName: (j['full_name'] ?? '').toString(),
+        course: (j['course'] ?? '').toString(),
+        major: (j['major'] ?? '').toString(),
+        status: (j['status'] ?? '').toString(),
+        enrollmentDate: (j['enrollment_date'] ?? '').toString(),
+      );
+}
+
+/// One expense row from the accounting expenses endpoint.
+class ExpenseEntry {
+  const ExpenseEntry({
+    required this.id,
+    required this.description,
+    required this.amount,
+    required this.date,
+    required this.category,
+  });
+
+  final int id;
+  final String description;
+  final String amount;
+  final String date;
+  final String category;
+
+  factory ExpenseEntry.fromJson(Map<String, dynamic> j) => ExpenseEntry(
+        id: int.tryParse((j['expensesid'] ?? j['id'] ?? '0').toString()) ?? 0,
+        description: (j['description'] ?? j['Description'] ?? '').toString(),
+        amount: (j['amount'] ?? j['Amount'] ?? '0').toString(),
+        date: (j['date'] ?? j['Date'] ?? j['ExpenseDate'] ?? j['date_added'] ?? '').toString(),
+        category: (j['category'] ?? j['Category'] ?? j['categoryname'] ?? '').toString(),
+      );
+}
+
+/// An expense category from the expensescategory table.
+class ExpenseCategory {
+  const ExpenseCategory({required this.id, required this.category});
+  final int id;
+  final String category;
+
+  factory ExpenseCategory.fromJson(Map<String, dynamic> j) => ExpenseCategory(
+        id: int.tryParse((j['id'] ?? '0').toString()) ?? 0,
+        category: (j['category'] ?? j['Category'] ?? '').toString(),
+      );
+}
+
+/// A user account (admin/staff) from the user accounts list.
+class UserAccount {
+  const UserAccount({
+    required this.username,
+    required this.idNumber,
+    required this.firstName,
+    required this.middleName,
+    required this.lastName,
+    required this.fullName,
+    required this.email,
+    required this.position,
+    required this.status,
+    required this.dateCreated,
+    required this.avatar,
+  });
+
+  final String username;
+  final String idNumber;
+  final String firstName;
+  final String middleName;
+  final String lastName;
+  final String fullName;
+  final String email;
+  final String position;
+  final String status;
+  final String dateCreated;
+  final String avatar;
+
+  factory UserAccount.fromJson(Map<String, dynamic> j) => UserAccount(
+        username: (j['username'] ?? '').toString(),
+        idNumber: (j['id_number'] ?? '').toString(),
+        firstName: (j['first_name'] ?? '').toString(),
+        middleName: (j['middle_name'] ?? '').toString(),
+        lastName: (j['last_name'] ?? '').toString(),
+        fullName: (j['full_name'] ?? '').toString(),
+        email: (j['email'] ?? '').toString(),
+        position: (j['position'] ?? '').toString(),
+        status: (j['status'] ?? '').toString(),
+        dateCreated: (j['date_created'] ?? '').toString(),
+        avatar: (j['avatar'] ?? '').toString(),
+      );
+}
+
+/// A registered student from the studentsignup table.
+class RegisteredStudent {
+  const RegisteredStudent({
+    required this.studentNumber,
+    required this.firstName,
+    required this.middleName,
+    required this.lastName,
+    required this.nameExtn,
+    required this.fullName,
+    required this.birthDate,
+    required this.email,
+    required this.contactNo,
+    required this.course,
+    required this.major,
+    required this.yearLevel,
+    required this.section,
+    required this.status,
+    required this.enrollmentDate,
+  });
+
+  final String studentNumber;
+  final String firstName;
+  final String middleName;
+  final String lastName;
+  final String nameExtn;
+  final String fullName;
+  final String birthDate;
+  final String email;
+  final String contactNo;
+  final String course;
+  final String major;
+  final String yearLevel;
+  final String section;
+  final String status;
+  final String enrollmentDate;
+
+  factory RegisteredStudent.fromJson(Map<String, dynamic> j) =>
+      RegisteredStudent(
+        studentNumber: (j['student_number'] ?? '').toString(),
+        firstName: (j['first_name'] ?? '').toString(),
+        middleName: (j['middle_name'] ?? '').toString(),
+        lastName: (j['last_name'] ?? '').toString(),
+        nameExtn: (j['name_extn'] ?? '').toString(),
+        fullName: (j['full_name'] ?? '').toString(),
+        birthDate: (j['birth_date'] ?? '').toString(),
+        email: (j['email'] ?? '').toString(),
+        contactNo: (j['contact_no'] ?? '').toString(),
+        course: (j['course'] ?? '').toString(),
+        major: (j['major'] ?? '').toString(),
+        yearLevel: (j['year_level'] ?? '').toString(),
+        section: (j['section'] ?? '').toString(),
+        status: (j['status'] ?? '').toString(),
+        enrollmentDate: (j['enrollment_date'] ?? '').toString(),
+      );
 }
