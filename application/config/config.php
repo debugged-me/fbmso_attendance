@@ -1,10 +1,48 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
-// $config['base_url'] = 'https://college-my.wcmanila.edu.ph/';
-// $config['base_url'] = 'http://localhost/attendance-srms/';
-// $config['base_url'] = 'https://fbmso.softtechco.biz/';
-$config['base_url'] = 'http://localhost/fbmso_attendance/';
+/*
+|--------------------------------------------------------------------------
+| Base Site URL (auto-detected)
+|--------------------------------------------------------------------------
+|
+| The base URL is resolved from the incoming request so the same codebase
+| runs on localhost, staging and production without editing this file.
+|
+| To pin it explicitly (CLI/cron, or when running behind an unusual proxy),
+| set the BASE_URL environment variable, e.g. in .htaccess:
+|
+|     SetEnv BASE_URL https://fbmso.softtechco.biz/
+|
+*/
+if (($base_url = getenv('BASE_URL')) !== FALSE && $base_url !== '') {
+    $config['base_url'] = rtrim($base_url, '/') . '/';
+} elseif (isset($_SERVER['HTTP_HOST']) && $_SERVER['HTTP_HOST'] !== '') {
+    // Scheme: honour the proxy/load balancer headers when present.
+    $is_https = (! empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
+        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
+        || (isset($_SERVER['HTTP_X_FORWARDED_SSL']) && strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) === 'on')
+        || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443);
+
+    // Host: strip anything that is not a valid host/port pair.
+    $host = $_SERVER['HTTP_HOST'];
+    if (! preg_match('/^[a-z0-9.\-]+(:[0-9]+)?$/i', $host)) {
+        $host = isset($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : 'localhost';
+    }
+
+    // Sub-directory the front controller lives in (empty when at the docroot).
+    $script = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
+    $path   = str_replace('\\', '/', dirname($script));
+    $path   = ($path === '/' || $path === '.') ? '' : rtrim($path, '/');
+
+    $config['base_url'] = ($is_https ? 'https' : 'http') . '://' . $host . $path . '/';
+    unset($is_https, $host, $script, $path);
+} else {
+    // CLI / cron fallback.
+    $config['base_url'] = 'http://localhost/fbmso_attendance/';
+}
+unset($base_url);
+
 $config['enable_hooks'] = TRUE;
 $config['maintenance_mode'] = False;
 
@@ -375,7 +413,8 @@ $config['sess_regenerate_destroy'] = FALSE;
 $config['cookie_prefix']    = '';
 $config['cookie_domain']    = '';
 $config['cookie_path']        = '/';
-$config['cookie_secure']    = FALSE;
+// Only flag cookies as secure when the request actually arrived over HTTPS.
+$config['cookie_secure']    = (strpos($config['base_url'], 'https://') === 0);
 $config['cookie_httponly']     = FALSE;
 
 /*
