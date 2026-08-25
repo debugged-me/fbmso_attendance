@@ -133,23 +133,7 @@
         ]
       });
 
-      var successMessage = <?= json_encode($flashSuccess ?? null); ?>;
-      var dangerMessage = <?= json_encode($flashDanger ?? null); ?>;
-      if (dangerMessage && window.UI && typeof window.UI.fire === 'function') {
-        window.UI.fire({
-          icon: 'error',
-          title: 'Error',
-          text: dangerMessage,
-          confirmButtonColor: '#348cd4'
-        });
-      } else if (successMessage && window.UI && typeof window.UI.fire === 'function') {
-        window.UI.fire({
-          icon: 'success',
-          title: 'Success',
-          text: successMessage,
-          confirmButtonColor: '#348cd4'
-        });
-      }
+      // Flash messages are shown by the shared toast bridge (includes/ui_kit.php).
     });
   </script>
 </body>

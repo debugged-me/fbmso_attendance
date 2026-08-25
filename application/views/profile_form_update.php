@@ -439,41 +439,7 @@ $('#city').on('change', function () {
 });
 </script>
 <script>
-(function () {
-    var successMessage = <?= json_encode($flashSuccess ?? null); ?>;
-    var dangerMessage  = <?= json_encode($flashDanger ?? null); ?>;
-
-    if (!successMessage && !dangerMessage) {
-        return;
-    }
-
-    var options = null;
-    if (dangerMessage) {
-        options = {
-            icon: 'error',
-            title: 'Error',
-            text: dangerMessage,
-            confirmButtonColor: '#348cd4'
-        };
-    } else if (successMessage) {
-        options = {
-            icon: 'success',
-            title: 'Success',
-            text: successMessage,
-            confirmButtonColor: '#348cd4'
-        };
-    }
-
-    if (!options) {
-        return;
-    }
-
-    if (window.UI && typeof window.UI.fire === 'function') {
-        window.UI.fire(options);
-    } else if (options.text) {
-        window.alert(options.text);
-    }
-})();
+// Flash messages are shown by the shared toast bridge (includes/ui_kit.php).
 </script>
 </body>
 </html>

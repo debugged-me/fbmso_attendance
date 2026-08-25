@@ -704,7 +704,7 @@
                             $('#major').html(data);
                         },
                         error: function() {
-                            alert('Failed to fetch majors. Please try again.');
+                            UI.error('Could not load the major list. Please try again.');
                         }
                     });
                 } else {

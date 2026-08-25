@@ -579,36 +579,7 @@ $flashDanger  = $this->session->flashdata('danger');
     });
   </script>
   <script>
-    (function() {
-      var successMessage = <?= json_encode($flashSuccess ?? ''); ?>;
-      var dangerMessage = <?= json_encode($flashDanger ?? ''); ?>;
-
-      if (typeof UI === 'undefined') {
-        return;
-      }
-
-      if (!successMessage && !dangerMessage) {
-        return;
-      }
-
-      document.addEventListener('DOMContentLoaded', function() {
-        if (successMessage) {
-          UI.fire({
-            icon: 'success',
-            title: 'Profile Updated',
-            text: successMessage,
-            confirmButtonColor: '#2563eb'
-          });
-        } else if (dangerMessage) {
-          UI.fire({
-            icon: 'error',
-            title: 'Update Failed',
-            text: dangerMessage,
-            confirmButtonColor: '#dc2626'
-          });
-        }
-      });
-    })();
+    // Flash messages are shown by the shared toast bridge (includes/ui_kit.php).
   </script>
 </body>
 

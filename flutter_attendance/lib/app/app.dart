@@ -8,7 +8,9 @@ import '../features/auth/domain/app_session.dart';
 import '../features/auth/presentation/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/welcome_screen.dart';
-import '../features/home/presentation/home_shell.dart';
+import '../features/shell/presentation/instructor_shell.dart';
+import '../features/shell/presentation/staff_shell.dart';
+import '../features/shell/presentation/student_shell.dart';
 
 class FlutterAttendanceApp extends StatefulWidget {
   const FlutterAttendanceApp({super.key});
@@ -72,9 +74,9 @@ class _AuthFlow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Authenticated → role shell (Phase 2: temporary HomeShell).
+    // Authenticated → role-based shell.
     if (controller.isAuthenticated && controller.session != null) {
-      return HomeShell(
+      return _RoleShell(
         session: controller.session as AppSession,
         controller: controller,
       );
@@ -87,6 +89,27 @@ class _AuthFlow extends StatelessWidget {
 
     // First run / unpaired → URL entry.
     return WelcomeScreen(controller: controller);
+  }
+}
+
+/// Picks the shell based on the user's role bucket.
+class _RoleShell extends StatelessWidget {
+  const _RoleShell({required this.session, required this.controller});
+  final AppSession session;
+  final AuthController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final role = session.role;
+    if (role.isStudentLike) {
+      return StudentShell(session: session, controller: controller);
+    }
+    if (role.isInstructorLike) {
+      return InstructorShell(session: session, controller: controller);
+    }
+    // Admin, registrar, accounting, HR, guidance, medical, librarian,
+    // custodian, encoder, IT, academic officer, staff, unknown → StaffShell.
+    return StaffShell(session: session, controller: controller);
   }
 }
 

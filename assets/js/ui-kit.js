@@ -114,6 +114,19 @@
         window.setTimeout(finish, fallbackMs);
     }
 
+    /**
+     * Anything that appends to <body> must wait for <body> to exist. The kit is
+     * loaded in <head> without defer (so inline view scripts can see window.UI),
+     * which means a call can legitimately arrive before the body is parsed.
+     */
+    function whenBody(fn) {
+        if (document.body) {
+            fn();
+            return;
+        }
+        document.addEventListener('DOMContentLoaded', fn, { once: true });
+    }
+
     var ICONS = {
         success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
         error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
@@ -312,24 +325,26 @@
             }
         });
 
-        document.body.appendChild(backdrop);
-        lockScroll();
         openModals.push(handle);
         attachKeyListener();
-
         box.classList.add('uk-animating');
 
-        // Two frames: one for the browser to lay the node out, one to animate.
-        requestAnimationFrame(function () {
-            requestAnimationFrame(function () {
-                backdrop.classList.add('uk-in');
-                afterTransition(box, 400, function () { });
+        whenBody(function () {
+            document.body.appendChild(backdrop);
+            lockScroll();
 
-                var focusTarget = box.querySelector('[data-uk-autofocus]')
-                    || box.querySelector('.uk-input')
-                    || box.querySelector('.uk-btn-primary, .uk-btn-danger, .uk-btn-success')
-                    || box;
-                if (focusTarget && focusTarget.focus) focusTarget.focus();
+            // Two frames: one for the browser to lay the node out, one to animate.
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    backdrop.classList.add('uk-in');
+                    afterTransition(box, 400, function () { });
+
+                    var focusTarget = box.querySelector('[data-uk-autofocus]')
+                        || box.querySelector('.uk-input')
+                        || box.querySelector('.uk-btn-primary, .uk-btn-danger, .uk-btn-success')
+                        || box;
+                    if (focusTarget && focusTarget.focus) focusTarget.focus();
+                });
             });
         });
 
@@ -469,7 +484,7 @@
         node.setAttribute('role', 'region');
         node.setAttribute('aria-live', 'polite');
         node.setAttribute('aria-label', 'Notifications');
-        document.body.appendChild(node);
+        whenBody(function () { document.body.appendChild(node); });
         containers[position] = node;
         return node;
     }
@@ -486,6 +501,11 @@
 
         if (visible >= TOAST_MAX) {
             queue.push(o);
+            return null;
+        }
+
+        if (!document.body) {
+            whenBody(function () { renderToast(o); });
             return null;
         }
         return renderToast(o);
@@ -549,10 +569,12 @@
 
         containerFor(o.position).appendChild(node);
         node.classList.add('uk-animating');
-        requestAnimationFrame(function () {
+        whenBody(function () {
             requestAnimationFrame(function () {
-                node.classList.add('uk-in');
-                afterTransition(node, 350, function () { });
+                requestAnimationFrame(function () {
+                    node.classList.add('uk-in');
+                    afterTransition(node, 350, function () { });
+                });
             });
         });
 
@@ -682,17 +704,23 @@
             + (o.message ? '<div class="uk-busy-label">' + esc(o.message) + '</div>' : '')
             + (o.detail ? '<div class="uk-busy-sub">' + esc(o.detail) + '</div>' : '');
 
+        function reveal() {
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () { node.classList.add('uk-in'); });
+            });
+        }
+
         if (host) {
             host.classList.add('uk-busy-host');
             host.appendChild(node);
+            reveal();
         } else {
-            document.body.appendChild(node);
-            lockScroll();
+            whenBody(function () {
+                document.body.appendChild(node);
+                lockScroll();
+                reveal();
+            });
         }
-
-        requestAnimationFrame(function () {
-            requestAnimationFrame(function () { node.classList.add('uk-in'); });
-        });
 
         var closed = false;
         return {
@@ -754,7 +782,7 @@
     function progressEl() {
         if (progressNode) return progressNode;
         progressNode = el('div', 'uk-progress', '<span></span>');
-        document.body.appendChild(progressNode);
+        whenBody(function () { document.body.appendChild(progressNode); });
         return progressNode;
     }
 
@@ -842,13 +870,21 @@
     // is torn down if the browser restores the page from bfcache.
     var navBusy = null;
 
-    function showNavBusy(trigger) {
+    function showNavBusy(trigger, fallback) {
         if (navBusy) return;
         navBusy = busy({
-            message: trigger.getAttribute('data-ui-busy') || 'Loading…',
+            message: trigger.getAttribute('data-ui-busy') || fallback || 'Working…',
             detail: trigger.getAttribute('data-ui-busy-detail') || null
         });
         window.setTimeout(clearNavBusy, 20000);
+    }
+
+    /** Same overlay, for flows that confirm and navigate from their own JS. */
+    function navBusyMessage(message) {
+        if (navBusy) return navBusy;
+        navBusy = busy({ message: message || 'Working…' });
+        window.setTimeout(clearNavBusy, 20000);
+        return navBusy;
     }
 
     function clearNavBusy() {
@@ -897,6 +933,10 @@
                 icon: trigger.getAttribute('data-ui-confirm-icon') || 'warning'
             }).then(function (ok) {
                 if (!ok) return;
+                // Saying yes always leads to a navigation or a submit, so show
+                // the loader: it tells the user the click landed, and it blocks
+                // a second click on the same button while the page turns over.
+                showNavBusy(trigger);
                 trigger.setAttribute('data-uk-confirmed', '1');
                 if (trigger.tagName === 'A' && trigger.getAttribute('href')) {
                     window.location.href = trigger.href;
@@ -934,6 +974,7 @@
                 icon: form.getAttribute('data-ui-confirm-icon') || 'question'
             }).then(function (ok) {
                 if (!ok) return;
+                showNavBusy(form);
                 form.setAttribute('data-uk-confirmed', '1');
                 if (typeof form.requestSubmit === 'function') {
                     form.requestSubmit();
@@ -969,6 +1010,12 @@
 
         // loading
         busy: busy,
+
+        /**
+         * The page-turn overlay: shown after a confirmed action, cleared if the
+         * navigation never happens. Safe to call twice — the second is a no-op.
+         */
+        navBusy: navBusyMessage,
         buttonBusy: buttonBusy,
         progress: progress,
 
@@ -1004,15 +1051,13 @@
 
     window.UI = UI;
 
-    function boot() {
-        bindDeclarative();
-        watchTheme();
-    }
-
+    // Delegated listeners can attach immediately; the theme watcher needs the
+    // stylesheet link to exist, so it waits for the document to finish.
+    bindDeclarative();
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', boot);
+        document.addEventListener('DOMContentLoaded', watchTheme, { once: true });
     } else {
-        boot();
+        watchTheme();
     }
 
 })(window, document);

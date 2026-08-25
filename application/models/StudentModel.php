@@ -1676,6 +1676,13 @@ class StudentModel extends CI_Model
 
 	public function getsignProfile()
 	{
+		// Joins are plain equality on purpose. Wrapping both sides in
+		// LOWER(TRIM(...)) made every one of these joins unindexable and cost
+		// ~6.5s on 2,400 rows; the columns hold no untrimmed values and the
+		// collations are already case-insensitive, so it bought nothing.
+		// o_users.username is latin1 while the StudentNumber columns are
+		// utf8mb4 — CONVERT keeps each comparison in the charset of the side
+		// being looked up, so that side's index stays usable.
 		$sql = "
 			SELECT
 				TRIM(COALESCE(NULLIF(s.LastName, ''), NULLIF(sp.LastName, ''), NULLIF(ou.lName, ''), ''))   AS LastName,
@@ -1694,9 +1701,9 @@ class StudentModel extends CI_Model
 				'studentsignup'                                                                            AS source_table
 			FROM studentsignup s
 			LEFT JOIN o_users ou
-			  ON LOWER(TRIM(ou.username)) = LOWER(TRIM(s.StudentNumber))
+			  ON ou.username = CONVERT(s.StudentNumber USING latin1)
 			LEFT JOIN studeprofile sp
-			  ON LOWER(TRIM(sp.StudentNumber)) = LOWER(TRIM(s.StudentNumber))
+			  ON sp.StudentNumber = s.StudentNumber
 
 			UNION ALL
 
@@ -1717,12 +1724,12 @@ class StudentModel extends CI_Model
 				'o_users'                                                          AS source_table
 			FROM o_users ou
 			LEFT JOIN studeprofile sp
-			  ON LOWER(TRIM(sp.StudentNumber)) = LOWER(TRIM(ou.username))
+			  ON sp.StudentNumber = CONVERT(ou.username USING utf8mb4) COLLATE utf8mb4_unicode_ci
 			WHERE ou.position IN ('Student', 'Stude Applicant')
 			  AND NOT EXISTS (
 				  SELECT 1
 				  FROM studentsignup s
-				  WHERE LOWER(TRIM(s.StudentNumber)) = LOWER(TRIM(ou.username))
+				  WHERE s.StudentNumber = CONVERT(ou.username USING utf8mb4) COLLATE utf8mb4_unicode_ci
 			  )
 		";
 

@@ -27,8 +27,23 @@ $hook['pre_controller'] = array(
 | stop it before the method runs. See application/config/authguard.php.
 */
 $hook['post_controller_constructor'] = array(
-    'class'    => 'AuthGuardHook',
-    'function' => 'guard',
-    'filename' => 'AuthGuardHook.php',
-    'filepath' => 'hooks',
+
+    array(
+        'class'    => 'AuthGuardHook',
+        'function' => 'guard',
+        'filename' => 'AuthGuardHook.php',
+        'filepath' => 'hooks',
+    ),
+
+    /*
+    | Self-applying database indexes. Deploying the files is enough — no SQL
+    | to run by hand on production. After one successful pass this costs a
+    | single file_exists() per request. See application/libraries/Dbtuner.php.
+    */
+    array(
+        'class'    => 'DbTunerHook',
+        'function' => 'tune',
+        'filename' => 'DbTunerHook.php',
+        'filepath' => 'hooks',
+    ),
 );

@@ -996,7 +996,7 @@
                                                 });
                                             },
                                             error: function(xhr, status, error) {
-                                                alert("Error loading provinces: " + error);
+                                                UI.error("Could not load the province list. " + error, 'Loading failed');
                                             }
                                         });
 
@@ -1017,7 +1017,7 @@
                                                     success: function(data) {
                                                         $('#city').html('<option value="">Select City/Municipality</option>');
                                                         if (data.error) {
-                                                            alert(data.error);
+                                                            UI.error(data.error);
                                                             return;
                                                         }
                                                         $.each(data, function(index, city) {
@@ -1025,7 +1025,7 @@
                                                         });
                                                     },
                                                     error: function(xhr, status, error) {
-                                                        alert("Error loading cities: " + error);
+                                                        UI.error("Could not load the city list. " + error, 'Loading failed');
                                                     }
                                                 });
                                             } else {
@@ -1049,7 +1049,7 @@
                                                     success: function(data) {
                                                         $('#barangay').html('<option value="">Select Barangay</option>');
                                                         if (data.error) {
-                                                            alert(data.error);
+                                                            UI.error(data.error);
                                                             return;
                                                         }
                                                         $.each(data, function(index, barangay) {
@@ -1057,7 +1057,7 @@
                                                         });
                                                     },
                                                     error: function(xhr, status, error) {
-                                                        alert("Error loading barangays: " + error);
+                                                        UI.error("Could not load the barangay list. " + error, 'Loading failed');
                                                     }
                                                 });
                                             } else {

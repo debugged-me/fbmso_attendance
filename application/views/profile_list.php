@@ -62,6 +62,16 @@
                       </tr>
                     </thead>
                     <tbody>
+                      <?php
+                      // Hoisted: the same for every row, so compute it once
+                      // rather than rebuilding the array 2,400 times.
+                      $allowedRoles = ['head registrar', 'registrar', 'assistant registrar', 'admin', 'administrator'];
+                      $canDelete = in_array(
+                          strtolower(trim((string)($this->session->userdata('level') ?? ''))),
+                          $allowedRoles,
+                          true
+                      );
+                      ?>
                       <?php foreach ($data as $row): ?>
                         <?php
                         $ln = trim($row->LastName ?? '');
@@ -92,11 +102,6 @@
                             <a href="<?= view_signup_url($studno); ?>" class="btn btn-info btn-xs">
                               <i class="mdi mdi-eye-outline"></i> View
                             </a>
-                            <?php
-                            $allowed = ['Head Registrar', 'Registrar', 'Assistant Registrar', 'Admin', 'Administrator'];
-                            $role = strtolower((string)($this->session->userdata('level') ?? ''));
-                            $canDelete = in_array($role, array_map('strtolower', $allowed), true);
-                            ?>
                             <?php if ($canDelete): ?>
                               <?php
                               $resetHref = base_url('Page/resetPass?u=' . rawurlencode((string)$studno) . '&return_to=profileList');
@@ -149,42 +154,7 @@
   </script>
   <script>
     (function() {
-      var successMessage = <?= json_encode($flashSuccess ?? null); ?>;
-      var dangerMessage = <?= json_encode($flashDanger ?? null); ?>;
-
-      function fireAlert(options) {
-        if (!options) {
-          return;
-        }
-        if (window.UI && typeof window.UI.fire === 'function') {
-          return window.UI.fire(options);
-        }
-        if (options.text) {
-          window.alert(options.text);
-        }
-        return Promise.resolve();
-      }
-
-      var alertOptions = null;
-      if (dangerMessage) {
-        alertOptions = {
-          icon: 'error',
-          title: 'Error',
-          text: dangerMessage,
-          confirmButtonColor: '#348cd4'
-        };
-      } else if (successMessage) {
-        alertOptions = {
-          icon: 'success',
-          title: 'Success',
-          text: successMessage,
-          confirmButtonColor: '#348cd4'
-        };
-      }
-
-      if (alertOptions) {
-        fireAlert(alertOptions);
-      }
+      // Flash messages are shown by the shared toast bridge (includes/ui_kit.php).
 
       function closestByClass(element, className) {
         while (element && element !== document) {
@@ -217,6 +187,7 @@
             }
           }
           if (ok) {
+            if (window.UI && UI.navBusy) UI.navBusy('Deleting ' + studno + '…');
             form.submit();
           }
         };
@@ -258,6 +229,7 @@
             }
           }
           if (ok) {
+            if (window.UI && UI.navBusy) UI.navBusy('Resetting the password…');
             window.location.href = href;
           }
         };

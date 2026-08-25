@@ -28,6 +28,10 @@
   }
 
   function showError(message) {
+    if (window.UI && UI.error) {
+      UI.error(message);
+      return;
+    }
     window.alert(message);
   }
 

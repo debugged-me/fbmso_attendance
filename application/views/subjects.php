@@ -562,7 +562,7 @@
                 },
                 error: function(xhr, status, error) {
                     console.error("Error fetching year levels:", error); // Debugging
-                    alert('Failed to fetch year levels. Please try again.');
+                    UI.error('Could not load the year levels. Please try again.');
                 }
             });
         }

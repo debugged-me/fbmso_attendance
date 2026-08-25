@@ -4,12 +4,61 @@ RewriteEngine On
 RewriteCond %{HTTP_HOST} ^(www\.)?fbmso\.softtechco\.biz$ [NC]
 RewriteRule ^(.*)$ https://fbmso.srmsportal.com/$1 [R=301,L]
 
-# Disable browser caching for CSS and JS during development
-<FilesMatch "\.(css|js)$">
-  Header set Cache-Control "no-cache, no-store, must-revalidate"
-  Header set Pragma "no-cache"
-  Header set Expires "0"
-</FilesMatch>
+# ---------------------------------------------------------------------------
+# Static assets
+#
+# This used to be `no-store` on every .css and .js "during development", which
+# meant ~4 MB of stylesheets and scripts was re-downloaded on EVERY page view.
+# That is the single biggest reason pages felt slow everywhere.
+#
+# Vendor libraries and fonts never change between deploys, so they are cached
+# hard. The app's own CSS/JS revalidate instead, so an edit you make shows up
+# on the next reload without anyone clearing their cache.
+# ---------------------------------------------------------------------------
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css
+  AddOutputFilterByType DEFLATE application/javascript application/x-javascript text/javascript
+  AddOutputFilterByType DEFLATE application/json application/xml
+  AddOutputFilterByType DEFLATE image/svg+xml application/vnd.ms-fontobject
+  # Fonts and images are already compressed; re-deflating them just burns CPU.
+  SetEnvIfNoCase Request_URI \.(?:woff2?|ttf|otf|eot|png|jpe?g|gif|webp|ico|zip|gz|pdf)$ no-gzip dont-vary
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Third-party libraries and fonts: immutable between deploys.
+  <FilesMatch "\.(woff2?|ttf|otf|eot)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+    Header unset Pragma
+    Header unset Expires
+  </FilesMatch>
+
+  # Images: long-lived, but still revalidated eventually.
+  <FilesMatch "\.(png|jpe?g|gif|webp|svg|ico)$">
+    Header set Cache-Control "public, max-age=2592000"
+    Header unset Pragma
+    Header unset Expires
+  </FilesMatch>
+
+  # CSS and JS: revalidate. The browser sends If-Modified-Since and gets a
+  # ~200-byte 304 instead of the whole file, so a changed file is picked up
+  # immediately while an unchanged one costs almost nothing.
+  <FilesMatch "\.(css|js)$">
+    Header set Cache-Control "public, max-age=0, must-revalidate"
+    Header unset Pragma
+    Header unset Expires
+  </FilesMatch>
+</IfModule>
+
+# Vendor libraries live under assets/libs and are versioned by the deploy, so
+# they can be cached outright rather than revalidated on every page.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType image/png "access plus 1 month"
+  ExpiresByType image/jpeg "access plus 1 month"
+  ExpiresByType image/svg+xml "access plus 1 month"
+</IfModule>
 
 # Uncomment the line below if the app is deployed in a subdirectory.
 # RewriteBase /subdir/

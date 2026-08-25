@@ -79,3 +79,35 @@ $route['api/mobile/auth/me']                      = 'api/MobileAuth/me';
 $route['api/mobile/auth/logout']                  = 'api/MobileAuth/logout';
 $route['api/mobile/auth/change-password']         = 'api/MobileAuth/change_password';
 $route['api/mobile/auth/forgot-password']         = 'api/MobileAuth/forgot_password';
+
+// Mobile attendance + activities
+$route['api/mobile/activities']                   = 'api/MobileAttendance/activities';
+$route['api/mobile/activities/(:num)']            = 'api/MobileAttendance/activity/$1';
+$route['api/mobile/attendance/consume']           = 'api/MobileAttendance/consume';
+$route['api/mobile/attendance/checkin/(:num)']    = 'api/MobileAttendance/checkin/$1';
+$route['api/mobile/attendance/my_logs']           = 'api/MobileAttendance/my_logs';
+$route['api/mobile/attendance/logs/(:num)']       = 'api/MobileAttendance/logs/$1';
+
+// Mobile student module
+$route['api/mobile/student/profile']              = 'api/MobileStudent/profile';
+$route['api/mobile/student/my_qr']                = 'api/MobileStudent/my_qr';
+$route['api/mobile/student/my_qr/issue']          = 'api/MobileStudent/issue_qr';
+$route['api/mobile/student/my_qr/revoke']         = 'api/MobileStudent/revoke_qr';
+$route['api/mobile/student/requirements']         = 'api/MobileStudent/requirements';
+$route['api/mobile/student/requirements/upload']  = 'api/MobileStudent/upload_requirement';
+$route['api/mobile/student/grades']               = 'api/MobileStudent/grades';
+$route['api/mobile/student/enrolled_subjects']    = 'api/MobileStudent/enrolled_subjects';
+
+// Mobile misc: announcements, notes, todos, personnel, masterlist, accounting
+$route['api/mobile/announcements']                = 'api/MobileMisc/announcements';
+$route['api/mobile/notes']                        = 'api/MobileMisc/notes';
+$route['api/mobile/notes/create']                 = 'api/MobileMisc/notes_create';
+$route['api/mobile/notes/update/(:num)']          = 'api/MobileMisc/notes_update/$1';
+$route['api/mobile/notes/delete/(:num)']          = 'api/MobileMisc/notes_delete/$1';
+$route['api/mobile/todos']                        = 'api/MobileMisc/todos';
+$route['api/mobile/todos/create']                 = 'api/MobileMisc/todos_create';
+$route['api/mobile/todos/toggle/(:num)']          = 'api/MobileMisc/todos_toggle/$1';
+$route['api/mobile/todos/delete/(:num)']          = 'api/MobileMisc/todos_delete/$1';
+$route['api/mobile/personnel']                    = 'api/MobileMisc/personnel';
+$route['api/mobile/masterlist/enrolled']          = 'api/MobileMisc/masterlist_enrolled';
+$route['api/mobile/accounting/expenses']          = 'api/MobileMisc/accounting_expenses';

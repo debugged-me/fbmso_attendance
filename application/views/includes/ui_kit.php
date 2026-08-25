@@ -12,17 +12,21 @@
  */
 
 $ui_flash_map = array(
-    'success'    => 'success',
-    'error'      => 'error',
-    'danger'     => 'error',
-    'failed'     => 'error',
-    'auth_error' => 'error',
-    'warning'    => 'warning',
-    'msg'        => 'info',
-    'message'    => 'info',
-    'info'       => 'info',
-    'notice'     => 'info',
+    'success' => 'success',
+    'error'   => 'error',
+    'danger'  => 'error',
+    'failed'  => 'error',
+    'warning' => 'warning',
+    'msg'     => 'info',
+    'message' => 'info',
+    'info'    => 'info',
+    'notice'  => 'info',
 );
+
+// NOT mapped, on purpose:
+//   auth_error  the login screen prints it under the form, where a failed
+//               sign-in belongs — a toast that fades would be worse there.
+//   *_old, forgot_*, open_panel and friends are form state, not messages.
 
 $ui_notices = array();
 
@@ -42,6 +46,15 @@ foreach ($ui_flash_map as $ui_key => $ui_type) {
             'html'    => true,
         );
     }
+
+    // Consume it. This include runs in <head>, before the view body, so
+    // clearing it here stops the 40-odd views that also print their own
+    // alert panel from showing the same message a second time. The toast
+    // is the one place a flash message appears.
+    unset($_SESSION[$ui_key]);
+    if (isset($_SESSION['__ci_vars'][$ui_key])) {
+        unset($_SESSION['__ci_vars'][$ui_key]);
+    }
 }
 
 // The guard flashes a structured notice when it bounces someone to login.
@@ -55,12 +68,16 @@ if (is_array($ui_guard_notice) && !empty($ui_guard_notice['message'])) {
 }
 ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/ui-kit.css'); ?>">
-<script src="<?= base_url('assets/js/ui-kit.js'); ?>" defer></script>
+
+<?php /*
+   Loaded WITHOUT defer on purpose. Views carry inline <script> blocks that run
+   during parsing, before a deferred script would execute — those would see
+   window.UI as undefined and fall back to the browser's native alert/confirm.
+   window.UI has to exist before any view script runs.
+*/ ?>
+<script src="<?= base_url('assets/js/ui-kit.js'); ?>"></script>
 <?php if (!empty($ui_notices)): ?>
     <script>
-        // Queued until ui-kit.js finishes loading (it is deferred).
-        document.addEventListener('DOMContentLoaded', function() {
-            if (window.UI) window.UI.flash(<?= json_encode($ui_notices, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>);
-        });
+        UI.flash(<?= json_encode($ui_notices, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>);
     </script>
 <?php endif; ?>

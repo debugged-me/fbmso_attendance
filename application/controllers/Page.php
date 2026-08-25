@@ -3061,16 +3061,26 @@ class Page extends CI_Controller
 				]
 			);
 
-			$msg = sprintf(
-				'Deleted %s — semesterstude:%d, studentsignup:%d, studeprofile:%d, o_users(user:%d,email:%d), student_qr:%d',
-				htmlspecialchars($studno, ENT_QUOTES, 'UTF-8'),
-				$aff_semesterstude,
-				$aff_studentsignup,
-				$aff_studeprofile,
-				$aff_users_by_username,
-				$aff_users_by_email,
-				$aff_student_qr
-			);
+			// The per-table counts are in the audit entry above; the person who
+			// clicked Delete needs to know what went, not which tables it sat in.
+			$removed = array();
+			if ($aff_semesterstude) {
+				$removed[] = 'enrollment records';
+			}
+			if ($aff_studeprofile) {
+				$removed[] = 'profile';
+			}
+			if ($aff_users_by_username || $aff_users_by_email) {
+				$removed[] = 'login account';
+			}
+			if ($aff_student_qr) {
+				$removed[] = 'QR code';
+			}
+
+			$msg = 'Deleted ' . htmlspecialchars($studno, ENT_QUOTES, 'UTF-8') . '.';
+			if ($removed) {
+				$msg .= ' Also removed: ' . implode(', ', $removed) . '.';
+			}
 			$this->session->set_flashdata('success', $msg);
 		}
 

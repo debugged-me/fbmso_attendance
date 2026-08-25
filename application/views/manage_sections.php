@@ -184,60 +184,7 @@
 
     <script>
         (function() {
-            function showAlert(options) {
-                if (!options) {
-                    return Promise.resolve();
-                }
-                if (window.UI && typeof window.UI.fire === 'function') {
-                    return window.UI.fire(options);
-                }
-                if (options.text) {
-                    window.alert(options.text);
-                }
-                return Promise.resolve();
-            }
-
-            var flashData = {
-                error: <?= json_encode($flashError ?? null); ?>,
-                success: <?= json_encode($flashSuccess ?? null); ?>,
-                info: <?= json_encode($flashInfo ?? null); ?>,
-                legacy: <?= json_encode($flashMsg ?? null); ?>
-            };
-
-            var alertOptions = null;
-            if (flashData.error) {
-                alertOptions = {
-                    icon: 'error',
-                    title: 'Error',
-                    text: flashData.error,
-                    confirmButtonColor: '#348cd4'
-                };
-            } else if (flashData.success) {
-                alertOptions = {
-                    icon: 'success',
-                    title: 'Success',
-                    text: flashData.success,
-                    confirmButtonColor: '#348cd4'
-                };
-            } else if (flashData.info) {
-                alertOptions = {
-                    icon: 'info',
-                    title: 'Notice',
-                    text: flashData.info,
-                    confirmButtonColor: '#348cd4'
-                };
-            } else if (flashData.legacy) {
-                alertOptions = {
-                    icon: 'info',
-                    title: 'Notice',
-                    text: flashData.legacy,
-                    confirmButtonColor: '#348cd4'
-                };
-            }
-
-            if (alertOptions) {
-                showAlert(alertOptions);
-            }
+            // Flash messages are shown by the shared toast bridge (includes/ui_kit.php).
 
             function closestByClass(element, className) {
                 while (element && element !== document) {
@@ -285,6 +232,7 @@
                             }
                         }
                         if (confirmed) {
+                            if (window.UI && UI.navBusy) UI.navBusy('Deleting ' + sectionName + '…');
                             window.location.href = deleteUrl;
                         }
                     });
@@ -330,6 +278,7 @@
                                 }
                             }
                             if (confirmed) {
+                                if (window.UI && UI.navBusy) UI.navBusy('Saving the section…');
                                 proceed();
                             }
                         });

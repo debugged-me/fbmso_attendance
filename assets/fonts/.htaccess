@@ -1,0 +1,11 @@
+# Font files. Immutable — a font never changes without its filename changing.
+# so they are cached outright instead of revalidated on every page view.
+# If you ever swap a library in place, bump the folder name or add ?v= to the
+# tag — otherwise browsers will keep the old copy for a year.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(css|js|woff2?|ttf|otf|eot|png|jpe?g|gif|svg)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+    Header unset Pragma
+    Header unset Expires
+  </FilesMatch>
+</IfModule>

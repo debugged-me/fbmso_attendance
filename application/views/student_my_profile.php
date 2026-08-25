@@ -373,30 +373,7 @@
   <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
   <script src="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.js"></script>
   <script>
-    (function() {
-      var successMessage = <?= json_encode($flashSuccess ?? ''); ?>;
-      var dangerMessage = <?= json_encode($flashDanger ?? ''); ?>;
-
-      document.addEventListener('DOMContentLoaded', function() {
-        if (successMessage) {
-          UI.fire({
-            icon: 'success',
-            title: 'Profile Saved',
-            text: successMessage,
-            confirmButtonColor: '#2563eb',
-            confirmButtonText: 'OK'
-          });
-        } else if (dangerMessage) {
-          UI.fire({
-            icon: 'error',
-            title: 'Something went wrong',
-            text: dangerMessage,
-            confirmButtonColor: '#dc2626',
-            confirmButtonText: 'Try Again'
-          });
-        }
-      });
-    })();
+    // Flash messages are shown by the shared toast bridge (includes/ui_kit.php).
   </script>
   <script>
     function submitBday() {
@@ -467,7 +444,7 @@
             populateSections(html);
           })
           .fail(function() {
-            alert('Failed to load sections. Please try again.');
+            UI.error('Could not load the section list. Please try again.');
             $section.html('<option value="">Select Section</option>');
           });
       }
@@ -521,7 +498,7 @@
               }
             })
             .fail(function() {
-              alert('Failed to fetch cities. Please try again.');
+              UI.error('Could not load the city list. Please try again.');
             });
         } else {
           $city.html('<option value="">Select City/Municipality</option>');
@@ -543,7 +520,7 @@
               }
             })
             .fail(function() {
-              alert('Failed to fetch barangays. Please try again.');
+              UI.error('Could not load the barangay list. Please try again.');
             });
         } else {
           $barangay.html('<option value="">Select Barangay</option>');

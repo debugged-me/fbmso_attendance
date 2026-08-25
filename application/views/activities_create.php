@@ -490,7 +490,7 @@ if (!allDay || !allDay.checked)
   if(form){
     form.addEventListener('submit',function(e){
       if(sel.value==='__custom__' && !custom.value.trim()){
-        e.preventDefault(); alert('Please type a Program name.'); custom.focus(); return false;
+        e.preventDefault(); UI.warning('Please type a Program name.'); custom.focus(); return false;
       }
       combineProgramMajor();
       serializeSessionsToMeta();

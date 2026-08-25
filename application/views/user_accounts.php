@@ -522,6 +522,10 @@
           config.icon = swalType;
           return UI.fire(config).then(function(result) {
             if ((result.value === true || result.isConfirmed === true) && typeof opts.onConfirm === 'function') {
+              // Only a real confirmation leads somewhere; a plain notice does not.
+              if (config.showCancelButton && window.UI && UI.navBusy) {
+                UI.navBusy(opts.busyText || 'Working…');
+              }
               opts.onConfirm();
             }
           });
