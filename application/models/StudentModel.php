@@ -2582,6 +2582,71 @@ class StudentModel extends CI_Model
 			->result();
 	}
 
+	/**
+	 * Enrolled students behind one enrollment-summary bucket (course / year level / section).
+	 * Uses the same filters and the same "Not Set" normalisation as CourseCount(),
+	 * YearLevelCount() and SectionCounts(), so the list length always matches the
+	 * count shown on the dashboard.
+	 */
+	public function enrolledStudentsBy($sy, $sem, $by, $value, $course = null, $major = null)
+	{
+		$buckets = array(
+			'course'    => "CASE WHEN NULLIF(TRIM(s.Course),'') IS NULL THEN 'Not Set' ELSE TRIM(s.Course) END",
+			'yearlevel' => "CASE WHEN NULLIF(TRIM(s.YearLevel),'') IS NULL THEN 'Not Set' ELSE TRIM(s.YearLevel) END",
+			'section'   => "CASE WHEN NULLIF(TRIM(s.Section),'') IS NULL THEN 'Not Set' ELSE TRIM(s.Section) END",
+		);
+
+		if (!isset($buckets[$by])) {
+			return array();
+		}
+
+		// Only ~1/3 of enrolled students have a studeprofile row, so names are pulled
+		// from studeprofile first and fall back to studentsignup; both are LEFT joins
+		// and grouped per student so the list length equals the dashboard count.
+		$name = function ($field) {
+			return "MIN(COALESCE(NULLIF(TRIM(p.$field),''), NULLIF(TRIM(g.$field),''), ''))";
+		};
+
+		$this->db->select(
+			's.StudentNumber'
+				. ', ' . $name('LastName')   . ' AS LastName'
+				. ', ' . $name('FirstName')  . ' AS FirstName'
+				. ', ' . $name('MiddleName') . ' AS MiddleName'
+				. ', ' . $name('Sex')        . ' AS Sex'
+				. ', MIN(s.Course) AS Course, MIN(s.Major) AS Major'
+				. ', MIN(s.YearLevel) AS YearLevel, MIN(s.Section) AS Section',
+			false
+		)
+			->from('semesterstude s')
+			->join('studeprofile p', 'p.StudentNumber = s.StudentNumber', 'left')
+			->join('studentsignup g', 'g.StudentNumber = s.StudentNumber', 'left')
+			->where('s.SY', $sy)
+			->where('s.Semester', $sem)
+			->where('s.Status', 'Enrolled')
+			->where($buckets[$by] . ' = ' . $this->db->escape($value), null, false);
+
+		if (!empty($course)) {
+			$this->db->where('s.Course', $course);
+		}
+
+		if ($major !== null) {
+			if ($major === '') {
+				$this->db->group_start()
+					->where('s.Major', '')
+					->or_where('s.Major IS NULL', null, false)
+					->group_end();
+			} else {
+				$this->db->where('s.Major', $major);
+			}
+		}
+
+		return $this->db->group_by('s.StudentNumber')
+			->order_by('LastName', 'ASC')
+			->order_by('FirstName', 'ASC')
+			->get()
+			->result();
+	}
+
 
 
 	//Masterlist by Qualification

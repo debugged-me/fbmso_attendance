@@ -206,12 +206,6 @@
     vertical-align: middle;
   }
 
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
-  }
-
   .page-title-box .page-title {
     white-space: normal !important;
     overflow: visible !important;
@@ -234,44 +228,6 @@
     .page-title-right .breadcrumb,
     .page-title-right .badge {
       white-space: normal !important;
-    }
-  }
-
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
-  }
-
-  @media (max-width: 767.98px) {
-    .kpi-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .kpi-grid>a:nth-child(1) {
-      order: 5;
-    }
-
-    .kpi .card-body {
-      padding: .9rem;
-    }
-
-    .kpi .count {
-      font-size: 1.6rem;
-    }
-
-    .kpi .icon {
-      width: 44px;
-      height: 44px;
-      font-size: 22px;
-      border-radius: 12px;
-    }
-  }
-
-  @media (min-width: 768px) and (max-width: 899.98px) {
-    .kpi-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
@@ -298,29 +254,211 @@
     background: #f8f9fc;
   }
 
-  .enroll-split {
-    display: flex;
-    gap: 24px;
-    align-items: flex-start;
+  .card.enroll-card .card-body {
+    background: #f7f9fc;
   }
 
-  .enroll-col {
-    flex: 1 1 0;
-    min-width: 260px;
+  /* ===== KPI widgets: identical width + identical height ===== */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .kpi-grid>a {
+    display: block;
+    height: 100%;
+  }
+
+  .kpi-grid>a>.card.kpi {
+    height: 100%;
+    margin-bottom: 0;
+  }
+
+  .kpi .card-body {
+    height: 100%;
+    gap: 12px;
+  }
+
+  .kpi .card-body>div:first-child {
+    min-width: 0;
+  }
+
+  .kpi .icon {
+    flex: 0 0 auto;
+  }
+
+  @media (max-width: 1699.98px) {
+    .kpi .count {
+      font-size: 1.75rem;
+    }
+
+    .kpi .icon {
+      width: 48px;
+      height: 48px;
+      font-size: 24px;
+      border-radius: 12px;
+    }
+  }
+
+  @media (max-width: 1499.98px) {
+    .kpi-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
 
   @media (max-width: 991.98px) {
+    .kpi-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 575.98px) {
+    .kpi-grid {
+      gap: 12px;
+    }
+
+    .kpi .card-body {
+      padding: .9rem;
+    }
+
+    .kpi .count {
+      font-size: 1.55rem;
+    }
+
+    .kpi .label {
+      font-size: .82rem;
+    }
+
+    .kpi .icon {
+      width: 44px;
+      height: 44px;
+      font-size: 22px;
+      border-radius: 12px;
+    }
+  }
+
+  /* ===== Enrollment summary panels: equal columns, capped height ===== */
+  .enroll-split {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  @media (max-width: 1199.98px) {
     .enroll-split {
-      flex-direction: column;
-      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
   @media (max-width: 767.98px) {
-    .kpi-grid>a.kpi-span-2 {
-      grid-column: 1 / -1;
-      order: 99;
+    .enroll-split {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
     }
+  }
+
+  .enroll-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: #fff;
+    border: 1px solid #e9edf2;
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 2px 8px rgba(36, 59, 83, .05);
+  }
+
+  .sum-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .sum-head h6 {
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: .3px;
+  }
+
+  .sum-head .badge {
+    flex: 0 0 auto;
+  }
+
+  .sum-chart {
+    position: relative;
+    height: 240px;
+    margin-bottom: 10px;
+  }
+
+  .sum-empty {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    font-size: .85rem;
+  }
+
+  .sum-filter {
+    margin-bottom: 8px;
+  }
+
+  .sum-scroll {
+    flex: 1 1 auto;
+    max-height: 250px;
+    overflow-y: auto;
+    border-top: 1px solid #eef1f5;
+  }
+
+  .sum-scroll table {
+    margin-bottom: 0;
+  }
+
+  .sum-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8f9fc;
+    border-top: 0;
+  }
+
+  .sum-scroll td.sum-name {
+    max-width: 0;
+    width: 99%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sum-scroll td.sum-count {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  .sum-scroll td.sum-count .btn {
+    min-width: 48px;
+  }
+
+  .sum-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 7px;
+    vertical-align: middle;
+    flex: 0 0 auto;
+  }
+
+  .sum-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .sum-scroll::-webkit-scrollbar-thumb {
+    background: #cfd8e3;
+    border-radius: 8px;
   }
 </style>
 
@@ -438,6 +576,44 @@
               </div>
             </a>
           </div>
+          <?php
+          // ---- Enrollment summary: normalise rows so tables and charts always agree ----
+          $sumNormalise = function ($rows, $key) {
+            $out = array();
+            foreach ((array)$rows as $r) {
+              $label = trim((string)(isset($r->$key) ? $r->$key : ''));
+              if ($label === '') {
+                $label = 'Not Set';
+              }
+              $out[] = array('label' => $label, 'value' => (int)(isset($r->Counts) ? $r->Counts : 0));
+            }
+            return $out;
+          };
+          $sumTotal = function ($rows) {
+            $t = 0;
+            foreach ($rows as $r) {
+              $t += $r['value'];
+            }
+            return $t;
+          };
+
+          $courseData  = $sumNormalise(isset($data8) ? $data8 : array(), 'Course');
+          $ylData      = $sumNormalise(isset($yearLevelCounts) ? $yearLevelCounts : array(), 'YearLevel');
+          $sectionData = $sumNormalise(isset($sectionCounts) ? $sectionCounts : array(), 'Section');
+
+          // Carry the panel's own course/major scope into the drill-down links.
+          $sectionScope = '';
+          if ($this->input->get('course')) {
+            $sectionScope .= '&course=' . urlencode($this->input->get('course'));
+          }
+          if ($this->input->get('major') !== null) {
+            $sectionScope .= '&major=' . urlencode($this->input->get('major'));
+          }
+
+          $courseTotal  = $sumTotal($courseData);
+          $ylTotal      = $sumTotal($ylData);
+          $sectionTotal = $sumTotal($sectionData);
+          ?>
           <div class="row mt-4">
             <div class="col-xl-12">
               <div class="card enroll-card">
@@ -459,9 +635,13 @@
                   <div class="card-body">
                     <div class="enroll-split">
                       <div class="enroll-col">
-                        <h6 class="mb-3 text-uppercase text-muted">By Course</h6>
-                        <div class="table-responsive">
-                          <table class="table table-sm mb-0">
+                        <div class="sum-head">
+                          <h6 class="text-uppercase text-muted mb-0">By Course</h6>
+                          <span class="badge badge-primary">Total: <?= number_format($courseTotal); ?></span>
+                        </div>
+                        <div class="sum-chart"><canvas id="chartByCourse"></canvas></div>
+                        <div class="sum-scroll">
+                          <table class="table table-sm table-hover mb-0" id="tblByCourse">
                             <thead>
                               <tr>
                                 <th style="text-align:left">Course</th>
@@ -469,17 +649,17 @@
                               </tr>
                             </thead>
                             <tbody>
-                              <?php if (!empty($data8)) : ?>
-                                <?php foreach ($data8 as $row): ?>
+                              <?php if (!empty($courseData)) : ?>
+                                <?php foreach ($courseData as $row): ?>
                                   <tr>
-                                    <td style="text-align:left;">
-                                      <?= htmlspecialchars($row->Course); ?>
-                                      </a>
+                                    <td class="sum-name" title="<?= htmlspecialchars($row['label'], ENT_QUOTES, 'UTF-8'); ?>">
+                                      <span class="sum-dot" data-label="<?= htmlspecialchars($row['label'], ENT_QUOTES, 'UTF-8'); ?>"></span><?= htmlspecialchars($row['label'], ENT_QUOTES, 'UTF-8'); ?>
                                     </td>
-                                    <td style="text-align:center">
-                                      <button type="button" class="btn btn-primary btn-xs waves-effect waves-light">
-                                        <?= number_format((int)$row->Counts); ?>
-                                      </button>
+                                    <td class="sum-count" style="text-align:center">
+                                      <a href="<?= base_url(); ?>Page/enrollmentList?by=course&amp;value=<?= urlencode($row['label']); ?>"
+                                        class="btn btn-primary btn-xs waves-effect waves-light"
+                                        title="View the <?= number_format($row['value']); ?> enrolled student(s)">
+                                        <?= number_format($row['value']); ?>
                                       </a>
                                     </td>
                                   </tr>
@@ -526,9 +706,13 @@
                         </div>
                       </div> -->
                       <div class="enroll-col">
-                        <h6 class="mb-3 text-uppercase text-muted">By Year Level</h6>
-                        <div class="table-responsive">
-                          <table class="table table-sm mb-0">
+                        <div class="sum-head">
+                          <h6 class="text-uppercase text-muted mb-0">By Year Level</h6>
+                          <span class="badge badge-info">Total: <?= number_format($ylTotal); ?></span>
+                        </div>
+                        <div class="sum-chart"><canvas id="chartByYearLevel"></canvas></div>
+                        <div class="sum-scroll">
+                          <table class="table table-sm table-hover mb-0" id="tblByYearLevel">
                             <thead>
                               <tr>
                                 <th style="text-align:left">Year Level</th>
@@ -536,14 +720,18 @@
                               </tr>
                             </thead>
                             <tbody>
-                              <?php if (!empty($yearLevelCounts)) : ?>
-                                <?php foreach ($yearLevelCounts as $row): ?>
+                              <?php if (!empty($ylData)) : ?>
+                                <?php foreach ($ylData as $row): ?>
                                   <tr>
-                                    <td style="text-align:left;"><?= htmlspecialchars($row->YearLevel ?: 'Not Set'); ?></td>
-                                    <td style="text-align:center">
-                                      <button type="button" class="btn btn-info btn-xs waves-effect waves-light">
-                                        <?= number_format((int)$row->Counts); ?>
-                                      </button>
+                                    <td class="sum-name" title="<?= htmlspecialchars($row['label'], ENT_QUOTES, 'UTF-8'); ?>">
+                                      <span class="sum-dot" data-label="<?= htmlspecialchars($row['label'], ENT_QUOTES, 'UTF-8'); ?>"></span><?= htmlspecialchars($row['label'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </td>
+                                    <td class="sum-count" style="text-align:center">
+                                      <a href="<?= base_url(); ?>Page/enrollmentList?by=yearlevel&amp;value=<?= urlencode($row['label']); ?>"
+                                        class="btn btn-info btn-xs waves-effect waves-light"
+                                        title="View the <?= number_format($row['value']); ?> enrolled student(s)">
+                                        <?= number_format($row['value']); ?>
+                                      </a>
                                     </td>
                                   </tr>
                                 <?php endforeach; ?>
@@ -557,7 +745,10 @@
                         </div>
                       </div>
                       <div class="enroll-col">
-                        <h6 class="mb-3 text-uppercase text-muted">By Section</h6>
+                        <div class="sum-head">
+                          <h6 class="text-uppercase text-muted mb-0">By Section</h6>
+                          <span class="badge badge-warning">Total: <?= number_format($sectionTotal); ?></span>
+                        </div>
                         <?php if (!empty($this->input->get('course')) || !empty($this->input->get('major'))): ?>
                           <div class="mb-2">
                             <?php if ($this->input->get('course')): ?>
@@ -568,8 +759,10 @@
                             <?php endif; ?>
                           </div>
                         <?php endif; ?>
-                        <div class="table-responsive">
-                          <table class="table table-sm mb-0">
+                        <input type="text" class="form-control form-control-sm sum-filter" data-target="#tblBySection" placeholder="Search section..." autocomplete="off">
+                        <div class="sum-chart"><canvas id="chartBySection"></canvas></div>
+                        <div class="sum-scroll">
+                          <table class="table table-sm table-hover mb-0" id="tblBySection">
                             <thead>
                               <tr>
                                 <th style="text-align:left">Section</th>
@@ -577,14 +770,18 @@
                               </tr>
                             </thead>
                             <tbody>
-                              <?php if (!empty($sectionCounts)) : ?>
-                                <?php foreach ($sectionCounts as $row): ?>
+                              <?php if (!empty($sectionData)) : ?>
+                                <?php foreach ($sectionData as $row): ?>
                                   <tr>
-                                    <td style="text-align:left;"><?= htmlspecialchars($row->Section ?: 'Not Set'); ?></td>
-                                    <td style="text-align:center">
-                                      <button type="button" class="btn btn-warning btn-xs waves-effect waves-light">
-                                        <?= number_format((int)$row->Counts); ?>
-                                      </button>
+                                    <td class="sum-name" title="<?= htmlspecialchars($row['label'], ENT_QUOTES, 'UTF-8'); ?>">
+                                      <span class="sum-dot" data-label="<?= htmlspecialchars($row['label'], ENT_QUOTES, 'UTF-8'); ?>"></span><?= htmlspecialchars($row['label'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </td>
+                                    <td class="sum-count" style="text-align:center">
+                                      <a href="<?= base_url(); ?>Page/enrollmentList?by=section&amp;value=<?= urlencode($row['label']); ?><?= $sectionScope; ?>"
+                                        class="btn btn-warning btn-xs waves-effect waves-light"
+                                        title="View the <?= number_format($row['value']); ?> enrolled student(s)">
+                                        <?= number_format($row['value']); ?>
+                                      </a>
                                     </td>
                                   </tr>
                                 <?php endforeach; ?>
@@ -758,6 +955,162 @@
   <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.keyTable.min.js"></script>
   <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.select.min.js"></script>
   <script src="<?= base_url(); ?>assets/js/pages/datatables.init.js"></script>
+  <script src="<?= base_url(); ?>assets/libs/chart-js/Chart.bundle.min.js"></script>
+  <script>
+    /* ===== Enrollment summary donut charts ===== */
+    (function () {
+      if (typeof Chart === 'undefined') {
+        return;
+      }
+
+      var PALETTE = [
+        '#2563eb', '#8b5cf6', '#ec4899', '#06b6d4', '#f59e0b',
+        '#10b981', '#ef4444', '#6366f1', '#84cc16', '#f97316',
+        '#0ea5e9', '#a855f7'
+      ];
+      var OTHERS_COLOR = '#94a3b8';
+
+      var DATA = {
+        course: <?= json_encode($courseData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
+        year: <?= json_encode($ylData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
+        section: <?= json_encode($sectionData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>
+      };
+
+      function shorten(text, max) {
+        return text.length > max ? text.substring(0, max - 1) + '…' : text;
+      }
+
+      // Long lists (sections especially) become an unreadable pie, so keep the
+      // biggest slices and fold the tail into a single "Others" slice.
+      function condense(items, max) {
+        var rows = [];
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].value > 0) {
+            rows.push(items[i]);
+          }
+        }
+        rows.sort(function (a, b) {
+          return b.value - a.value;
+        });
+        if (rows.length <= max) {
+          return rows;
+        }
+        var head = rows.slice(0, max - 1);
+        var tail = rows.slice(max - 1);
+        var sum = 0;
+        for (var j = 0; j < tail.length; j++) {
+          sum += tail[j].value;
+        }
+        head.push({ label: 'Others (' + tail.length + ')', value: sum, others: true });
+        return head;
+      }
+
+      // Give each table row the same colour its slice got, panel by panel.
+      function paintDots(canvas, colorByLabel) {
+        var panel = canvas.closest ? canvas.closest('.enroll-col') : null;
+        if (!panel) {
+          return;
+        }
+        var dots = panel.querySelectorAll('.sum-dot');
+        for (var i = 0; i < dots.length; i++) {
+          var label = dots[i].getAttribute('data-label');
+          dots[i].style.background = colorByLabel[label] || OTHERS_COLOR;
+        }
+      }
+
+      function draw(canvasId, items, maxSlices) {
+        var canvas = document.getElementById(canvasId);
+        if (!canvas) {
+          return;
+        }
+        var rows = condense(items || [], maxSlices);
+        if (!rows.length) {
+          canvas.parentNode.innerHTML = '<div class="sum-empty text-muted">No data to chart.</div>';
+          return;
+        }
+
+        var labels = [];
+        var values = [];
+        var colors = [];
+        var colorByLabel = {};
+        for (var i = 0; i < rows.length; i++) {
+          var color = rows[i].others ? OTHERS_COLOR : PALETTE[i % PALETTE.length];
+          labels.push(shorten(rows[i].label, 22));
+          values.push(rows[i].value);
+          colors.push(color);
+          if (!rows[i].others) {
+            colorByLabel[rows[i].label] = color;
+          }
+        }
+
+        paintDots(canvas, colorByLabel);
+
+        var total = values.reduce(function (t, v) {
+          return t + v;
+        }, 0);
+
+        new Chart(canvas.getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: values,
+              backgroundColor: colors,
+              borderColor: '#fff',
+              borderWidth: 2,
+              hoverBorderColor: '#fff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutoutPercentage: 58,
+            animation: { animateScale: true },
+            legend: {
+              position: 'bottom',
+              labels: { boxWidth: 10, padding: 8, fontSize: 11, usePointStyle: true }
+            },
+            tooltips: {
+              callbacks: {
+                label: function (item, data) {
+                  var value = data.datasets[0].data[item.index] || 0;
+                  var pct = total ? Math.round((value / total) * 1000) / 10 : 0;
+                  var full = rows[item.index].label;
+                  return ' ' + full + ': ' + value.toLocaleString() + ' (' + pct + '%)';
+                }
+              }
+            }
+          }
+        });
+      }
+
+      draw('chartByCourse', DATA.course, 8);
+      draw('chartByYearLevel', DATA.year, 8);
+      draw('chartBySection', DATA.section, 8);
+
+      // Live filter for the (potentially very long) section list.
+      $('.sum-filter').on('keyup search', function () {
+        var needle = $.trim($(this).val()).toLowerCase();
+        var $table = $($(this).data('target'));
+        var shown = 0;
+        $table.find('tbody tr').each(function () {
+          var $row = $(this);
+          if ($row.find('td').length < 2) {
+            return;
+          }
+          var hit = needle === '' || $row.find('td.sum-name').text().toLowerCase().indexOf(needle) > -1;
+          $row.toggle(hit);
+          if (hit) {
+            shown++;
+          }
+        });
+        $table.find('tr.sum-noresult').remove();
+        if (!shown) {
+          $table.find('tbody').append('<tr class="sum-noresult"><td colspan="2" class="text-muted text-center">No match.</td></tr>');
+        }
+      });
+    })();
+  </script>
   <script>
     $('#viewAnnouncementModal').on('show.bs.modal', function(e) {
       var t = $(e.relatedTarget);

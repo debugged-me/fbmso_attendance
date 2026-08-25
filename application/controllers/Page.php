@@ -154,6 +154,49 @@ class Page extends CI_Controller
 		}
 	}
 
+	/**
+	 * Drill-down for the dashboard enrollment summary: lists the enrolled students
+	 * behind a single Course / Year Level / Section count.
+	 */
+	public function enrollmentList()
+	{
+		$level = $this->session->userdata('level');
+		if ($level !== 'Admin' && $level !== 'School Admin') {
+			echo "Access Denied";
+			return;
+		}
+
+		$labels = array(
+			'course'    => 'Course',
+			'yearlevel' => 'Year Level',
+			'section'   => 'Section',
+		);
+
+		$by = strtolower((string)$this->input->get('by', true));
+		if (!isset($labels[$by])) {
+			show_404();
+			return;
+		}
+
+		$sy    = (string)$this->session->userdata('sy');
+		$sem   = (string)$this->session->userdata('semester');
+		$value = (string)$this->input->get('value', true);
+
+		// Same optional scoping the dashboard's By Section panel accepts.
+		$course = $this->input->get('course', true);
+		$course = ($course === '' ? null : $course);
+		$major  = $this->input->get('major', true);
+
+		$result['data']         = $this->StudentModel->enrolledStudentsBy($sy, $sem, $by, $value, $course, $major);
+		$result['groupLabel']   = $labels[$by];
+		$result['groupValue']   = $value;
+		$result['filterCourse'] = $course;
+		$result['filterMajor']  = $major;
+		$result['data18']       = $this->SettingsModel->getSchoolInfo();
+
+		$this->load->view('enrollment_list', $result);
+	}
+
 
 
 	function school_admin()
