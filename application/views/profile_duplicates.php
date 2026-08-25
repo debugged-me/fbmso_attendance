@@ -86,7 +86,9 @@
                                 <input type="hidden" name="username" value="<?= htmlspecialchars((string)($row->StudentNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                                 <button type="submit"
                                   class="btn btn-danger btn-xs"
-                                  onclick="return confirm('Delete this student from the record ?');">
+                                  data-ui-confirm="<?= htmlspecialchars((string)($row->StudentNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?> is removed from the records. This cannot be undone."
+                                  data-ui-confirm-title="Delete this duplicate?"
+                                  data-ui-confirm-ok="Delete record">
                                   <i class="mdi mdi-delete"></i> Delete
                                 </button>
                               </form>
@@ -133,15 +135,15 @@
 
       var successMessage = <?= json_encode($flashSuccess ?? null); ?>;
       var dangerMessage = <?= json_encode($flashDanger ?? null); ?>;
-      if (dangerMessage && window.Swal && typeof window.Swal.fire === 'function') {
-        window.Swal.fire({
+      if (dangerMessage && window.UI && typeof window.UI.fire === 'function') {
+        window.UI.fire({
           icon: 'error',
           title: 'Error',
           text: dangerMessage,
           confirmButtonColor: '#348cd4'
         });
-      } else if (successMessage && window.Swal && typeof window.Swal.fire === 'function') {
-        window.Swal.fire({
+      } else if (successMessage && window.UI && typeof window.UI.fire === 'function') {
+        window.UI.fire({
           icon: 'success',
           title: 'Success',
           text: successMessage,

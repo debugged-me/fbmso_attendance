@@ -315,7 +315,11 @@
                                     type="submit"
                                     class="btn btn-primary"
                                     <?= !$emailReady ? 'disabled' : ''; ?>
-                                    onclick="return confirm('Send this mass announcement now by email?');">
+                                    data-ui-confirm="Emails go out immediately to everyone in the selected audience. There is no recall."
+                                    data-ui-confirm-title="Send this announcement now?"
+                                    data-ui-confirm-ok="Send it"
+                                    data-ui-confirm-variant="primary"
+                                    data-ui-confirm-icon="question">
                                     Send Mass Announcement
                                 </button>
                             </form>

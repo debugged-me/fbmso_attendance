@@ -37,11 +37,11 @@
   var state = window.homeLoginState || {};
   var forgotInfo = state.forgotInfo || '';
 
-  if (!forgotInfo || !window.Swal) return;
+  if (!forgotInfo || !window.UI) return;
 
   var title = /temporary password/i.test(forgotInfo) ? 'Check your email' : 'Password Updated';
 
-  Swal.fire({
+  UI.fire({
     icon: 'success',
     title: title,
     text: forgotInfo,
@@ -641,8 +641,8 @@
     confirmButtonColor: '#3b5fd4'
   };
 
-  if (window.Swal) {
-    Swal.fire(opts);
+  if (window.UI) {
+    UI.fire(opts);
     var fb = document.getElementById('login-error-message');
     if (fb) fb.style.display = 'none';
     var infoFb = document.getElementById('login-info-message');

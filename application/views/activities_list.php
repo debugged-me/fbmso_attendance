@@ -683,7 +683,9 @@
                               </a>
 
                               <form method="post" action="<?= site_url('activities/' . $r->activity_id . '/delete'); ?>" class="d-inline"
-                                onsubmit="return confirm('Delete this activity? This cannot be undone.');">
+                                data-ui-confirm="&ldquo;<?= htmlspecialchars((string)$r->title, ENT_QUOTES, 'UTF-8'); ?>&rdquo; and its QR check-in link stop working. This cannot be undone."
+                                data-ui-confirm-title="Delete this activity?"
+                                data-ui-confirm-ok="Delete activity">
                                 <button type="submit" class="btn-icon btn-delete" data-toggle="tooltip" title="Delete">
                                   <span class="hint">DELETE</span><i class="ion ion-md-trash"></i>
                                 </button>

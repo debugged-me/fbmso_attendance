@@ -481,8 +481,8 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
                 if (!options) {
                     return Promise.resolve();
                 }
-                if (window.Swal && typeof window.Swal.fire === 'function') {
-                    return window.Swal.fire(options);
+                if (window.UI && typeof window.UI.fire === 'function') {
+                    return window.UI.fire(options);
                 }
                 if (options.text) {
                     window.alert(options.text);

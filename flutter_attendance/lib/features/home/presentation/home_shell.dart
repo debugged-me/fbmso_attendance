@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../../auth/presentation/auth_controller.dart';
 
@@ -25,8 +26,11 @@ class HomeShell extends StatelessWidget {
           ),
         ],
       ),
-      body: SafeArea(
-        child: ListView(
+      body: Column(
+        children: [
+          const SyncStatusBanner(),
+          Expanded(
+            child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
             Card(
@@ -57,6 +61,8 @@ class HomeShell extends StatelessWidget {
             ),
           ],
         ),
+          ),
+        ],
       ),
     );
   }

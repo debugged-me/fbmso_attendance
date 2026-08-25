@@ -87,7 +87,11 @@
 
                                         <a class="action-btn btn-toggle"
                                             href="<?= base_url('FbmsoPersonnels/toggle/' . $p->id . '?v=' . ($active ? 0 : 1)) ?>"
-                                            onclick="return confirm('Are you sure you want to <?= $active ? 'hide' : 'show' ?> this record?');"
+                                            data-ui-confirm="<?= $active ? 'This member stops appearing on the public team page.' : 'This member appears on the public team page again.' ?>"
+                                            data-ui-confirm-title="<?= $active ? 'Hide' : 'Show' ?> this member?"
+                                            data-ui-confirm-ok="<?= $active ? 'Hide member' : 'Show member' ?>"
+                                            data-ui-confirm-variant="primary"
+                                            data-ui-confirm-icon="question"
                                             title="<?= $active ? 'Hide' : 'Show' ?>" aria-label="<?= $active ? 'Hide' : 'Show' ?>">
                                             <?php if ($active): ?>
                                                 <i class="mdi mdi-eye-off"></i><span class="tooltip-label">Hide</span>
@@ -98,7 +102,9 @@
 
                                         <a class="action-btn btn-delete"
                                             href="<?= base_url('FbmsoPersonnels/delete/' . $p->id) ?>"
-                                            onclick="return confirm('Delete this record?');"
+                                            data-ui-confirm="This member is removed from the team list. This cannot be undone."
+                                            data-ui-confirm-title="Delete this member?"
+                                            data-ui-confirm-ok="Delete member"
                                             title="Delete" aria-label="Delete">
                                             <i class="mdi mdi-delete"></i><span class="tooltip-label">Delete</span>
                                         </a>

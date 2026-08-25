@@ -583,7 +583,7 @@ $flashDanger  = $this->session->flashdata('danger');
       var successMessage = <?= json_encode($flashSuccess ?? ''); ?>;
       var dangerMessage = <?= json_encode($flashDanger ?? ''); ?>;
 
-      if (typeof Swal === 'undefined') {
+      if (typeof UI === 'undefined') {
         return;
       }
 
@@ -593,14 +593,14 @@ $flashDanger  = $this->session->flashdata('danger');
 
       document.addEventListener('DOMContentLoaded', function() {
         if (successMessage) {
-          Swal.fire({
+          UI.fire({
             icon: 'success',
             title: 'Profile Updated',
             text: successMessage,
             confirmButtonColor: '#2563eb'
           });
         } else if (dangerMessage) {
-          Swal.fire({
+          UI.fire({
             icon: 'error',
             title: 'Update Failed',
             text: dangerMessage,

@@ -88,7 +88,9 @@
         <button class="btn btn-sm btn-info" data-toggle="modal" data-target="#editModal<?= $t->id ?>">Edit</button>
         <a href="<?= base_url('request/delete_document_type/' . $t->id) ?>"
            class="btn btn-sm btn-danger"
-           onclick="return confirm('Delete this type?')">Delete</a>
+           data-ui-confirm="Requests already made with this type keep it; it just stops being offered."
+           data-ui-confirm-title="Delete this document type?"
+           data-ui-confirm-ok="Delete type">Delete</a>
       </td>
     </tr>
 

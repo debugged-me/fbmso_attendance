@@ -518,9 +518,9 @@
           focusCancel: true
         };
 
-        if (typeof Swal.fire === 'function') {
+        if (typeof UI.fire === 'function') {
           config.icon = swalType;
-          return Swal.fire(config).then(function(result) {
+          return UI.fire(config).then(function(result) {
             if ((result.value === true || result.isConfirmed === true) && typeof opts.onConfirm === 'function') {
               opts.onConfirm();
             }

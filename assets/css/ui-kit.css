@@ -35,6 +35,8 @@
 
     --uk-z-modal: 21000;
     --uk-z-toast: 21500;
+    --uk-z-busy: 20800;
+    --uk-z-progress: 21800;
 }
 
 /* ==========================================================================
@@ -349,39 +351,166 @@ body.uk-locked {
     transform: none;
 }
 
-/* --- busy state --- */
-
-.uk-spinner {
-    width: 15px;
-    height: 15px;
-    border: 2px solid currentColor;
-    border-right-color: transparent;
-    border-radius: 50%;
-    display: inline-block;
-    vertical-align: -2px;
-    margin-right: 8px;
-    animation: uk-spin .6s linear infinite;
-}
-
 @keyframes uk-spin {
     to {
         transform: rotate(360deg);
     }
 }
 
-.uk-modal-busy {
-    text-align: center;
-    padding: 30px 22px 34px;
+/* ==========================================================================
+   Loader
+
+   The ring is a single rotating element: a conic gradient punched into a ring
+   by a radial mask. One `transform` animation on one node — no multi-element
+   spinner, no keyframed border tricks, nothing that touches layout.
+   ========================================================================== */
+
+.uk-ring {
+    --uk-ring-size: 44px;
+    --uk-ring-width: 3.5px;
+    width: var(--uk-ring-size);
+    height: var(--uk-ring-size);
+    border-radius: 50%;
+    background: conic-gradient(from 0deg,
+            rgba(37, 99, 235, 0) 0deg,
+            rgba(37, 99, 235, .12) 90deg,
+            var(--uk-info) 330deg,
+            var(--uk-info) 360deg);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--uk-ring-width)), #000 calc(100% - var(--uk-ring-width) + .5px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - var(--uk-ring-width)), #000 calc(100% - var(--uk-ring-width) + .5px));
+    animation: uk-spin .85s linear infinite;
+    flex: 0 0 auto;
 }
 
-.uk-modal-busy .uk-spinner {
-    width: 30px;
-    height: 30px;
-    border-width: 3px;
-    margin: 0 0 14px;
-    color: var(--uk-info);
+.uk-ring-sm {
+    --uk-ring-size: 20px;
+    --uk-ring-width: 2.5px;
+}
+
+.uk-ring-lg {
+    --uk-ring-size: 62px;
+    --uk-ring-width: 4.5px;
+}
+
+.uk-ring-success {
+    background: conic-gradient(from 0deg, rgba(16, 185, 129, 0) 0deg, rgba(16, 185, 129, .12) 90deg, var(--uk-success) 330deg, var(--uk-success) 360deg);
+}
+
+.uk-ring-white {
+    background: conic-gradient(from 0deg, rgba(255, 255, 255, 0) 0deg, rgba(255, 255, 255, .2) 90deg, #fff 330deg, #fff 360deg);
+}
+
+/* Browsers without mask support still get a legible spinner. */
+@supports not ((-webkit-mask: radial-gradient(#000, #000)) or (mask: radial-gradient(#000, #000))) {
+    .uk-ring {
+        background: none;
+        border: var(--uk-ring-width) solid var(--uk-border);
+        border-top-color: var(--uk-info);
+    }
+}
+
+/* --- overlay: covers the page, or one card/table --- */
+
+.uk-busy {
+    position: fixed;
+    inset: 0;
+    z-index: var(--uk-z-busy);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: rgba(244, 247, 251, .78);
+    opacity: 0;
+    transition: opacity .2s var(--uk-ease);
+}
+
+:root[data-uk-theme="dark"] .uk-busy {
+    background: rgba(13, 17, 23, .8);
+}
+
+@supports (backdrop-filter: blur(2px)) {
+    .uk-busy {
+        backdrop-filter: blur(2px);
+    }
+}
+
+.uk-busy.uk-in {
+    opacity: 1;
+}
+
+/* Scoped to a container instead of the whole page. */
+.uk-busy-local {
+    position: absolute;
+    border-radius: inherit;
+    z-index: 20;
+}
+
+.uk-busy-host {
+    position: relative;
+}
+
+.uk-busy-label {
+    font: 600 .92rem/1.5 var(--uk-font);
+    color: var(--uk-text);
+    text-align: center;
+    max-width: 300px;
+    padding: 0 16px;
+}
+
+.uk-busy-sub {
+    font: 400 .84rem/1.5 var(--uk-font);
+    color: var(--uk-text-soft);
+    margin-top: -10px;
+    text-align: center;
+    max-width: 320px;
+    padding: 0 16px;
+}
+
+/* --- inline button state --- */
+
+.uk-btn.is-busy,
+.btn.is-busy {
+    position: relative;
+    pointer-events: none;
+    opacity: .85;
+}
+
+.uk-btn-inline-ring {
+    display: inline-block;
+    vertical-align: -4px;
+    margin-right: 8px;
+    position: relative;
+}
+
+/* --- top progress bar --- */
+
+.uk-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    z-index: var(--uk-z-progress);
+    background: transparent;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s ease;
+}
+
+.uk-progress.uk-in {
+    opacity: 1;
+}
+
+.uk-progress span {
     display: block;
-    margin-inline: auto;
+    height: 100%;
+    width: 100%;
+    transform: scaleX(0);
+    transform-origin: left center;
+    background: linear-gradient(90deg, var(--uk-info), #60a5fa);
+    box-shadow: 0 0 10px rgba(37, 99, 235, .5);
+    transition: transform .22s var(--uk-ease);
 }
 
 /* ==========================================================================
@@ -671,10 +800,15 @@ body.uk-locked {
         transition-duration: .01ms !important;
     }
 
-    .uk-toast-timer,
-    .uk-spinner {
+    .uk-toast-timer {
         animation-duration: .01ms !important;
         animation-iteration-count: 1 !important;
+    }
+
+    /* The ring keeps turning — it is the only signal that work is still in
+       flight — but slowly enough not to trigger motion sensitivity. */
+    .uk-ring {
+        animation-duration: 2.4s !important;
     }
 
     .uk-toast-timer {

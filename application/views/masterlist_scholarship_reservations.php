@@ -79,7 +79,10 @@
                                                 <td><?php echo $row->appDate; ?></a></td>
                                                 <td>
                                                     <a href="<?= base_url(); ?>page/acceptReservation?id=<?php echo $row->appNo; ?>"><button type="button" class="btn btn-success btn-xs">Accept</button></a> </a>
-                                                    <a href="<?= base_url(); ?>page/deleteReservation?id=<?php echo $row->appNo; ?>" onclick="return confirm('Are you sure you want to delete this record?');"><button type="button" class="btn btn-danger btn-xs">Delete</button></a>
+                                                    <a href="<?= base_url(); ?>page/deleteReservation?id=<?php echo $row->appNo; ?>"
+                                                       data-ui-confirm="Reservation <?= htmlspecialchars((string)$row->appNo, ENT_QUOTES, 'UTF-8'); ?> is removed. This cannot be undone."
+                                                       data-ui-confirm-title="Delete this reservation?"
+                                                       data-ui-confirm-ok="Delete reservation"><button type="button" class="btn btn-danger btn-xs">Delete</button></a>
                                                 </td>
 
                                             <?php

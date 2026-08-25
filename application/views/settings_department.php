@@ -299,8 +299,8 @@
         if (!options) {
           return Promise.resolve();
         }
-        if (window.Swal && typeof window.Swal.fire === 'function') {
-          return window.Swal.fire(options);
+        if (window.UI && typeof window.UI.fire === 'function') {
+          return window.UI.fire(options);
         }
         if (options.text) {
           window.alert(options.text);
@@ -374,8 +374,8 @@
         var courseName = trigger.getAttribute('data-course-name') || 'this course';
         var message = 'Delete ' + courseName + '? This cannot be undone.';
 
-        if (window.Swal && typeof window.Swal.fire === 'function') {
-          window.Swal.fire({
+        if (window.UI && typeof window.UI.fire === 'function') {
+          window.UI.fire({
             title: 'Delete course?',
             text: message,
             icon: 'warning',

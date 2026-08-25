@@ -188,8 +188,8 @@
                 if (!options) {
                     return Promise.resolve();
                 }
-                if (window.Swal && typeof window.Swal.fire === 'function') {
-                    return window.Swal.fire(options);
+                if (window.UI && typeof window.UI.fire === 'function') {
+                    return window.UI.fire(options);
                 }
                 if (options.text) {
                     window.alert(options.text);
@@ -263,8 +263,8 @@
                 var sectionName = trigger.getAttribute('data-section-name') || 'this section';
                 var message = 'Delete ' + sectionName + '? This cannot be undone.';
 
-                if (window.Swal && typeof window.Swal.fire === 'function') {
-                    window.Swal.fire({
+                if (window.UI && typeof window.UI.fire === 'function') {
+                    window.UI.fire({
                         title: 'Delete section?',
                         text: message,
                         icon: 'warning',
@@ -317,8 +317,8 @@
                         cancelButtonColor: '#6c757d'
                     };
 
-                    if (window.Swal && typeof window.Swal.fire === 'function') {
-                        window.Swal.fire(confirmOptions).then(function(result) {
+                    if (window.UI && typeof window.UI.fire === 'function') {
+                        window.UI.fire(confirmOptions).then(function(result) {
                             var confirmed = false;
                             if (result) {
                                 if (typeof result.isConfirmed !== 'undefined') {

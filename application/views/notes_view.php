@@ -54,7 +54,10 @@
                                                         <small class="text-muted">Created on: <?= date('F j, Y, g:i a', strtotime($note->created_at)) ?></small>
                                                         <div class="mt-2">
                                                             <a href="<?= site_url('note/edit/' . $note->id) ?>" class="btn btn-sm btn-warning">Edit</a>
-                                                            <a href="<?= site_url('note/delete/' . $note->id) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Delete this note?')">Delete</a>
+                                                            <a href="<?= site_url('note/delete/' . $note->id) ?>" class="btn btn-sm btn-danger"
+                                                                                data-ui-confirm="This note is removed permanently."
+                                                                                data-ui-confirm-title="Delete this note?"
+                                                                                data-ui-confirm-ok="Delete note">Delete</a>
                                                         </div>
                                                     </div>
                                                 </div>

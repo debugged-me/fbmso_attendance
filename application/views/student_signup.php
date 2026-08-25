@@ -91,7 +91,9 @@
 
                                                     <?php if (!empty($row->signupID) && strtolower(trim($row->Status)) !== 'confirmed'): ?>
                                                         <a href="<?= base_url(); ?>Page/deleteSignUp?signupID=<?= urlencode($row->signupID); ?>&StudentNumber=<?= urlencode($row->StudentNumber); ?>"
-                                                            onclick="return confirm('Are you sure you want to delete this record?');">
+                                                            data-ui-confirm="The signup record for <?= htmlspecialchars((string)$row->StudentNumber, ENT_QUOTES, 'UTF-8'); ?> is removed. This cannot be undone."
+                                                            data-ui-confirm-title="Delete this signup?"
+                                                            data-ui-confirm-ok="Delete signup">
                                                             <button type="button" class="btn btn-danger btn-xs">Delete</button>
                                                         </a>
                                                     <?php endif; ?>

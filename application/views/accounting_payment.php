@@ -117,7 +117,10 @@
                                                                     <i class="mdi mdi-pencil"></i>
                                                                 </button>
 
-                                                                <form method="post" action="<?= base_url('Accounting/deletePayment'); ?>" class="delete-payment-form d-inline">
+                                                                <form method="post" action="<?= base_url('Accounting/deletePayment'); ?>" class="delete-payment-form d-inline"
+                                                                    data-ui-confirm="The payment is removed from the student's ledger and their balance is recomputed."
+                                                                    data-ui-confirm-title="Delete this payment entry?"
+                                                                    data-ui-confirm-ok="Delete payment">
                                                                     <input type="hidden" name="id" value="<?= $rowId; ?>">
                                                                     <button type="submit"
                                                                         class="btn btn-sm btn-outline-danger action-btn"
@@ -767,12 +770,7 @@
                 initTooltips();
                 setPaymentSubmitState(false);
 
-                // DELETE confirm
-                $(document).on('submit', '.delete-payment-form', function(e) {
-                    if (!window.confirm('Delete this payment entry?')) {
-                        e.preventDefault();
-                    }
-                });
+                // DELETE confirm — see data-ui-confirm on .delete-payment-form
 
                 // ADD modal init
                 $('#paymentModal').on('shown.bs.modal', function() {

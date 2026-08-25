@@ -29,9 +29,16 @@
      UI.confirm({ title, message, variant:'danger' }) -> Promise<boolean>
      UI.prompt({ title, label, value })               -> Promise<string|null>
      UI.modal({ title, body, buttons:[...] })         -> handle { close(), el }
-     UI.loading('Generating report...')               -> handle { close() }
+
+   LOADING
+     UI.busy('Generating report...')                  -> handle { close(), text() }
+     UI.busy({ message, detail, target:'#card' })     -> overlay one element
+     UI.buttonBusy(btn, 'Saving...')                  -> returns restore()
+     UI.progress.start() … UI.progress.done()         -> thin bar up top
 
    MARKUP (no JS needed)
+     <a href="..."          data-ui-busy="Loading the masterlist...">
+     <form ... data-ui-busy="Saving...">
      <a href="..."          data-ui-confirm="Delete this record?">Delete</a>
      <form ... data-ui-confirm="Submit this form?">
      <button data-ui-toast="Copied." data-ui-toast-type="success">
@@ -445,19 +452,6 @@
         });
     }
 
-    function loading(message) {
-        return modal({
-            body: '<div class="uk-modal-busy"><span class="uk-spinner"></span>'
-                + '<div style="font-weight:600;color:var(--uk-text)">'
-                + esc(message || 'Working...') + '</div></div>',
-            html: true,
-            size: 'sm',
-            closeButton: false,
-            closeOnEsc: false,
-            closeOnBackdrop: false
-        });
-    }
-
     // ----------------------------------------------------------------------
     // Toasts
     // ----------------------------------------------------------------------
@@ -576,6 +570,231 @@
     }
 
     // ----------------------------------------------------------------------
+    // SweetAlert-shaped adapter
+    // ----------------------------------------------------------------------
+    //
+    // Several pages were written against SweetAlert2's option object, and it
+    // was loaded on some pages but not others — so those dialogs silently fell
+    // back to the browser's native confirm box. UI.fire() speaks the same
+    // options and resolves the same result shape, but draws with this kit, so
+    // every dialog in the portal looks the same without rewriting call sites.
+    //
+    // Supported: title, text, html, icon, showCancelButton, confirmButtonText,
+    // cancelButtonText, timer, toast. Button colours are ignored on purpose —
+    // the kit picks a semantic colour from the icon.
+
+    function fire(options) {
+        var o = options || {};
+
+        // toast: true routes to the notification layer instead of a dialog.
+        if (o.toast) {
+            var type = ICONS[o.icon] ? o.icon : 'info';
+            if (type === 'question') type = 'info';
+            toast({
+                type: type,
+                title: o.title || null,
+                message: o.text || o.html || '',
+                html: !!o.html && !o.text,
+                duration: o.timer || TOAST_DEFAULT_MS,
+                position: /bottom/i.test(o.position || '') ? 'bottom-right' : 'top-right'
+            });
+            return Promise.resolve(result(true));
+        }
+
+        function result(confirmed) {
+            return {
+                isConfirmed: !!confirmed,
+                isDenied: false,
+                isDismissed: !confirmed,
+                value: confirmed ? true : undefined,
+                dismiss: confirmed ? undefined : 'cancel'
+            };
+        }
+
+        var icon = ICONS[o.icon] ? o.icon : null;
+        var destructive = (o.icon === 'warning' || o.icon === 'error');
+        var body = (o.text !== undefined && o.text !== null && o.text !== '')
+            ? o.text
+            : (o.html || '');
+
+        var buttons = [];
+        if (o.showCancelButton) {
+            buttons.push({ label: o.cancelButtonText || 'Cancel', variant: 'ghost', value: false });
+        }
+        buttons.push({
+            label: o.confirmButtonText || 'OK',
+            variant: destructive && o.showCancelButton ? 'danger' : 'primary',
+            value: true
+        });
+
+        return new Promise(function (resolve) {
+            var handle = modal({
+                title: o.title || '',
+                icon: icon,
+                body: body,
+                html: (o.text === undefined || o.text === null || o.text === '') && !!o.html,
+                buttons: buttons,
+                escValue: false,
+                closeOnBackdrop: o.allowOutsideClick !== false,
+                onClose: function (value) { resolve(result(value === true)); }
+            });
+
+            if (o.timer) {
+                window.setTimeout(function () { handle.close(true); }, o.timer);
+            }
+        });
+    }
+
+    // ----------------------------------------------------------------------
+    // Loader
+    // ----------------------------------------------------------------------
+    //
+    // Three shapes, one spinner:
+    //   UI.busy('Generating report…')        full-page overlay
+    //   UI.busy({ target: '#card' })         overlay one card / table
+    //   UI.buttonBusy(btn, 'Saving…')        inline, on the button itself
+    //   UI.progress.start() / .done()        thin bar across the top
+    //
+    // The overlay is one node with one CSS animation. Nothing polls, and
+    // closing removes the node, so an idle page holds nothing.
+
+    function ring(size) {
+        return '<div class="uk-ring' + (size ? ' uk-ring-' + size : '') + '" role="progressbar" aria-label="Loading"></div>';
+    }
+
+    function resolveNode(target) {
+        if (!target) return null;
+        return (typeof target === 'string') ? document.querySelector(target) : target;
+    }
+
+    /**
+     * @param {string|Object} options  message, or { message, detail, target, size }
+     * @returns {{close: Function, text: Function}}
+     */
+    function busy(options) {
+        var o = normalise(options, {});
+        var host = resolveNode(o.target);
+
+        var node = el('div', 'uk-busy' + (host ? ' uk-busy-local' : ''));
+        node.setAttribute('role', 'status');
+        node.setAttribute('aria-live', 'polite');
+        node.innerHTML = ring(o.size)
+            + (o.message ? '<div class="uk-busy-label">' + esc(o.message) + '</div>' : '')
+            + (o.detail ? '<div class="uk-busy-sub">' + esc(o.detail) + '</div>' : '');
+
+        if (host) {
+            host.classList.add('uk-busy-host');
+            host.appendChild(node);
+        } else {
+            document.body.appendChild(node);
+            lockScroll();
+        }
+
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () { node.classList.add('uk-in'); });
+        });
+
+        var closed = false;
+        return {
+            el: node,
+            /** Update the caption without tearing the overlay down. */
+            text: function (message, detail) {
+                var label = node.querySelector('.uk-busy-label');
+                if (label) label.textContent = message;
+                var sub = node.querySelector('.uk-busy-sub');
+                if (sub && detail !== undefined) sub.textContent = detail;
+            },
+            close: function () {
+                if (closed) return;
+                closed = true;
+                node.classList.remove('uk-in');
+                afterTransition(node, 300, function () {
+                    if (node.parentNode) node.parentNode.removeChild(node);
+                    if (host) {
+                        if (!host.querySelector('.uk-busy-local')) host.classList.remove('uk-busy-host');
+                    } else {
+                        unlockScroll();
+                    }
+                });
+            }
+        };
+    }
+
+    /**
+     * Put a button into a spinner state and lock it, so a slow save cannot be
+     * double-submitted. Returns the function that restores it.
+     */
+    function buttonBusy(button, label) {
+        var node = resolveNode(button);
+        if (!node) return function () { };
+
+        var original = node.innerHTML;
+        var wasDisabled = node.disabled;
+
+        node.classList.add('is-busy');
+        node.disabled = true;
+        node.setAttribute('aria-busy', 'true');
+        node.innerHTML = '<span class="uk-ring uk-ring-sm uk-ring-white uk-btn-inline-ring"></span>'
+            + esc(label || node.textContent.trim());
+
+        return function restore() {
+            node.classList.remove('is-busy');
+            node.disabled = wasDisabled;
+            node.removeAttribute('aria-busy');
+            node.innerHTML = original;
+        };
+    }
+
+    // --- top progress bar -------------------------------------------------
+
+    var progressNode = null;
+    var progressTimer = null;
+    var progressValue = 0;
+
+    function progressEl() {
+        if (progressNode) return progressNode;
+        progressNode = el('div', 'uk-progress', '<span></span>');
+        document.body.appendChild(progressNode);
+        return progressNode;
+    }
+
+    /**
+     * Creeps toward 90% and waits — real completion is what finishes it.
+     * One timer, cleared on done(), so nothing keeps ticking in the background.
+     */
+    var progress = {
+        start: function () {
+            var bar = progressEl().firstChild;
+            progressValue = 0.08;
+            progressEl().classList.add('uk-in');
+            bar.style.transform = 'scaleX(' + progressValue + ')';
+
+            window.clearInterval(progressTimer);
+            progressTimer = window.setInterval(function () {
+                progressValue += (0.9 - progressValue) * 0.12;
+                bar.style.transform = 'scaleX(' + progressValue + ')';
+            }, 320);
+            return progress;
+        },
+        set: function (fraction) {
+            progressValue = Math.max(0, Math.min(1, fraction));
+            progressEl().firstChild.style.transform = 'scaleX(' + progressValue + ')';
+            return progress;
+        },
+        done: function () {
+            window.clearInterval(progressTimer);
+            progressTimer = null;
+            if (!progressNode) return progress;
+            progressNode.firstChild.style.transform = 'scaleX(1)';
+            progressNode.classList.remove('uk-in');
+            window.setTimeout(function () {
+                if (progressNode) progressNode.firstChild.style.transform = 'scaleX(0)';
+            }, 260);
+            return progress;
+        }
+    };
+
+    // ----------------------------------------------------------------------
     // Theme — follow the app, not the OS
     // ----------------------------------------------------------------------
     //
@@ -618,9 +837,38 @@
     // Declarative hooks — one delegated listener for the whole document
     // ----------------------------------------------------------------------
 
+    // A navigation that never happens (blocked popup, cancelled download) must
+    // not leave the page covered forever, so the overlay has a hard ceiling and
+    // is torn down if the browser restores the page from bfcache.
+    var navBusy = null;
+
+    function showNavBusy(trigger) {
+        if (navBusy) return;
+        navBusy = busy({
+            message: trigger.getAttribute('data-ui-busy') || 'Loading…',
+            detail: trigger.getAttribute('data-ui-busy-detail') || null
+        });
+        window.setTimeout(clearNavBusy, 20000);
+    }
+
+    function clearNavBusy() {
+        if (!navBusy) return;
+        navBusy.close();
+        navBusy = null;
+    }
+
     function bindDeclarative() {
+        window.addEventListener('pageshow', clearNavBusy);
+
         document.addEventListener('click', function (e) {
             if (!e.target.closest) return;
+
+            // data-ui-busy="Generating report…" on a link — show the overlay
+            // while the browser fetches the next page.
+            var busyLink = e.target.closest('a[data-ui-busy]');
+            if (busyLink && !busyLink.hasAttribute('data-ui-confirm')) {
+                showNavBusy(busyLink);
+            }
 
             // data-ui-toast="Copied to clipboard"
             var toaster = e.target.closest('[data-ui-toast]');
@@ -658,6 +906,18 @@
                 trigger.removeAttribute('data-uk-confirmed');
             });
         }, true);
+
+        // <form data-ui-busy="Saving…"> — overlay while the POST round-trips.
+        // Runs in the bubble phase, after the capture-phase confirm handler,
+        // so a cancelled confirmation never leaves an overlay behind.
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            if (e.defaultPrevented || !form.hasAttribute || !form.hasAttribute('data-ui-busy')) return;
+            busy({
+                message: form.getAttribute('data-ui-busy') || 'Working…',
+                detail: form.getAttribute('data-ui-busy-detail') || null
+            });
+        });
 
         // <form data-ui-confirm="Submit?">
         document.addEventListener('submit', function (e) {
@@ -707,12 +967,22 @@
             }
         },
 
+        // loading
+        busy: busy,
+        buttonBusy: buttonBusy,
+        progress: progress,
+
         // modals
         modal: modal,
+
+        /** SweetAlert2-shaped options, drawn with this kit. See fire() above. */
+        fire: fire,
         alert: alertBox,
         confirm: confirmBox,
         prompt: promptBox,
-        loading: loading,
+
+        /** Kept as the familiar name; it is the same overlay as UI.busy(). */
+        loading: busy,
 
         /** Close every open dialog (e.g. before navigating away). */
         closeAll: function () {

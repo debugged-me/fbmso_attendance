@@ -379,7 +379,7 @@
 
       document.addEventListener('DOMContentLoaded', function() {
         if (successMessage) {
-          Swal.fire({
+          UI.fire({
             icon: 'success',
             title: 'Profile Saved',
             text: successMessage,
@@ -387,7 +387,7 @@
             confirmButtonText: 'OK'
           });
         } else if (dangerMessage) {
-          Swal.fire({
+          UI.fire({
             icon: 'error',
             title: 'Something went wrong',
             text: dangerMessage,

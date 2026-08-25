@@ -139,7 +139,9 @@
                                                                     <?php if (!$todo->is_done): ?>
                                                                         <a href="<?= site_url('ToDo/mark_done/' . $todo->id) ?>" class="btn btn-sm btn-success">Mark as Done</a>
                                                                         <a href="<?= site_url('ToDo/delete/' . $todo->id) ?>" class="btn btn-sm btn-danger"
-                                                                            onclick="return confirm('Are you sure you want to delete this task?')">Delete</a>
+                                                                            data-ui-confirm="The task is removed from your list. This cannot be undone."
+                                                                            data-ui-confirm-title="Delete this task?"
+                                                                            data-ui-confirm-ok="Delete task">Delete</a>
                                                                     <?php else: ?>
                                                                         <a href="<?= site_url('ToDo/mark_undone/' . $todo->id) ?>" class="btn btn-sm btn-warning">Mark as Undone</a>
                                                                     <?php endif; ?>

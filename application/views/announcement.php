@@ -278,7 +278,9 @@
                           <i class="mdi mdi-pencil"></i> Edit
                         </a>
                         <a href="<?= base_url('Announcement/delete/' . $row->aID); ?>" class="btn btn-outline-danger btn-sm"
-                           onclick="return confirm('Delete this announcement?');">
+                           data-ui-confirm="It stops appearing for everyone it was posted to. This cannot be undone."
+                           data-ui-confirm-title="Delete this announcement?"
+                           data-ui-confirm-ok="Delete announcement">
                           <i class="mdi mdi-delete"></i> Delete
                         </a>
                       </div>

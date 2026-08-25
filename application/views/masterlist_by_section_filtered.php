@@ -108,7 +108,9 @@
 
         <!-- If you want to delete signup (not profile), route to a signup delete action -->
         <a href="<?= base_url(); ?>Page/deleteSignup?id=<?= urlencode($studno); ?>"
-           onclick="return confirm('Delete this registered student (signup record)?');"
+           data-ui-confirm="This removes the student's signup record. This cannot be undone."
+           data-ui-confirm-title="Delete this signup record?"
+           data-ui-confirm-ok="Delete signup"
            class="text-danger">
           <i class="mdi mdi-delete-empty-outline"></i> Delete
         </a>

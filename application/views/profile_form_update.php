@@ -306,8 +306,8 @@ $(function () {
     $('#province, #city, #barangay').select2({ width: '100%' });
 
     function notifyError(message) {
-        if (window.Swal && typeof window.Swal.fire === 'function') {
-            window.Swal.fire({
+        if (window.UI && typeof window.UI.fire === 'function') {
+            window.UI.fire({
                 icon: 'error',
                 title: 'Error',
                 text: message,
@@ -468,8 +468,8 @@ $('#city').on('change', function () {
         return;
     }
 
-    if (window.Swal && typeof window.Swal.fire === 'function') {
-        window.Swal.fire(options);
+    if (window.UI && typeof window.UI.fire === 'function') {
+        window.UI.fire(options);
     } else if (options.text) {
         window.alert(options.text);
     }

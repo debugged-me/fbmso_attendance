@@ -156,8 +156,8 @@
         if (!options) {
           return;
         }
-        if (window.Swal && typeof window.Swal.fire === 'function') {
-          return window.Swal.fire(options);
+        if (window.UI && typeof window.UI.fire === 'function') {
+          return window.UI.fire(options);
         }
         if (options.text) {
           window.alert(options.text);
@@ -221,8 +221,8 @@
           }
         };
 
-        if (window.Swal && typeof window.Swal.fire === 'function') {
-          window.Swal.fire({
+        if (window.UI && typeof window.UI.fire === 'function') {
+          window.UI.fire({
             title: 'Delete record?',
             text: promptText,
             icon: 'warning',
@@ -262,8 +262,8 @@
           }
         };
 
-        if (window.Swal && typeof window.Swal.fire === 'function') {
-          window.Swal.fire({
+        if (window.UI && typeof window.UI.fire === 'function') {
+          window.UI.fire({
             title: 'Reset password?',
             text: promptText,
             icon: 'warning',

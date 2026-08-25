@@ -76,7 +76,10 @@
                                                                 <!-- DELETE FORM -->
                                                                 <form method="post"
                                                                     action="<?= base_url('Accounting/course_setUp'); ?>"
-                                                                    class="delete-fee-form mb-0">
+                                                                    class="delete-fee-form mb-0"
+                                                                    data-ui-confirm="Assessments already computed with this fee are not recalculated."
+                                                                    data-ui-confirm-title="Delete this fee item?"
+                                                                    data-ui-confirm-ok="Delete fee">
                                                                     <input type="hidden" name="action" value="delete">
                                                                     <input type="hidden" name="feesid" value="<?= (int)$fee->feesid; ?>">
                                                                     <button type="submit" class="btn btn-danger btn-sm">
@@ -222,10 +225,7 @@
                     $('#editFeeModal').modal('show');
                 });
 
-                // delete confirm
-                $(document).on('submit', '.delete-fee-form', function(e) {
-                    if (!window.confirm('Delete this fee item?')) e.preventDefault();
-                });
+                // delete confirm — see data-ui-confirm on .delete-fee-form
             });
         })();
     </script>
