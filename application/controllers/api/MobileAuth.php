@@ -1,6 +1,11 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
+// MobileAuth extends the shared MobileApi base controller which lives in
+// application/libraries/. CI3 does not auto-load library classes as base
+// controllers, so require it explicitly.
+require_once APPPATH . 'libraries/MobileApi.php';
+
 /**
  * Mobile authentication API for the FBMSO Attendance native app.
  *
@@ -19,42 +24,13 @@ defined('BASEPATH') or exit('No direct script access allowed');
  *   GET  api/mobile/auth/avatar
  *   POST api/mobile/auth/forgot-password
  */
-class MobileAuth extends CI_Controller
+class MobileAuth extends MobileApi
 {
     public function __construct()
     {
         parent::__construct();
-        $this->load->database();
         $this->load->helper('url');
-        $this->load->library('session');
         $this->load->model('Login_model');
-        $this->load->model('MobileTokenModel');
-        $this->send_cors_headers();
-    }
-
-    /**
-     * CORS support so the Flutter web build (dev preview on another port)
-     * can call the API. Native mobile apps don't need CORS. OPTIONS
-     * preflights are answered immediately with 204.
-     */
-    private function send_cors_headers(): void
-    {
-        $origin = $this->input->get_request_header('Origin');
-        if ($origin) {
-            header('Access-Control-Allow-Origin: ' . $origin);
-            header('Vary: Origin');
-        } else {
-            header('Access-Control-Allow-Origin: *');
-        }
-        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-        header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Idempotency-Key');
-        header('Access-Control-Max-Age: 86400');
-
-        if ($this->input->method(true) === 'OPTIONS') {
-            $this->output->set_status_header(204);
-            $this->output->_display();
-            exit;
-        }
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -732,138 +708,8 @@ class MobileAuth extends CI_Controller
     }
 
     // ──────────────────────────────────────────────────────────────────────
-    //  Idempotency (mirrors MobileApi's o_mobile_outbox dedup)
+    //  Helpers (auth-specific; shared helpers inherited from MobileApi)
     // ──────────────────────────────────────────────────────────────────────
-
-    /**
-     * For a mutating request, replay the stored response if the
-     * X-Idempotency-Key has been seen before. Returns true when replayed
-     * (caller must stop); false to proceed.
-     */
-    private function replay_if_duplicate(): bool
-    {
-        $method = strtoupper((string)$this->input->method(true));
-        if ($method === 'GET') {
-            return false;
-        }
-
-        $key = trim((string)$this->input->get_request_header('X-Idempotency-Key'));
-        if ($key === '') {
-            return false;
-        }
-
-        $now = time();
-        try {
-            $this->db->where('expires_at <', $now)->delete('o_mobile_outbox');
-        } catch (Throwable $e) {
-            // ignore
-        }
-
-        $row = $this->db->get_where('o_mobile_outbox', ['idem_key' => $key], 1)->row_array();
-        if (!$row) {
-            return false;
-        }
-
-        $this->output
-            ->set_status_header((int)$row['status_code'])
-            ->set_content_type('application/json', 'utf-8')
-            ->set_output((string)$row['response_body']);
-        return true;
-    }
-
-    /** Record the response for the current idempotency key (no-op if no key). */
-    private function record_idempotent_response(int $statusCode, string $responseBody): void
-    {
-        $key = trim((string)$this->input->get_request_header('X-Idempotency-Key'));
-        if ($key === '') {
-            return;
-        }
-
-        $now = time();
-        $username = '';
-        $raw = $this->bearer_token();
-        if ($raw !== '') {
-            $t = $this->MobileTokenModel->lookup($raw);
-            if ($t) {
-                $username = (string)$t['username'];
-            }
-        }
-        $endpoint = 'mobileauth/' . strtolower((string)$this->router->fetch_method());
-
-        try {
-            $this->db->insert('o_mobile_outbox', [
-                'idem_key'      => $key,
-                'username'      => $username,
-                'endpoint'      => $endpoint,
-                'status_code'   => $statusCode,
-                'response_body' => $responseBody,
-                'created_at'    => $now,
-                'expires_at'    => $now + 86400,
-            ]);
-        } catch (Throwable $e) {
-            // A duplicate insert (race) is fine — the first one wins.
-        }
-    }
-
-    // ──────────────────────────────────────────────────────────────────────
-    //  Helpers
-    // ──────────────────────────────────────────────────────────────────────
-
-    /** Emit JSON and stop. */
-    private function json(array $data, int $status = 200)
-    {
-        $this->output
-            ->set_status_header($status)
-            ->set_content_type('application/json', 'utf-8')
-            ->set_output(json_encode($data));
-        return null;
-    }
-
-    /** Read + decode a JSON request body (falls back to form input). */
-    private function read_payload(): array
-    {
-        $raw = file_get_contents('php://input');
-        if ($raw !== '' && $raw !== false) {
-            $decoded = json_decode($raw, true);
-            if (is_array($decoded)) {
-                return $decoded;
-            }
-        }
-        return $this->input->post() ?: [];
-    }
-
-    /** Extract the bearer token from the Authorization header. */
-    private function bearer_token(): string
-    {
-        $header = $this->input->get_request_header('Authorization');
-        if (!$header) {
-            return '';
-        }
-        $header = trim($header);
-        if (stripos($header, 'Bearer ') === 0) {
-            return trim(substr($header, 7));
-        }
-        return trim($header);
-    }
-
-    /**
-     * Validate the bearer token; on failure send 401 and return null.
-     * On success return the o_mobile_tokens row.
-     */
-    private function require_token(): ?array
-    {
-        $raw = $this->bearer_token();
-        if ($raw === '') {
-            $this->json(['ok' => false, 'message' => 'Missing authorization token.'], 401);
-            return null;
-        }
-        $row = $this->MobileTokenModel->lookup($raw);
-        if (!$row) {
-            $this->json(['ok' => false, 'message' => 'Invalid or expired token. Please log in again.'], 401);
-            return null;
-        }
-        return $row;
-    }
 
     private function user_is_active(array $userRow): bool
     {

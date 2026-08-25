@@ -25,6 +25,101 @@ class MobileApi extends CI_Controller
         $this->load->library('session');
         $this->load->model('MobileTokenModel');
         $this->send_cors_headers();
+        $this->ensure_mobile_schema();
+    }
+
+    /**
+     * Auto-create the mobile API tables if they don't exist.
+     * This runs on every /api/mobile/* request but is a no-op once the
+     * tables exist (CREATE TABLE IF NOT EXISTS + cached flag).
+     * New clients don't need to manually run mobile_api.sql.
+     */
+    private function ensure_mobile_schema(): void
+    {
+        // Static flag — only run the checks once per request lifecycle.
+        static $checked = false;
+        if ($checked) return;
+        $checked = true;
+
+        $db = $this->db;
+
+        // 1. o_mobile_tokens — bearer token store
+        if (!$db->table_exists('o_mobile_tokens')) {
+            $db->query("CREATE TABLE IF NOT EXISTS `o_mobile_tokens` (
+                `id` int unsigned NOT NULL AUTO_INCREMENT,
+                `username` varchar(120) NOT NULL,
+                `token_hash` char(64) NOT NULL COMMENT 'sha256 of the bearer token',
+                `device_id` varchar(160) DEFAULT NULL,
+                `device_name` varchar(160) DEFAULT NULL,
+                `platform` varchar(20) DEFAULT NULL,
+                `issued_at` int unsigned NOT NULL,
+                `expires_at` int unsigned NOT NULL,
+                `revoked` tinyint(1) NOT NULL DEFAULT 0,
+                `last_seen_at` int unsigned NOT NULL DEFAULT 0,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_token_hash` (`token_hash`),
+                KEY `idx_username` (`username`),
+                KEY `idx_expires` (`expires_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        }
+
+        // 2. o_mobile_outbox — idempotency log
+        if (!$db->table_exists('o_mobile_outbox')) {
+            $db->query("CREATE TABLE IF NOT EXISTS `o_mobile_outbox` (
+                `id` int unsigned NOT NULL AUTO_INCREMENT,
+                `idem_key` varchar(120) NOT NULL,
+                `username` varchar(120) NOT NULL,
+                `endpoint` varchar(255) NOT NULL,
+                `status_code` smallint unsigned NOT NULL,
+                `response_body` longtext NOT NULL,
+                `created_at` int unsigned NOT NULL,
+                `expires_at` int unsigned NOT NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_idem_key` (`idem_key`),
+                KEY `idx_expires` (`expires_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        }
+
+        // 3. notes — fix id column if it lacks AUTO_INCREMENT
+        if ($db->table_exists('notes')) {
+            $fields = $db->field_data('notes');
+            $needsFix = true;
+            foreach ($fields as $f) {
+                if ($f->name === 'id' && $f->primary_key === 1 && stripos((string)$f->type, 'int') !== false) {
+                    // Check if it's already auto_increment by looking at the column definition
+                    $col = $db->query("SHOW COLUMNS FROM `notes` WHERE Field = 'id'")->row();
+                    if ($col && stripos((string)$col->Extra, 'auto_increment') !== false) {
+                        $needsFix = false;
+                    }
+                    break;
+                }
+            }
+            if ($needsFix) {
+                try {
+                    $db->query("ALTER TABLE `notes` MODIFY `id` INT(11) NOT NULL AUTO_INCREMENT, ADD PRIMARY KEY (`id`)");
+                } catch (Throwable $e) { /* ignore — may already have a PK */ }
+            }
+        }
+
+        // 4. todos — fix id column if it lacks AUTO_INCREMENT
+        if ($db->table_exists('todos')) {
+            $fields = $db->field_data('todos');
+            $needsFix = true;
+            foreach ($fields as $f) {
+                if ($f->name === 'id' && $f->primary_key === 1 && stripos((string)$f->type, 'int') !== false) {
+                    $col = $db->query("SHOW COLUMNS FROM `todos` WHERE Field = 'id'")->row();
+                    if ($col && stripos((string)$col->Extra, 'auto_increment') !== false) {
+                        $needsFix = false;
+                    }
+                    break;
+                }
+            }
+            if ($needsFix) {
+                try {
+                    $db->query("ALTER TABLE `todos` MODIFY `id` INT(11) NOT NULL AUTO_INCREMENT, ADD PRIMARY KEY (`id`)");
+                } catch (Throwable $e) { /* ignore */ }
+            }
+        }
     }
 
     /**

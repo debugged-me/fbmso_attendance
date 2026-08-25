@@ -1,6 +1,12 @@
 -- ============================================================================
 -- FBMSO Attendance — Mobile API tables
--- Run once on the production database (srmsportal_fbmso) and on local dev.
+-- ----------------------------------------------------------------------------
+-- OPTIONAL: These tables are now auto-created by MobileApi::ensure_mobile_schema()
+-- on the first /api/mobile/* request. You do NOT need to run this file manually
+-- for a fresh deployment — the app will create the tables itself.
+--
+-- This file is kept for reference and for manual/pre-deployment provisioning
+-- if you prefer to create the schema ahead of time.
 -- ============================================================================
 
 -- Bearer tokens issued by /api/mobile/auth/login.
