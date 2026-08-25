@@ -15,6 +15,8 @@ defined('BASEPATH') or exit('No direct script access allowed');
  *   GET  api/mobile/auth/me
  *   POST api/mobile/auth/logout
  *   POST api/mobile/auth/change-password
+ *   POST api/mobile/auth/change-avatar
+ *   GET  api/mobile/auth/avatar
  *   POST api/mobile/auth/forgot-password
  */
 class MobileAuth extends CI_Controller
@@ -227,6 +229,93 @@ class MobileAuth extends CI_Controller
         return $this->json(['ok' => true, 'message' => 'Password changed successfully. Please log in again.']);
     }
 
+    /** Change display picture (multipart upload, field name `photo`). */
+    public function change_avatar()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) {
+            return;
+        }
+        if ($this->replay_if_duplicate()) return;
+
+        $username = (string)$tokenRow['username'];
+
+        if (empty($_FILES['photo']['name'])) {
+            $body = json_encode(['ok' => false, 'message' => 'A photo file (field "photo") is required.']);
+            $this->record_idempotent_response(422, $body);
+            return $this->json(json_decode($body, true), 422);
+        }
+
+        $config = [
+            'upload_path'      => FCPATH . 'upload/profile/',
+            'allowed_types'    => 'jpg|jpeg|png|gif',
+            'max_size'         => 2048,
+            'file_ext_tolower' => TRUE,
+            'encrypt_name'     => TRUE,
+            'remove_spaces'    => TRUE,
+        ];
+        $this->load->library('upload', $config);
+
+        if (!$this->upload->do_upload('photo')) {
+            $body = json_encode(['ok' => false, 'message' => $this->upload->display_errors('', '')]);
+            $this->record_idempotent_response(400, $body);
+            return $this->json(json_decode($body, true), 400);
+        }
+
+        $filename = $this->upload->data('file_name');
+
+        // Remove the previous avatar (users first, then o_users) unless it is the default.
+        $row = $this->db->select('avatar')->from('users')->where('username', $username)->get()->row();
+        if (!$row) {
+            $row = $this->db->select('avatar')->from('o_users')->where('username', $username)->get()->row();
+        }
+        if ($row && $row->avatar && strtolower($row->avatar) !== 'avatar.png') {
+            $old = FCPATH . 'upload/profile/' . $row->avatar;
+            if (is_file($old)) @unlink($old);
+        }
+
+        // Update whichever table the user exists in (mirrors Page/uploadProfPic).
+        $this->db->where('username', $username)->update('users', ['avatar' => $filename]);
+        if ($this->db->affected_rows() === 0) {
+            $this->db->where('username', $username)->update('o_users', ['avatar' => $filename]);
+        }
+
+        $avatarUrl = $this->avatar_url($filename);
+        $body = json_encode([
+            'ok'         => true,
+            'avatar_url' => $avatarUrl,
+            'message'    => 'Avatar updated successfully.',
+        ]);
+        $this->record_idempotent_response(200, $body);
+        return $this->json(json_decode($body, true), 200);
+    }
+
+    /** Return the current user's avatar URL (o_users.avatar, falling back to users.avatar). */
+    public function avatar()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) {
+            return;
+        }
+
+        $username = (string)$tokenRow['username'];
+        $row = $this->db->select('avatar')->from('o_users')->where('username', $username)->limit(1)->get()->row();
+        if (!$row) {
+            $row = $this->db->select('avatar')->from('users')->where('username', $username)->limit(1)->get()->row();
+        }
+        $avatar = trim((string)($row->avatar ?? ''));
+
+        return $this->json(['ok' => true, 'avatar_url' => $this->avatar_url($avatar)]);
+    }
+
     /** Email-based password reset (delegates to Login_model::forgotPassword). */
     public function forgot_password()
     {
@@ -253,6 +342,80 @@ class MobileAuth extends CI_Controller
         }
 
         return $this->json(['ok' => true, 'message' => 'If that email exists, a temporary password has been sent.']);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  Idempotency (mirrors MobileApi's o_mobile_outbox dedup)
+    // ──────────────────────────────────────────────────────────────────────
+
+    /**
+     * For a mutating request, replay the stored response if the
+     * X-Idempotency-Key has been seen before. Returns true when replayed
+     * (caller must stop); false to proceed.
+     */
+    private function replay_if_duplicate(): bool
+    {
+        $method = strtoupper((string)$this->input->method(true));
+        if ($method === 'GET') {
+            return false;
+        }
+
+        $key = trim((string)$this->input->get_request_header('X-Idempotency-Key'));
+        if ($key === '') {
+            return false;
+        }
+
+        $now = time();
+        try {
+            $this->db->where('expires_at <', $now)->delete('o_mobile_outbox');
+        } catch (Throwable $e) {
+            // ignore
+        }
+
+        $row = $this->db->get_where('o_mobile_outbox', ['idem_key' => $key], 1)->row_array();
+        if (!$row) {
+            return false;
+        }
+
+        $this->output
+            ->set_status_header((int)$row['status_code'])
+            ->set_content_type('application/json', 'utf-8')
+            ->set_output((string)$row['response_body']);
+        return true;
+    }
+
+    /** Record the response for the current idempotency key (no-op if no key). */
+    private function record_idempotent_response(int $statusCode, string $responseBody): void
+    {
+        $key = trim((string)$this->input->get_request_header('X-Idempotency-Key'));
+        if ($key === '') {
+            return;
+        }
+
+        $now = time();
+        $username = '';
+        $raw = $this->bearer_token();
+        if ($raw !== '') {
+            $t = $this->MobileTokenModel->lookup($raw);
+            if ($t) {
+                $username = (string)$t['username'];
+            }
+        }
+        $endpoint = 'mobileauth/' . strtolower((string)$this->router->fetch_method());
+
+        try {
+            $this->db->insert('o_mobile_outbox', [
+                'idem_key'      => $key,
+                'username'      => $username,
+                'endpoint'      => $endpoint,
+                'status_code'   => $statusCode,
+                'response_body' => $responseBody,
+                'created_at'    => $now,
+                'expires_at'    => $now + 86400,
+            ]);
+        } catch (Throwable $e) {
+            // A duplicate insert (race) is fine — the first one wins.
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────────

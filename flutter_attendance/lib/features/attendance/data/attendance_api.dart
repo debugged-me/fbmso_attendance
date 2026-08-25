@@ -175,6 +175,112 @@ class AttendanceApi {
     );
   }
 
+  // ─── Activity management (staff) ────────────────────────────────────────
+
+  /// Create a new activity. Staff only.
+  Future<({bool ok, String message, Activity? activity})> createActivity({
+    required String baseUrl,
+    required String token,
+    required String title,
+    required String activityDate,
+    String startTime = '',
+    String endTime = '',
+    String location = '',
+    String program = '',
+    String description = '',
+    bool isOpen = true,
+  }) async {
+    final url = '${_normalize(baseUrl)}/api/mobile/activities/create';
+    final idemKey = _uuid.v4();
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: {..._headers(token), 'X-Idempotency-Key': idemKey},
+        body: jsonEncode({
+          'title': title,
+          'activity_date': activityDate,
+          if (startTime.isNotEmpty) 'start_time': startTime,
+          if (endTime.isNotEmpty) 'end_time': endTime,
+          if (location.isNotEmpty) 'location': location,
+          if (program.isNotEmpty) 'program': program,
+          if (description.isNotEmpty) 'description': description,
+          'is_open': isOpen ? 1 : 0,
+        }),
+      );
+      final data = _decode(response);
+      final act = data['activity'] != null
+          ? Activity.fromJson(data['activity'] as Map<String, dynamic>)
+          : null;
+      return (
+        ok: data['ok'] == true,
+        message: (data['message'] ?? '').toString(),
+        activity: act,
+      );
+    } on ApiException catch (e) {
+      return (ok: false, message: e.message, activity: null);
+    } catch (e) {
+      return (ok: false, message: e.toString(), activity: null);
+    }
+  }
+
+  /// Update an existing activity. Staff only.
+  Future<({bool ok, String message, Activity? activity})> updateActivity({
+    required String baseUrl,
+    required String token,
+    required int activityId,
+    Map<String, dynamic> fields = const {},
+  }) async {
+    final url =
+        '${_normalize(baseUrl)}/api/mobile/activities/update/$activityId';
+    final idemKey = _uuid.v4();
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: {..._headers(token), 'X-Idempotency-Key': idemKey},
+        body: jsonEncode(fields),
+      );
+      final data = _decode(response);
+      final act = data['activity'] != null
+          ? Activity.fromJson(data['activity'] as Map<String, dynamic>)
+          : null;
+      return (
+        ok: data['ok'] == true,
+        message: (data['message'] ?? '').toString(),
+        activity: act,
+      );
+    } on ApiException catch (e) {
+      return (ok: false, message: e.message, activity: null);
+    } catch (e) {
+      return (ok: false, message: e.toString(), activity: null);
+    }
+  }
+
+  /// Delete an activity. Staff only.
+  Future<({bool ok, String message})> deleteActivity({
+    required String baseUrl,
+    required String token,
+    required int activityId,
+  }) async {
+    final url =
+        '${_normalize(baseUrl)}/api/mobile/activities/delete/$activityId';
+    final idemKey = _uuid.v4();
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: {..._headers(token), 'X-Idempotency-Key': idemKey},
+      );
+      final data = _decode(response);
+      return (
+        ok: data['ok'] == true,
+        message: (data['message'] ?? '').toString(),
+      );
+    } on ApiException catch (e) {
+      return (ok: false, message: e.message);
+    } catch (e) {
+      return (ok: false, message: e.toString());
+    }
+  }
+
   // ─── internals ──────────────────────────────────────────────────────────
 
   Map<String, String> _headers(String token) => {

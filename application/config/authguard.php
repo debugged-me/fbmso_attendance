@@ -114,7 +114,10 @@ $config['authguard_student_routes'] = array(
     'page/changepassword',
     'page/update_password',
     'page/changedp',
+    'page/uploadprofpic',
     'page/studentsprofile',        // self-scoped: forces id = own username
+    'page/studentprofile',         // student edits own profile data
+    'page/updatestudentprofile',
     'page/studeenrollhistory',
     'login/logout',
 
@@ -163,6 +166,8 @@ $config['authguard_student_routes'] = array(
 
     // --- shared, harmless ----------------------------------------------
     'page/announcement',
+    'fbmsopersonnels',
+    'fbmsopersonnels/*',
     'registration/getmajorsbycourse',
     'registration/getcitiesbyprovince',
     'registration/getbarangaysbycity',

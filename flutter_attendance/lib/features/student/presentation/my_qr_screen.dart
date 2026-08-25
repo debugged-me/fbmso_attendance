@@ -118,6 +118,7 @@ class _MyQrScreenState extends State<MyQrScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'My QR',
+      showBackButton: false,
       body: Column(
         children: [
           const SyncStatusBanner(),

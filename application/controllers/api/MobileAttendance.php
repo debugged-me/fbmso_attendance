@@ -369,6 +369,216 @@ class MobileAttendance extends MobileApi
         return $this->json(['ok' => true, 'rows' => $out]);
     }
 
+    // ─── Activity management (staff only) ──────────────────────────────────
+
+    /** Create a new activity. Staff only. */
+    public function create_activity()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+        if ($this->replay_if_duplicate()) return;
+
+        $payload = $this->read_payload();
+
+        $title         = trim((string)($payload['title'] ?? ''));
+        $description   = trim((string)($payload['description'] ?? ''));
+        $location      = trim((string)($payload['location'] ?? ''));
+        $activityDate  = trim((string)($payload['activity_date'] ?? ''));
+        $startTime     = trim((string)($payload['start_time'] ?? ''));
+        $endTime       = trim((string)($payload['end_time'] ?? ''));
+        $program       = trim((string)($payload['program'] ?? ''));
+        $isOpen        = isset($payload['is_open']) ? (int)$payload['is_open'] : 1;
+
+        if ($title === '' || $activityDate === '') {
+            $body = json_encode(['ok' => false, 'message' => 'Title and date are required.']);
+            $this->record_idempotent_response(422, $body);
+            return $this->json(json_decode($body, true), 422);
+        }
+
+        $startAt = $activityDate . ' ' . ($startTime !== '' ? $startTime . ':00' : '00:00:00');
+        $endAt   = ($endTime !== '') ? ($activityDate . ' ' . $endTime . ':00') : null;
+
+        // Pull active SY/semester from settings if not provided.
+        $sy  = trim((string)($payload['sy'] ?? ''));
+        $sem = trim((string)($payload['semester'] ?? ''));
+        if ($sy === '' || $sem === '') {
+            $settings = $this->db->select('active_sy, active_sem')->from('settings')->limit(1)->get()->row();
+            if ($settings) {
+                if ($sy === '')  $sy  = (string)$settings->active_sy;
+                if ($sem === '') $sem = (string)$settings->active_sem;
+            }
+        }
+
+        $username = (string)$tokenRow['username'];
+
+        $data = [
+            'settingsID'    => 1,
+            'title'         => $title,
+            'description'   => $description ?: null,
+            'location'      => $location ?: null,
+            'program'       => $program,
+            'activity_date' => $activityDate,
+            'start_time'    => $startTime !== '' ? $startTime . ':00' : null,
+            'end_time'      => $endTime !== '' ? $endTime . ':00' : null,
+            'start_at'      => $startAt,
+            'end_at'        => $endAt,
+            'is_open'       => $isOpen,
+            'sy'            => $sy,
+            'semester'      => $sem,
+            'created_by_str'=> $username,
+            'status'        => 'open',
+            'created_at'    => date('Y-m-d H:i:s'),
+            'updated_at'    => date('Y-m-d H:i:s'),
+        ];
+
+        $ok = $this->db->insert('activities', $data);
+        if (!$ok) {
+            $err = $this->db->error();
+            $body = json_encode(['ok' => false, 'message' => 'Failed: ' . $err['message']]);
+            $this->record_idempotent_response(500, $body);
+            return $this->json(json_decode($body, true), 500);
+        }
+
+        $newId = (int)$this->db->insert_id();
+        $row = $this->ActivitiesModel->find($newId);
+        $body = json_encode([
+            'ok' => true,
+            'message' => 'Activity created.',
+            'activity' => $this->activity_shape($row),
+        ]);
+        $this->record_idempotent_response(200, $body);
+        return $this->json(json_decode($body, true), 200);
+    }
+
+    /** Update an existing activity. Staff only. */
+    public function update_activity($id = 0)
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+        if ($this->replay_if_duplicate()) return;
+
+        $activityId = (int)$id;
+        if ($activityId <= 0) {
+            return $this->json(['ok' => false, 'message' => 'Invalid activity id.'], 422);
+        }
+
+        $existing = $this->ActivitiesModel->find($activityId);
+        if (!$existing) {
+            return $this->json(['ok' => false, 'message' => 'Activity not found.'], 404);
+        }
+
+        $payload = $this->read_payload();
+
+        $data = [];
+        foreach (['title', 'description', 'location', 'program'] as $f) {
+            if (array_key_exists($f, $payload)) {
+                $data[$f] = trim((string)$payload[$f]);
+            }
+        }
+        if (isset($payload['activity_date'])) {
+            $data['activity_date'] = trim((string)$payload['activity_date']);
+        }
+        if (isset($payload['start_time'])) {
+            $t = trim((string)$payload['start_time']);
+            $data['start_time'] = $t !== '' ? $t . ':00' : null;
+        }
+        if (isset($payload['end_time'])) {
+            $t = trim((string)$payload['end_time']);
+            $data['end_time'] = $t !== '' ? $t . ':00' : null;
+        }
+        if (isset($payload['activity_date'])) {
+            $date = trim((string)$payload['activity_date']);
+            $st = trim((string)($payload['start_time'] ?? ''));
+            $et = trim((string)($payload['end_time'] ?? ''));
+            $data['start_at'] = $date . ' ' . ($st !== '' ? $st . ':00' : '00:00:00');
+            $data['end_at']   = ($et !== '') ? ($date . ' ' . $et . ':00') : null;
+        }
+        if (isset($payload['is_open'])) {
+            $data['is_open'] = (int)$payload['is_open'];
+        }
+        if (isset($payload['status'])) {
+            $data['status'] = trim((string)$payload['status']);
+        }
+
+        if (empty($data)) {
+            return $this->json(['ok' => false, 'message' => 'No fields to update.'], 422);
+        }
+
+        $data['updated_at'] = date('Y-m-d H:i:s');
+        $this->db->where('activity_id', $activityId)->update('activities', $data);
+
+        $row = $this->ActivitiesModel->find($activityId);
+        $body = json_encode([
+            'ok' => true,
+            'message' => 'Activity updated.',
+            'activity' => $this->activity_shape($row),
+        ]);
+        $this->record_idempotent_response(200, $body);
+        return $this->json(json_decode($body, true), 200);
+    }
+
+    /** Delete an activity. Staff only. */
+    public function delete_activity($id = 0)
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+        if ($this->replay_if_duplicate()) return;
+
+        $activityId = (int)$id;
+        if ($activityId <= 0) {
+            return $this->json(['ok' => false, 'message' => 'Invalid activity id.'], 422);
+        }
+
+        $existing = $this->ActivitiesModel->find($activityId);
+        if (!$existing) {
+            return $this->json(['ok' => false, 'message' => 'Activity not found.'], 404);
+        }
+
+        $ok = $this->ActivitiesModel->delete($activityId);
+        $body = json_encode([
+            'ok' => $ok,
+            'message' => $ok ? 'Activity deleted.' : 'Failed to delete activity.',
+        ]);
+        $this->record_idempotent_response($ok ? 200 : 500, $body);
+        return $this->json(json_decode($body, true), $ok ? 200 : 500);
+    }
+
+    // ─── Staff helpers ─────────────────────────────────────────────────────
+
+    private function is_staff(array $tokenRow): bool
+    {
+        $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
+        if (in_array($pos, ['admin', 'super admin', 'school admin', 'registrar', 'head registrar', 'accounting', 'hr admin', 'human resource', 'academic officer', 'encoder', 'it', 'instructor', 'teacher', 'personnel'], true)) {
+            return true;
+        }
+        return false;
+    }
+
+    private function position_of(string $username): string
+    {
+        $row = $this->db->select('position')->from('o_users')
+            ->where('username', $username)->limit(1)->get()->row();
+        return (string)($row->position ?? '');
+    }
+
     // ─── Shaping helpers ───────────────────────────────────────────────────
 
     private function activity_shape($r): array

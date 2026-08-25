@@ -23,6 +23,9 @@ require_once APPPATH . 'libraries/MobileApi.php';
  *   PUT  api/mobile/todos/(:num)/toggle
  *   DELETE api/mobile/todos/(:num)
  *   GET  api/mobile/personnel
+ *   GET  api/mobile/student/payments
+ *   GET  api/mobile/student/edit-profile
+ *   POST api/mobile/student/update-profile
  *   GET  api/mobile/masterlist/enrolled
  *   GET  api/mobile/accounting/expenses
  */
@@ -317,11 +320,188 @@ class MobileMisc extends MobileApi
                 'full_name'  => (string)$r->full_name,
                 'title'      => (string)$r->title,
                 'bio'        => (string)($r->bio ?? ''),
-                'photo_url'  => $this->file_url((string)($r->photo ?? '')),
+                'photo_url'  => $this->file_url('upload/banners/' . ltrim((string)($r->photo ?? ''), '/')),
                 'sort_order' => (int)$r->sort_order,
             ];
         }
         return $this->json(['ok' => true, 'personnel' => $out]);
+    }
+
+    // ─── Student accounting/finance ────────────────────────────────────────
+
+    /**
+     * The authenticated student's payment records from paymentsaccounts.
+     * Optional ?sy= and ?sem= filters narrow the returned rows; totals and
+     * SY/Sem options are always computed from the full unfiltered set.
+     */
+    public function student_payments()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+
+        $username = (string)$tokenRow['username'];
+        $sy  = trim((string)$this->input->get('sy', true));
+        $sem = trim((string)$this->input->get('sem', true));
+
+        // Filtered rows for the response.
+        $this->db->select('ID, PDate, pTime, ORNumber, Amount, description, PaymentType, CollectionSource, Sem, SY, ORStatus, refNo')
+            ->from('paymentsaccounts')
+            ->where('StudentNumber', $username);
+        if ($sy !== '')  $this->db->where('SY', $sy);
+        if ($sem !== '') $this->db->where('Sem', $sem);
+        $rows = $this->db->order_by('PDate', 'DESC')
+            ->order_by('pTime', 'DESC')
+            ->order_by('ID', 'DESC')
+            ->get()->result();
+
+        // Full unfiltered set for totals + options.
+        $allRows = $this->db->select('ID, Amount, ORStatus, SY, Sem')
+            ->from('paymentsaccounts')
+            ->where('StudentNumber', $username)
+            ->get()->result();
+
+        $totalValid = 0.0;
+        $totalAll   = 0.0;
+        $syOptions  = [];
+        $semOptions = [];
+        foreach ($allRows as $r) {
+            $amt = (float)($r->Amount ?? 0);
+            $totalAll += $amt;
+            $status = strtolower(trim((string)($r->ORStatus ?? '')));
+            if ($status === 'valid' || $status === 'validated' || $status === 'posted') {
+                $totalValid += $amt;
+            }
+            if (!empty($r->SY))  $syOptions[(string)$r->SY]  = (string)$r->SY;
+            if (!empty($r->Sem)) $semOptions[(string)$r->Sem] = (string)$r->Sem;
+        }
+
+        $payments = [];
+        foreach ($rows as $r) {
+            $payments[] = [
+                'id'                => (int)$r->ID,
+                'date'              => (string)($r->PDate ?? ''),
+                'time'              => (string)($r->pTime ?? ''),
+                'or_number'         => (string)($r->ORNumber ?? ''),
+                'amount'            => (float)($r->Amount ?? 0),
+                'description'       => (string)($r->description ?? ''),
+                'payment_type'      => (string)($r->PaymentType ?? ''),
+                'collection_source' => (string)($r->CollectionSource ?? ''),
+                'sem'               => (string)($r->Sem ?? ''),
+                'sy'                => (string)($r->SY ?? ''),
+                'or_status'         => (string)($r->ORStatus ?? ''),
+                'ref_no'            => (string)($r->refNo ?? ''),
+            ];
+        }
+
+        return $this->json([
+            'ok'          => true,
+            'payments'    => $payments,
+            'total_valid' => $totalValid,
+            'total_all'   => $totalAll,
+            'sy_options'  => array_values($syOptions),
+            'sem_options' => array_values($semOptions),
+        ]);
+    }
+
+    // ─── Student profile edit ──────────────────────────────────────────────
+
+    /** Return the authenticated student's editable profile fields. */
+    public function student_edit_profile()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+
+        $username = (string)$tokenRow['username'];
+        $profile  = $this->resolve_profile($username);
+
+        return $this->json(['ok' => true, 'profile' => $profile]);
+    }
+
+    /** Update the authenticated student's editable profile fields. */
+    public function student_update_profile()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if ($this->replay_if_duplicate()) return;
+
+        $username = (string)$tokenRow['username'];
+        $payload  = $this->read_payload();
+
+        // API field => column name (shared by studentsignup / studeprofile).
+        $fields = [
+            'firstName'    => 'FirstName',
+            'lastName'     => 'LastName',
+            'middleName'   => 'MiddleName',
+            'sex'          => 'Sex',
+            'civilStatus'  => 'CivilStatus',
+            'contactNo'    => 'contactNo',
+            'birthDate'    => 'birthDate',
+            'email'        => 'email',
+            'sitio'        => 'sitio',
+            'brgy'         => 'brgy',
+            'city'         => 'city',
+            'province'     => 'province',
+        ];
+
+        $data = [];
+        foreach ($fields as $api => $col) {
+            if (array_key_exists($api, $payload)) {
+                $data[$col] = trim((string)$payload[$api]);
+            }
+        }
+
+        if (empty($data)) {
+            $body = json_encode(['ok' => false, 'message' => 'No editable fields provided.']);
+            $this->record_idempotent_response(422, $body);
+            return $this->json(json_decode($body, true), 422);
+        }
+
+        // Determine which table holds the student (studentsignup → studeprofile).
+        $table = null;
+        if ($this->db->table_exists('studentsignup')) {
+            if ($this->db->where('StudentNumber', $username)->count_all_results('studentsignup') > 0) {
+                $table = 'studentsignup';
+            }
+        }
+        if ($table === null && $this->db->table_exists('studeprofile')) {
+            if ($this->db->where('StudentNumber', $username)->count_all_results('studeprofile') > 0) {
+                $table = 'studeprofile';
+            }
+        }
+
+        if ($table !== null) {
+            // Keep only columns that actually exist in the chosen table.
+            $tableCols = array_flip($this->db->list_fields($table));
+            $clean = [];
+            foreach ($data as $col => $val) {
+                if (isset($tableCols[$col])) $clean[$col] = $val;
+            }
+            if (empty($clean)) {
+                $body = json_encode(['ok' => false, 'message' => 'No updatable columns for this profile table.']);
+                $this->record_idempotent_response(422, $body);
+                return $this->json(json_decode($body, true), 422);
+            }
+            $this->db->where('StudentNumber', $username)->update($table, $clean);
+        } else {
+            // Fallback: only email is updatable on o_users.
+            if (isset($data['email'])) {
+                $this->db->where('username', $username)->update('o_users', ['email' => $data['email']]);
+            }
+        }
+
+        $profile = $this->resolve_profile($username);
+        $body = json_encode(['ok' => true, 'message' => 'Profile updated.', 'profile' => $profile]);
+        $this->record_idempotent_response(200, $body);
+        return $this->json(json_decode($body, true), 200);
     }
 
     // ─── Masterlist (admin read-only) ──────────────────────────────────────
@@ -470,6 +650,133 @@ class MobileMisc extends MobileApi
         $path = ltrim($path, '/');
         if ($path === '') return '';
         return rtrim($this->runtime_base_url(), '/') . '/' . $path;
+    }
+
+    /** Resolve a student profile across the possible tables (studentsignup → studeprofile → o_users). */
+    private function resolve_profile(string $username): array
+    {
+        $snNorm = preg_replace('/[\s-]+/', '', $username);
+
+        if ($this->db->table_exists('studentsignup')) {
+            $fields = array_flip($this->db->list_fields('studentsignup'));
+            $courseCol = $this->first_col($fields, ['Course3', 'Course1', 'Course2', 'Course']);
+            $majorCol  = $this->first_col($fields, ['Major3', 'Major1', 'Major2', 'Major']);
+            $selCourse = $courseCol ?: "''";
+            $selMajor  = $majorCol  ?: "''";
+
+            $row = $this->db->select("
+                StudentNumber,
+                TRIM(FirstName) AS first_name,
+                TRIM(MiddleName) AS middle_name,
+                TRIM(LastName) AS last_name,
+                TRIM(nameExtn) AS name_extn,
+                Sex AS sex,
+                birthDate AS birth_date,
+                email,
+                contactNo AS contact_no,
+                CivilStatus AS civil_status,
+                ethnicity,
+                Religion AS religion,
+                province,
+                city,
+                brgy AS barangay,
+                sitio,
+                {$selCourse} AS course,
+                {$selMajor} AS major,
+                Status AS status,
+                EnrollmentDate AS enrollment_date
+            ", false)->from('studentsignup')
+                ->group_start()
+                ->where('StudentNumber', $username)
+                ->or_where("REPLACE(REPLACE(StudentNumber,'-',''),' ','') =", $snNorm)
+                ->group_end()
+                ->limit(1)->get()->row();
+
+            if ($row) return $this->profile_array($row, $username);
+        }
+
+        if ($this->db->table_exists('studeprofile')) {
+            $row = $this->db->select("
+                StudentNumber,
+                TRIM(FirstName) AS first_name,
+                TRIM(MiddleName) AS middle_name,
+                TRIM(LastName) AS last_name,
+                Course AS course,
+                Major AS major
+            ", false)->from('studeprofile')
+                ->group_start()
+                ->where('StudentNumber', $username)
+                ->or_where("REPLACE(REPLACE(StudentNumber,'-',''),' ','') =", $snNorm)
+                ->group_end()
+                ->limit(1)->get()->row();
+            if ($row) return $this->profile_array($row, $username);
+        }
+
+        $row = $this->db->select("
+            username AS StudentNumber,
+            fName AS first_name,
+            mName AS middle_name,
+            lName AS last_name,
+            email,
+            '' AS course,
+            '' AS major
+        ", false)->from('o_users')
+            ->group_start()
+            ->where('username', $username)
+            ->or_where("REPLACE(REPLACE(IDNumber,'-',''),' ','') =", $snNorm)
+            ->group_end()
+            ->limit(1)->get()->row();
+
+        if ($row) return $this->profile_array($row, $username);
+
+        return [
+            'student_number' => $username,
+            'first_name' => '',
+            'last_name' => '',
+            'full_name' => $username,
+            'course' => null,
+            'major' => null,
+        ];
+    }
+
+    private function profile_array($row, string $fallback): array
+    {
+        $first  = trim((string)($row->first_name ?? ''));
+        $middle = trim((string)($row->middle_name ?? ''));
+        $last   = trim((string)($row->last_name ?? ''));
+        $full   = trim("$last, $first" . ($middle !== '' ? " {$middle[0]}." : ''));
+
+        return [
+            'student_number'  => (string)($row->StudentNumber ?? $fallback),
+            'first_name'      => $first,
+            'middle_name'     => $middle,
+            'last_name'       => $last,
+            'full_name'       => $full !== '' ? $full : $fallback,
+            'name_extn'       => (string)($row->name_extn ?? ''),
+            'sex'             => (string)($row->sex ?? ''),
+            'birth_date'      => (string)($row->birth_date ?? ''),
+            'email'           => (string)($row->email ?? ''),
+            'contact_no'      => (string)($row->contact_no ?? ''),
+            'civil_status'    => (string)($row->civil_status ?? ''),
+            'ethnicity'       => (string)($row->ethnicity ?? ''),
+            'religion'        => (string)($row->religion ?? ''),
+            'province'        => (string)($row->province ?? ''),
+            'city'            => (string)($row->city ?? ''),
+            'barangay'        => (string)($row->barangay ?? ''),
+            'sitio'           => (string)($row->sitio ?? ''),
+            'course'          => (string)($row->course ?? ''),
+            'major'           => (string)($row->major ?? ''),
+            'status'          => (string)($row->status ?? ''),
+            'enrollment_date' => (string)($row->enrollment_date ?? ''),
+        ];
+    }
+
+    private function first_col(array $fields, array $candidates): string
+    {
+        foreach ($candidates as $c) {
+            if (isset($fields[$c])) return $c;
+        }
+        return '';
     }
 
     private function runtime_base_url(): string

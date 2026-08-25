@@ -293,3 +293,65 @@ class EnrolledSubject {
         schedType: (j['sched_type'] ?? '').toString(),
       );
 }
+
+/// One payment record from `GET /api/mobile/student/payments`.
+class Payment {
+  const Payment({
+    required this.id,
+    required this.date,
+    required this.orNumber,
+    required this.amount,
+    required this.description,
+    required this.paymentType,
+    required this.collectionSource,
+    required this.sem,
+    required this.sy,
+    required this.orStatus,
+    required this.refNo,
+  });
+
+  final int id;
+  final String date;
+  final String orNumber;
+  final double amount;
+  final String description;
+  final String paymentType;
+  final String collectionSource;
+  final String sem;
+  final String sy;
+  final String orStatus;
+  final String refNo;
+
+  bool get isValid =>
+      orStatus.toLowerCase() == 'valid' ||
+      orStatus.toLowerCase() == 'verified';
+
+  factory Payment.fromJson(Map<String, dynamic> j) => Payment(
+        id: (j['id'] as num?)?.toInt() ?? 0,
+        date: (j['date'] ?? j['or_date'] ?? '').toString(),
+        orNumber: (j['or_number'] ?? j['or_no'] ?? '').toString(),
+        amount: (j['amount'] as num?)?.toDouble() ?? 0,
+        description: (j['description'] ?? j['particulars'] ?? '').toString(),
+        paymentType: (j['payment_type'] ?? j['pay_type'] ?? '').toString(),
+        collectionSource:
+            (j['collection_source'] ?? j['coll_source'] ?? '').toString(),
+        sem: (j['sem'] ?? j['semester'] ?? '').toString(),
+        sy: (j['sy'] ?? j['school_year'] ?? '').toString(),
+        orStatus: (j['or_status'] ?? j['status'] ?? '').toString(),
+        refNo: (j['ref_no'] ?? j['reference_no'] ?? '').toString(),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'date': date,
+        'or_number': orNumber,
+        'amount': amount,
+        'description': description,
+        'payment_type': paymentType,
+        'collection_source': collectionSource,
+        'sem': sem,
+        'sy': sy,
+        'or_status': orStatus,
+        'ref_no': refNo,
+      };
+}

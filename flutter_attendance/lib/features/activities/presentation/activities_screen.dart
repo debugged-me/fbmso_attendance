@@ -3,18 +3,26 @@ import 'package:flutter/material.dart';
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
 
-/// Activities list with self check-in/out per row. Reads are cache-first
-/// so the list renders even with no signal.
+/// Activities list (read-only for students). Students show their QR to an
+/// instructor who scans it — there are no self-check-in buttons here.
+/// Reads are cache-first so the list renders even with no signal.
+///
+/// When [showWelcomeHeader] is true (used by the student Dashboard tab), a
+/// welcome header with the student's name is shown above the list.
 class ActivitiesScreen extends StatefulWidget {
-  const ActivitiesScreen({super.key, required this.session});
+  const ActivitiesScreen({
+    super.key,
+    required this.session,
+    this.showWelcomeHeader = false,
+  });
 
   final AppSession session;
+  final bool showWelcomeHeader;
 
   @override
   State<ActivitiesScreen> createState() => _ActivitiesScreenState();
@@ -57,60 +65,14 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
     }
   }
 
-  Future<void> _checkin(Activity activity, String direction) async {
-    final result = await _api.selfCheckin(
-      baseUrl: widget.session.baseUrl,
-      token: widget.session.token,
-      activityId: activity.activityId,
-      direction: direction,
-    );
-    if (!mounted) return;
-    _showResult(result, activity.title);
-    _load(); // refresh
-  }
-
-  void _showResult(CheckResult r, String title) {
-    final (label, color) = _resultStyle(r);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$title: $label'),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
-  }
-
-  (String, Color) _resultStyle(CheckResult r) {
-    switch (r.mode) {
-      case 'checked_in':
-        return ('Checked in ✓', AppTheme.success);
-      case 'checked_out':
-        return ('Checked out ✓', AppTheme.success);
-      case 'already_in':
-        return ('Already checked in — check out first.', AppTheme.warning);
-      case 'duplicate':
-        return ('Duplicate scan ignored.', AppTheme.warning);
-      case 'queued':
-        return ('Saved offline — will sync on reconnect.', AppTheme.info);
-      default:
-        return (r.message ?? 'Something went wrong.', AppTheme.error);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final open = _activities.where((a) => a.isOpen).toList();
     final closed = _activities.where((a) => !a.isOpen).toList();
 
-    return Scaffold(
-      backgroundColor: AppInk.page,
-      appBar: AppBar(
-        title: const Text('Activities'),
-        actions: const [NotificationBell()],
-      ),
+    return AppScaffold(
+      title: 'Activities',
+      showBackButton: false,
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -121,30 +83,155 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
                       ? _ErrorView(message: _error!, onRetry: _load)
-                      : _activities.isEmpty
-                          ? const _EmptyState()
-                          : ListView(
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                              children: [
-                                if (open.isNotEmpty) ...[
-                                  const _SectionLabel('Happening now'),
-                                  ...open.map((a) => _ActivityCard(
-                                        activity: a,
-                                        onCheckIn: () => _checkin(a, 'in'),
-                                        onCheckOut: () => _checkin(a, 'out'),
-                                      )),
-                                ],
-                                if (closed.isNotEmpty) ...[
-                                  const _SectionLabel('Closed'),
-                                  ...closed.map((a) => _ActivityCard(
-                                        activity: a,
-                                        onCheckIn: null,
-                                        onCheckOut: null,
-                                      )),
-                                ],
-                              ],
-                            ),
+                      : ListView(
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                          children: [
+                            if (widget.showWelcomeHeader) ...[
+                              _WelcomeHeader(
+                                name: widget.session.displayName,
+                                openCount: open.length,
+                                totalCount: _activities.length,
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            if (open.isNotEmpty) ...[
+                              const _SectionLabel('Happening now'),
+                              ...open.map((a) => _ActivityCard(activity: a)),
+                            ],
+                            if (closed.isNotEmpty) ...[
+                              const _SectionLabel('Closed'),
+                              ...closed.map((a) => _ActivityCard(activity: a)),
+                            ],
+                            if (_activities.isEmpty &&
+                                !widget.showWelcomeHeader)
+                              const _EmptyState(),
+                          ],
+                        ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Welcome header shown at the top of the student Dashboard tab.
+class _WelcomeHeader extends StatelessWidget {
+  const _WelcomeHeader({
+    required this.name,
+    required this.openCount,
+    required this.totalCount,
+  });
+
+  final String name;
+  final int openCount;
+  final int totalCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Welcome,',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppInk.muted,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            name,
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: AppInk.heading,
+              height: 1.15,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _StatChip(
+                  icon: Icons.event_available_rounded,
+                  label: 'Open now',
+                  value: '$openCount',
+                  tone: AppInk.positive,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _StatChip(
+                  icon: Icons.event_note_rounded,
+                  label: 'Total',
+                  value: '$totalCount',
+                  tone: AppInk.accent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.tone,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: tone.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: tone),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppInk.muted,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppInk.heading,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -175,15 +262,9 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _ActivityCard extends StatelessWidget {
-  const _ActivityCard({
-    required this.activity,
-    required this.onCheckIn,
-    required this.onCheckOut,
-  });
+  const _ActivityCard({required this.activity});
 
   final Activity activity;
-  final VoidCallback? onCheckIn;
-  final VoidCallback? onCheckOut;
 
   @override
   Widget build(BuildContext context) {
@@ -242,29 +323,6 @@ class _ActivityCard extends StatelessWidget {
                       icon: Icons.place_rounded, text: activity.location),
               ],
             ),
-            if (isOpen) ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      label: 'Check in',
-                      icon: Icons.login_rounded,
-                      onTap: onCheckIn,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: AppButton(
-                      label: 'Check out',
-                      icon: Icons.logout_rounded,
-                      style: AppButtonStyle.outline,
-                      onTap: onCheckOut,
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ],
         ),
       ),

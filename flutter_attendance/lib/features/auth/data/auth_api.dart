@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../domain/app_session.dart';
@@ -163,6 +164,57 @@ class AuthApi {
           (data['message'] ?? 'Unable to send reset email').toString(),
           statusCode: response.statusCode);
     }
+  }
+
+  /// Fetch the current user's avatar URL from `GET /api/mobile/auth/avatar`.
+  Future<String> fetchAvatar({
+    required String baseUrl,
+    required String token,
+  }) async {
+    final response = await _safeRequest(
+      () => _client.get(
+        _uri(baseUrl, '/api/mobile/auth/avatar'),
+        headers: {
+          ..._jsonHeaders,
+          HttpHeaders.authorizationHeader: 'Bearer $token',
+        },
+      ),
+    );
+
+    final data = _decode(response);
+    if (data['ok'] != true) {
+      throw ApiException(
+          (data['message'] ?? 'Failed to fetch avatar').toString(),
+          statusCode: response.statusCode);
+    }
+    return (data['avatar'] ?? data['avatar_url'] ?? '').toString();
+  }
+
+  /// Upload a new avatar image via `POST /api/mobile/auth/change-avatar`
+  /// (multipart form-data). Returns the new avatar URL on success.
+  Future<String> changeAvatar({
+    required String baseUrl,
+    required String token,
+    required XFile file,
+  }) async {
+    final url = _uri(baseUrl, '/api/mobile/auth/change-avatar');
+    final request = http.MultipartRequest('POST', url)
+      ..headers.addAll({
+        HttpHeaders.authorizationHeader: 'Bearer $token',
+        HttpHeaders.acceptHeader: 'application/json',
+      })
+      ..files.add(
+          await http.MultipartFile.fromPath('avatar', file.path));
+
+    final streamed = await _client.send(request);
+    final response = await http.Response.fromStream(streamed);
+    final data = _decode(response);
+    if (data['ok'] != true) {
+      throw ApiException(
+          (data['message'] ?? 'Avatar upload failed').toString(),
+          statusCode: response.statusCode);
+    }
+    return (data['avatar'] ?? data['avatar_url'] ?? '').toString();
   }
 
   // ─── internals ──────────────────────────────────────────────────────────

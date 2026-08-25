@@ -78,11 +78,16 @@ $route['api/mobile/auth/login']                   = 'api/MobileAuth/login';
 $route['api/mobile/auth/me']                      = 'api/MobileAuth/me';
 $route['api/mobile/auth/logout']                  = 'api/MobileAuth/logout';
 $route['api/mobile/auth/change-password']         = 'api/MobileAuth/change_password';
+$route['api/mobile/auth/change-avatar']           = 'api/MobileAuth/change_avatar';
+$route['api/mobile/auth/avatar']                  = 'api/MobileAuth/avatar';
 $route['api/mobile/auth/forgot-password']         = 'api/MobileAuth/forgot_password';
 
 // Mobile attendance + activities
 $route['api/mobile/activities']                   = 'api/MobileAttendance/activities';
 $route['api/mobile/activities/(:num)']            = 'api/MobileAttendance/activity/$1';
+$route['api/mobile/activities/create']            = 'api/MobileAttendance/create_activity';
+$route['api/mobile/activities/update/(:num)']     = 'api/MobileAttendance/update_activity/$1';
+$route['api/mobile/activities/delete/(:num)']     = 'api/MobileAttendance/delete_activity/$1';
 $route['api/mobile/attendance/consume']           = 'api/MobileAttendance/consume';
 $route['api/mobile/attendance/checkin/(:num)']    = 'api/MobileAttendance/checkin/$1';
 $route['api/mobile/attendance/my_logs']           = 'api/MobileAttendance/my_logs';
@@ -97,6 +102,9 @@ $route['api/mobile/student/requirements']         = 'api/MobileStudent/requireme
 $route['api/mobile/student/requirements/upload']  = 'api/MobileStudent/upload_requirement';
 $route['api/mobile/student/grades']               = 'api/MobileStudent/grades';
 $route['api/mobile/student/enrolled_subjects']    = 'api/MobileStudent/enrolled_subjects';
+$route['api/mobile/student/payments']              = 'api/MobileMisc/student_payments';
+$route['api/mobile/student/edit-profile']          = 'api/MobileMisc/student_edit_profile';
+$route['api/mobile/student/update-profile']        = 'api/MobileMisc/student_update_profile';
 
 // Mobile misc: announcements, notes, todos, personnel, masterlist, accounting
 $route['api/mobile/announcements']                = 'api/MobileMisc/announcements';

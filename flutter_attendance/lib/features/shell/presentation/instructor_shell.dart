@@ -9,15 +9,17 @@ import '../../../core/widgets/sync_status_banner.dart';
 import '../../activities/presentation/activities_screen.dart';
 import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
+import '../../attendance/presentation/manage_activities_screen.dart';
 import '../../attendance/presentation/scan_screen.dart';
 import '../../auth/domain/app_session.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../auth/presentation/change_avatar_screen.dart';
+import '../../auth/presentation/change_password_screen.dart';
 import '../../misc/presentation/announcements_screen.dart';
 import '../../misc/presentation/notes_screen.dart';
 import '../../misc/presentation/todos_screen.dart';
 
-/// Instructor/personnel shell: Home (activities list), Scan (pick activity →
-/// camera), Logs (per-activity attendance), Profile.
+/// Instructor shell: Activities, Scan, More, Profile.
 class InstructorShell extends StatefulWidget {
   const InstructorShell({
     super.key,
@@ -37,11 +39,12 @@ class _InstructorShellState extends State<InstructorShell> {
 
   @override
   Widget build(BuildContext context) {
+    final session = widget.session;
     final pages = <Widget>[
-      ActivitiesScreen(session: widget.session),
-      _ScanPicker(session: widget.session),
-      _InstructorHub(session: widget.session),
-      _ProfilePage(session: widget.session, controller: widget.controller),
+      ActivitiesScreen(session: session),
+      _ScanPicker(session: session),
+      _MorePage(session: session),
+      _ProfilePage(session: session, controller: widget.controller),
     ];
 
     return Scaffold(
@@ -74,6 +77,143 @@ class _InstructorShellState extends State<InstructorShell> {
       ),
     );
   }
+}
+
+/// "More" page — extra items in a clean list.
+class _MorePage extends StatelessWidget {
+  const _MorePage({required this.session});
+  final AppSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final tiles = <_ListEntry>[
+      _ListEntry(
+        icon: Icons.edit_calendar_rounded,
+        iconColor: AppInk.accent,
+        title: 'Manage Activities',
+        subtitle: 'Create, edit, and delete activities',
+        target: ManageActivitiesScreen(session: session),
+      ),
+      _ListEntry(
+        icon: Icons.campaign_outlined,
+        iconColor: AppInk.accent,
+        title: 'Announcements',
+        subtitle: 'School-wide notices',
+        target: AnnouncementsScreen(session: session),
+      ),
+      _ListEntry(
+        icon: Icons.sticky_note_2_outlined,
+        iconColor: AppInk.caution,
+        title: 'Notes',
+        subtitle: 'Your personal notes',
+        target: NotesScreen(session: session),
+      ),
+      _ListEntry(
+        icon: Icons.check_circle_outline,
+        iconColor: AppInk.positive,
+        title: 'To-Do',
+        subtitle: 'Tasks and reminders',
+        target: TodosScreen(session: session),
+      ),
+      _ListEntry(
+        icon: Icons.lock_outline_rounded,
+        iconColor: AppInk.accent,
+        title: 'Change Password',
+        subtitle: 'Update your account password',
+        target: ChangePasswordScreen(session: session),
+      ),
+      _ListEntry(
+        icon: Icons.photo_camera_outlined,
+        iconColor: AppInk.accent,
+        title: 'Change Avatar',
+        subtitle: 'Update your profile picture',
+        target: ChangeAvatarScreen(session: session),
+      ),
+    ];
+
+    return AppScaffold(
+      title: 'More',
+      showBackButton: false,
+      body: Column(
+        children: [
+          const SyncStatusBanner(),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              itemCount: tiles.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, i) {
+                final t = tiles[i];
+                return AppCard(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 14),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => t.target),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: t.iconColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(t.icon, size: 22, color: t.iconColor),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              t.title,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppInk.heading,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              t.subtitle,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppInk.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded,
+                          color: AppInk.muted, size: 22),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ListEntry {
+  const _ListEntry({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.target,
+  });
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final Widget target;
 }
 
 /// Activity picker → opens the camera scanner for the selected activity.
@@ -207,130 +347,6 @@ class _ScanPickerState extends State<_ScanPicker> {
                             );
                           },
                         ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Instructor "More" hub — announcements, notes, todos.
-class _InstructorHub extends StatelessWidget {
-  const _InstructorHub({required this.session});
-  final AppSession session;
-
-  @override
-  Widget build(BuildContext context) {
-    final tiles = <_HubTile>[
-      _HubTile(
-        icon: Icons.campaign_outlined,
-        title: 'Announcements',
-        subtitle: 'School-wide notices',
-        target: AnnouncementsScreen(session: session),
-        tone: AppInk.accent,
-      ),
-      _HubTile(
-        icon: Icons.sticky_note_2_outlined,
-        title: 'Notes',
-        subtitle: 'Your personal notes',
-        target: NotesScreen(session: session),
-        tone: AppInk.caution,
-      ),
-      _HubTile(
-        icon: Icons.check_circle_outline,
-        title: 'To-Do',
-        subtitle: 'Tasks and reminders',
-        target: TodosScreen(session: session),
-        tone: AppInk.positive,
-      ),
-    ];
-
-    return AppScaffold(
-      title: 'More',
-      showBackButton: false,
-      body: Column(
-        children: [
-          const SyncStatusBanner(),
-          Expanded(
-            child: GridView.count(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.98,
-              children: tiles.map((t) => _HubCard(tile: t)).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HubTile {
-  const _HubTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.target,
-    this.tone = AppInk.accent,
-  });
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Widget target;
-  final Color tone;
-}
-
-class _HubCard extends StatelessWidget {
-  const _HubCard({required this.tile});
-  final _HubTile tile;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      radius: 20,
-      padding: const EdgeInsets.all(16),
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => tile.target),
-        );
-      },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: tile.tone.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(tile.icon, size: 22, color: tile.tone),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            tile.title,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppInk.heading,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: Text(
-              tile.subtitle,
-              style: const TextStyle(
-                fontSize: 12.5,
-                color: AppInk.muted,
-                height: 1.35,
-              ),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

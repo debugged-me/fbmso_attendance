@@ -69,11 +69,17 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted) return;
 
+    if (ok) {
+      // The root AnimatedBuilder will rebuild and swap to the role shell.
+      // Do NOT call setState here — it can race with the parent rebuild
+      // on web and cause the screen to get stuck.
+      return;
+    }
+
     setState(() {
       _busy = false;
-      _error = ok ? null : (widget.controller.error ?? 'Sign-in failed.');
+      _error = widget.controller.error ?? 'Sign-in failed.';
     });
-    // On success the root AuthFlow rebuilds and swaps to the role shell.
   }
 
   void _changeSchool() {
@@ -238,22 +244,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
-
-                    // ── Active term footnote ─────────────────────────
-                    if (config != null &&
-                        (config.activeSy.isNotEmpty ||
-                            config.activeSem.isNotEmpty))
-                      Center(
-                        child: Text(
-                          '${config.activeSem} • ${config.activeSy}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppInk.muted,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ),

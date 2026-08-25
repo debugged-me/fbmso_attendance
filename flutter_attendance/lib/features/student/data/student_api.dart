@@ -28,6 +28,7 @@ class StudentApi {
   static const _cacheRequirements = 'student_requirements';
   static const _cacheGrades = 'student_grades';
   static const _cacheEnrolled = 'student_enrolled';
+  static const _cachePayments = 'student_payments';
 
   // ─── Profile ────────────────────────────────────────────────────────────
 
@@ -239,6 +240,38 @@ class StudentApi {
         );
       }
       rethrow;
+    }
+  }
+
+  // ─── Payments ───────────────────────────────────────────────────────────
+
+  Future<List<Payment>> payments({
+    required String baseUrl,
+    required String token,
+    String? sy,
+    String? sem,
+  }) async {
+    var path = '/api/mobile/student/payments';
+    final query = <String>[];
+    if (sy != null && sy.trim().isNotEmpty) query.add('sy=${sy.trim()}');
+    if (sem != null && sem.trim().isNotEmpty) query.add('sem=${sem.trim()}');
+    if (query.isNotEmpty) path += '?${query.join('&')}';
+    final url = '${_n(baseUrl)}$path';
+    try {
+      final response = await _client.get(Uri.parse(url), headers: _h(token));
+      final data = _decode(response);
+      if (data['ok'] == true) {
+        final list = (data['payments'] as List? ?? [])
+            .map((e) => Payment.fromJson(e as Map<String, dynamic>))
+            .toList();
+        await OfflineStorageService.saveList(
+            _cachePayments, list.map((p) => p.toJson()).toList());
+        return list;
+      }
+      throw ApiException((data['message'] ?? 'Failed').toString());
+    } catch (_) {
+      final cached = await OfflineStorageService.getList(_cachePayments);
+      return cached.map((m) => Payment.fromJson(m)).toList();
     }
   }
 
