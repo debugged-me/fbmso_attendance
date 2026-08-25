@@ -9,6 +9,9 @@ import '../../attendance/domain/attendance_models.dart';
 import '../../attendance/presentation/scan_screen.dart';
 import '../../auth/domain/app_session.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../misc/presentation/announcements_screen.dart';
+import '../../misc/presentation/notes_screen.dart';
+import '../../misc/presentation/todos_screen.dart';
 
 /// Instructor/personnel shell: Home (activities list), Scan (pick activity →
 /// camera), Logs (per-activity attendance), Profile.
@@ -34,7 +37,7 @@ class _InstructorShellState extends State<InstructorShell> {
     final pages = <Widget>[
       ActivitiesScreen(session: widget.session),
       _ScanPicker(session: widget.session),
-      _Placeholder('Logs', 'Per-activity attendance log — Phase 4 follow-up.'),
+      _InstructorHub(session: widget.session),
       _ProfilePage(session: widget.session, controller: widget.controller),
     ];
 
@@ -55,9 +58,9 @@ class _InstructorShellState extends State<InstructorShell> {
             label: 'Scan',
           ),
           NavigationDestination(
-            icon: Icon(Icons.list_alt_outlined),
-            selectedIcon: Icon(Icons.list_alt),
-            label: 'Logs',
+            icon: Icon(Icons.grid_view_outlined),
+            selectedIcon: Icon(Icons.grid_view),
+            label: 'More',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
@@ -151,28 +154,98 @@ class _ScanPickerState extends State<_ScanPicker> {
   }
 }
 
-class _Placeholder extends StatelessWidget {
-  const _Placeholder(this.title, this.subtitle);
-  final String title;
-  final String subtitle;
+/// Instructor "More" hub — announcements, notes, todos.
+class _InstructorHub extends StatelessWidget {
+  const _InstructorHub({required this.session});
+  final AppSession session;
 
   @override
   Widget build(BuildContext context) {
+    final tiles = <_HubTile>[
+      _HubTile(
+        icon: Icons.campaign_outlined,
+        title: 'Announcements',
+        subtitle: 'School-wide notices',
+        target: AnnouncementsScreen(session: session),
+      ),
+      _HubTile(
+        icon: Icons.sticky_note_2_outlined,
+        title: 'Notes',
+        subtitle: 'Your personal notes',
+        target: NotesScreen(session: session),
+      ),
+      _HubTile(
+        icon: Icons.check_circle_outline,
+        title: 'To-Do',
+        subtitle: 'Tasks and reminders',
+        target: TodosScreen(session: session),
+      ),
+    ];
+
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: const Column(
+      appBar: AppBar(title: const Text('More')),
+      body: Column(
         children: [
-          SyncStatusBanner(),
+          const SyncStatusBanner(),
           Expanded(
-            child: Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Text('Arrives in a later phase.',
-                    style: TextStyle(color: AppTheme.textMuted)),
-              ),
+            child: GridView.count(
+              padding: const EdgeInsets.all(16),
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.95,
+              children: tiles.map((t) => _HubCard(tile: t)).toList(),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HubTile {
+  const _HubTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.target,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget target;
+}
+
+class _HubCard extends StatelessWidget {
+  const _HubCard({required this.tile});
+  final _HubTile tile;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => tile.target),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(tile.icon, size: 32, color: AppTheme.midBlue),
+              const SizedBox(height: 12),
+              Text(tile.title, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 4),
+              Expanded(
+                child: Text(tile.subtitle,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

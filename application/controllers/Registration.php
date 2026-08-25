@@ -356,9 +356,15 @@ class Registration extends CI_Controller
                 log_message('error', 'EMAIL SEND FAILED: ' . $this->email->print_debugger(['headers', 'subject', 'body']));
 
                 if ($isAdminFlow) {
-                    // Show red/amber SweetAlert on the admin list
-                    $this->session->set_flashdata('danger', 'Registration saved, but email could not be sent.');
-                    return redirect('Registration/index?source=admin'); // or your admin list route
+                    // The account WAS created — only the email failed. Go to the
+                    // list either way: staying on the form reads as "it didn't
+                    // work" and invites a duplicate submission.
+                    $this->session->set_flashdata(
+                        'warning',
+                        'Account created for ' . $studentNumber . ', but the credentials email could not be sent. '
+                            . 'Use Reset Password on the list to send it again.'
+                    );
+                    return redirect('Page/profileList');
                 } else {
                     // Public signup → go to login with an INFO SweetAlert
                     $this->session->set_flashdata(

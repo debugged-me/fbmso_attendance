@@ -140,7 +140,7 @@
                                                     <div class="col-lg-6">
                                                         <div class="form-group">
                                                             <label>Registrar</label>
-                                                            <input type="text" class="form-control" name="RegistrarJHS" value="<?php echo $data[0]->RegistrarJHS; ?>">
+                                                            <input type="text" class="form-control" name="RegistrarJHS" value="<?php echo $data[0]->RegistrarJHS ?? ''; ?>">
                                                         </div>
                                                     </div>
                                                     <div class="col-lg-6">
@@ -170,7 +170,7 @@
                                                     <div class="col-lg-6">
                                                         <div class="form-group">
                                                             <label>Principal (JHS)</label>
-                                                            <input type="text" class="form-control" name="principalJHS" value="<?php echo $data[0]->principalJHS; ?>">
+                                                            <input type="text" class="form-control" name="principalJHS" value="<?php echo $data[0]->principalJHS ?? ''; ?>">
                                                         </div>
                                                     </div>
                                                     <div class="col-lg-6">
@@ -185,7 +185,7 @@
                                                     <div class="col-lg-6">
                                                         <div class="form-group">
                                                             <label>Finance Officer </label>
-                                                            <input type="text" class="form-control" name="financeOfficer" value="<?php echo $data[0]->financeOfficer; ?>">
+                                                            <input type="text" class="form-control" name="financeOfficer" value="<?php echo $data[0]->financeOfficer ?? ''; ?>">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -195,7 +195,7 @@
                                                         <div class="form-group">
                                                             <label>Allow Viewing of Grades?</label>
                                                             <select class="form-control" name="viewGrades">
-                                                                <option><?php echo $data[0]->viewGrades; ?></option>
+                                                                <option><?php echo $data[0]->viewGrades ?? ''; ?></option>
                                                                 <option>Yes</option>
                                                                 <option>No</option>
                                                             </select>

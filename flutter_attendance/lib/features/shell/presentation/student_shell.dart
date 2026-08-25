@@ -4,9 +4,11 @@ import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../activities/presentation/activities_screen.dart';
-import '../../attendance/presentation/my_logs_screen.dart';
 import '../../auth/domain/app_session.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../misc/presentation/announcements_screen.dart';
+import '../../misc/presentation/notes_screen.dart';
+import '../../misc/presentation/todos_screen.dart';
 import '../../student/presentation/cor_screen.dart';
 import '../../student/presentation/grades_screen.dart';
 import '../../student/presentation/my_qr_screen.dart';
@@ -38,7 +40,7 @@ class _StudentShellState extends State<StudentShell> {
       ActivitiesScreen(session: widget.session),
       MyQrScreen(session: widget.session),
       _StudentHub(session: widget.session),
-      MyLogsScreen(session: widget.session),
+      AnnouncementsScreen(session: widget.session),
       _ProfilePage(session: widget.session, controller: widget.controller),
     ];
 
@@ -64,9 +66,9 @@ class _StudentShellState extends State<StudentShell> {
             label: 'Academics',
           ),
           NavigationDestination(
-            icon: Icon(Icons.list_alt_outlined),
-            selectedIcon: Icon(Icons.list_alt),
-            label: 'My Logs',
+            icon: Icon(Icons.campaign_outlined),
+            selectedIcon: Icon(Icons.campaign),
+            label: 'Announcements',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
@@ -111,6 +113,18 @@ class _StudentHub extends StatelessWidget {
         title: 'My Profile',
         subtitle: 'Personal and academic details',
         target: ProfileScreen(session: session),
+      ),
+      _HubTile(
+        icon: Icons.sticky_note_2_outlined,
+        title: 'Notes',
+        subtitle: 'Your personal notes',
+        target: NotesScreen(session: session),
+      ),
+      _HubTile(
+        icon: Icons.check_circle_outline,
+        title: 'To-Do',
+        subtitle: 'Tasks and reminders',
+        target: TodosScreen(session: session),
       ),
     ];
 

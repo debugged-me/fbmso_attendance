@@ -632,10 +632,23 @@ class StudentModel extends CI_Model
 	}
 
 	//VIEW REQUIREMENTS ---------------------------------------------------------------------------------
+	/**
+	 * A student's uploaded requirement files.
+	 *
+	 * online_requirements is legacy and missing from some deployments; return
+	 * nothing rather than crashing the student's page. Bound, not concatenated.
+	 */
 	function requirements($id)
 	{
-		$query = $this->db->query("Select * from online_requirements where StudentNumber='" . $id . "' order by fileAttachment");
-		return $query->result();
+		$id = trim((string)$id);
+		if ($id === '' || !$this->db->table_exists('online_requirements')) {
+			return array();
+		}
+
+		return $this->db->query(
+			'SELECT * FROM online_requirements WHERE StudentNumber = ? ORDER BY fileAttachment',
+			array($id)
+		)->result();
 	}
 
 	//USER ACCOUNTS ---------------------------------------------------------------------------------
@@ -682,10 +695,28 @@ class StudentModel extends CI_Model
 		return $query->result();
 	}
 
+	/**
+	 * Status history for one document request.
+	 *
+	 * stude_request_stat is a legacy table that does not exist in every
+	 * deployment, so its absence renders an empty page rather than a 500.
+	 * The tracking number arrives straight from the query string, so it is
+	 * bound rather than concatenated.
+	 */
 	function studerequestTracking($id)
 	{
-		$query = $this->db->query("SELECT * FROM stude_request sr join stude_request_stat st on sr.trackingNo=st.trackingNo where sr.trackingNo='" . $id . "' order by statID desc");
-		return $query->result();
+		$id = trim((string)$id);
+		if ($id === '' || !$this->db->table_exists('stude_request_stat')) {
+			return array();
+		}
+
+		return $this->db->query(
+			'SELECT * FROM stude_request sr'
+				. ' JOIN stude_request_stat st ON sr.trackingNo = st.trackingNo'
+				. ' WHERE sr.trackingNo = ?'
+				. ' ORDER BY st.statID DESC',
+			array($id)
+		)->result();
 	}
 
 	public function studeaccountById($studentNo, $sy = null, $sem = null)
@@ -2286,14 +2317,35 @@ class StudentModel extends CI_Model
 	}
 
 
+	/**
+	 * Distinct section names for dropdowns.
+	 *
+	 * The old `sections` table does not exist in this schema — `course_sections`
+	 * does — which made every page calling this 500. Falls back to the sections
+	 * actually in use this term if neither table is present.
+	 */
 	function getSection()
 	{
-		$this->db->select('Section');
-		$this->db->distinct();
-		$this->db->group_by('Section', 'ASC');
-		$this->db->order_by('Section', 'ASC');
-		$query = $this->db->get('sections');
-		return $query->result();
+		if ($this->db->table_exists('course_sections')) {
+			return $this->db->select('section AS Section', false)
+				->distinct()
+				->where('section IS NOT NULL', null, false)
+				->where("TRIM(section) <> ''", null, false)
+				->order_by('section', 'ASC')
+				->get('course_sections')
+				->result();
+		}
+
+		if ($this->db->table_exists('sections')) {
+			return $this->db->select('Section')->distinct()
+				->order_by('Section', 'ASC')->get('sections')->result();
+		}
+
+		return $this->db->select('Section', false)->distinct()
+			->where("TRIM(Section) <> ''", null, false)
+			->order_by('Section', 'ASC')
+			->get('semesterstude')
+			->result();
 	}
 
 
@@ -3361,6 +3413,43 @@ class StudentModel extends CI_Model
 		$this->db->join('studeprofile', 'studeprofile.StudentNumber = studeaccount.StudentNumber');
 		$this->db->where('studeaccount.AccountID', $accountID);
 		return $this->db->get()->row();
+	}
+
+	/**
+	 * Every enrolled student for a term, in the shape masterlist_all.php reads:
+	 * semstudentid (for the edit/delete links), name parts, course, year level,
+	 * section and email.
+	 *
+	 * Names come from studeprofile first and fall back to studentsignup, because
+	 * only about a third of enrolled students have a studeprofile row — an inner
+	 * join here would quietly drop two thirds of the masterlist.
+	 */
+	public function masterlistAll($semester, $sy)
+	{
+		$pick = function ($field) {
+			return "COALESCE(NULLIF(TRIM(p.$field),''), NULLIF(TRIM(g.$field),''), '')";
+		};
+
+		return $this->db->select(
+			's.semstudentid'
+				. ', s.StudentNumber'
+				. ', ' . $pick('LastName')   . ' AS LastName'
+				. ', ' . $pick('FirstName')  . ' AS FirstName'
+				. ', ' . $pick('MiddleName') . ' AS MiddleName'
+				. ", COALESCE(NULLIF(TRIM(p.email),''), NULLIF(TRIM(g.email),''), '') AS email"
+				. ', s.Course, s.Major, s.YearLevel, s.Section',
+			false
+		)
+			->from('semesterstude s')
+			->join('studeprofile p', 'p.StudentNumber = s.StudentNumber', 'left')
+			->join('studentsignup g', 'g.StudentNumber = s.StudentNumber', 'left')
+			->where('s.SY', $sy)
+			->where('s.Semester', $semester)
+			->where('s.Status', 'Enrolled')
+			->order_by('LastName', 'ASC')
+			->order_by('FirstName', 'ASC')
+			->get()
+			->result();
 	}
 
 	public function getAllStudents()

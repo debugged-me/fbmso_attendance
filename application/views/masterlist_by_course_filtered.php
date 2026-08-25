@@ -121,7 +121,7 @@
                                             <?php foreach ($data2 as $row) { ?>
                                                 <tr>
                                                     <td><?php echo $row->Section; ?></td>
-                                                    <td style="text-align:center"><?php echo $row->sectionCounts; ?></td>
+                                                    <td style="text-align:center"><?php echo $row->Counts; ?></td>
                                                     <td style="text-align:center">
                                                         <a href="<?= base_url(
                                                                         'Page/masterlistBySectionFiltered?section=' . urlencode($row->Section) .

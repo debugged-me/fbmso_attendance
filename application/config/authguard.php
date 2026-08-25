@@ -76,6 +76,99 @@ $config['authguard_roles'] = array(
 );
 
 /*
+| STUDENT LOCKDOWN
+| -------------------------------------------------------------------------
+| Signing in is not the same as being allowed in. Accounts at these levels
+| may reach ONLY the routes in $config['authguard_student_routes'] below;
+| everything else answers 403 with views/errors/html/error_forbidden.php.
+|
+| This is deny-by-default and it is where the real protection lives: 2,406 of
+| the 2,409 accounts on this system are students, so a student who types
+| /Page/profileList into the address bar is the threat that matters.
+*/
+$config['authguard_student_levels'] = array(
+    'Student',
+    'Stude Applicant',
+);
+
+/*
+| Routes a student account may use. Same matching rules as the public list:
+| 'controller/method', or 'controller/*' for a whole controller.
+|
+| Derived from what students can actually reach: their dashboard's links, the
+| Page methods that render a student view, and the methods that already
+| checked `level === 'Student'` for themselves.
+|
+| Note what is NOT here and does not need to be: attendance/checkin,
+| attendance/scan, attendance/consume and activities/poster are on the PUBLIC
+| list above, so the guard never looks at them at all. Scanning keeps working
+| for students and staff alike, signed in or not.
+*/
+$config['authguard_student_routes'] = array(
+
+    // --- their dashboard and account ---------------------------------
+    'page/student',
+    'page/student_registration',
+    'page/myprofile',
+    'page/updatestudeprofile',
+    'page/changepassword',
+    'page/update_password',
+    'page/changedp',
+    'page/studentsprofile',        // self-scoped: forces id = own username
+    'page/studeenrollhistory',
+    'login/logout',
+
+    // --- attendance the student can see about themselves --------------
+    'attendance/my_logs',
+    'attendance/profile',
+    'attendance/logs',
+    'student/my_qr',
+    'studentqr/myqr',
+
+    // --- documents, requirements, accounts ----------------------------
+    'page/studentrequeststat',
+    'page/submitrequest',
+    'page/newrequest',
+    'page/uploadrequirements',
+    'page/uploadedrequirements',
+    'page/studentaccountingrecords',
+    'page/studeaccount',
+    'page/proof_payment',
+    'student/upload_requirement',
+    'student/submit_requirement',
+    'student/student_requirements',
+    'student/student_requirements_app',
+    'student/downloads',
+
+    // --- academics -----------------------------------------------------
+    'student/enlistment',
+    'student/enlistment_student',
+    'student/fetchsubjects',
+    'student/registersubject',
+    'student/removesubject',
+    'student/checkenrollmentstatus',
+    'student/viewenrolledsubjects',
+    'student/viewenrolledsubjectsstude',
+    'student/getavailablesubjectsgrouped',
+    'student/fetchsubjectsformodal',
+    'student/requestsub',
+    'student/print_grades',
+    'student/email_grades',
+    'student/evaluation',
+    'student/showevaluation',
+    'student/evaluationph',
+    'student/index',
+    'masterlist/cor',
+    'masterlist/studegradesview',
+
+    // --- shared, harmless ----------------------------------------------
+    'page/announcement',
+    'registration/getmajorsbycourse',
+    'registration/getcitiesbyprovince',
+    'registration/getbarangaysbycity',
+);
+
+/*
 | Idle timeout in seconds. 0 disables it.
 | 7200 = 2 hours of no requests before the session is dropped.
 */

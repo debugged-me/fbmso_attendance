@@ -893,11 +893,12 @@ class Page extends CI_Controller
 				$sem
 			),
 			// **FIXED**: pass the string $courseDesc (not the stdClass)
+			// SectionCounts is ($sy, $sem, $course, $major) — the term first.
 			'data2'             => $this->StudentModel->SectionCounts(
-				$courseDesc,
-				$major,
 				$sy,
-				$sem
+				$sem,
+				$courseDesc,
+				$major
 			),
 		];
 
@@ -4458,9 +4459,9 @@ class Page extends CI_Controller
 		$sy = $this->session->userdata('sy');
 		$sem = $this->session->userdata('semester');
 		$course = $this->input->get('course');
-		$result['data'] = $this->StudentModel->byCourse($course, $sy, $sem);
-		$result['data1'] = $this->StudentModel->CourseYLCounts($course, $sy, $sem);
-		$result['data2'] = $this->StudentModel->SectionCounts($course, $sy, $sem);
+		$result['data']  = $this->StudentModel->byCourse($course, null, $sy, $sem);
+		$result['data1'] = $this->StudentModel->CourseYLCounts($course, null, $sy, $sem);
+		$result['data2'] = $this->StudentModel->SectionCounts($sy, $sem, $course, null);
 		$this->load->view('masterlist_by_course', $result);
 	}
 
@@ -4480,7 +4481,7 @@ class Page extends CI_Controller
 		$result['courseList'] = $this->StudentModel->getCourse(); // rename to avoid conflict
 		$result['data'] = $this->StudentModel->byCourse($course, $major, $sy, $sem);
 		$result['data1'] = $this->StudentModel->CourseYLCounts($course, $major, $sy, $sem);
-		$result['data2'] = $this->StudentModel->SectionCounts($course, $major, $sy, $sem);
+		$result['data2'] = $this->StudentModel->SectionCounts($sy, $sem, $course, $major);
 
 		$this->load->view('masterlist_by_course_filtered', $result);
 	}
@@ -4497,8 +4498,7 @@ class Page extends CI_Controller
 		$result['section'] = $this->StudentModel->getSection();
 		$result['data']  = $this->StudentModel->bySection1($section, $course, $major, $sem, $sy);
 		$result['data1'] = $this->StudentModel->CourseYLCounts($course, $major, $sy, $sem);
-		$result['data2'] = $this->StudentModel->SectionCounts($course, $major, $sy, $sem);
-
+		$result['data2'] = $this->StudentModel->SectionCounts($sy, $sem, $course, $major);
 
 		// 👇 Pass these to the view
 		$result['course_description'] = $course;

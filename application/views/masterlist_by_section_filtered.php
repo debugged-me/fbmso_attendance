@@ -144,7 +144,7 @@
 										  <tr>
 											<td><?php echo $row->Section; ?>
 											</td>
-											<td style="text-align:center"><?php echo $row->sectionCounts; ?></td>
+											<td style="text-align:center"><?php echo $row->Counts; ?></td>
 										  </tr>
 												<?php } ?>	
 										  </tbody>

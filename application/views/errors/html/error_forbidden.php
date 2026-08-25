@@ -71,37 +71,11 @@
             color: #1f2d3d;
         }
 
-        .actions {
-            margin-top: 22px;
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        a.btn {
-            display: inline-block;
-            padding: 10px 20px;
-            border-radius: 10px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: .92rem;
-            transition: transform .15s ease, box-shadow .15s ease;
-        }
-
-        a.btn:hover {
-            transform: translateY(-1px);
-        }
-
-        .btn-primary {
-            background: #2563eb;
-            color: #fff;
-            box-shadow: 0 6px 16px rgba(37, 99, 235, .28);
-        }
-
-        .btn-ghost {
-            background: #f1f4f8;
-            color: #46586b;
+        .route {
+            margin-top: 10px;
+            font: 400 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+            color: #94a3b8;
+            word-break: break-all;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -128,10 +102,6 @@
                 color: #e6edf5;
             }
 
-            .btn-ghost {
-                background: #232c37;
-                color: #c3d1df;
-            }
         }
     </style>
 </head>
@@ -147,19 +117,10 @@
         </div>
 
         <h1>Access denied</h1>
-        <p>Your account doesn't have permission to open this page.</p>
 
-        <div class="meta">
-            Signed in as <b><?= htmlspecialchars((string)$user_level, ENT_QUOTES, 'UTF-8'); ?></b>
-            <?php if (!empty($allowed)): ?>
-                <br>Requires <b><?= htmlspecialchars(implode(' or ', (array)$allowed), ENT_QUOTES, 'UTF-8'); ?></b>
-            <?php endif; ?>
-        </div>
 
-        <div class="actions">
-            <a class="btn btn-primary" href="<?= site_url(); ?>">Go to my dashboard</a>
-            <a class="btn btn-ghost" href="<?= site_url('login/logout'); ?>">Sign in as someone else</a>
-        </div>
+
+
     </div>
 </body>
 

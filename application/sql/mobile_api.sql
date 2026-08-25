@@ -22,6 +22,20 @@ CREATE TABLE IF NOT EXISTS `o_mobile_tokens` (
   KEY `idx_expires` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+-- ============================================================================
+-- Notes / Todos — ensure id columns are auto-increment primary keys.
+-- The original web schema left these as plain INT NOT NULL with no
+-- auto_increment, so every insert got id 0. The mobile API relies on
+-- unique ids for update/delete, so we fix that here.
+-- ============================================================================
+ALTER TABLE `notes`
+  MODIFY `id` INT(11) NOT NULL AUTO_INCREMENT,
+  ADD PRIMARY KEY (`id`);
+
+ALTER TABLE `todos`
+  MODIFY `id` INT(11) NOT NULL AUTO_INCREMENT,
+  ADD PRIMARY KEY (`id`);
 -- Server-side idempotency log so retried offline writes do not double-execute.
 -- Keyed by (idempotency_key); the first response is replayed on retry.
 CREATE TABLE IF NOT EXISTS `o_mobile_outbox` (

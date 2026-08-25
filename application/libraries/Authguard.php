@@ -17,8 +17,10 @@ class Authguard
     /** @var CI_Controller */
     protected $CI;
 
-    protected $public_routes = array();
-    protected $role_rules    = array();
+    protected $public_routes  = array();
+    protected $role_rules     = array();
+    protected $student_levels = array();
+    protected $student_routes = array();
     protected $login_route   = 'login';
     protected $idle_timeout  = 0;
 
@@ -49,8 +51,10 @@ class Authguard
             return ($item === null || $item === false) ? $default : $item;
         };
 
-        $this->public_routes = (array)$get('authguard_public', array());
-        $this->role_rules    = (array)$get('authguard_roles', array());
+        $this->public_routes  = (array)$get('authguard_public', array());
+        $this->role_rules     = (array)$get('authguard_roles', array());
+        $this->student_levels = (array)$get('authguard_student_levels', array());
+        $this->student_routes = (array)$get('authguard_student_routes', array());
         $this->login_route   = (string)$get('authguard_login_route', 'login');
         $this->idle_timeout  = (int)$get('authguard_idle_timeout', 0);
         $this->key_flag      = (string)$get('authguard_session_flag', 'logged_in');
@@ -96,10 +100,39 @@ class Authguard
             $this->touch_activity();
         }
 
+        // Student accounts are deny-by-default: only the routes on the student
+        // list are theirs. This is checked before the role map, because a
+        // student must never fall through to "no rule, therefore allowed".
+        if ($this->is_student()) {
+            if (!$this->student_may($route)) {
+                $this->reject_forbidden(array('a staff account'));
+            }
+            return;
+        }
+
         $allowed = $this->rule_for($route, $this->role_rules);
         if ($allowed !== null && !$this->has_level($allowed)) {
             $this->reject_forbidden($allowed);
         }
+    }
+
+    /** Is the signed-in account a student rather than staff? */
+    public function is_student()
+    {
+        return $this->student_levels && $this->has_level($this->student_levels);
+    }
+
+    /** May a student account open this route? */
+    public function student_may($route = null)
+    {
+        $route = ($route === null) ? $this->current_route() : strtolower($route);
+
+        foreach ($this->student_routes as $pattern) {
+            if ($this->route_matches($route, $pattern)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------

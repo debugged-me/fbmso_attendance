@@ -62,18 +62,33 @@ function byGradeYL()
 }
 
 
-// Masterlist by Section — use studentsignup
+/**
+ * Masterlist by Section.
+ *
+ * This used to call StudentModel::signupBySection() and load a view named
+ * 'masterlist_by_section' — neither of which exists, so the link from
+ * masterlist_by_course_filtered.php was a guaranteed 500. It now reuses the
+ * same query and view as the dashboard's section drill-down, so one section
+ * list looks and behaves the same wherever you reach it from.
+ */
 public function bySection()
 {
-    $section = $this->input->get('section');
+    $sy      = (string)$this->session->userdata('sy');
+    $sem     = (string)$this->session->userdata('semester');
+    $section = (string)$this->input->get('section', true);
 
-    $result['data'] = $this->StudentModel->signupBySection($section);
-    $this->load->view('masterlist_by_section', $result);
+    $course = $this->input->get('course', true);
+    $course = ($course === '' ? null : $course);
+    $major  = $this->input->get('major', true);
 
-    if ($this->input->post('submit')) {
-        $result['data'] = $this->StudentModel->signupBySection($section);
-        $this->load->view('masterlist_by_section', $result);
-    }
+    $result['data']         = $this->StudentModel->enrolledStudentsBy($sy, $sem, 'section', $section, $course, $major);
+    $result['groupLabel']   = 'Section';
+    $result['groupValue']   = ($section === '' ? 'Not Set' : $section);
+    $result['filterCourse'] = $course;
+    $result['filterMajor']  = $major;
+    $result['data18']       = $this->SettingsModel->getSchoolInfo();
+
+    $this->load->view('enrollment_list', $result);
 }
 
 // Enrolled list — use studentsignup
@@ -164,7 +179,8 @@ public function bySY()
 		$sy = $this->session->userdata('sy');
 		$sem = $this->session->userdata('semester');
 		$course = $this->input->get('course');
-		$result['data'] = $this->StudentModel->byCourse($course, $sy, $sem);
+		// byCourse is ($course, $major, $sy, $sem) — null major means "all majors".
+		$result['data'] = $this->StudentModel->byCourse($course, null, $sy, $sem);
 		$this->load->view('masterlist_by_course', $result);
 
 		if ($this->input->post('submit')) {

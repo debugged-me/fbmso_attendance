@@ -6,6 +6,9 @@ import '../../../core/widgets/sync_status_banner.dart';
 import '../../activities/presentation/activities_screen.dart';
 import '../../auth/domain/app_session.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../misc/presentation/announcements_screen.dart';
+import '../../misc/presentation/notes_screen.dart';
+import '../../misc/presentation/todos_screen.dart';
 
 /// Generic shell for admin/registrar/accounting/staff roles. Phase 6 fills
 /// in the role-specific tabs (masterlist, reports, accounting, personnel,
@@ -32,7 +35,7 @@ class _StaffShellState extends State<StaffShell> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       ActivitiesScreen(session: widget.session),
-      _Placeholder('More', 'Role-specific modules arrive in Phase 6.'),
+      _StaffHub(session: widget.session),
       _ProfilePage(session: widget.session, controller: widget.controller),
     ];
 
@@ -63,28 +66,99 @@ class _StaffShellState extends State<StaffShell> {
   }
 }
 
-class _Placeholder extends StatelessWidget {
-  const _Placeholder(this.title, this.subtitle);
-  final String title;
-  final String subtitle;
+/// Staff "More" hub — announcements, notes, todos. Role-specific modules
+/// (masterlist, reports, accounting) arrive incrementally.
+class _StaffHub extends StatelessWidget {
+  const _StaffHub({required this.session});
+  final AppSession session;
 
   @override
   Widget build(BuildContext context) {
+    final tiles = <_HubTile>[
+      _HubTile(
+        icon: Icons.campaign_outlined,
+        title: 'Announcements',
+        subtitle: 'School-wide notices',
+        target: AnnouncementsScreen(session: session),
+      ),
+      _HubTile(
+        icon: Icons.sticky_note_2_outlined,
+        title: 'Notes',
+        subtitle: 'Your personal notes',
+        target: NotesScreen(session: session),
+      ),
+      _HubTile(
+        icon: Icons.check_circle_outline,
+        title: 'To-Do',
+        subtitle: 'Tasks and reminders',
+        target: TodosScreen(session: session),
+      ),
+    ];
+
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: const Column(
+      appBar: AppBar(title: const Text('More')),
+      body: Column(
         children: [
-          SyncStatusBanner(),
+          const SyncStatusBanner(),
           Expanded(
-            child: Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Text('Role-specific modules arrive in Phase 6.',
-                    style: TextStyle(color: AppTheme.textMuted)),
-              ),
+            child: GridView.count(
+              padding: const EdgeInsets.all(16),
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.95,
+              children: tiles.map((t) => _HubCard(tile: t)).toList(),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HubTile {
+  const _HubTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.target,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget target;
+}
+
+class _HubCard extends StatelessWidget {
+  const _HubCard({required this.tile});
+  final _HubTile tile;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => tile.target),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(tile.icon, size: 32, color: AppTheme.midBlue),
+              const SizedBox(height: 12),
+              Text(tile.title, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 4),
+              Expanded(
+                child: Text(tile.subtitle,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

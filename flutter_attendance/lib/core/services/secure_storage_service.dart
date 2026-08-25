@@ -26,4 +26,10 @@ class SecureStorageService {
     await _storage.delete(key: _keyToken);
     await _storage.delete(key: _keyUsername);
   }
+
+  /// Generic read/write for other secrets (e.g. the biometric-enabled flag).
+  static Future<String?> readRaw(String key) => _storage.read(key: key);
+  static Future<void> writeRaw(String key, String value) =>
+      _storage.write(key: key, value: value);
+  static Future<void> deleteRaw(String key) => _storage.delete(key: key);
 }

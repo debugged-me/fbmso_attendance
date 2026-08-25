@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/services/biometric_service.dart';
+import '../core/services/notification_service.dart';
 import '../core/theme/app_theme.dart';
 import '../features/auth/data/auth_api.dart';
 import '../features/auth/data/session_store.dart';
@@ -20,16 +22,33 @@ class FlutterAttendanceApp extends StatefulWidget {
 }
 
 class _FlutterAttendanceAppState extends State<FlutterAttendanceApp> {
-  late final Future<AuthController> _controllerFuture = _createController();
+  late final Future<({AuthController controller, bool biometricOk})>
+      _initFuture = _init();
 
-  Future<AuthController> _createController() async {
+  Future<({AuthController controller, bool biometricOk})> _init() async {
     final preferences = await SharedPreferences.getInstance();
     final controller = AuthController(
       api: AuthApi(),
       store: SessionStore(preferences),
     );
     await controller.bootstrap();
-    return controller;
+
+    // Init in-app notifications.
+    await NotificationService.instance.init();
+
+    // If the user has a saved session and biometric is enabled, gate
+    // the app behind biometrics before showing any data.
+    bool biometricOk = true;
+    if (controller.isAuthenticated) {
+      biometricOk = await BiometricService.gate();
+      if (!biometricOk) {
+        // User cancelled — sign them out so they see the login screen.
+        await controller.logout();
+        biometricOk = true; // proceed to login, not a hard block
+      }
+    }
+
+    return (controller: controller, biometricOk: biometricOk);
   }
 
   @override
@@ -43,8 +62,8 @@ class _FlutterAttendanceAppState extends State<FlutterAttendanceApp> {
         maxScaleFactor: 1.15,
         child: child ?? const SizedBox.shrink(),
       ),
-      home: FutureBuilder<AuthController>(
-        future: _controllerFuture,
+      home: FutureBuilder<({AuthController controller, bool biometricOk})>(
+        future: _initFuture,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return _ErrorScreen(message: snapshot.error.toString());
@@ -53,9 +72,9 @@ class _FlutterAttendanceAppState extends State<FlutterAttendanceApp> {
             return const _SplashScreen();
           }
           return AnimatedBuilder(
-            animation: snapshot.data!,
+            animation: snapshot.data!.controller,
             builder: (context, _) {
-              final c = snapshot.data!;
+              final c = snapshot.data!.controller;
               if (c.bootstrapping) {
                 return const _SplashScreen();
               }
@@ -118,8 +137,35 @@ class _SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/img/icon-logo.png',
+              width: 120,
+              height: 120,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'FBMSO Attendance',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textDark,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
