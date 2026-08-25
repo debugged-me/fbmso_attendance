@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../core/design/components/components.dart';
+import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/student_api.dart';
@@ -54,8 +55,8 @@ class _CorScreenState extends State<CorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('My COR')),
+    return AppScaffold(
+      title: 'My COR',
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -65,37 +66,68 @@ class _CorScreenState extends State<CorScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _subjects.isEmpty
-                      ? const Center(
-                          child: Text('No enrolled subjects for this semester.',
-                              style: TextStyle(color: AppTheme.textMuted)),
+                      ? ListView(
+                          children: [
+                            const SizedBox(height: 120),
+                            AppEmptyState(
+                              icon: Icons.receipt_long_outlined,
+                              title: 'No enrolled subjects',
+                              subtitle:
+                                  'Your enrolled subjects for this semester will appear here.',
+                            ),
+                          ],
                         )
                       : ListView(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                           children: [
-                            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('$_sy • $_sem',
-                              style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 4),
-                          Text('${_subjects.length} subject(s) • $_totalUnits units',
-                              style: Theme.of(context).textTheme.bodySmall),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.receipt_long, color: AppTheme.midBlue),
-                  ],
-                ),
-              ),
-            ),
-                            const SizedBox(height: 8),
-                            ..._subjects.map((s) => _SubjectTile(subject: s)),
+                            AppCard.elevated(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '$_sy • $_sem',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppInk.heading,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${_subjects.length} subject(s) • $_totalUnits units',
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            color: AppInk.muted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: AppInk.accent.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(Icons.receipt_long,
+                                        size: 20, color: AppInk.accent),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            AppSectionHeader(title: 'Enrolled Subjects'),
+                            const SizedBox(height: 10),
+                            ..._subjects.map((s) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _SubjectTile(subject: s),
+                                )),
                           ],
                         ),
             ),
@@ -112,64 +144,71 @@ class _SubjectTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(subject.description,
-                      style: Theme.of(context).textTheme.titleMedium),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppTheme.midBlue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${subject.units.toStringAsFixed(1)} units',
-                    style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.midBlue),
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  subject.description,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppInk.heading,
+                    height: 1.3,
                   ),
                 ),
-              ],
+              ),
+              const SizedBox(width: 8),
+              AppChip(
+                label: '${subject.units.toStringAsFixed(1)} units',
+                tone: AppInk.accent,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subject.subjectCode,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: AppInk.muted,
             ),
-            const SizedBox(height: 4),
-            Text(subject.subjectCode,
-                style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 8),
-            if (subject.schedule.isNotEmpty)
-              _line(Icons.schedule, subject.schedule),
-            if (subject.room.isNotEmpty) _line(Icons.room, subject.room),
-            if (subject.instructor.isNotEmpty)
-              _line(Icons.person, subject.instructor),
-            if (subject.section.isNotEmpty)
-              _line(Icons.class_, 'Section ${subject.section}'),
-          ],
-        ),
+          ),
+          const SizedBox(height: 10),
+          if (subject.schedule.isNotEmpty)
+            _line(Icons.schedule_outlined, subject.schedule),
+          if (subject.room.isNotEmpty)
+            _line(Icons.meeting_room_outlined, subject.room),
+          if (subject.instructor.isNotEmpty)
+            _line(Icons.person_outline, subject.instructor),
+          if (subject.section.isNotEmpty)
+            _line(Icons.class_outlined, 'Section ${subject.section}'),
+        ],
       ),
     );
   }
 
   Widget _line(IconData icon, String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: AppTheme.textMuted),
-          const SizedBox(width: 6),
+          Icon(icon, size: 15, color: AppInk.muted),
+          const SizedBox(width: 8),
           Expanded(
-              child: Text(text,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppTheme.textMuted))),
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppInk.muted,
+                height: 1.3,
+              ),
+            ),
+          ),
         ],
       ),
     );

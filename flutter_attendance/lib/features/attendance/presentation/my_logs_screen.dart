@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../core/design/components/components.dart';
+import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
@@ -43,8 +44,9 @@ class _MyLogsScreenState extends State<MyLogsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('My Attendance')),
+    return AppScaffold(
+      title: 'My Attendance',
+      showBackButton: true,
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -55,16 +57,19 @@ class _MyLogsScreenState extends State<MyLogsScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : _logs.isEmpty
                       ? ListView(
-                          children: const [
-                            SizedBox(height: 120),
-                            Center(
-                              child: Text('No attendance records yet.',
-                                  style:
-                                      TextStyle(color: AppTheme.textMuted)),
+                          children: [
+                            const SizedBox(height: 80),
+                            AppEmptyState(
+                              icon: Icons.history_rounded,
+                              title: 'No attendance records yet',
+                              subtitle:
+                                  'Your check-ins will appear here once you attend an activity.',
+                              tone: AppInk.muted,
                             ),
                           ],
                         )
                       : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                           itemCount: _logs.length,
                           itemBuilder: (context, i) =>
                               _LogTile(log: _logs[i]),
@@ -83,45 +88,74 @@ class _LogTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Padding(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AppCard(
+        radius: 20,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(log.title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(log.activityDate,
-                style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        log.title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppInk.heading,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        log.activityDate,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppInk.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (log.sessionLabel.isNotEmpty)
+                  AppChip(label: log.sessionLabel, tone: AppInk.accent),
+              ],
+            ),
+            const SizedBox(height: 14),
             Row(
               children: [
                 _TimeChip(
                   label: 'In',
                   value: _shortTime(log.checkedInAt),
-                  color: AppTheme.success,
+                  color: AppInk.positive,
                 ),
                 const SizedBox(width: 8),
                 _TimeChip(
                   label: 'Out',
-                  value: log.isCheckedOut ? _shortTime(log.checkedOutAt) : '—',
-                  color: log.isCheckedOut ? AppTheme.info : AppTheme.textMuted,
+                  value: log.isCheckedOut
+                      ? _shortTime(log.checkedOutAt)
+                      : '—',
+                  color: log.isCheckedOut ? AppInk.accent : AppInk.muted,
                 ),
-                const SizedBox(width: 8),
-                if (log.sessionLabel.isNotEmpty)
-                  Chip(
-                    label: Text(log.sessionLabel,
-                        style: const TextStyle(fontSize: 11)),
-                    padding: EdgeInsets.zero,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
               ],
             ),
             if (log.remarks.isNotEmpty && log.remarks != '—') ...[
-              const SizedBox(height: 8),
-              Text(log.remarks,
-                  style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 12),
+              const Divider(height: 1, color: AppInk.rule),
+              const SizedBox(height: 10),
+              Text(
+                log.remarks,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppInk.body,
+                  height: 1.4,
+                ),
+              ),
             ],
           ],
         ),
@@ -152,24 +186,30 @@ class _TimeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$label ',
-              style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: color)),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: color)),
+          Text(
+            '$label ',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
         ],
       ),
     );

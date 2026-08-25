@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../core/design/components/components.dart';
+import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
@@ -61,13 +63,22 @@ class _MyQrScreenState extends State<MyQrScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
         title: const Text('Issue new QR?'),
         content: const Text(
             'Your current QR will be revoked and a new one issued. '
             'The old QR will no longer work for check-ins.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Issue')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Issue'),
+          ),
         ],
       ),
     );
@@ -78,13 +89,26 @@ class _MyQrScreenState extends State<MyQrScreen> {
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('New QR issued.'), backgroundColor: AppTheme.success),
+          SnackBar(
+            content: const Text('New QR issued.'),
+            backgroundColor: AppTheme.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+          SnackBar(
+            content: Text(e.toString()),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
         );
       }
     }
@@ -92,8 +116,8 @@ class _MyQrScreenState extends State<MyQrScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('My QR')),
+    return AppScaffold(
+      title: 'My QR',
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -103,9 +127,32 @@ class _MyQrScreenState extends State<MyQrScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? Center(child: Text(_error!))
+                      ? ListView(
+                          children: [
+                            const SizedBox(height: 120),
+                            AppEmptyState(
+                              icon: Icons.error_outline,
+                              title: 'Could not load QR',
+                              subtitle: _error,
+                              action: 'Retry',
+                              onAction: _load,
+                            ),
+                          ],
+                        )
                       : _qr == null || !_qr!.isActive
-                          ? _NoQrView(onIssue: _issue)
+                          ? ListView(
+                              children: [
+                                const SizedBox(height: 80),
+                                AppEmptyState(
+                                  icon: Icons.qr_code_2,
+                                  title: 'No active QR token',
+                                  subtitle:
+                                      'Issue a QR to check in to activities.',
+                                  action: 'Issue QR',
+                                  onAction: _issue,
+                                ),
+                              ],
+                            )
                           : _QrView(
                               qr: _qr!,
                               displayName: widget.session.displayName,
@@ -128,17 +175,12 @@ class _QrView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
         const SizedBox(height: 16),
         Center(
-          child: Container(
+          child: AppCard.elevated(
             padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppTheme.cardBorder),
-            ),
             child: QrImageView(
               data: qr.token,
               version: QrVersions.auto,
@@ -146,81 +188,67 @@ class _QrView extends StatelessWidget {
               gapless: true,
               eyeStyle: const QrEyeStyle(
                 eyeShape: QrEyeShape.square,
-                color: AppTheme.textDark,
+                color: AppInk.heading,
               ),
               dataModuleStyle: const QrDataModuleStyle(
                 dataModuleShape: QrDataModuleShape.square,
-                color: AppTheme.textDark,
+                color: AppInk.heading,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Center(
           child: Text(
             displayName,
-            style: Theme.of(context).textTheme.titleMedium,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: AppInk.heading,
+            ),
           ),
         ),
+        const SizedBox(height: 4),
         Center(
           child: Text(
             qr.studentNumber,
-            style: Theme.of(context).textTheme.bodySmall,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppInk.muted,
+            ),
           ),
         ),
         const SizedBox(height: 8),
         Center(
           child: Text(
             'Issued ${qr.issuedAt}',
-            style: Theme.of(context).textTheme.bodySmall,
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: AppInk.muted,
+            ),
           ),
         ),
         const SizedBox(height: 24),
-        FilledButton.icon(
-          onPressed: onIssue,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Issue new QR'),
+        AppButton(
+          label: 'Issue new QR',
+          icon: Icons.refresh,
+          fullWidth: true,
+          size: AppButtonSize.lg,
+          style: AppButtonStyle.outline,
+          onTap: onIssue,
         ),
         const SizedBox(height: 16),
-        Text(
+        const Text(
           'Show this QR to the scanner at any activity to check in or out.',
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall,
+          style: TextStyle(
+            fontSize: 12.5,
+            color: AppInk.muted,
+            height: 1.45,
+          ),
         ),
       ],
-    );
-  }
-}
-
-class _NoQrView extends StatelessWidget {
-  const _NoQrView({required this.onIssue});
-  final VoidCallback onIssue;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.qr_code_2, size: 64, color: AppTheme.textMuted),
-            const SizedBox(height: 16),
-            const Text('No active QR token.'),
-            const SizedBox(height: 8),
-            const Text(
-              'Issue a QR to check in to activities.',
-              style: TextStyle(color: AppTheme.textMuted),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: onIssue,
-              icon: const Icon(Icons.qr_code_2),
-              label: const Text('Issue QR'),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/design/components/components.dart';
+import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
@@ -60,12 +62,7 @@ class _TodosScreenState extends State<TodosScreen> {
       dueDate: result.dueDate,
     );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(ok ? 'Todo added.' : 'Failed to add.'),
-        backgroundColor: ok ? AppTheme.success : AppTheme.error,
-      ),
-    );
+    _showSnack(ok ? 'Todo added.' : 'Failed to add.', ok);
     _load();
   }
 
@@ -88,15 +85,29 @@ class _TodosScreenState extends State<TodosScreen> {
     if (ok) _load();
   }
 
+  void _showSnack(String message, bool success) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: success ? AppTheme.success : AppTheme.error,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final pending = _todos.where((t) => !t.isDone).toList();
     final done = _todos.where((t) => t.isDone).toList();
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('To-Do')),
+    return AppScaffold(
+      title: 'To-Do',
       floatingActionButton: FloatingActionButton(
         onPressed: _add,
+        backgroundColor: AppInk.accent,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const Icon(Icons.add),
       ),
       body: Column(
@@ -108,26 +119,48 @@ class _TodosScreenState extends State<TodosScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _todos.isEmpty
-                      ? const Center(
-                          child: Text('No tasks yet. Tap + to add one.',
-                              style: TextStyle(color: AppTheme.textMuted)),
+                      ? ListView(
+                          children: [
+                            SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.4),
+                            const AppEmptyState(
+                              icon: Icons.check_circle_outline,
+                              title: 'No tasks yet',
+                              subtitle: 'Tap + to add your first task.',
+                            ),
+                          ],
                         )
                       : ListView(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                           children: [
                             if (pending.isNotEmpty) ...[
-                              const _SectionHeader('Pending'),
-                              ...pending.map((t) => _TodoTile(
-                                    todo: t,
-                                    onToggle: () => _toggle(t),
-                                    onDelete: () => _delete(t),
+                              const AppSectionHeader(
+                                title: 'Pending',
+                                padding: EdgeInsets.fromLTRB(4, 8, 4, 10),
+                              ),
+                              ...pending.map((t) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: _TodoTile(
+                                      todo: t,
+                                      onToggle: () => _toggle(t),
+                                      onDelete: () => _delete(t),
+                                    ),
                                   )),
                             ],
                             if (done.isNotEmpty) ...[
-                              const _SectionHeader('Completed'),
-                              ...done.map((t) => _TodoTile(
-                                    todo: t,
-                                    onToggle: () => _toggle(t),
-                                    onDelete: () => _delete(t),
+                              if (pending.isNotEmpty) const SizedBox(height: 16),
+                              const AppSectionHeader(
+                                title: 'Completed',
+                                padding: EdgeInsets.fromLTRB(4, 8, 4, 10),
+                              ),
+                              ...done.map((t) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: _TodoTile(
+                                      todo: t,
+                                      onToggle: () => _toggle(t),
+                                      onDelete: () => _delete(t),
+                                    ),
                                   )),
                             ],
                           ],
@@ -136,21 +169,6 @@ class _TodosScreenState extends State<TodosScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-      child: Text(title,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: AppTheme.textMuted, fontWeight: FontWeight.w700)),
     );
   }
 }
@@ -175,46 +193,85 @@ class _TodoTile extends StatelessWidget {
       key: ValueKey(todo.id),
       direction: DismissDirection.endToStart,
       background: Container(
-        color: AppTheme.error,
+        decoration: BoxDecoration(
+          color: AppInk.critical,
+          borderRadius: BorderRadius.circular(16),
+        ),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24),
-        child: const Icon(Icons.delete, color: Colors.white),
+        child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
       confirmDismiss: (_) async {
         onDelete();
         return true;
       },
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-        child: ListTile(
-          leading: Checkbox(
-            value: todo.isDone,
-            onChanged: (_) => onToggle(),
-          ),
-          title: Text(
-            todo.task,
-            style: TextStyle(
-              decoration: todo.isDone ? TextDecoration.lineThrough : null,
-              color: todo.isDone ? AppTheme.textMuted : null,
+      child: AppCard(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: onToggle,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: todo.isDone ? AppInk.positive : Colors.transparent,
+                  border: Border.all(
+                    color: todo.isDone ? AppInk.positive : AppInk.rule,
+                    width: 2,
+                  ),
+                ),
+                child: todo.isDone
+                    ? const Icon(Icons.check, size: 16, color: Colors.white)
+                    : null,
+              ),
             ),
-          ),
-          subtitle: todo.dueDate.isNotEmpty
-              ? Row(
-                  children: [
-                    Icon(Icons.calendar_today,
-                        size: 12,
-                        color: isOverdue ? AppTheme.error : AppTheme.textMuted),
-                    const SizedBox(width: 4),
-                    Text(
-                      todo.dueDate,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isOverdue ? AppTheme.error : AppTheme.textMuted,
-                      ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    todo.task,
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontFamily,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      decoration:
+                          todo.isDone ? TextDecoration.lineThrough : null,
+                      color: todo.isDone ? AppInk.muted : AppInk.heading,
+                      height: 1.3,
+                    ),
+                  ),
+                  if (todo.dueDate.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 12,
+                          color: isOverdue ? AppInk.critical : AppInk.muted,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          todo.dueDate,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isOverdue ? AppInk.critical : AppInk.muted,
+                            fontWeight: isOverdue
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                )
-              : null,
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -254,52 +311,100 @@ class _TodoDialogState extends State<_TodoDialog> {
     super.dispose();
   }
 
+  String _formatDate(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('New task'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
-            controller: _task,
-            decoration: const InputDecoration(
-              labelText: 'Task',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          ListTile(
-            leading: const Icon(Icons.calendar_today),
-            title: Text(_dueDate == null
-                ? 'Due date'
-                : '${_dueDate!.year}-${_dueDate!.month.toString().padLeft(2, '0')}-${_dueDate!.day.toString().padLeft(2, '0')}'),
-            trailing: const Icon(Icons.chevron_right),
+          AppInput(controller: _task, label: 'Task', hint: 'What needs doing?'),
+          const SizedBox(height: 14),
+          InkWell(
             onTap: () async {
               final picked = await showDatePicker(
                 context: context,
                 initialDate: DateTime.now(),
-                firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                firstDate:
+                    DateTime.now().subtract(const Duration(days: 365)),
                 lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
               );
               if (picked != null) setState(() => _dueDate = picked);
             },
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppInk.rule, width: 1.5),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_today_outlined,
+                      size: 20, color: AppInk.muted),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Due date',
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontFamily,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppInk.muted,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _dueDate == null ? 'Select a date' : _formatDate(_dueDate!),
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontFamily,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: _dueDate == null
+                                ? const Color(0xFF94A3B8)
+                                : AppInk.heading,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded,
+                      size: 22, color: Color(0xFFCBD5E1)),
+                ],
+              ),
+            ),
           ),
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(
-          onPressed: () {
+        AppButton(
+          label: 'Cancel',
+          style: AppButtonStyle.ghost,
+          size: AppButtonSize.sm,
+          onTap: () => Navigator.pop(context),
+        ),
+        AppButton(
+          label: 'Add',
+          style: AppButtonStyle.primary,
+          size: AppButtonSize.sm,
+          onTap: () {
             if (_task.text.trim().isEmpty || _dueDate == null) return;
             final d = _dueDate!;
             Navigator.pop(context, (
               task: _task.text.trim(),
-              dueDate:
-                  '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
+              dueDate: _formatDate(d),
             ));
           },
-          child: const Text('Add'),
         ),
       ],
     );

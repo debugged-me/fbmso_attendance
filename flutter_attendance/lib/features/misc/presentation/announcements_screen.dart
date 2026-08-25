@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/design/components/components.dart';
+import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
@@ -47,8 +49,8 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Announcements')),
+    return AppScaffold(
+      title: 'Announcements',
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -58,14 +60,26 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _items.isEmpty
-                      ? const Center(
-                          child: Text('No active announcements.',
-                              style: TextStyle(color: AppTheme.textMuted)),
+                      ? ListView(
+                          children: [
+                            SizedBox(
+                                height: MediaQuery.of(context).size.height * 0.5),
+                            const AppEmptyState(
+                              icon: Icons.campaign_outlined,
+                              title: 'No active announcements',
+                              subtitle: 'Check back later for updates.',
+                            ),
+                          ],
                         )
                       : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(
+                              16, 8, 16, 32),
                           itemCount: _items.length,
-                          itemBuilder: (context, i) =>
-                              _AnnouncementCard(item: _items[i]),
+                          itemBuilder: (context, i) => Padding(
+                            padding: EdgeInsets.only(
+                                bottom: i == _items.length - 1 ? 0 : 12),
+                            child: _AnnouncementCard(item: _items[i]),
+                          ),
                         ),
             ),
           ),
@@ -81,57 +95,71 @@ class _AnnouncementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(item.title,
-                      style: Theme.of(context).textTheme.titleMedium),
-                ),
-                if (item.audience.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.midBlue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(item.audience,
-                        style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.midBlue)),
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontFamily: AppTheme.fontFamily,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppInk.heading,
+                    height: 1.3,
                   ),
+                ),
+              ),
+              if (item.audience.isNotEmpty) ...[
+                const SizedBox(width: 10),
+                AppChip(label: item.audience, tone: AppInk.accent),
               ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            item.message,
+            style: const TextStyle(
+              fontFamily: AppTheme.fontFamily,
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: AppInk.body,
+              height: 1.5,
             ),
-            const SizedBox(height: 8),
-            Text(item.message, style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: 8),
+          ),
+          if (item.author.isNotEmpty || item.datePosted.isNotEmpty) ...[
+            const SizedBox(height: 12),
             Row(
               children: [
                 if (item.author.isNotEmpty)
-                  Text(item.author,
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textMuted,
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    item.author,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppInk.muted,
+                    ),
+                  ),
                 if (item.author.isNotEmpty && item.datePosted.isNotEmpty)
-                  const Text(' • ',
-                      style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                  const Text('  •  ',
+                      style: TextStyle(fontSize: 12, color: AppInk.muted)),
                 if (item.datePosted.isNotEmpty)
-                  Text(item.datePosted,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppTheme.textMuted)),
+                  Text(
+                    item.datePosted,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppInk.muted,
+                    ),
+                  ),
               ],
             ),
           ],
-        ),
+        ],
       ),
     );
   }

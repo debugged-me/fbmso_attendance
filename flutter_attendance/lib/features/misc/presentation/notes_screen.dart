@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/design/components/components.dart';
+import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
@@ -71,12 +73,7 @@ class _NotesScreenState extends State<NotesScreen> {
       );
     }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(ok ? 'Note saved.' : 'Failed to save note.'),
-        backgroundColor: ok ? AppTheme.success : AppTheme.error,
-      ),
-    );
+    _showSnack(ok ? 'Note saved.' : 'Failed to save note.', ok);
     _load();
   }
 
@@ -84,11 +81,22 @@ class _NotesScreenState extends State<NotesScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete note?'),
         content: Text('"${note.title}" will be permanently deleted.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+          AppButton(
+            label: 'Cancel',
+            style: AppButtonStyle.ghost,
+            size: AppButtonSize.sm,
+            onTap: () => Navigator.pop(ctx, false),
+          ),
+          AppButton(
+            label: 'Delete',
+            style: AppButtonStyle.destructive,
+            size: AppButtonSize.sm,
+            onTap: () => Navigator.pop(ctx, true),
+          ),
         ],
       ),
     );
@@ -100,21 +108,30 @@ class _NotesScreenState extends State<NotesScreen> {
       id: note.id,
     );
     if (!mounted) return;
+    _showSnack(success ? 'Note deleted.' : 'Failed to delete.', success);
+    _load();
+  }
+
+  void _showSnack(String message, bool success) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(success ? 'Note deleted.' : 'Failed to delete.'),
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         backgroundColor: success ? AppTheme.success : AppTheme.error,
       ),
     );
-    _load();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Notes')),
+    return AppScaffold(
+      title: 'Notes',
       floatingActionButton: FloatingActionButton(
         onPressed: () => _editOrCreate(),
+        backgroundColor: AppInk.accent,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const Icon(Icons.add),
       ),
       body: Column(
@@ -126,46 +143,85 @@ class _NotesScreenState extends State<NotesScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _notes.isEmpty
-                      ? const Center(
-                          child: Text('No notes yet. Tap + to create one.',
-                              style: TextStyle(color: AppTheme.textMuted)),
+                      ? ListView(
+                          children: [
+                            SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.4),
+                            const AppEmptyState(
+                              icon: Icons.note_add_outlined,
+                              title: 'No notes yet',
+                              subtitle: 'Tap + to create your first note.',
+                            ),
+                          ],
                         )
                       : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                           itemCount: _notes.length,
                           itemBuilder: (context, i) {
                             final n = _notes[i];
-                            return Dismissible(
-                              key: ValueKey(n.id),
-                              direction: DismissDirection.endToStart,
-                              background: Container(
-                                color: AppTheme.error,
-                                alignment: Alignment.centerRight,
-                                padding: const EdgeInsets.only(right: 24),
-                                child: const Icon(Icons.delete, color: Colors.white),
-                              ),
-                              confirmDismiss: (_) async {
-                                await _delete(n);
-                                return true;
-                              },
-                              child: Card(
-                                margin: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 4),
-                                child: ListTile(
-                                  title: Text(n.title,
-                                      style: const TextStyle(fontWeight: FontWeight.w600)),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                  bottom: i == _notes.length - 1 ? 0 : 10),
+                              child: Dismissible(
+                                key: ValueKey(n.id),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  decoration: BoxDecoration(
+                                    color: AppInk.critical,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 24),
+                                  child: const Icon(Icons.delete_outline,
+                                      color: Colors.white),
+                                ),
+                                confirmDismiss: (_) async {
+                                  await _delete(n);
+                                  return true;
+                                },
+                                child: AppCard(
+                                  onTap: () => _editOrCreate(note: n),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 14),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(n.content,
-                                          maxLines: 2, overflow: TextOverflow.ellipsis),
-                                      if (n.createdAt.isNotEmpty)
-                                        Text(n.createdAt,
-                                            style: const TextStyle(
-                                                fontSize: 11,
-                                                color: AppTheme.textMuted)),
+                                      Text(
+                                        n.title,
+                                        style: const TextStyle(
+                                          fontFamily: AppTheme.fontFamily,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppInk.heading,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        n.content,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontFamily: AppTheme.fontFamily,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w400,
+                                          color: AppInk.muted,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                      if (n.createdAt.isNotEmpty) ...[
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          n.createdAt,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: AppInk.muted,
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
-                                  onTap: () => _editOrCreate(note: n),
                                 ),
                               ),
                             );
@@ -209,42 +265,41 @@ class _NoteDialogState extends State<_NoteDialog> {
   Widget build(BuildContext context) {
     final isEdit = widget.note != null;
     return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text(isEdit ? 'Edit note' : 'New note'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
-            controller: _title,
-            decoration: const InputDecoration(
-              labelText: 'Title',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
+          AppInput(controller: _title, label: 'Title', hint: 'Note title'),
+          const SizedBox(height: 14),
+          AppInput(
             controller: _content,
-            decoration: const InputDecoration(
-              labelText: 'Content',
-              border: OutlineInputBorder(),
-            ),
+            label: 'Content',
+            hint: 'Write something...',
             maxLines: 4,
           ),
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+        AppButton(
+          label: 'Cancel',
+          style: AppButtonStyle.ghost,
+          size: AppButtonSize.sm,
+          onTap: () => Navigator.pop(context),
         ),
-        FilledButton(
-          onPressed: () {
-            if (_title.text.trim().isEmpty || _content.text.trim().isEmpty) return;
+        AppButton(
+          label: isEdit ? 'Save' : 'Create',
+          style: AppButtonStyle.primary,
+          size: AppButtonSize.sm,
+          onTap: () {
+            if (_title.text.trim().isEmpty || _content.text.trim().isEmpty) {
+              return;
+            }
             Navigator.pop(context, (
               title: _title.text.trim(),
               content: _content.text.trim(),
             ));
           },
-          child: Text(isEdit ? 'Save' : 'Create'),
         ),
       ],
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../core/design/components/components.dart';
+import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/student_api.dart';
@@ -48,8 +49,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('My Profile')),
+    return AppScaffold(
+      title: 'My Profile',
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -59,56 +60,104 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _profile == null
-                      ? const Center(child: Text('No profile data.'))
-                      : ListView(
-                          padding: const EdgeInsets.all(16),
+                      ? ListView(
                           children: [
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(_profile!.fullName,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .headlineSmall),
-                                    const SizedBox(height: 4),
-                                    Text(_profile!.studentNumber,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall),
-                                  ],
-                                ),
+                            const SizedBox(height: 120),
+                            AppEmptyState(
+                              icon: Icons.person_outline,
+                              title: 'No profile data',
+                              subtitle:
+                                  'Your profile information will appear here.',
+                            ),
+                          ],
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                          children: [
+                            AppCard.elevated(
+                              padding: const EdgeInsets.all(20),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 52,
+                                    height: 52,
+                                    decoration: BoxDecoration(
+                                      color:
+                                          AppInk.accent.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: const Icon(Icons.person,
+                                        size: 26, color: AppInk.accent),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _profile!.fullName,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppInk.heading,
+                                            height: 1.25,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _profile!.studentNumber,
+                                          style: const TextStyle(
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w500,
+                                            color: AppInk.muted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            _Section(title: 'Academic', rows: [
-                              ('Course', _profile!.course),
-                              ('Major', _profile!.major),
-                              ('Status', _profile!.status),
-                              ('Enrollment Date', _profile!.enrollmentDate),
-                            ]),
-                            const SizedBox(height: 8),
-                            _Section(title: 'Personal', rows: [
-                              ('Sex', _profile!.sex),
-                              ('Birth Date', _profile!.birthDate),
-                              ('Civil Status', _profile!.civilStatus),
-                              ('Ethnicity', _profile!.ethnicity),
-                              ('Religion', _profile!.religion),
-                            ]),
-                            const SizedBox(height: 8),
-                            _Section(title: 'Contact', rows: [
-                              ('Email', _profile!.email),
-                              ('Contact No', _profile!.contactNo),
-                            ]),
-                            const SizedBox(height: 8),
-                            _Section(title: 'Address', rows: [
-                              ('Sitio', _profile!.sitio),
-                              ('Barangay', _profile!.barangay),
-                              ('City', _profile!.city),
-                              ('Province', _profile!.province),
-                            ]),
+                            const SizedBox(height: 24),
+                            _Section(
+                              title: 'Academic',
+                              rows: [
+                                ('Course', _profile!.course),
+                                ('Major', _profile!.major),
+                                ('Status', _profile!.status),
+                                ('Enrollment Date', _profile!.enrollmentDate),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            _Section(
+                              title: 'Personal',
+                              rows: [
+                                ('Sex', _profile!.sex),
+                                ('Birth Date', _profile!.birthDate),
+                                ('Civil Status', _profile!.civilStatus),
+                                ('Ethnicity', _profile!.ethnicity),
+                                ('Religion', _profile!.religion),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            _Section(
+                              title: 'Contact',
+                              rows: [
+                                ('Email', _profile!.email),
+                                ('Contact No', _profile!.contactNo),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            _Section(
+                              title: 'Address',
+                              rows: [
+                                ('Sitio', _profile!.sitio),
+                                ('Barangay', _profile!.barangay),
+                                ('City', _profile!.city),
+                                ('Province', _profile!.province),
+                              ],
+                            ),
                           ],
                         ),
             ),
@@ -126,18 +175,23 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            ...rows.map((r) => _Row(label: r.$1, value: r.$2)),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppSectionHeader(title: title),
+        const SizedBox(height: 10),
+        AppCard(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Column(
+            children: [
+              for (var i = 0; i < rows.length; i++) ...[
+                _Row(label: rows[i].$1, value: rows[i].$2),
+                if (i != rows.length - 1) const AppRule(),
+              ]
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -150,17 +204,32 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 13),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 120,
-            child: Text(label,
-                style: const TextStyle(
-                    color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppInk.muted,
+              ),
+            ),
           ),
-          Expanded(child: Text(value.isEmpty ? '—' : value)),
+          Expanded(
+            child: Text(
+              value.isEmpty ? '—' : value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppInk.heading,
+                height: 1.35,
+              ),
+            ),
+          ),
         ],
       ),
     );

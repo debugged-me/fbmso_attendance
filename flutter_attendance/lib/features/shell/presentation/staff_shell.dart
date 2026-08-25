@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/design/components/components.dart';
+import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/services/biometric_service.dart';
 import '../../../core/theme/app_icons.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../activities/presentation/activities_screen.dart';
@@ -82,33 +83,37 @@ class _StaffHub extends StatelessWidget {
         title: 'Announcements',
         subtitle: 'School-wide notices',
         target: AnnouncementsScreen(session: session),
+        tone: AppInk.accent,
       ),
       _HubTile(
         icon: Icons.sticky_note_2_outlined,
         title: 'Notes',
         subtitle: 'Your personal notes',
         target: NotesScreen(session: session),
+        tone: AppInk.caution,
       ),
       _HubTile(
         icon: Icons.check_circle_outline,
         title: 'To-Do',
         subtitle: 'Tasks and reminders',
         target: TodosScreen(session: session),
+        tone: AppInk.positive,
       ),
     ];
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('More')),
+    return AppScaffold(
+      title: 'More',
+      showBackButton: false,
       body: Column(
         children: [
           const SyncStatusBanner(),
           Expanded(
             child: GridView.count(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               crossAxisCount: 2,
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 0.95,
+              childAspectRatio: 0.98,
               children: tiles.map((t) => _HubCard(tile: t)).toList(),
             ),
           ),
@@ -124,11 +129,13 @@ class _HubTile {
     required this.title,
     required this.subtitle,
     required this.target,
+    this.tone = AppInk.accent,
   });
   final IconData icon;
   final String title;
   final String subtitle;
   final Widget target;
+  final Color tone;
 }
 
 class _HubCard extends StatelessWidget {
@@ -137,30 +144,51 @@ class _HubCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => tile.target),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(tile.icon, size: 32, color: AppTheme.midBlue),
-              const SizedBox(height: 12),
-              Text(tile.title, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Expanded(
-                child: Text(tile.subtitle,
-                    style: Theme.of(context).textTheme.bodySmall),
-              ),
-            ],
+    return AppCard(
+      radius: 20,
+      padding: const EdgeInsets.all(16),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => tile.target),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: tile.tone.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(tile.icon, size: 22, color: tile.tone),
           ),
-        ),
+          const SizedBox(height: 14),
+          Text(
+            tile.title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppInk.heading,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: Text(
+              tile.subtitle,
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppInk.muted,
+                height: 1.35,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -173,46 +201,68 @@ class _ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: const [NotificationBell()],
-      ),
+    return AppScaffold(
+      title: 'Profile',
+      showBackButton: false,
+      actions: const [NotificationBell()],
       body: Column(
         children: [
           const SyncStatusBanner(),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(session.displayName,
-                            style:
-                                Theme.of(context).textTheme.headlineSmall),
-                        const SizedBox(height: 8),
-                        _row('Role', session.position),
-                        _row('Username', session.username),
-                        _row('Email', session.email),
-                        _row('School', session.schoolName),
-                      ],
-                    ),
+                AppCard(
+                  radius: 20,
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: AppInk.accent.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.person_rounded,
+                                color: AppInk.accent, size: 26),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              session.displayName,
+                              style: const TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w800,
+                                color: AppInk.heading,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      const AppRule(),
+                      const SizedBox(height: 12),
+                      _row('Role', session.position),
+                      _row('Username', session.username),
+                      _row('Email', session.email),
+                      _row('School', session.schoolName),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 const _BiometricToggle(),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: () => _logout(context),
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Sign out'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.error,
-                  ),
+                const SizedBox(height: 20),
+                AppButton(
+                  label: 'Sign out',
+                  icon: Icons.logout_rounded,
+                  style: AppButtonStyle.destructive,
+                  fullWidth: true,
+                  size: AppButtonSize.lg,
+                  onTap: () => _logout(context),
                 ),
               ],
             ),
@@ -224,17 +274,31 @@ class _ProfilePage extends StatelessWidget {
 
   Widget _row(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 96,
-            child: Text(label,
-                style: const TextStyle(
-                    color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+            width: 100,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppInk.muted,
+              ),
+            ),
           ),
-          Expanded(child: Text(value.isEmpty ? '—' : value)),
+          Expanded(
+            child: Text(
+              value.isEmpty ? '—' : value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppInk.heading,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -244,6 +308,8 @@ class _ProfilePage extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
         title: const Text('Sign out?'),
         content: const Text('You will need to sign in again to continue.'),
         actions: [
@@ -298,32 +364,100 @@ class _BiometricToggleState extends State<_BiometricToggle> {
   Widget build(BuildContext context) {
     if (_loading) return const SizedBox.shrink();
     if (!_available) {
-      return Card(
-        child: ListTile(
-          leading: const Icon(Icons.fingerprint, color: AppTheme.textMuted),
-          title: const Text('Biometric Unlock'),
-          subtitle: const Text('Not available on this device.'),
+      return AppCard(
+        radius: 16,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppInk.muted.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.fingerprint_rounded,
+                  color: AppInk.muted, size: 22),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Biometric Unlock',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppInk.heading,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'Not available on this device.',
+                    style: TextStyle(fontSize: 13, color: AppInk.muted),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.lock_outline_rounded,
+                color: AppInk.muted, size: 20),
+          ],
         ),
       );
     }
-    return Card(
-      child: SwitchListTile(
-        secondary: const Icon(Icons.fingerprint),
-        title: const Text('Biometric Unlock'),
-        subtitle: Text(_enabled
-            ? 'App will require biometrics on startup.'
-            : 'Require fingerprint/face to open the app.'),
-        value: _enabled,
-        onChanged: (v) async {
-          if (v) {
-            final ok = await BiometricService.authenticate(
-              reason: 'Authenticate to enable biometric unlock.',
-            );
-            if (!ok) return;
-          }
-          await BiometricService.setEnabled(v);
-          setState(() => _enabled = v);
-        },
+    return AppCard(
+      radius: 16,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppInk.accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.fingerprint_rounded,
+                color: AppInk.accent, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Biometric Unlock',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppInk.heading,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _enabled
+                      ? 'App will require biometrics on startup.'
+                      : 'Require fingerprint/face to open the app.',
+                  style: const TextStyle(fontSize: 13, color: AppInk.muted),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _enabled,
+            onChanged: (v) async {
+              if (v) {
+                final ok = await BiometricService.authenticate(
+                  reason: 'Authenticate to enable biometric unlock.',
+                );
+                if (!ok) return;
+              }
+              await BiometricService.setEnabled(v);
+              setState(() => _enabled = v);
+            },
+          ),
+        ],
       ),
     );
   }
