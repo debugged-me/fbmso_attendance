@@ -10,6 +10,7 @@ import '../features/auth/domain/app_session.dart';
 import '../features/auth/presentation/auth_controller.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/welcome_screen.dart';
+import '../features/misc/data/misc_api.dart';
 import '../features/shell/presentation/admin_shell.dart';
 import '../features/shell/presentation/student_shell.dart';
 
@@ -114,18 +115,56 @@ class _AuthFlow extends StatelessWidget {
 /// Picks the shell based on the user's role bucket.
 /// Only two roles exist in the system: Student and Admin (which includes
 /// Super Admin). Everything else falls back to Admin.
-class _RoleShell extends StatelessWidget {
+class _RoleShell extends StatefulWidget {
   const _RoleShell({required this.session, required this.controller});
   final AppSession session;
   final AuthController controller;
 
   @override
+  State<_RoleShell> createState() => _RoleShellState();
+}
+
+class _RoleShellState extends State<_RoleShell> {
+  @override
+  void initState() {
+    super.initState();
+    // Start active announcement polling for in-app notifications.
+    NotificationService.instance.startAnnouncementPolling(
+      fetchAnnouncements: _fetchAnnouncements,
+      interval: const Duration(minutes: 2),
+    );
+  }
+
+  @override
+  void dispose() {
+    NotificationService.instance.stopAnnouncementPolling();
+    super.dispose();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchAnnouncements() async {
+    try {
+      final api = MiscApi();
+      final list = await api.announcements(
+        baseUrl: widget.session.baseUrl,
+        token: widget.session.token,
+      );
+      return list.map((a) => {
+            'id': a.id,
+            'title': a.title,
+            'message': a.message,
+          }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (session.role.isStudentLike) {
-      return StudentShell(session: session, controller: controller);
+    if (widget.session.role.isStudentLike) {
+      return StudentShell(session: widget.session, controller: widget.controller);
     }
     // Admin, Super Admin, and any other non-student role → AdminShell.
-    return AdminShell(session: session, controller: controller);
+    return AdminShell(session: widget.session, controller: widget.controller);
   }
 }
 

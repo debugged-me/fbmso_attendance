@@ -7,6 +7,7 @@ import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
 import '../domain/attendance_models.dart';
 import 'activity_form_screen.dart';
+import 'activity_poster_screen.dart';
 
 /// Staff activity management — list all activities with create / edit /
 /// delete actions.
@@ -24,6 +25,8 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
   List<Activity> _activities = [];
   bool _loading = true;
   String? _error;
+  bool _posterMode = false;
+  bool _togglingMode = false;
 
   @override
   void initState() {
@@ -42,9 +45,14 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
         baseUrl: widget.session.baseUrl,
         token: widget.session.token,
       );
+      final pm = await _api.posterMode(
+        baseUrl: widget.session.baseUrl,
+        token: widget.session.token,
+      );
       if (!mounted) return;
       setState(() {
         _activities = list;
+        _posterMode = pm;
         _loading = false;
       });
     } catch (e) {
@@ -53,6 +61,34 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
         _error = e.toString();
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _togglePosterMode(bool value) async {
+    setState(() => _togglingMode = true);
+    try {
+      final result = await _api.setPosterMode(
+        baseUrl: widget.session.baseUrl,
+        token: widget.session.token,
+        on: value,
+      );
+      if (!mounted) return;
+      setState(() {
+        _posterMode = result;
+        _togglingMode = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result ? 'Poster Mode enabled' : 'Poster Mode disabled'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _togglingMode = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     }
   }
 
@@ -76,6 +112,61 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
       body: Column(
         children: [
           const SyncStatusBanner(),
+          // Poster Mode toggle — mirrors the web sidebar switch
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: _posterMode
+                  ? AppInk.accent.withValues(alpha: 0.08)
+                  : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _posterMode
+                    ? AppInk.accent.withValues(alpha: 0.3)
+                    : AppInk.rule,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _posterMode ? Icons.image_rounded : Icons.qr_code_scanner_rounded,
+                  size: 22,
+                  color: _posterMode ? AppInk.accent : AppInk.muted,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Poster Mode',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppInk.heading,
+                        ),
+                      ),
+                      Text(
+                        _posterMode
+                            ? 'Students scan activity QR to self-check in'
+                            : 'Admin scans student QR to check in',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppInk.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch.adaptive(
+                  value: _posterMode,
+                  onChanged: _togglingMode ? null : _togglePosterMode,
+                  activeTrackColor: AppInk.accent,
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _load,
@@ -108,6 +199,8 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
                             final a = _activities[i];
                             return _ActivityManageCard(
                               activity: a,
+                              posterMode: _posterMode,
+                              session: widget.session,
                               onEdit: () => _openForm(a),
                             );
                           },
@@ -130,10 +223,26 @@ class _ActivityManageCard extends StatelessWidget {
   const _ActivityManageCard({
     required this.activity,
     required this.onEdit,
+    required this.posterMode,
+    required this.session,
   });
 
   final Activity activity;
   final VoidCallback onEdit;
+  final bool posterMode;
+  final AppSession session;
+
+  void _openPoster(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ActivityPosterScreen(
+          session: session,
+          activityId: activity.activityId,
+          activityTitle: activity.title,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,85 +254,107 @@ class _ActivityManageCard extends StatelessWidget {
       child: AppCard(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         onTap: onEdit,
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    activity.title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppInk.heading,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.event_rounded,
-                          size: 14, color: AppInk.muted),
-                      const SizedBox(width: 4),
                       Text(
-                        activity.activityDate,
+                        activity.title,
                         style: const TextStyle(
-                            fontSize: 12, color: AppInk.muted),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppInk.heading,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      if (activity.location.isNotEmpty) ...[
-                        const SizedBox(width: 10),
-                        Icon(Icons.place_outlined,
-                            size: 14, color: AppInk.muted),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            activity.location,
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.event_rounded,
+                              size: 14, color: AppInk.muted),
+                          const SizedBox(width: 4),
+                          Text(
+                            activity.activityDate,
                             style: const TextStyle(
                                 fontSize: 12, color: AppInk.muted),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                          if (activity.location.isNotEmpty) ...[
+                            const SizedBox(width: 10),
+                            Icon(Icons.place_outlined,
+                                size: 14, color: AppInk.muted),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                activity.location,
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppInk.muted),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        isOpen ? 'Open' : 'Closed',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Icon(Icons.edit_rounded, color: AppInk.muted, size: 20),
+              ],
             ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+            // ── Poster mode action row ──────────────────────────────
+            if (posterMode) ...[
+              const SizedBox(height: 10),
+              Row(
                 children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    isOpen ? 'Open' : 'Closed',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: color,
+                  Expanded(
+                    child: AppButton(
+                      label: 'View Poster QR',
+                      icon: Icons.qr_code_2_rounded,
+                      size: AppButtonSize.sm,
+                      fullWidth: true,
+                      onTap: () => _openPoster(context),
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: 6),
-            const Icon(Icons.edit_rounded, color: AppInk.muted, size: 20),
+            ],
           ],
         ),
       ),

@@ -767,26 +767,57 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
-        $rows = $this->db->order_by('sort_order', 'ASC')
-            ->order_by('full_name', 'ASC')
-            ->get('fbmso_personnels')->result();
+        // Use the staff table (same as web Page/employeelist → PersonnelModel::displaypersonnel)
+        $limit  = (int)$this->input->get('limit', true) ?: 50;
+        $offset = (int)$this->input->get('offset', true) ?: 0;
+        $search = trim((string)$this->input->get('search', true));
+
+        $this->db->from('staff');
+        if ($search !== '') {
+            $this->db->group_start()
+                ->like('IDNumber', $search)
+                ->or_like('FirstName', $search)
+                ->or_like('LastName', $search)
+                ->or_like('empPosition', $search)
+                ->or_like('Department', $search)
+                ->group_end();
+        }
+        $total = $this->db->count_all_results();
+
+        $this->db->select('IDNumber, FirstName, MiddleName, LastName, NameExtn, prefix, empPosition, Department, empStatus, Sex, empEmail, empMobile');
+        if ($search !== '') {
+            $this->db->group_start()
+                ->like('IDNumber', $search)
+                ->or_like('FirstName', $search)
+                ->or_like('LastName', $search)
+                ->or_like('empPosition', $search)
+                ->or_like('Department', $search)
+                ->group_end();
+        }
+        $this->db->order_by('LastName', 'ASC')->order_by('FirstName', 'ASC')
+            ->limit($limit, $offset);
+        $rows = $this->db->get('staff')->result();
 
         $out = [];
         foreach ($rows as $r) {
+            $fullName = trim(($r->FirstName ?? '') . ' ' . ($r->MiddleName ?? '') . ' ' . ($r->LastName ?? ''));
             $out[] = [
-                'id'         => (int)$r->id,
-                'full_name'  => (string)$r->full_name,
-                'title'      => (string)$r->title,
-                'bio'        => (string)($r->bio ?? ''),
-                'photo_url'  => $this->file_url('upload/banners/' . ltrim((string)($r->photo ?? ''), '/')),
-                'sort_order' => (int)$r->sort_order,
-                'is_active'  => (int)($r->is_active ?? 1),
+                'id'         => (string)$r->IDNumber,
+                'full_name'  => $fullName,
+                'first_name' => (string)($r->FirstName ?? ''),
+                'last_name'  => (string)($r->LastName ?? ''),
+                'title'      => (string)($r->empPosition ?? ''),
+                'department' => (string)($r->Department ?? ''),
+                'status'     => (string)($r->empStatus ?? ''),
+                'email'      => (string)($r->empEmail ?? ''),
+                'mobile'     => (string)($r->empMobile ?? ''),
+                'sex'        => (string)($r->Sex ?? ''),
             ];
         }
-        return $this->json(['ok' => true, 'personnel' => $out]);
+        return $this->json(['ok' => true, 'personnel' => $out, 'total' => (int)$total, 'limit' => $limit, 'offset' => $offset]);
     }
 
-    /** Admin: save (create or update) a personnel. */
+    /** Admin: save (create or update) a personnel (staff table). */
     public function personnel_save()
     {
         if ($this->input->method(true) !== 'POST') {
@@ -799,30 +830,34 @@ class MobileMisc extends MobileApi
         }
 
         $p = $this->read_payload();
-        $id = (int)($p['id'] ?? 0);
+        $idNumber = trim((string)($p['id'] ?? $p['IDNumber'] ?? ''));
         $data = [
-            'full_name'  => trim((string)($p['full_name'] ?? '')),
-            'title'      => trim((string)($p['title'] ?? '')),
-            'bio'        => (string)($p['bio'] ?? ''),
-            'sort_order' => (int)($p['sort_order'] ?? 100),
-            'is_active'  => (int)($p['is_active'] ?? 1),
+            'IDNumber'    => $idNumber,
+            'FirstName'   => strtoupper(trim((string)($p['first_name'] ?? $p['FirstName'] ?? ''))),
+            'MiddleName'  => strtoupper(trim((string)($p['middle_name'] ?? $p['MiddleName'] ?? ''))),
+            'LastName'    => strtoupper(trim((string)($p['last_name'] ?? $p['LastName'] ?? ''))),
+            'empPosition' => trim((string)($p['title'] ?? $p['empPosition'] ?? '')),
+            'Department'  => trim((string)($p['department'] ?? $p['Department'] ?? '')),
+            'empStatus'   => trim((string)($p['status'] ?? $p['empStatus'] ?? '')),
+            'empEmail'    => trim((string)($p['email'] ?? $p['empEmail'] ?? '')),
+            'empMobile'   => trim((string)($p['mobile'] ?? $p['empMobile'] ?? '')),
         ];
 
-        if ($data['full_name'] === '') {
-            return $this->json(['ok' => false, 'message' => 'Full name is required.'], 422);
+        if ($data['IDNumber'] === '' || $data['FirstName'] === '' || $data['LastName'] === '') {
+            return $this->json(['ok' => false, 'message' => 'ID Number, First Name, and Last Name are required.'], 422);
         }
 
-        if ($id > 0) {
-            $this->db->where('id', $id)->update('fbmso_personnels', $data);
+        $exists = $this->db->where('IDNumber', $idNumber)->count_all_results('staff') > 0;
+        if ($exists) {
+            $this->db->where('IDNumber', $idNumber)->update('staff', $data);
         } else {
-            $this->db->insert('fbmso_personnels', $data);
-            $id = (int)$this->db->insert_id();
+            $this->db->insert('staff', $data);
         }
 
-        return $this->json(['ok' => true, 'id' => $id, 'message' => 'Saved successfully.']);
+        return $this->json(['ok' => true, 'id' => $idNumber, 'message' => 'Saved successfully.']);
     }
 
-    /** Admin: delete a personnel. */
+    /** Admin: delete a personnel (staff table). */
     public function personnel_delete()
     {
         if ($this->input->method(true) !== 'POST') {
@@ -835,15 +870,15 @@ class MobileMisc extends MobileApi
         }
 
         $p = $this->read_payload();
-        $id = (int)($p['id'] ?? 0);
-        if ($id <= 0) {
+        $idNumber = trim((string)($p['id'] ?? $p['IDNumber'] ?? ''));
+        if ($idNumber === '') {
             return $this->json(['ok' => false, 'message' => 'Invalid ID.'], 422);
         }
-        $this->db->where('id', $id)->delete('fbmso_personnels');
+        $this->db->where('IDNumber', $idNumber)->delete('staff');
         return $this->json(['ok' => true, 'message' => 'Removed.']);
     }
 
-    /** Admin: toggle personnel active/inactive. */
+    /** Admin: toggle personnel active/inactive. (No-op for staff table — no is_active column.) */
     public function personnel_toggle()
     {
         if ($this->input->method(true) !== 'POST') {
@@ -856,13 +891,15 @@ class MobileMisc extends MobileApi
         }
 
         $p = $this->read_payload();
-        $id = (int)($p['id'] ?? 0);
-        $active = (int)($p['is_active'] ?? 1);
-        if ($id <= 0) {
+        $idNumber = trim((string)($p['id'] ?? $p['IDNumber'] ?? ''));
+        $status = trim((string)($p['status'] ?? ''));
+        if ($idNumber === '') {
             return $this->json(['ok' => false, 'message' => 'Invalid ID.'], 422);
         }
-        $this->db->where('id', $id)->update('fbmso_personnels', ['is_active' => $active]);
-        return $this->json(['ok' => true, 'message' => 'Toggled.']);
+        if ($status !== '') {
+            $this->db->where('IDNumber', $idNumber)->update('staff', ['empStatus' => $status]);
+        }
+        return $this->json(['ok' => true, 'message' => 'Updated.']);
     }
 
     // ─── User Accounts (admin) ─────────────────────────────────────────────
@@ -883,8 +920,12 @@ class MobileMisc extends MobileApi
         $offset = (int)$this->input->get('offset', true) ?: 0;
         $search = trim((string)$this->input->get('search', true));
 
+        // Match web: exclude Super Admin AND Students (web view hides Students)
+        $excludePositions = ['Super Admin', 'Student'];
+
         // Count
         $this->db->from('o_users');
+        $this->db->where_not_in('position', $excludePositions);
         if ($search !== '') {
             $this->db->group_start()
                 ->like('username', $search)
@@ -898,6 +939,7 @@ class MobileMisc extends MobileApi
 
         // Rows
         $this->db->select('username, IDNumber, fName, mName, lName, email, position, acctStat, dateCreated, avatar');
+        $this->db->where_not_in('position', $excludePositions);
         if ($search !== '') {
             $this->db->group_start()
                 ->like('username', $search)
@@ -922,7 +964,7 @@ class MobileMisc extends MobileApi
                 'first_name'  => (string)($r->fName ?? ''),
                 'middle_name' => (string)($r->mName ?? ''),
                 'last_name'   => (string)($r->lName ?? ''),
-                'full_name'   => trim(($r->lName ?? '') . ', ' . ($r->fName ?? '')),
+                'full_name'   => trim(($r->fName ?? '') . ' ' . ($r->lName ?? '')),
                 'email'       => (string)($r->email ?? ''),
                 'position'    => (string)($r->position ?? ''),
                 'status'      => (string)($r->acctStat ?? ''),
@@ -1479,43 +1521,49 @@ class MobileMisc extends MobileApi
         $offset = (int)$this->input->get('offset', true) ?: 0;
         $search = trim((string)$this->input->get('search', true));
 
-        $this->db->from('course_sections');
+        // Count — use a clean separate query (count_all_results resets the QB)
+        $this->db->from('course_sections cs');
         if ($search !== '') {
             $this->db->group_start()
-                ->like('section', $search)
-                ->or_like('courseid', $search)
-                ->or_like('year_level', $search)
+                ->like('cs.section', $search)
+                ->or_like('cs.year_level', $search)
+                ->or_like('ct.CourseCode', $search)
+                ->or_like('ct.CourseDescription', $search)
                 ->group_end();
+            $this->db->join('course_table ct', 'ct.courseid = cs.courseid', 'left');
         }
         $total = $this->db->count_all_results();
 
-        $this->db->select('id, courseid, year_level, section, is_active');
+        // Rows — JOIN course_table like the web CourseSectionModel::getAllSections()
+        $this->db->select('cs.id, cs.courseid, cs.year_level, cs.section, cs.is_active, ct.CourseCode, ct.CourseDescription');
+        $this->db->from('course_sections cs');
+        $this->db->join('course_table ct', 'ct.courseid = cs.courseid', 'left');
         if ($search !== '') {
             $this->db->group_start()
-                ->like('section', $search)
-                ->or_like('courseid', $search)
-                ->or_like('year_level', $search)
+                ->like('cs.section', $search)
+                ->or_like('cs.year_level', $search)
+                ->or_like('ct.CourseCode', $search)
+                ->or_like('ct.CourseDescription', $search)
                 ->group_end();
         }
-        $this->db->order_by('section', 'ASC')->limit($limit, $offset);
-        $rows = $this->db->get('course_sections')->result();
-
-        // Also get course descriptions for display
-        $courses = [];
-        $cRows = $this->db->select('courseid, CourseDescription')->get('course_table')->result();
-        foreach ($cRows as $c) {
-            $courses[(int)$c->courseid] = (string)$c->CourseDescription;
-        }
+        $this->db->order_by('ct.CourseCode', 'ASC')
+            ->order_by('cs.year_level', 'ASC')
+            ->order_by('cs.section', 'ASC')
+            ->limit($limit, $offset);
+        $rows = $this->db->get()->result();
 
         $out = [];
         foreach ($rows as $r) {
+            $courseName = trim((string)($r->CourseDescription ?? ''));
+            $courseCode = trim((string)($r->CourseCode ?? ''));
             $out[] = [
-                'id'         => (int)($r->id ?? 0),
-                'course_id'  => (string)($r->courseid ?? ''),
-                'course_name'=> $courses[(int)($r->courseid ?? 0)] ?? (string)($r->courseid ?? ''),
-                'year_level' => (string)($r->year_level ?? ''),
-                'section'    => (string)($r->section ?? ''),
-                'is_active'  => (int)($r->is_active ?? 1),
+                'id'          => (int)($r->id ?? 0),
+                'course_id'   => (string)($r->courseid ?? ''),
+                'course_code' => $courseCode,
+                'course_name' => $courseName,
+                'year_level'  => (string)($r->year_level ?? ''),
+                'section'     => (string)($r->section ?? ''),
+                'is_active'   => (int)($r->is_active ?? 1),
             ];
         }
         return $this->json(['ok' => true, 'sections' => $out, 'total' => (int)$total, 'limit' => $limit, 'offset' => $offset]);
@@ -1715,36 +1763,79 @@ class MobileMisc extends MobileApi
 
         $this->load->model('ReportsModel');
 
-        // Active SY/sem from settings
-        $settings = $this->db->select('active_sy, active_sem')->get('o_srms_settings')->row();
+        // Active SY/sem from settings table (same as web Reports controller)
+        $settings = $this->db->select('active_sy, active_sem')
+            ->order_by('settingsID', 'DESC')->limit(1)
+            ->get('settings')->row();
         $sy = (string)($settings->active_sy ?? '');
         $sem = (string)($settings->active_sem ?? '');
 
         $byYear = $this->ReportsModel->students_by_yearlevel($sy, $sem);
         $byCourse = $this->ReportsModel->students_by_course($sy, $sem);
+        $bySection = $this->ReportsModel->students_by_section($sy, $sem);
         $eventsTotal = $this->ReportsModel->events_total($sy, $sem);
         $eventScans = $this->ReportsModel->event_scans_total($sy, $sem);
         $sectionsCount = $this->ReportsModel->sections_count_by_course();
+        $eventsSummary = $this->ReportsModel->events_summary($sy, $sem);
+        $recentAtt = $this->ReportsModel->attendance_recent($sy, $sem, 20);
 
+        // ReportsModel returns objects with EXACT column aliases from SQL:
+        // students_by_yearlevel: YearLevel, total
+        // students_by_course: Course, total
+        // students_by_section: Course, YearLevel, Section, total
+        // sections_count_by_course: Course, sections
         $yearRows = [];
         foreach ($byYear as $r) {
             $yearRows[] = [
-                'year_level' => (string)($r->yearLevel ?? $r->year_level ?? ''),
-                'count'      => (int)($r->count ?? $r->total ?? 0),
+                'year_level' => (string)($r->YearLevel ?? ''),
+                'count'      => (int)($r->total ?? 0),
             ];
         }
         $courseRows = [];
         foreach ($byCourse as $r) {
             $courseRows[] = [
-                'course' => (string)($r->CourseDescription ?? $r->course ?? ''),
-                'count'  => (int)($r->count ?? $r->total ?? 0),
+                'course' => (string)($r->Course ?? ''),
+                'count'  => (int)($r->total ?? 0),
             ];
         }
         $sectionRows = [];
-        foreach ($sectionsCount as $r) {
+        foreach ($bySection as $r) {
             $sectionRows[] = [
-                'course'  => (string)($r->CourseDescription ?? ''),
-                'sections'=> (int)($r->sections ?? $r->section_count ?? 0),
+                'course'     => (string)($r->Course ?? ''),
+                'year_level' => (string)($r->YearLevel ?? ''),
+                'section'    => (string)($r->Section ?? ''),
+                'count'      => (int)($r->total ?? 0),
+            ];
+        }
+        $secCountRows = [];
+        foreach ($sectionsCount as $r) {
+            $secCountRows[] = [
+                'course'   => (string)($r->Course ?? ''),
+                'sections' => (int)($r->sections ?? 0),
+            ];
+        }
+        $eventRows = [];
+        foreach ($eventsSummary as $r) {
+            $eventRows[] = [
+                'activity_id' => (int)($r->activity_id ?? 0),
+                'title'       => (string)($r->title ?? ''),
+                'activity_date' => (string)($r->activity_date ?? ''),
+                'program'     => (string)($r->program ?? ''),
+                'scans'       => (int)($r->scans ?? 0),
+            ];
+        }
+        $recentRows = [];
+        foreach ($recentAtt as $r) {
+            $recentRows[] = [
+                'student_name'   => trim(($r->LastName ?? '') . ', ' . ($r->FirstName ?? '')),
+                'student_number' => (string)($r->student_number ?? ''),
+                'activity_title' => (string)($r->activity_title ?? ''),
+                'section'        => (string)($r->section ?? ''),
+                'year_level'     => (string)($r->yearLevel ?? ''),
+                'course'         => (string)($r->CourseName ?? ''),
+                'checked_in_at'  => (string)($r->checked_in_at ?? ''),
+                'checked_out_at' => (string)($r->checked_out_at ?? ''),
+                'source'         => (string)($r->source ?? ''),
             ];
         }
 
@@ -1754,9 +1845,12 @@ class MobileMisc extends MobileApi
             'sem' => $sem,
             'by_year_level' => $yearRows,
             'by_course' => $courseRows,
-            'sections_count' => $sectionRows,
+            'by_section' => $sectionRows,
+            'sections_count' => $secCountRows,
             'events_total' => (int)($eventsTotal ?? 0),
             'event_scans' => (int)($eventScans ?? 0),
+            'events_summary' => $eventRows,
+            'recent_attendance' => $recentRows,
         ]);
     }
 
@@ -1773,23 +1867,37 @@ class MobileMisc extends MobileApi
         }
 
         $this->load->model('ReportsModel');
-        $settings = $this->db->select('active_sy, active_sem')->get('o_srms_settings')->row();
+        // Use settings table (same as web)
+        $settings = $this->db->select('active_sy, active_sem')
+            ->order_by('settingsID', 'DESC')->limit(1)
+            ->get('settings')->row();
         $sy = (string)($settings->active_sy ?? '');
         $sem = (string)($settings->active_sem ?? '');
 
         $limit = (int)$this->input->get('limit', true) ?: 100;
         $offset = (int)$this->input->get('offset', true) ?: 0;
 
-        $rows = $this->ReportsModel->attendance_recent($sy, $sem, $limit);
+        $rows = $this->ReportsModel->attendance_recent($sy, $sem, $limit + $offset);
+        // Apply offset manually since the model doesn't support offset
+        if ($offset > 0 && count($rows) > $offset) {
+            $rows = array_slice($rows, $offset);
+        } elseif ($offset > 0) {
+            $rows = [];
+        }
+
         $out = [];
         foreach ($rows as $r) {
             $out[] = [
-                'student_name'   => (string)($r->student_name ?? trim(($r->LastName ?? '') . ', ' . ($r->FirstName ?? ''))),
-                'student_number' => (string)($r->StudentNumber ?? $r->student_number ?? ''),
-                'activity_title' => (string)($r->title ?? $r->activity_title ?? ''),
-                'checked_in_at'  => (string)($r->checked_in_at ?? $r->check_in ?? ''),
-                'checked_out_at' => (string)($r->checked_out_at ?? $r->check_out ?? ''),
+                'student_name'   => trim(($r->LastName ?? '') . ', ' . ($r->FirstName ?? '')),
+                'student_number' => (string)($r->student_number ?? ''),
+                'activity_title' => (string)($r->activity_title ?? ''),
+                'section'        => (string)($r->section ?? ''),
+                'year_level'     => (string)($r->yearLevel ?? ''),
+                'course'         => (string)($r->CourseName ?? ''),
+                'checked_in_at'  => (string)($r->checked_in_at ?? ''),
+                'checked_out_at' => (string)($r->checked_out_at ?? ''),
                 'source'         => (string)($r->source ?? ''),
+                'remarks'        => (string)($r->remarks ?? ''),
             ];
         }
         return $this->json(['ok' => true, 'rows' => $out, 'limit' => $limit, 'offset' => $offset]);

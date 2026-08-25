@@ -45,14 +45,15 @@ class AppNotification {
 }
 
 /// In-app notification store. No Firebase — notifications are generated
-/// locally (sync results, offline-queue events, errors) and persisted in
-/// SharedPreferences as a JSON list. A [ChangeNotifier] so the UI can
-/// react to new notifications in real time.
+/// locally (sync results, offline-queue events, errors, new announcements)
+/// and persisted in SharedPreferences as a JSON list. A broadcast stream
+/// so the UI can react to new notifications in real time.
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
   static const _key = 'app_notifications';
+  static const _seenKey = 'seen_announcement_ids';
   static const _maxStored = 100;
 
   final _controller = StreamController<List<AppNotification>>.broadcast();
@@ -62,6 +63,11 @@ class NotificationService {
   List<AppNotification> get items => List.unmodifiable(_items);
 
   int get unreadCount => _items.where((n) => !n.read).length;
+
+  /// Set of announcement IDs already notified about.
+  Set<int> _seenAnnouncementIds = {};
+
+  Timer? _pollTimer;
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -76,7 +82,63 @@ class NotificationService {
         _items = [];
       }
     }
+    // Load seen announcement IDs
+    final seenRaw = prefs.getStringList(_seenKey) ?? [];
+    _seenAnnouncementIds =
+        seenRaw.map((e) => int.tryParse(e) ?? 0).where((e) => e > 0).toSet();
     _emit();
+  }
+
+  /// Start polling for new announcements every [interval].
+  /// The [fetchAnnouncements] callback should return a list of maps with
+  /// at least 'id', 'title', and 'message' keys.
+  void startAnnouncementPolling({
+    required Future<List<Map<String, dynamic>>> Function() fetchAnnouncements,
+    Duration interval = const Duration(minutes: 2),
+  }) {
+    _pollTimer?.cancel();
+    _pollAnnouncements(fetchAnnouncements);
+    _pollTimer = Timer.periodic(
+        interval, (_) => _pollAnnouncements(fetchAnnouncements));
+  }
+
+  void stopAnnouncementPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  Future<void> _pollAnnouncements(
+    Future<List<Map<String, dynamic>>> Function() fetchAnnouncements,
+  ) async {
+    try {
+      final announcements = await fetchAnnouncements();
+      final newNotifications = <AppNotification>[];
+      for (final a in announcements) {
+        final id = (a['id'] as num?)?.toInt() ?? 0;
+        if (id > 0 && !_seenAnnouncementIds.contains(id)) {
+          _seenAnnouncementIds.add(id);
+          newNotifications.add(AppNotification(
+            id: DateTime.now().millisecondsSinceEpoch + id,
+            title: 'New Announcement',
+            body: '${a['title'] ?? ''}: ${a['message'] ?? ''}',
+            type: 'announcement',
+            createdAt: DateTime.now().toIso8601String(),
+            data: {'announcement_id': id},
+          ));
+        }
+      }
+      if (newNotifications.isNotEmpty) {
+        _items.insertAll(0, newNotifications.reversed);
+        if (_items.length > _maxStored) {
+          _items = _items.sublist(0, _maxStored);
+        }
+        await _persist();
+        await _persistSeenIds();
+        _emit();
+      }
+    } catch (_) {
+      // Silent fail — polling should not disrupt the user.
+    }
   }
 
   Future<void> add({
@@ -130,6 +192,14 @@ class NotificationService {
     );
   }
 
+  Future<void> _persistSeenIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _seenKey,
+      _seenAnnouncementIds.map((e) => e.toString()).toList(),
+    );
+  }
+
   AppNotification _copy(AppNotification n, {bool? read}) => AppNotification(
         id: n.id,
         title: n.title,
@@ -140,5 +210,8 @@ class NotificationService {
         data: n.data,
       );
 
-  void dispose() => _controller.close();
+  void dispose() {
+    _pollTimer?.cancel();
+    _controller.close();
+  }
 }

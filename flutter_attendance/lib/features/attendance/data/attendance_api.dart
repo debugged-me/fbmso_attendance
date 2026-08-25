@@ -55,6 +55,82 @@ class AttendanceApi {
     }
   }
 
+  /// Get the current poster mode state (on/off).
+  Future<bool> posterMode({
+    required String baseUrl,
+    required String token,
+  }) async {
+    final url = '${_normalize(baseUrl)}/api/mobile/activities/poster_mode';
+    try {
+      final response = await _client.get(
+        Uri.parse(url),
+        headers: _headers(token),
+      );
+      final data = _decode(response);
+      if (data['ok'] == true) {
+        return (data['poster_mode'] ?? 'off') == 'on';
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Set poster mode on/off. Admin only.
+  Future<bool> setPosterMode({
+    required String baseUrl,
+    required String token,
+    required bool on,
+  }) async {
+    final url = '${_normalize(baseUrl)}/api/mobile/activities/set_poster_mode';
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _headers(token),
+        body: jsonEncode({'mode': on ? 'on' : 'off'}),
+      );
+      final data = _decode(response);
+      if (data['ok'] == true) {
+        return (data['poster_mode'] ?? 'off') == 'on';
+      }
+      throw ApiException((data['message'] ?? 'Failed to set poster mode').toString());
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// Get the poster QR data (check-in URL) for an activity.
+  Future<({String checkinUrl, String title, String activityDate, String location, String program})> posterQr({
+    required String baseUrl,
+    required String token,
+    required int activityId,
+  }) async {
+    final url = '${_normalize(baseUrl)}/api/mobile/activities/poster_qr/$activityId';
+    try {
+      final response = await _client.get(
+        Uri.parse(url),
+        headers: _headers(token),
+      );
+      final data = _decode(response);
+      if (data['ok'] == true) {
+        return (
+          checkinUrl: (data['checkin_url'] ?? '').toString(),
+          title: (data['title'] ?? '').toString(),
+          activityDate: (data['activity_date'] ?? '').toString(),
+          location: (data['location'] ?? '').toString(),
+          program: (data['program'] ?? '').toString(),
+        );
+      }
+      throw ApiException((data['message'] ?? 'Failed to get poster QR').toString());
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
   /// Student's own attendance log. Cache-first when offline.
   Future<List<AttendanceLog>> myLogs({
     required String baseUrl,

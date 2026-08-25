@@ -10,6 +10,7 @@ import '../../activities/presentation/activities_screen.dart';
 import '../../activities/presentation/dashboard_screen.dart';
 import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
+import '../../attendance/presentation/activity_poster_screen.dart';
 import '../../attendance/presentation/manage_activities_screen.dart';
 import '../../attendance/presentation/scan_screen.dart';
 import '../../auth/domain/app_session.dart';
@@ -289,6 +290,7 @@ class _ScanPickerState extends State<_ScanPicker> {
   late final AttendanceApi _api;
   List<Activity> _activities = [];
   bool _loading = true;
+  bool _posterMode = false;
 
   @override
   void initState() {
@@ -303,9 +305,14 @@ class _ScanPickerState extends State<_ScanPicker> {
       baseUrl: widget.session.baseUrl,
       token: widget.session.token,
     );
+    final pm = await _api.posterMode(
+      baseUrl: widget.session.baseUrl,
+      token: widget.session.token,
+    );
     if (!mounted) return;
     setState(() {
       _activities = list.where((a) => a.isOpen).toList();
+      _posterMode = pm;
       _loading = false;
     });
   }
@@ -313,12 +320,40 @@ class _ScanPickerState extends State<_ScanPicker> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Scan',
+      title: _posterMode ? 'Poster Mode' : 'Scan',
       showBackButton: false,
       leading: widget.menuButton,
       body: Column(
         children: [
           const SyncStatusBanner(),
+          if (_posterMode && !_loading)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppInk.accent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: AppInk.accent.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.image_rounded,
+                      size: 22, color: AppInk.accent),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Poster Mode is ON — tap an activity to display its QR poster for students to scan.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppInk.accent.withValues(alpha: 0.9),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _load,
@@ -329,10 +364,15 @@ class _ScanPickerState extends State<_ScanPicker> {
                           children: [
                             const SizedBox(height: 80),
                             AppEmptyState(
-                              icon: Icons.qr_code_scanner_rounded,
-                              title: 'No open activities',
-                              subtitle:
-                                  'Open activities will appear here so you can start scanning.',
+                              icon: _posterMode
+                                  ? Icons.image_outlined
+                                  : Icons.qr_code_scanner_rounded,
+                              title: _posterMode
+                                  ? 'No open activities'
+                                  : 'No open activities',
+                              subtitle: _posterMode
+                                  ? 'Open activities will appear here so you can display their QR poster.'
+                                  : 'Open activities will appear here so you can start scanning.',
                               tone: AppInk.muted,
                             ),
                           ],
@@ -349,15 +389,27 @@ class _ScanPickerState extends State<_ScanPicker> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 14),
                                 onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => ScanScreen(
-                                        session: widget.session,
-                                        activityId: a.activityId,
-                                        activityTitle: a.title,
+                                  if (_posterMode) {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => ActivityPosterScreen(
+                                          session: widget.session,
+                                          activityId: a.activityId,
+                                          activityTitle: a.title,
+                                        ),
                                       ),
-                                    ),
-                                  );
+                                    );
+                                  } else {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => ScanScreen(
+                                          session: widget.session,
+                                          activityId: a.activityId,
+                                          activityTitle: a.title,
+                                        ),
+                                      ),
+                                    );
+                                  }
                                 },
                                 child: Row(
                                   children: [
@@ -370,8 +422,10 @@ class _ScanPickerState extends State<_ScanPicker> {
                                         borderRadius:
                                             BorderRadius.circular(12),
                                       ),
-                                      child: const Icon(
-                                          Icons.qr_code_scanner_rounded,
+                                      child: Icon(
+                                          _posterMode
+                                              ? Icons.qr_code_2_rounded
+                                              : Icons.qr_code_scanner_rounded,
                                           color: AppInk.accent,
                                           size: 22),
                                     ),

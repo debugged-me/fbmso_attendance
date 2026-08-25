@@ -93,10 +93,14 @@ $route['api/mobile/activities/(:num)']            = 'api/MobileAttendance/activi
 $route['api/mobile/activities/create']            = 'api/MobileAttendance/create_activity';
 $route['api/mobile/activities/update/(:num)']     = 'api/MobileAttendance/update_activity/$1';
 $route['api/mobile/activities/delete/(:num)']     = 'api/MobileAttendance/delete_activity/$1';
+$route['api/mobile/activities/poster_mode']       = 'api/MobileAttendance/poster_mode';
+$route['api/mobile/activities/set_poster_mode']   = 'api/MobileAttendance/set_poster_mode';
+$route['api/mobile/activities/poster_qr/(:num)']  = 'api/MobileAttendance/poster_qr/$1';
 $route['api/mobile/attendance/consume']           = 'api/MobileAttendance/consume';
 $route['api/mobile/attendance/checkin/(:num)']    = 'api/MobileAttendance/checkin/$1';
 $route['api/mobile/attendance/my_logs']           = 'api/MobileAttendance/my_logs';
 $route['api/mobile/attendance/logs/(:num)']       = 'api/MobileAttendance/logs/$1';
+$route['api/mobile/attendance/export_csv/(:num)'] = 'api/MobileAttendance/export_csv/$1';
 
 // Mobile student module
 $route['api/mobile/student/profile']              = 'api/MobileStudent/profile';

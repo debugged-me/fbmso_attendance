@@ -181,24 +181,27 @@ class _SectionsScreenState extends State<SectionsScreen> {
                                                 spacing: 8,
                                                 runSpacing: 4,
                                                 children: [
-                                                  if (s.courseName.isNotEmpty)
-                                                    Text(s.courseName,
-                                                        style: const TextStyle(fontSize: 12, color: AppInk.muted),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow.ellipsis),
-                                                  if (s.yearLevel.isNotEmpty)
+                                                  if (s.courseCode.isNotEmpty)
                                                     Container(
                                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                                       decoration: BoxDecoration(
                                                         color: AppInk.accent.withValues(alpha: 0.08),
                                                         borderRadius: BorderRadius.circular(6),
                                                       ),
-                                                      child: Text('${s.yearLevel} Year',
+                                                      child: Text(s.courseCode,
                                                           style: const TextStyle(
                                                               fontSize: 11,
                                                               fontWeight: FontWeight.w600,
                                                               color: AppInk.accent)),
                                                     ),
+                                                  if (s.courseName.isNotEmpty)
+                                                    Text(s.courseName,
+                                                        style: const TextStyle(fontSize: 12, color: AppInk.muted),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis),
+                                                  if (s.yearLevel.isNotEmpty)
+                                                    Text('${s.yearLevel} Year',
+                                                        style: const TextStyle(fontSize: 11, color: AppInk.muted)),
                                                 ],
                                               ),
                                             ],

@@ -86,8 +86,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           AppInk.accent.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(16),
                                     ),
-                                    child: const Icon(Icons.person,
-                                        size: 26, color: AppInk.accent),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: widget.session.avatar.isNotEmpty
+                                          ? Image.network(
+                                              widget.session.avatar,
+                                              fit: BoxFit.cover,
+                                              width: 52,
+                                              height: 52,
+                                              errorBuilder: (c, e, s) =>
+                                                  const Icon(Icons.person,
+                                                      size: 26,
+                                                      color: AppInk.accent),
+                                            )
+                                          : const Icon(Icons.person,
+                                              size: 26, color: AppInk.accent),
+                                    ),
                                   ),
                                   const SizedBox(width: 14),
                                   Expanded(

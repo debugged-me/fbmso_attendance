@@ -796,18 +796,23 @@ class MiscApi {
   // ─── Admin: personnel CRUD ──────────────────────────────────────────────
 
   /// All personnel (including inactive). Admin only.
-  Future<List<Personnel>> personnelAll({
+  Future<({List<Personnel> rows, int total})> personnelAll({
     required String baseUrl,
     required String token,
+    int limit = 50,
+    int offset = 0,
+    String search = '',
   }) async {
-    final url = '${_n(baseUrl)}/api/mobile/personnel/all';
+    final qs = 'limit=$limit&offset=$offset&search=${Uri.encodeComponent(search)}';
+    final url = '${_n(baseUrl)}/api/mobile/personnel/all?$qs';
     try {
       final response = await _client.get(Uri.parse(url), headers: _h(token));
       final data = _decode(response);
       if (data['ok'] == true) {
-        return (data['personnel'] as List? ?? [])
+        final rows = (data['personnel'] as List? ?? [])
             .map((e) => Personnel.fromJson(e as Map<String, dynamic>))
             .toList();
+        return (rows: rows, total: (data['total'] as num?)?.toInt() ?? rows.length);
       }
       throw ApiException((data['message'] ?? 'Failed').toString());
     } on ApiException {
@@ -821,12 +826,15 @@ class MiscApi {
   Future<void> personnelSave({
     required String baseUrl,
     required String token,
-    int id = 0,
-    required String fullName,
+    String id = '',
+    required String firstName,
+    required String lastName,
+    String middleName = '',
     required String title,
-    String bio = '',
-    int sortOrder = 100,
-    int isActive = 1,
+    String department = '',
+    String status = '',
+    String email = '',
+    String mobile = '',
   }) async {
     final url = '${_n(baseUrl)}/api/mobile/personnel/save';
     try {
@@ -835,11 +843,14 @@ class MiscApi {
         headers: _h(token),
         body: jsonEncode({
           'id': id,
-          'full_name': fullName,
+          'first_name': firstName,
+          'last_name': lastName,
+          'middle_name': middleName,
           'title': title,
-          'bio': bio,
-          'sort_order': sortOrder,
-          'is_active': isActive,
+          'department': department,
+          'status': status,
+          'email': email,
+          'mobile': mobile,
         }),
       );
       final data = _decode(response);
@@ -857,7 +868,7 @@ class MiscApi {
   Future<void> personnelDelete({
     required String baseUrl,
     required String token,
-    required int id,
+    required String id,
   }) async {
     final url = '${_n(baseUrl)}/api/mobile/personnel/delete';
     try {

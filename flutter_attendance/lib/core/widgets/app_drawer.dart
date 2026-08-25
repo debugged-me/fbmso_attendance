@@ -50,8 +50,20 @@ class AppAppDrawer extends StatelessWidget {
                       color: AppInk.accent.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.person_rounded,
-                        color: AppInk.accent, size: 26),
+                    child: ClipOval(
+                      child: session.avatar.isNotEmpty
+                          ? Image.network(
+                              session.avatar,
+                              fit: BoxFit.cover,
+                              width: 48,
+                              height: 48,
+                              errorBuilder: (context, error, stack) =>
+                                  const Icon(Icons.person_rounded,
+                                      color: AppInk.accent, size: 26),
+                            )
+                          : const Icon(Icons.person_rounded,
+                              color: AppInk.accent, size: 26),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

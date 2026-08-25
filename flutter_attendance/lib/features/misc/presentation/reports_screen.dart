@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
+import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/misc_api.dart';
 import '../domain/misc_models.dart';
 
 /// Reports screen — enrollment + attendance summary.
+/// Mirrors the web /reports page.
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key, required this.session});
   final AppSession session;
@@ -61,11 +63,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           AppEmptyState(
-                            icon: Icons.cloud_off_rounded,
-                            title: 'Failed to load',
-                            subtitle: _error,
-                            action: 'Retry',
-                            onAction: _load,
+                            icon: Icons.cloud_off_rounded, title: 'Failed to load',
+                            subtitle: _error, action: 'Retry', onAction: _load,
                           ),
                         ])
                       : _report == null
@@ -73,8 +72,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               const SizedBox(height: 80),
                               const AppEmptyState(
                                 icon: Icons.assessment_outlined,
-                                title: 'No data',
-                                subtitle: 'No report data available.',
+                                title: 'No data', subtitle: 'No report data available.',
                               ),
                             ])
                           : _ReportContent(report: _report!),
@@ -95,43 +93,95 @@ class _ReportContent extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
+        // ── SY/Sem badge ────────────────────────────────────────
+        if (report.sy.isNotEmpty || report.sem.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppInk.accent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'School Year: ${report.sy}  |  Semester: ${report.sem}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppInk.accent),
+              ),
+            ),
+          ),
+
         // ── Summary cards ──────────────────────────────────────
         Row(
           children: [
             Expanded(
               child: _StatCard(
-                label: 'Total Events',
-                value: '${report.eventsTotal}',
-                icon: Icons.event_rounded,
-                tone: AppInk.accent,
+                label: 'Total Events', value: '${report.eventsTotal}',
+                icon: Icons.event_rounded, tone: AppInk.accent,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _StatCard(
-                label: 'Total Scans',
-                value: '${report.eventScans}',
-                icon: Icons.qr_code_scanner_rounded,
-                tone: AppInk.positive,
+                label: 'Total Scans', value: '${report.eventScans}',
+                icon: Icons.qr_code_scanner_rounded, tone: AppInk.positive,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        if (report.sy.isNotEmpty || report.sem.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Text(
-              'SY: ${report.sy}  |  Sem: ${report.sem}',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppInk.muted),
-            ),
-          ),
+        const SizedBox(height: 24),
+
+        // ── Events Summary ─────────────────────────────────────
+        if (report.eventsSummary.isNotEmpty) ...[
+          const AppSectionHeader(title: 'Events Summary'),
+          ...report.eventsSummary.map((e) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: AppCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(
+                          color: AppInk.accent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.event_outlined, color: AppInk.accent, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(e.title,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppInk.heading),
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                            if (e.activityDate.isNotEmpty)
+                              Text(e.activityDate,
+                                  style: const TextStyle(fontSize: 12, color: AppInk.muted)),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppInk.positive.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text('${e.scans} scans',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppInk.positive)),
+                      ),
+                    ],
+                  ),
+                ),
+              )),
+          const SizedBox(height: 24),
+        ],
 
         // ── By Year Level ──────────────────────────────────────
         if (report.byYearLevel.isNotEmpty) ...[
           const AppSectionHeader(title: 'Enrollment by Year Level'),
           ...report.byYearLevel.map((r) => _BarRow(
-                label: '${r.yearLevel} Year',
+                label: r.yearLevel.isEmpty ? 'Unspecified' : '${r.yearLevel} Year',
                 value: r.count,
                 max: report.byYearLevel.fold<int>(0, (m, e) => e.count > m ? e.count : m),
               )),
@@ -142,14 +192,14 @@ class _ReportContent extends StatelessWidget {
         if (report.byCourse.isNotEmpty) ...[
           const AppSectionHeader(title: 'Enrollment by Course'),
           ...report.byCourse.map((r) => _BarRow(
-                label: r.course,
+                label: r.course.isEmpty ? 'Unspecified' : r.course,
                 value: r.count,
                 max: report.byCourse.fold<int>(0, (m, e) => e.count > m ? e.count : m),
               )),
           const SizedBox(height: 24),
         ],
 
-        // ── Sections count ─────────────────────────────────────
+        // ── Sections per course ────────────────────────────────
         if (report.sectionsCount.isNotEmpty) ...[
           const AppSectionHeader(title: 'Sections per Course'),
           ...report.sectionsCount.map((r) => Padding(
@@ -159,8 +209,7 @@ class _ReportContent extends StatelessWidget {
                     Expanded(
                       child: Text(r.course,
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppInk.heading),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
+                          maxLines: 2, overflow: TextOverflow.ellipsis),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -172,6 +221,49 @@ class _ReportContent extends StatelessWidget {
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppInk.accent)),
                     ),
                   ],
+                ),
+              )),
+          const SizedBox(height: 24),
+        ],
+
+        // ── Recent Attendance ──────────────────────────────────
+        if (report.recentAttendance.isNotEmpty) ...[
+          const AppSectionHeader(title: 'Recent Attendance'),
+          ...report.recentAttendance.map((r) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: AppCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(r.studentName,
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppInk.heading),
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                            const SizedBox(height: 2),
+                            Text(r.activityTitle,
+                                style: const TextStyle(fontSize: 11, color: AppInk.muted),
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                            const SizedBox(height: 2),
+                            Wrap(
+                              spacing: 6,
+                              children: [
+                                if (r.section.isNotEmpty)
+                                  Text('Sec: ${r.section}', style: const TextStyle(fontSize: 11, color: AppInk.muted)),
+                                if (r.yearLevel.isNotEmpty)
+                                  Text('Yr: ${r.yearLevel}', style: const TextStyle(fontSize: 11, color: AppInk.muted)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (r.checkedInAt.isNotEmpty)
+                        Text(to12HourFromDateTime(r.checkedInAt),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppInk.positive)),
+                    ],
+                  ),
                 ),
               )),
         ],
@@ -233,8 +325,7 @@ class _BarRow extends StatelessWidget {
               Expanded(
                 child: Text(label,
                     style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppInk.heading),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
               Text('$value',
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppInk.accent)),
@@ -244,10 +335,9 @@ class _BarRow extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
-              value: pct,
-              minHeight: 8,
+              value: pct, minHeight: 8,
               backgroundColor: AppInk.accent.withValues(alpha: 0.08),
-              valueColor: AlwaysStoppedAnimation<Color>(AppInk.accent),
+              valueColor: const AlwaysStoppedAnimation<Color>(AppInk.accent),
             ),
           ),
         ],

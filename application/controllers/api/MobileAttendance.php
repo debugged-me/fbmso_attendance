@@ -60,7 +60,90 @@ class MobileAttendance extends MobileApi
             return strcmp($b['start_at'] ?? '', $a['start_at'] ?? '');
         });
 
-        return $this->json(['ok' => true, 'activities' => $out]);
+        return $this->json(['ok' => true, 'activities' => $out, 'poster_mode' => $this->_get_poster_mode()]);
+    }
+
+    /** Get current poster mode state. */
+    public function poster_mode()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        return $this->json(['ok' => true, 'poster_mode' => $this->_get_poster_mode()]);
+    }
+
+    /** Toggle poster mode on/off. Admin only. */
+    public function set_poster_mode()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+        $p = $this->read_payload();
+        $mode = strtolower((string)($p['mode'] ?? '')) === 'on' ? 'on' : 'off';
+        $this->_write_poster_mode($mode);
+        // Read back to verify — if the file write failed, return the actual state.
+        $actual = $this->_get_poster_mode();
+        return $this->json(['ok' => true, 'poster_mode' => $actual]);
+    }
+
+    private function _poster_flag_path(): string
+    {
+        return APPPATH . 'cache' . DIRECTORY_SEPARATOR . 'qr_poster_mode.flag';
+    }
+
+    private function _get_poster_mode(): string
+    {
+        $path = $this->_poster_flag_path();
+        if (is_file($path)) {
+            $v = strtolower(trim(@file_get_contents($path)));
+            return ($v === 'on') ? 'on' : 'off';
+        }
+        return 'off';
+    }
+
+    private function _write_poster_mode(string $mode): void
+    {
+        @file_put_contents($this->_poster_flag_path(), ($mode === 'on' ? 'on' : 'off'), LOCK_EX);
+    }
+
+    /** Get the poster QR data (check-in URL) for an activity. */
+    public function poster_qr($id)
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+
+        $activityId = (int)$id;
+        $activity = $this->ActivitiesModel->find($activityId);
+        if (!$activity) {
+            return $this->json(['ok' => false, 'message' => 'Activity not found.'], 404);
+        }
+
+        // Build the check-in URL (same logic as web Activities::poster)
+        $path = 'attendance/checkin/' . $activityId;
+        // Use base_url() which includes the subdirectory (e.g. fbmso_attendance/)
+        $checkinUrl = rtrim(base_url(), '/') . '/' . ltrim($path, '/');
+
+        return $this->json([
+            'ok' => true,
+            'activity_id'   => $activityId,
+            'title'         => (string)($activity->title ?? ''),
+            'activity_date' => (string)($activity->activity_date ?? ''),
+            'location'      => (string)($activity->location ?? ''),
+            'program'       => (string)($activity->program ?? ''),
+            'checkin_url'   => $checkinUrl,
+            'checkin_path'  => $path,
+            'poster_mode'   => $this->_get_poster_mode(),
+        ]);
     }
 
     /** One activity. */
@@ -329,61 +412,73 @@ class MobileAttendance extends MobileApi
             return $this->json(['ok' => false, 'rows' => [], 'message' => 'Invalid activity id.']);
         }
 
-        // Pagination support
-        $limit  = (int)$this->input->get('limit', true) ?: 0;  // 0 = all
-        $offset = (int)$this->input->get('offset', true) ?: 0;
-        $search = trim((string)$this->input->get('search', true));
+        // Filters (matching web AttendanceLogs/index)
+        $limit     = (int)$this->input->get('limit', true) ?: 50;
+        $offset    = (int)$this->input->get('offset', true) ?: 0;
+        $search    = trim((string)$this->input->get('search', true));
+        $section   = trim((string)$this->input->get('section', true));
+        $yearLevel = trim((string)$this->input->get('year_level', true));
+        $date      = trim((string)$this->input->get('date', true));
+        $session   = trim((string)$this->input->get('session', true));
 
-        // Reuse the same join logic as the web Attendance::logs().
-        $this->db->from('activity_attendance aa');
-        $this->db->select('aa.id, aa.activity_id, aa.student_number, aa.checked_in_at, aa.checked_out_at, aa.checked_in_by, aa.source, aa.remarks, aa.session');
+        // Active SY/Sem from settings (same as web)
+        $active = $this->db->select('active_sy, active_sem')
+            ->order_by('settingsID', 'DESC')->limit(1)
+            ->get('settings')->row();
+        $use_sy  = (string)($active->active_sy ?? '');
+        $use_sem = (string)($active->active_sem ?? '');
 
-        $studentNameExpr = null;
-        if ($this->db->table_exists('studentsignup')) {
-            $studentNameExpr = "CONCAT(TRIM(ss.LastName),' ',TRIM(ss.FirstName), IF(ss.MiddleName IS NULL OR ss.MiddleName='', '', CONCAT(' ', TRIM(ss.MiddleName))))";
-            $this->db->join('studentsignup ss', 'ss.StudentNumber = aa.student_number', 'left');
-        } elseif ($this->db->table_exists('studeprofile')) {
-            $studentNameExpr = "CONCAT(TRIM(sp.LastName),' ',TRIM(sp.FirstName), IF(sp.MiddleName IS NULL OR sp.MiddleName='', '', CONCAT(' ', TRIM(sp.MiddleName))))";
-            $this->db->join('studeprofile sp', 'sp.StudentNumber = aa.student_number', 'left');
-        } elseif ($this->db->table_exists('users')) {
-            $studentNameExpr = "CONCAT(TRIM(u.lName),' ',TRIM(u.fName), IF(u.mName IS NULL OR u.mName='', '', CONCAT(' ', TRIM(u.mName))))";
-            $this->db->join('users u', 'u.username = aa.student_number', 'left');
-        }
+        // Use the web's Activity_attendance_model::report_by_activity_section
+        $this->load->model('Activity_attendance_model', 'ActAttModel');
+        $allRows = $this->ActAttModel->report_by_activity_section(
+            $activityId,
+            $section ?: null,
+            $date ?: null,
+            $session ?: null,
+            $yearLevel ?: null,
+            $use_sy,
+            $use_sem
+        );
 
-        if ($studentNameExpr) {
-            $this->db->select("$studentNameExpr AS student_name", false);
-        } else {
-            $this->db->select("NULL AS student_name", false);
-        }
-
-        $this->db->where('aa.activity_id', $activityId);
-
-        // Search filter
+        // Apply search filter (the web model doesn't do text search)
         if ($search !== '') {
-            $this->db->group_start()
-                ->like('aa.student_number', $search)
-                ->or_like($studentNameExpr ?? 'aa.student_number', $search)
-                ->group_end();
+            $q = strtolower($search);
+            $allRows = array_filter($allRows, function ($r) use ($q) {
+                return stripos((string)($r->student_number ?? ''), $q) !== false
+                    || stripos((string)($r->student_name ?? ''), $q) !== false;
+            });
+            $allRows = array_values($allRows);
         }
 
-        // Count total (before limit/offset)
-        $total = $this->db->count_all_results('', false);
+        $total = count($allRows);
 
-        $this->db->order_by('aa.checked_in_at', 'DESC');
+        // Apply pagination
         if ($limit > 0) {
-            $this->db->limit($limit, $offset);
+            $pageRows = array_slice($allRows, $offset, $limit);
+        } else {
+            $pageRows = $allRows;
         }
-        $rows = $this->db->get()->result_array();
 
         $out = [];
-        foreach ($rows as $r) {
-            $map = ['am' => 'Morning', 'pm' => 'Afternoon', 'eve' => 'Evening'];
-            $r['session_label'] = $map[$r['session'] ?? ''] ?? '—';
-            $r['student_name'] = trim((string)($r['student_name'] ?? ''));
-            if ($r['remarks'] === null || $r['remarks'] === '') {
-                $r['remarks'] = strtolower((string)$r['source']) === 'qr' ? 'Scanned via QR' : '—';
-            }
-            $out[] = $r;
+        foreach ($pageRows as $r) {
+            $sessionMap = ['am' => 'Morning', 'pm' => 'Afternoon', 'eve' => 'Evening'];
+            $sess = strtolower((string)($r->session ?? ''));
+            $out[] = [
+                'id'             => (int)($r->id ?? 0),
+                'activity_id'    => (int)($r->activity_id ?? $activityId),
+                'student_number' => (string)($r->student_number ?? ''),
+                'student_name'   => trim((string)($r->student_name ?? '')),
+                'course'         => (string)($r->course ?? ''),
+                'year_level'     => (string)($r->YearLevel ?? ''),
+                'section'        => (string)($r->section ?? ''),
+                'session'        => $sess,
+                'session_label'  => $sessionMap[$sess] ?? '—',
+                'checked_in_at'  => (string)($r->checked_in_at ?? ''),
+                'checked_out_at' => (string)($r->checked_out_at ?? ''),
+                'checked_in_by'  => (string)($r->checked_in_by ?? ''),
+                'source'         => (string)($r->source ?? ''),
+                'remarks'        => (string)($r->remarks ?? ''),
+            ];
         }
 
         return $this->json([
@@ -392,7 +487,73 @@ class MobileAttendance extends MobileApi
             'total' => (int)$total,
             'limit' => $limit,
             'offset' => $offset,
+            'filters' => [
+                'section' => $section,
+                'year_level' => $yearLevel,
+                'date' => $date,
+                'session' => $session,
+            ],
         ]);
+    }
+
+    /** Export attendance logs as CSV (matching web AttendanceLogs/export_csv). */
+    public function export_csv($activity_id = 0)
+    {
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+
+        $activityId = (int)$activity_id;
+        if ($activityId <= 0) {
+            return $this->json(['ok' => false, 'message' => 'Invalid activity id.']);
+        }
+
+        $section   = trim((string)$this->input->get('section', true));
+        $yearLevel = trim((string)$this->input->get('year_level', true));
+        $date      = trim((string)$this->input->get('date', true));
+        $session   = trim((string)$this->input->get('session', true));
+
+        $active = $this->db->select('active_sy, active_sem')
+            ->order_by('settingsID', 'DESC')->limit(1)
+            ->get('settings')->row();
+        $use_sy  = (string)($active->active_sy ?? '');
+        $use_sem = (string)($active->active_sem ?? '');
+
+        $this->load->model('Activity_attendance_model', 'ActAttModel');
+        $rows = $this->ActAttModel->report_by_activity_section(
+            $activityId,
+            $section ?: null,
+            $date ?: null,
+            $session ?: null,
+            $yearLevel ?: null,
+            $use_sy,
+            $use_sem
+        );
+
+        // Output CSV
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment;filename="attendance_' . $activityId . '.csv"');
+        $out = fopen('php://output', 'w');
+        fputcsv($out, ['StudentNumber', 'StudentName', 'Course', 'YearLevel', 'Section', 'Session', 'Check-In', 'Check-Out', 'Duration(min)', 'Remarks', 'Checked-In By']);
+        foreach ($rows as $r) {
+            $mins = ($r->checked_out_at && $r->checked_in_at)
+                ? round((strtotime($r->checked_out_at) - strtotime($r->checked_in_at)) / 60)
+                : null;
+            fputcsv($out, [
+                $r->student_number,
+                $r->student_name,
+                $r->course,
+                $r->YearLevel,
+                $r->section,
+                strtoupper($r->session ?: ''),
+                $r->checked_in_at,
+                $r->checked_out_at,
+                $mins,
+                $r->remarks,
+                $r->checked_in_by
+            ]);
+        }
+        fclose($out);
+        exit;
     }
 
     // ─── Activity management (staff only) ──────────────────────────────────

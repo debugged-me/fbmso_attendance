@@ -209,7 +209,7 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
   late final TextEditingController _title;
   late final TextEditingController _message;
   DateTime? _expireDate;
-  String _audience = 'all';
+  String _audience = 'All';
   bool _saving = false;
   String? _error;
 
@@ -299,11 +299,12 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),
               items: const [
-                DropdownMenuItem(value: 'all', child: Text('Everyone')),
-                DropdownMenuItem(value: 'students', child: Text('Students')),
-                DropdownMenuItem(value: 'staff', child: Text('Staff')),
+                DropdownMenuItem(value: 'All', child: Text('All')),
+                DropdownMenuItem(value: 'Students', child: Text('Students')),
+                DropdownMenuItem(value: 'Registrar', child: Text('Registrar')),
+                DropdownMenuItem(value: 'Instructors', child: Text('Instructors')),
               ],
-              onChanged: (v) => setState(() => _audience = v ?? 'all'),
+              onChanged: (v) => setState(() => _audience = v ?? 'All'),
             ),
             const SizedBox(height: 14),
             GestureDetector(
