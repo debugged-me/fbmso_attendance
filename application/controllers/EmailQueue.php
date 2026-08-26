@@ -62,9 +62,19 @@ class EmailQueue extends CI_Controller
 		// Token/cron command intentionally hidden unless explicitly requested
 		// by an account that would be setting the cron job up.
 		$showCron = '';
-		if ((string) $this->input->get('show_cron') === '1' && in_array($level, ['Admin', 'IT', 'Super Admin'], true)) {
+		$isAdmin  = in_array($level, ['Admin', 'IT', 'Super Admin'], true);
+		if ((string) $this->input->get('show_cron') === '1' && $isAdmin) {
 			$showCron = "\nCron (every 2 minutes):\n\n"
 				. "  */2 * * * * curl -s \"" . site_url('EmailQueue/process') . '?key=' . fbmso_mailqueue_token($this) . "\" > /dev/null 2>&1\n";
+		}
+
+		// Retry link: only show to admins, and only when there is something
+		// actually stuck to retry. Clicking it flips failed rows back to
+		// pending so the next cron tick picks them up — no DB shell needed.
+		$retryLink = '';
+		if ($isAdmin && $counts['failed'] > 0) {
+			$retryLink = "\nRetry: " . site_url('EmailQueue/retry')
+				. "   (re-queues " . $counts['failed'] . " failed message" . ($counts['failed'] === 1 ? '' : 's') . ")\n";
 		}
 
 		$this->output->set_content_type('text/plain')->set_output(
@@ -73,6 +83,7 @@ class EmailQueue extends CI_Controller
 			. "Queue: pending=" . $counts['pending'] . " sent=" . $counts['sent'] . " failed=" . $counts['failed'] . "\n"
 			. $this->_mailqueue_suspended_note()
 			. $this->_mailqueue_recent_errors()
+			. $retryLink
 			. $showCron
 		);
 	}
@@ -95,6 +106,47 @@ class EmailQueue extends CI_Controller
 
 		$this->output->set_content_type('text/plain')->set_output(
 			($was ? "Cooldown cleared. The next cron run will retry.\n" : "Sender was not in cooldown.\n")
+			. "\n" . site_url('EmailQueue/key') . "\n"
+		);
+	}
+
+	/**
+	 * Re-queue failed messages back to pending so the next cron run retries
+	 * them. Without this the only way to revive a stuck row is raw SQL, since
+	 * fbmso_mailqueue_process() skips rows whose attempts >= maxAttempts.
+	 *
+	 * Optional ?id=N retries a single row; otherwise every failed row is
+	 * reset. Admin / IT / Super Admin only.
+	 */
+	public function retry()
+	{
+		$level = trim((string) $this->session->userdata('level'));
+		if (!in_array($level, ['Admin', 'IT', 'Super Admin'], true)) {
+			show_error('Forbidden', 403);
+			return;
+		}
+
+		fbmso_mailqueue_ensure_table($this);
+
+		// Optional single-row retry — handy when one address is bad and you
+		// want to fix just that row without reviving every failure.
+		$id = (int) $this->input->get('id', true);
+
+		$this->db->where('status', 'failed');
+		if ($id > 0) {
+			$this->db->where('id', $id);
+		}
+		$this->db->update('fbmso_email_queue', [
+			'status'     => 'pending',
+			'attempts'   => 0,
+			'last_error' => '',
+		]);
+
+		$affected = $this->db->affected_rows();
+
+		$this->output->set_content_type('text/plain')->set_output(
+			"Re-queued " . $affected . " message" . ($affected === 1 ? '' : 's')
+			. " — the next cron tick (within ~2 min) will retry.\n"
 			. "\n" . site_url('EmailQueue/key') . "\n"
 		);
 	}
