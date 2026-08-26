@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import 'auth_controller.dart';
-import 'login_screen.dart';
 
 /// Student registration screen — mirrors the web Registration form.
 ///
@@ -315,15 +314,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _success =
             'Registration successful! You can now sign in with your Student ID and password.';
       });
+      // This screen was pushed on top of the login screen, so pop back to it.
+      // Replacing the whole stack would discard the root route that listens to
+      // the AuthController, breaking the sign-in that follows.
       Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (_) => LoginScreen(controller: widget.controller),
-            ),
-            (_) => false,
-          );
-        }
+        if (mounted) Navigator.of(context).maybePop();
       });
     } else {
       setState(() {

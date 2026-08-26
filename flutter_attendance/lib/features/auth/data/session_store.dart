@@ -54,4 +54,11 @@ class SessionStore {
     await _preferences.remove(_sessionKey);
     await _preferences.setBool(_pairedKey, false);
   }
+
+  /// Forget the school entirely — session AND the saved base URL. Used by
+  /// "Switch School" so the app returns to the URL-entry screen.
+  Future<void> clearPairing() async {
+    await clearSession();
+    await _preferences.remove(_baseUrlKey);
+  }
 }

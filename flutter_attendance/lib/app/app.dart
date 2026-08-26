@@ -102,7 +102,10 @@ class _AuthFlow extends StatelessWidget {
         }
 
         // Paired with a school URL but not signed in → login.
-        if (controller.baseUrl.isNotEmpty && controller.config != null) {
+        // config may be null when the /config probe failed (e.g. offline on a
+        // cold start); the login screen handles that and falls back to the
+        // bundled logo. "Switch School" clears the pairing if the URL is wrong.
+        if (controller.baseUrl.isNotEmpty) {
           return LoginScreen(controller: controller);
         }
 

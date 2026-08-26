@@ -6,7 +6,6 @@ import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_theme.dart';
 import 'auth_controller.dart';
-import 'login_screen.dart';
 
 /// First-run / unpaired screen: the user types their school's URL.
 ///
@@ -61,11 +60,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       return;
     }
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => LoginScreen(controller: widget.controller),
-      ),
-    );
+    // No navigation here on purpose. loadConfig() set the base URL + config
+    // and notified, so the root flow in app.dart swaps this screen for the
+    // login screen. Pushing/replacing instead would tear the root route out
+    // of the tree, detaching it from the AuthController — after which a
+    // successful login would notify with nobody listening and the screen
+    // would never change.
   }
 
   @override

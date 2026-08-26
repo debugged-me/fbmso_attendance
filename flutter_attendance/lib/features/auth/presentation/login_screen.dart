@@ -10,7 +10,6 @@ import '../domain/mobile_config.dart';
 import 'auth_controller.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
-import 'welcome_screen.dart';
 
 /// Credential entry. The base URL was already chosen on the welcome screen.
 /// SY/semester come from the server config automatically — the user never
@@ -85,13 +84,10 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  void _changeSchool() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) => WelcomeScreen(controller: widget.controller),
-      ),
-      (_) => false,
-    );
+  Future<void> _changeSchool() async {
+    // Forgetting the school is a state change; the root flow then shows the
+    // welcome screen on its own. See the note in welcome_screen.dart.
+    await widget.controller.unpair();
   }
 
   void _forgotPassword() {

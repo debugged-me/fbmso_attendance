@@ -264,6 +264,30 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Forget the paired school: clears the session, base URL and cached config
+  /// so the root flow falls back to the welcome/URL-entry screen.
+  ///
+  /// This is a STATE change, not a navigation — the root [ListenableBuilder]
+  /// swaps the screen. Screens must not push/replace the root route themselves
+  /// or they detach the tree from this controller.
+  Future<void> unpair() async {
+    final s = _session;
+    if (s != null) {
+      try {
+        await _api.logout(baseUrl: s.baseUrl, token: s.token);
+      } catch (_) {
+        // Best effort — we're forgetting this server anyway.
+      }
+    }
+    await _store.clearPairing();
+    _session = null;
+    _config = null;
+    _baseUrl = '';
+    _error = null;
+    _regOptionsCache = null;
+    notifyListeners();
+  }
+
   void clearError() {
     if (_error != null) {
       _error = null;
