@@ -106,16 +106,12 @@
                         $email  = trim((string)($row->email ?? ''));
                         $yl     = $row->yearLevel ?? '';
                         $sec    = $row->section ?? '';
-                        $stat   = $row->signupStatus ?? '';
                         ?>
                         <tr>
                           <td>
                             <?= htmlspecialchars($fullname, ENT_QUOTES, 'UTF-8'); ?>
                             <?php if ($yl || $sec): ?>
                               <div class="text-muted small"><?= htmlspecialchars("$yl $sec", ENT_QUOTES, 'UTF-8'); ?></div>
-                            <?php endif; ?>
-                            <?php if ($stat): ?>
-                              <div class="text-muted small">Status: <?= htmlspecialchars($stat, ENT_QUOTES, 'UTF-8'); ?></div>
                             <?php endif; ?>
                           </td>
                           <td><?= htmlspecialchars($studno, ENT_QUOTES, 'UTF-8'); ?></td>
