@@ -7,7 +7,7 @@ $config['protocol']     = 'smtp';
 // domain's MX is delegated there), and Zoho rejects these credentials with
 // 535. fbmso.srmsportal.com resolves to the cPanel server itself, where the
 // mailbox actually authenticates.
-$config['smtp_host']    = 'fbmso.srmsportal.com';
+$config['smtp_host']    = 'mail.softtechservices.net';
 $config['smtp_user']    = 'attendance-fbmso@softtechservices.net';
 $config['smtp_pass']    = getenv('FBMSO_SMTP_PASSWORD') ?: 'moth34board';
 $config['smtp_port']    = 465;
