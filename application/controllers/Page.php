@@ -1632,6 +1632,60 @@ class Page extends CI_Controller
 			$birthDate  = trim((string)($form['birthDate'] ?? ''));
 			$age        = trim((string)($form['age'] ?? ''));
 
+			// Handle StudentNumber change (with duplicate guard)
+			$oldStudentNo = trim((string)($form['oldStudentNo'] ?? $studentNumber));
+			$newStudentNo = strtoupper(trim((string)($form['StudentNumber'] ?? $studentNumber)));
+
+			if ($newStudentNo !== strtoupper($studentNumber)) {
+				// Duplicate check across all tables, excluding own current SN
+				$this->db->where('StudentNumber', $newStudentNo);
+				$this->db->where('StudentNumber !=', strtoupper($oldStudentNo));
+				$dupProfile = $this->db->count_all_results('studeprofile');
+
+				$this->db->where('StudentNumber', $newStudentNo);
+				$this->db->where('StudentNumber !=', strtoupper($oldStudentNo));
+				$dupSignup = $this->db->count_all_results('studentsignup');
+
+				$this->db->where('username', $newStudentNo);
+				$this->db->where('username !=', strtoupper($oldStudentNo));
+				$dupUsers = $this->db->count_all_results('o_users');
+
+				// Also check IDNumber since login falls back to it
+				$this->db->where('IDNumber', $newStudentNo);
+				$this->db->where('IDNumber !=', strtoupper($oldStudentNo));
+				$dupIdNumber = $this->db->count_all_results('o_users');
+
+				if ($dupProfile > 0 || $dupSignup > 0 || $dupUsers > 0 || $dupIdNumber > 0) {
+					$this->session->set_flashdata('danger', 'Student ID already exists. Please use a different one.');
+					redirect('Page/myProfile');
+					return;
+				}
+
+				// Update StudentNumber across all tables
+				$this->db->where('StudentNumber', $oldStudentNo);
+				$this->db->update('studeprofile', ['StudentNumber' => $newStudentNo]);
+
+				$this->db->where('StudentNumber', $oldStudentNo);
+				$this->db->update('studentsignup', ['StudentNumber' => $newStudentNo]);
+
+				$this->db->where('StudentNumber', $oldStudentNo);
+				$this->db->update('semesterstude', ['StudentNumber' => $newStudentNo]);
+
+				$this->db->where('StudentNumber', $oldStudentNo);
+				$this->db->update('paymentsaccounts', ['StudentNumber' => $newStudentNo]);
+
+				$this->db->where('StudentNumber', $oldStudentNo);
+				$this->db->update('studeaccount', ['StudentNumber' => $newStudentNo]);
+
+				$this->db->where('username', $oldStudentNo);
+				$this->db->update('o_users', ['username' => $newStudentNo, 'IDNumber' => $newStudentNo]);
+
+				// Update session so subsequent operations use the new SN
+				$this->session->set_userdata('username', $newStudentNo);
+				$this->session->set_userdata('IDNumber', $newStudentNo);
+				$studentNumber = $newStudentNo;
+			}
+
 			$accountData = [
 				'fName' => $firstName,
 				'mName' => $middleName,
@@ -4066,100 +4120,143 @@ class Page extends CI_Controller
 		}
 
 		// Display the student record by ID
-		$result['data'] = $this->StudentModel->displayrecordsById($id);
+		$records = $this->StudentModel->displayrecordsById($id);
+
+		// Fallback: if the student has no studeprofile/o_users row yet but
+		// exists in studentsignup (registration staging), use that instead
+		// so the form is populated rather than blank with PHP warnings.
+		if (empty($records)) {
+			$signupRow = $this->StudentModel->getstudentsignupbyId($id);
+			if ($signupRow) {
+				$records = [$signupRow];
+			}
+		}
+
+		$result['data'] = $records;
 		$this->load->view('profile_form_update', $result);
 
 		if ($this->input->post('submit')) {
-			// Get form data
+			// Students may only update their own profile — prevent URL/form
+			// manipulation from touching another student's record.
+			if ($this->session->userdata('level') === 'Student') {
+				$postedOld = $this->input->post('oldStudentNo');
+				if (strtoupper((string)$postedOld) !== strtoupper((string)$this->session->userdata('username'))) {
+					$this->AuditLogModel->write(
+						'update',
+						'Profile',
+						'studeprofile',
+						(string)$postedOld,
+						null,
+						null,
+						0,
+						'Blocked student attempt to edit another profile'
+					);
+					$this->session->set_flashdata('danger', 'You can only edit your own profile.');
+					redirect('Page/student');
+					return;
+				}
+			}
+
+			// Get form data — ONLY include fields that profile_form_update.php
+			// actually submits. Including fields the form doesn't have would
+			// set them to null and wipe existing data (email, Religion, etc.)
 			$data = array(
-				'StudentNumber'         => $this->input->post('StudentNumber'),
-				'FirstName'             => $this->input->post('FirstName'),
-				'MiddleName'            => $this->input->post('MiddleName'),
-				'LastName'              => $this->input->post('LastName'),
-				'nameExtn'              => $this->input->post('nameExtn'),
-				'Religion'              => $this->input->post('Religion'),
-				'Sex'                   => $this->input->post('Sex'),
-				'CivilStatus'           => $this->input->post('CivilStatus'),
-				'contactNo'             => $this->input->post('contactNo'),
-				'Ethnicity'             => $this->input->post('Ethnicity'),
-				'birthDate'             => $this->input->post('birthDate'),
-				'Age'                   => $this->input->post('Age'),
-				'BirthPlace'            => $this->input->post('BirthPlace'),
-				'email'                 => $this->input->post('email'),
-				'working'               => $this->input->post('working'),
-				'nationality'           => $this->input->post('nationality'),
-				'Province'              => $this->input->post('Province'),
-				'City'                  => $this->input->post('City'),
-				'Brgy'                  => $this->input->post('Brgy'),
-				'Sitio'                 => $this->input->post('Sitio'),
-				'Father'                => $this->input->post('Father'),
-				'FOccupation'           => $this->input->post('FOccupation'),
-				'fatherContact'         => $this->input->post('fatherContact'),
-				'fatherBDate'           => $this->input->post('fatherBDate'),
-				'fatherAge'             => $this->input->post('fatherAge'),
-				'fatherAddress'         => $this->input->post('fatherAddress'),
-				'Mother'                => $this->input->post('Mother'),
-				'MOccupation'           => $this->input->post('MOccupation'),
-				'motherContact'         => $this->input->post('motherContact'),
-				'motherBDate'           => $this->input->post('motherBDate'),
-				'motherAge'             => $this->input->post('motherAge'),
-				'motherAddress'         => $this->input->post('motherAddress'),
-				'parentsMonthly'        => $this->input->post('parentsMonthly'),
-				'Guardian'              => $this->input->post('Guardian'),
-				'GuardianRelationship'  => $this->input->post('GuardianRelationship'),
-				'GuardianAddress'       => $this->input->post('GuardianAddress'),
-				'GuardianContact'       => $this->input->post('GuardianContact'),
-				'disability'            => $this->input->post('disability'),
-				'occupation'            => $this->input->post('occupation'),
-				'salary'                => $this->input->post('salary'),
-				'employer'              => $this->input->post('employer'),
-				'employerAddress'       => $this->input->post('employerAddress'),
-				'scholarship'           => $this->input->post('scholarship'),
-				'VaccStat'              => $this->input->post('VaccStat'),
-				'fourPs'                => $this->input->post('fourPs'),
-				'4psNo'                 => $this->input->post('4psNo'),
-				'seniorCitizen'         => $this->input->post('seniorCitizen'),
-				'als'                   => $this->input->post('als'),
-				'elementary'            => $this->input->post('elementary'),
-				'elementaryAddress'     => $this->input->post('elementaryAddress'),
-				'elemGraduated'         => $this->input->post('elemGraduated'),
-				'elemMerits'            => $this->input->post('elemMerits'),
-				'secondary'             => $this->input->post('secondary'),
-				'secondaryAddress'      => $this->input->post('secondaryAddress'),
-				'secondaryGraduated'    => $this->input->post('secondaryGraduated'),
-				'secondaryMerits'       => $this->input->post('secondaryMerits'),
-				'SHS'                   => $this->input->post('SHS'),
-				'SHSaddress'            => $this->input->post('SHSaddress'),
-				'SHSgraduated'          => $this->input->post('SHSgraduated'),
-				'SHSstrand'             => $this->input->post('SHSstrand'),
-				'SHSmerits'             => $this->input->post('SHSmerits'),
-				'vocational'            => $this->input->post('vocational'),
-				'vocationaladdress'     => $this->input->post('vocationaladdress'),
-				'vocationalGraduated'   => $this->input->post('vocationalGraduated'),
-				'vocationalCourse'      => $this->input->post('vocationalCourse'),
-				'ncLevel'               => $this->input->post('ncLevel'),
-				'lastAttended'          => $this->input->post('lastAttended'),
-				'lastSchoolDate'        => $this->input->post('lastSchoolDate'),
-				'transfereeSchool'      => $this->input->post('transfereeSchool'),
-				'transfereeAddress'     => $this->input->post('transfereeAddress'),
-				'transfereeGraduated'   => $this->input->post('transfereeGraduated'),
-				'transfereeCourse'      => $this->input->post('transfereeCourse'),
-				'skills'                => $this->input->post('skills'),
-				'honors'                => $this->input->post('honors'),
-				'rotcSerial'            => $this->input->post('rotcSerial'),
-				'cwtsSerial'            => $this->input->post('cwtsSerial'),
-				'admissionBasis'        => $this->input->post('admissionBasis'),
-				'admissionSem'          => $this->input->post('admissionSem'),
-				'admissionSY'           => $this->input->post('admissionSY'),
-				'Encoder'               => $this->session->userdata('username')
+				'StudentNumber' => $this->input->post('StudentNumber'),
+				'FirstName'     => $this->input->post('FirstName'),
+				'MiddleName'    => $this->input->post('MiddleName'),
+				'LastName'      => $this->input->post('LastName'),
+				'nameExtn'      => $this->input->post('nameExtn'),
+				'Sex'           => $this->input->post('Sex'),
+				'CivilStatus'   => $this->input->post('CivilStatus'),
+				'contactNo'     => $this->input->post('contactNo'),
+				'birthDate'     => $this->input->post('birthDate'),
+				'Age'           => $this->input->post('Age'),
+				'Province'      => $this->input->post('Province'),
+				'City'          => $this->input->post('City'),
+				'Brgy'          => $this->input->post('Brgy'),
+				'Sitio'         => $this->input->post('Sitio'),
+				'Encoder'       => $this->session->userdata('username')
 			);
 
 			// Get old StudentNumber for updating
 			$oldStudentNo = $this->input->post('oldStudentNo');
+			$newStudentNo = $this->input->post('StudentNumber');
 
-			// Save the profile update
-			$this->db->where('StudentNumber', $oldStudentNo);
-			$this->db->update('studeprofile', $data);
+			// Server-side duplicate guard for StudentNumber
+			if (strtoupper((string)$newStudentNo) !== strtoupper((string)$oldStudentNo)) {
+				$excludeSn = strtoupper((string)$oldStudentNo);
+				$checkSn   = strtoupper((string)$newStudentNo);
+
+				$this->db->where('StudentNumber', $checkSn);
+				$this->db->where('StudentNumber !=', $excludeSn);
+				$dupProfile = $this->db->count_all_results('studeprofile');
+
+				$this->db->where('StudentNumber', $checkSn);
+				$this->db->where('StudentNumber !=', $excludeSn);
+				$dupSignup = $this->db->count_all_results('studentsignup');
+
+				$this->db->where('username', $checkSn);
+				$this->db->where('username !=', $excludeSn);
+				$dupUsers = $this->db->count_all_results('o_users');
+
+				// Also check IDNumber since login falls back to it
+				$this->db->where('IDNumber', $checkSn);
+				$this->db->where('IDNumber !=', $excludeSn);
+				$dupIdNumber = $this->db->count_all_results('o_users');
+
+				if ($dupProfile > 0 || $dupSignup > 0 || $dupUsers > 0 || $dupIdNumber > 0) {
+					$this->AuditLogModel->write(
+						'update',
+						'Profile',
+						'studeprofile',
+						(string)$oldStudentNo,
+						null,
+						null,
+						0,
+						'Blocked update: duplicate StudentNumber ' . $newStudentNo
+					);
+					$this->session->set_flashdata('danger', 'Student ID already exists. Please use a different one.');
+					redirect('Page/updateStudeProfile?id=' . urlencode($oldStudentNo));
+					return;
+				}
+			}
+
+			// Save the profile update.
+			// Wrap all DB writes in a transaction + try/catch so any DB error
+			// shows as a friendly flash message instead of a raw error page.
+			$this->db->trans_begin();
+			try {
+			$existingProfile = $this->db->where('StudentNumber', $oldStudentNo)->count_all_results('studeprofile');
+			if ($existingProfile > 0) {
+				$this->db->where('StudentNumber', $oldStudentNo);
+				$this->db->update('studeprofile', $data);
+			}
+
+			// Always sync studentsignup (registration staging table) — this
+			// is where students who haven't been enrolled yet actually live.
+			// Only update fields that actually exist in the form so we don't
+			// wipe out columns (like email) that the form doesn't collect.
+			$existingSignup = $this->db->where('StudentNumber', $oldStudentNo)->count_all_results('studentsignup');
+			$signupData = array(
+				'StudentNumber' => $newStudentNo,
+				'FirstName'     => $this->input->post('FirstName'),
+				'MiddleName'    => $this->input->post('MiddleName'),
+				'LastName'      => $this->input->post('LastName'),
+				'nameExtn'      => $this->input->post('nameExtn'),
+				'Sex'           => $this->input->post('Sex'),
+				'CivilStatus'   => $this->input->post('CivilStatus'),
+				'birthDate'     => $this->input->post('birthDate'),
+				'age'           => $this->input->post('Age'),
+				'contactNo'     => $this->input->post('contactNo'),
+				'province'      => $this->input->post('Province'),
+				'city'          => $this->input->post('City'),
+				'brgy'          => $this->input->post('Brgy'),
+				'sitio'         => $this->input->post('Sitio'),
+			);
+			if ($existingSignup > 0) {
+				$this->db->where('StudentNumber', $oldStudentNo);
+				$this->db->update('studentsignup', $signupData);
+			}
 
 			// Update other tables similarly
 			$this->db->where('StudentNumber', $oldStudentNo);
@@ -4172,16 +4269,59 @@ class Page extends CI_Controller
 			$this->db->update('studeaccount', array('StudentNumber' => $this->input->post('StudentNumber')));
 
 			$this->db->where('username', $oldStudentNo);
-			$this->db->update('o_users', array('username' => $this->input->post('StudentNumber'), 'fName' => $this->input->post('FirstName'), 'mName' => $this->input->post('MiddleName'), 'lName' => $this->input->post('LastName'), 'email' => $this->input->post('email')));
+			$usersUpdate = array(
+				'username' => $this->input->post('StudentNumber'),
+				'IDNumber' => $this->input->post('StudentNumber'),
+				'fName'    => $this->input->post('FirstName'),
+				'mName'    => $this->input->post('MiddleName'),
+				'lName'    => $this->input->post('LastName')
+			);
+			// Only update email if the form actually submitted one —
+			// profile_form_update.php has no email field, so including
+			// it unconditionally would wipe the existing value.
+			$postedEmail = $this->input->post('email');
+			if ($postedEmail !== null && trim((string)$postedEmail) !== '') {
+				$usersUpdate['email'] = $postedEmail;
+			}
+			$this->db->update('o_users', $usersUpdate);
+
+			// Check for DB errors from any of the above operations
+			$dbError = $this->db->error();
+			if (!empty($dbError['code']) || !empty($dbError['message'])) {
+				throw new RuntimeException('DB error: ' . $dbError['message']);
+			}
+
+			if ($this->db->trans_status() === false) {
+				throw new RuntimeException('Transaction failed');
+			}
+			$this->db->trans_commit();
+
+			} catch (Exception $e) {
+				$this->db->trans_rollback();
+				log_message('error', 'updateStudeProfile failed: ' . $e->getMessage());
+				$this->session->set_flashdata('danger', 'A database error occurred while updating the profile. Please try again or contact support.');
+				redirect('Page/updateStudeProfile?id=' . urlencode($oldStudentNo));
+				return;
+			}
 
 			// // Log update in audit trail
 			// $updatedDate = date("Y-m-d");
 			// $updatedTime = date("h:i:s A");
 			// $this->db->insert('atrail', array('action' => 'Updated Profile', 'date' => $updatedDate, 'time' => $updatedTime, 'encoder' => $this->session->userdata('username'), 'StudentNumber' => $this->input->post('StudentNumber')));
 
-			// Set flash message and redirect
+			// If a student changed their own StudentNumber, update the session
+			// so they don't get locked out or see stale data.
+			if ($this->session->userdata('level') === 'Student'
+				&& strtoupper((string)$newStudentNo) !== strtoupper((string)$oldStudentNo)) {
+				$this->session->set_userdata('username', $newStudentNo);
+				$this->session->set_userdata('IDNumber', $newStudentNo);
+			}
+
+			// Set flash message and redirect.
+			// Use the NEW StudentNumber in the URL so the page can actually
+			// find the record after a StudentNumber change.
 			$this->session->set_flashdata('success', 'Record updated successfully.');
-			redirect($_SERVER['HTTP_REFERER']);
+			redirect('Page/updateStudeProfile?id=' . urlencode($newStudentNo));
 		}
 	}
 
@@ -6918,6 +7058,9 @@ class Page extends CI_Controller
 			return;
 		}
 
+		// Only Admin may actually edit; everyone else gets a read-only view
+		$isAdmin = ($this->session->userdata('level') === 'Admin');
+
 		// Fetch the student data based on the ID
 		$student = $this->StudentModel->getstudentsignupbyId($id);  // Get student data
 
@@ -6929,19 +7072,150 @@ class Page extends CI_Controller
 
 		if ($this->input->method(true) === 'POST') {
 
-			// AUDIT: blocked update attempt (read-only)
+			// Non-admins are never allowed to update
+			if (!$isAdmin) {
+				$this->AuditLogModel->write(
+					'update',
+					'Signup',
+					'studentsignup',
+					(string)$id,
+					null,
+					null,
+					0,
+					'Blocked edit attempt on read-only signup view'
+				);
+
+				$this->session->set_flashdata('danger', 'Editing student profiles is disabled for your account.');
+				redirect('Page/profileList');
+				return;
+			}
+
+			// Admin save: map the profile_form_update view fields to the
+			// studentsignup table columns and persist via the existing model.
+			$oldRow = $this->StudentModel->getstudentsignupbyId($id);
+
+			// Use the hidden oldStudentNo as the WHERE key so the admin can
+			// actually change the StudentNumber itself.
+			$whereId = $this->input->post('oldStudentNo', true) ?: (string)$id;
+			$newStudentNumber = $this->input->post('StudentNumber', true);
+
+			// Server-side duplicate guard for StudentNumber
+			if (strtoupper((string)$newStudentNumber) !== strtoupper((string)$whereId)) {
+				$this->db->where('StudentNumber', strtoupper((string)$newStudentNumber));
+				$this->db->where('StudentNumber !=', strtoupper((string)$whereId));
+				$dupSignup = $this->db->count_all_results('studentsignup');
+
+				$this->db->where('username', strtoupper((string)$newStudentNumber));
+				$this->db->where('username !=', strtoupper((string)$whereId));
+				$dupUsers = $this->db->count_all_results('o_users');
+
+				// Also check IDNumber since login falls back to it
+				$this->db->where('IDNumber', strtoupper((string)$newStudentNumber));
+				$this->db->where('IDNumber !=', strtoupper((string)$whereId));
+				$dupIdNumber = $this->db->count_all_results('o_users');
+
+				$this->db->where('StudentNumber', strtoupper((string)$newStudentNumber));
+				$this->db->where('StudentNumber !=', strtoupper((string)$whereId));
+				$dupProfile = $this->db->count_all_results('studeprofile');
+
+				if ($dupSignup > 0 || $dupUsers > 0 || $dupIdNumber > 0 || $dupProfile > 0) {
+					$this->AuditLogModel->write(
+						'update',
+						'Signup',
+						'studentsignup',
+						(string)$whereId,
+						null,
+						null,
+						0,
+						'Blocked admin update: duplicate StudentNumber ' . $newStudentNumber
+					);
+					$this->session->set_flashdata('danger', 'Student ID already exists. Please use a different one.');
+					redirect('Page/editSignup?id=' . urlencode((string)$whereId));
+					return;
+				}
+			}
+
+			$updateData = [
+				'StudentNumber' => $newStudentNumber,
+				'FirstName'   => $this->input->post('FirstName', true),
+				'MiddleName'  => $this->input->post('MiddleName', true),
+				'LastName'    => $this->input->post('LastName', true),
+				'nameExtn'    => $this->input->post('nameExtn', true),
+				'Sex'         => $this->input->post('Sex', true),
+				'CivilStatus' => $this->input->post('CivilStatus', true),
+				'birthDate'   => $this->input->post('birthDate', true),
+				'age'         => $this->input->post('Age', true),
+				'contactNo'   => $this->input->post('contactNo', true),
+				'province'    => $this->input->post('Province', true),
+				'city'        => $this->input->post('City', true),
+				'brgy'        => $this->input->post('Brgy', true),
+				'sitio'       => $this->input->post('Sitio', true),
+			];
+
+			$this->StudentModel->updatestudentsignup($whereId, $updateData);
+
+			// Always sync the edited fields to o_users and studeprofile so
+			// every page that reads from those tables (studentProfile,
+			// myProfile, updateStudeProfile, profileList) shows the same
+			// data as the admin edit. Previously this only ran when the
+			// StudentNumber changed, leaving name/contact/etc. stale.
+			$syncFields = [
+				'fName'    => $this->input->post('FirstName', true),
+				'mName'    => $this->input->post('MiddleName', true),
+				'lName'    => $this->input->post('LastName', true),
+			];
+
+			// o_users: update name fields always; update username+IDNumber
+			// only if the StudentNumber actually changed.
+			if (strtoupper((string)$newStudentNumber) !== strtoupper((string)$whereId)) {
+				$syncFields['username'] = $newStudentNumber;
+				$syncFields['IDNumber'] = $newStudentNumber;
+			}
+			$this->db->where('username', $whereId);
+			$this->db->update('o_users', $syncFields);
+
+			// studeprofile: update the same fields the form collects.
+			$profileSync = [
+				'FirstName'   => $this->input->post('FirstName', true),
+				'MiddleName'  => $this->input->post('MiddleName', true),
+				'LastName'    => $this->input->post('LastName', true),
+				'nameExtn'    => $this->input->post('nameExtn', true),
+				'Sex'         => $this->input->post('Sex', true),
+				'CivilStatus' => $this->input->post('CivilStatus', true),
+				'birthDate'   => $this->input->post('birthDate', true),
+				'age'         => $this->input->post('Age', true),
+				'contactNo'   => $this->input->post('contactNo', true),
+			];
+			if (strtoupper((string)$newStudentNumber) !== strtoupper((string)$whereId)) {
+				$profileSync['StudentNumber'] = $newStudentNumber;
+			}
+			$this->db->where('StudentNumber', $whereId);
+			$this->db->update('studeprofile', $profileSync);
+
+			// Only update StudentNumber in related tables when it changed.
+			if (strtoupper((string)$newStudentNumber) !== strtoupper((string)$whereId)) {
+				$this->db->where('StudentNumber', $whereId);
+				$this->db->update('semesterstude', ['StudentNumber' => $newStudentNumber]);
+
+				$this->db->where('StudentNumber', $whereId);
+				$this->db->update('paymentsaccounts', ['StudentNumber' => $newStudentNumber]);
+
+				$this->db->where('StudentNumber', $whereId);
+				$this->db->update('studeaccount', ['StudentNumber' => $newStudentNumber]);
+			}
+
 			$this->AuditLogModel->write(
 				'update',
 				'Signup',
 				'studentsignup',
-				(string)$id,
-				null,
-				null,
-				0,
-				'Blocked edit attempt on read-only signup view'
+				(string)$whereId,
+				$oldRow ? (array)$oldRow : null,
+				$updateData,
+				1,
+				'Admin updated student signup profile'
 			);
 
-			$this->session->set_flashdata('danger', 'Editing student profiles is disabled for administrators.');
+			$this->session->set_flashdata('success', 'Student profile updated successfully.');
 			redirect('Page/profileList');
 			return;
 		}
@@ -6963,10 +7237,103 @@ class Page extends CI_Controller
 
 		// Pass the student data for the view
 		$result['data']      = $student;  // Pass the student object to the view
-		$result['readOnly']  = true;
+		$result['readOnly']  = !$isAdmin;
 		$this->load->view('profile_form_update', $result);
 	}
 
+	/**
+	 * AJAX availability checker for editSignup and updateStudeProfile.
+	 * Mirrors Registration::checkAvailability but supports an `exclude`
+	 * param so the student's own current StudentNumber / email is not
+	 * flagged as a duplicate while editing.
+	 *
+	 * Checks studentsignup, studeprofile, and o_users so the same endpoint
+	 * works for both the signup-staging flow and the live profile flow.
+	 */
+	public function checkSignupAvailability()
+	{
+		$field   = strtolower(trim((string)$this->input->post('field', true)));
+		$value   = trim((string)$this->input->post('value', true));
+		$exclude = trim((string)$this->input->post('exclude', true));
+
+		$response = [
+			'ok'      => true,
+			'field'   => $field,
+			'exists'  => false,
+			'message' => ''
+		];
+
+		if ($field === 'studentnumber' || $field === 'student_id' || $field === 'student') {
+			$studentNumber = strtoupper($value);
+			if ($studentNumber !== '') {
+				$excludeSn = $exclude !== '' ? strtoupper($exclude) : '';
+
+				// studentsignup (registration staging table)
+				$this->db->where('StudentNumber', $studentNumber);
+				if ($excludeSn !== '') {
+					$this->db->where('StudentNumber !=', $excludeSn);
+				}
+				$signupCount = $this->db->count_all_results('studentsignup');
+
+				// studeprofile (live student profiles)
+				$this->db->where('StudentNumber', $studentNumber);
+				if ($excludeSn !== '') {
+					$this->db->where('StudentNumber !=', $excludeSn);
+				}
+				$profileCount = $this->db->count_all_results('studeprofile');
+
+				// o_users.username also uses StudentNumber as username
+				$this->db->where('username', $studentNumber);
+				if ($excludeSn !== '') {
+					$this->db->where('username !=', $excludeSn);
+				}
+				$usersCount = $this->db->count_all_results('o_users');
+
+				// o_users.IDNumber — login falls back to this, so check it too
+				$this->db->where('IDNumber', $studentNumber);
+				if ($excludeSn !== '') {
+					$this->db->where('IDNumber !=', $excludeSn);
+				}
+				$idNumberCount = $this->db->count_all_results('o_users');
+
+				$exists = ($signupCount > 0) || ($profileCount > 0) || ($usersCount > 0) || ($idNumberCount > 0);
+				$response['exists']  = $exists;
+				$response['message'] = $exists ? 'Student ID already exists.' : 'Student ID is available.';
+			}
+		} elseif ($field === 'email') {
+			$email = trim($value);
+			if ($email !== '') {
+				$this->db->where('email', $email);
+				if ($exclude !== '') {
+					$this->db->where('email !=', $exclude);
+				}
+				$signupCount = $this->db->count_all_results('studentsignup');
+
+				$this->db->where('email', $email);
+				if ($exclude !== '') {
+					$this->db->where('email !=', $exclude);
+				}
+				$profileCount = $this->db->count_all_results('studeprofile');
+
+				$this->db->where('email', $email);
+				if ($exclude !== '') {
+					$this->db->where('email !=', $exclude);
+				}
+				$usersCount = $this->db->count_all_results('o_users');
+
+				$exists = ($signupCount > 0) || ($profileCount > 0) || ($usersCount > 0);
+				$response['exists']  = $exists;
+				$response['message'] = $exists ? 'Email already exists.' : 'Email is available.';
+			}
+		} else {
+			$response['ok']      = false;
+			$response['message'] = 'Unsupported field.';
+		}
+
+		$this->output
+			->set_content_type('application/json')
+			->set_output(json_encode($response));
+	}
 
 
 	public function manageSections()

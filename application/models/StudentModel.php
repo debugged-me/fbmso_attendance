@@ -959,7 +959,7 @@ class StudentModel extends CI_Model
 			];
 		}
 
-		$profile = $this->db->select('StudentNumber, contactNo, Sex, CivilStatus, birthDate, BirthPlace, age, course, major, yearLevel, sitio, brgy, city, province, email, nationality, working, VaccStat')
+		$profile = $this->db->select('StudentNumber, FirstName, MiddleName, LastName, nameExtn, contactNo, Sex, CivilStatus, birthDate, BirthPlace, age, course, major, yearLevel, sitio, brgy, city, province, email, nationality, working, VaccStat')
 			->from('studeprofile')
 			->where('StudentNumber', $studentNumber)
 			->limit(1)
@@ -1720,6 +1720,7 @@ class StudentModel extends CI_Model
 				TRIM(COALESCE(NULLIF(s.FirstName, ''), NULLIF(sp.FirstName, ''), NULLIF(ou.fName, ''), '')) AS FirstName,
 				TRIM(COALESCE(NULLIF(s.MiddleName, ''), NULLIF(sp.MiddleName, ''), NULLIF(ou.mName, ''), '')) AS MiddleName,
 				TRIM(s.StudentNumber)                                                                     AS StudentNumber,
+				TRIM(COALESCE(NULLIF(s.email, ''), NULLIF(sp.email, ''), NULLIF(ou.email, ''), ''))         AS email,
 				CASE
 					WHEN s.birthDate IS NULL
 						OR s.birthDate = '0000-00-00'
@@ -1743,6 +1744,7 @@ class StudentModel extends CI_Model
 				TRIM(COALESCE(NULLIF(sp.FirstName, ''), NULLIF(ou.fName, ''), '')) AS FirstName,
 				TRIM(COALESCE(NULLIF(sp.MiddleName, ''), NULLIF(ou.mName, ''), '')) AS MiddleName,
 				TRIM(ou.username)                                                  AS StudentNumber,
+				TRIM(COALESCE(NULLIF(sp.email, ''), NULLIF(ou.email, ''), ''))     AS email,
 				CASE
 					WHEN sp.birthDate IS NULL
 						OR sp.birthDate = '0000-00-00'

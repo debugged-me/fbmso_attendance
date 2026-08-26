@@ -178,6 +178,12 @@ $config['authguard_student_routes'] = array(
     'registration/getmajorsbycourse',
     'registration/getcitiesbyprovince',
     'registration/getbarangaysbycity',
+
+    // --- location + availability AJAX used by profile forms ------------
+    'page/get_provinces',
+    'page/get_cities',
+    'page/get_barangays',
+    'page/checksignupavailability',
 );
 
 /*

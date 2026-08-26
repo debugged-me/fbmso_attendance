@@ -58,6 +58,18 @@
             border-left:4px solid #348cd4;
             color:#1b2a4e;
         }
+        .availability-msg {
+            display: block;
+            min-height: 18px;
+            margin-top: 6px;
+            font-size: .72rem;
+            font-weight: 600;
+            line-height: 1.3;
+            color: #7288b7;
+        }
+        .availability-msg.is-ok   { color: #1e8449; }
+        .availability-msg.is-bad  { color: #c0392b; }
+        .availability-msg.is-muted{ color: #7288b7; }
     </style>
 
     <script>
@@ -107,6 +119,19 @@ $provinceVal = $pickField(['Province', 'province', 'provincePresent']);
 $cityVal     = $pickField(['City', 'city', 'CityPresent', 'cityPresent']);
 $brgyVal     = $pickField(['Brgy', 'brgy', 'Barangay', 'barangay', 'BrgyPresent', 'brgyPresent']);
 $sitioVal    = $pickField(['Sitio', 'sitio', 'SitioPresent', 'sitioPresent']);
+
+// Safe field accessors — prevents PHP warnings when a property is missing
+// (e.g. when the record comes from studentsignup instead of studeprofile)
+$snVal         = $pickField(['StudentNumber', 'studentnumber']);
+$firstNameVal  = $pickField(['FirstName', 'firstname']);
+$middleNameVal = $pickField(['MiddleName', 'middlename']);
+$lastNameVal   = $pickField(['LastName', 'lastname']);
+$nameExtnVal   = $pickField(['nameExtn', 'NameExtn']);
+$sexVal        = $pickField(['Sex', 'sex']);
+$civilVal      = $pickField(['CivilStatus', 'civilstatus']);
+$contactVal    = $pickField(['contactNo', 'ContactNo']);
+$birthDateVal  = $pickField(['birthDate', 'BirthDate']);
+$ageVal        = $pickField(['Age', 'age']);
 ?>
 <div id="wrapper">
     <?php include('includes/top-nav-bar.php'); ?>
@@ -118,7 +143,27 @@ $sitioVal    = $pickField(['Sitio', 'sitio', 'SitioPresent', 'sitioPresent']);
             <?php
                 $flashSuccess = $this->session->flashdata('success');
                 $flashDanger  = $this->session->flashdata('danger');
+                $flashMessage = $this->session->flashdata('message');
             ?>
+
+            <?php if ($flashSuccess): ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <?= htmlspecialchars($flashSuccess, ENT_QUOTES, 'UTF-8'); ?>
+                </div>
+            <?php endif; ?>
+            <?php if ($flashDanger): ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <?= htmlspecialchars($flashDanger, ENT_QUOTES, 'UTF-8'); ?>
+                </div>
+            <?php endif; ?>
+            <?php if ($flashMessage): ?>
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <?= htmlspecialchars($flashMessage, ENT_QUOTES, 'UTF-8'); ?>
+                </div>
+            <?php endif; ?>
 
             <div class="container-fluid">
                 <!-- title -->
@@ -153,7 +198,9 @@ $sitioVal    = $pickField(['Sitio', 'sitio', 'SitioPresent', 'sitioPresent']);
                     <div class="col-md-12">
                         <div class="card card-simple">
                             <div class="card-body">
-                                <form class="parsley-examples" method="post" enctype="multipart/form-data">
+                                <form class="parsley-examples" method="post" enctype="multipart/form-data"
+                                    data-check-availability-url="<?= htmlspecialchars(site_url('Page/checkSignupAvailability'), ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-exclude-student-number="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>">
                                     <?php if ($readOnly): ?>
                                         <div class="alert profile-readonly-note py-2 px-3 mb-3">
                                             Viewing student details only. Editing is disabled for administrators.
@@ -165,27 +212,30 @@ $sitioVal    = $pickField(['Sitio', 'sitio', 'SitioPresent', 'sitioPresent']);
                                         <div class="form-grid">
                                           <!-- Student No -->
                                           <div class="form-group span-2">
-                                              <input type="hidden" value="<?= $data->StudentNumber; ?>" name="oldStudentNo" required>
+                                              <input type="hidden" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>" name="oldStudentNo" required>
                                               <label class="label-req">Student No.</label>
-                                              <input type="text" class="form-control" value="<?= $data->StudentNumber; ?>" name="StudentNumber" readonly required>
+                                              <input type="text" class="form-control" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>" name="StudentNumber" id="StudentNumber" <?= $readOnly ? 'readonly' : ''; ?> required>
+                                              <?php if (!$readOnly): ?>
+                                                <span class="availability-msg" id="student-number-status" aria-live="polite"></span>
+                                              <?php endif; ?>
                                           </div>
 
                                           <!-- Names -->
                                           <div class="form-group">
                                               <label class="label-req">First Name</label>
-                                              <input type="text" class="form-control" name="FirstName" value="<?= $data->FirstName; ?>" required>
+                                              <input type="text" class="form-control" name="FirstName" value="<?= htmlspecialchars($firstNameVal, ENT_QUOTES, 'UTF-8'); ?>" required>
                                           </div>
                                           <div class="form-group">
                                               <label>Middle Name</label>
-                                              <input type="text" class="form-control" name="MiddleName" value="<?= $data->MiddleName; ?>">
+                                              <input type="text" class="form-control" name="MiddleName" value="<?= htmlspecialchars($middleNameVal, ENT_QUOTES, 'UTF-8'); ?>">
                                           </div>
                                           <div class="form-group">
                                               <label class="label-req">Last Name</label>
-                                              <input type="text" class="form-control" name="LastName" value="<?= $data->LastName; ?>" required>
+                                              <input type="text" class="form-control" name="LastName" value="<?= htmlspecialchars($lastNameVal, ENT_QUOTES, 'UTF-8'); ?>" required>
                                           </div>
                                           <div class="form-group">
                                               <label>Name Extn</label>
-                                              <input type="text" class="form-control" name="nameExtn" value="<?= !empty($data->nameExtn) ? $data->nameExtn : ''; ?>">
+                                              <input type="text" class="form-control" name="nameExtn" value="<?= htmlspecialchars($nameExtnVal, ENT_QUOTES, 'UTF-8'); ?>">
                                           </div>
 
                                           <!-- Sex / Civil / Mobile -->
@@ -193,32 +243,32 @@ $sitioVal    = $pickField(['Sitio', 'sitio', 'SitioPresent', 'sitioPresent']);
                                               <label class="label-req">Sex</label>
                                               <select name="Sex" class="form-control" required>
                                                   <option value=""></option>
-                                                  <option value="Female" <?= ($data->Sex == 'Female') ? 'selected' : ''; ?>>Female</option>
-                                                  <option value="Male"   <?= ($data->Sex == 'Male') ? 'selected' : ''; ?>>Male</option>
+                                                  <option value="Female" <?= ($sexVal == 'Female') ? 'selected' : ''; ?>>Female</option>
+                                                  <option value="Male"   <?= ($sexVal == 'Male') ? 'selected' : ''; ?>>Male</option>
                                               </select>
                                           </div>
                                           <div class="form-group">
                                               <label class="label-req">Civil Status</label>
                                               <select name="CivilStatus" class="form-control" required>
                                                   <option value=""></option>
-                                                  <option value="Single"  <?= ($data->CivilStatus == 'Single') ? 'selected' : ''; ?>>Single</option>
-                                                  <option value="Married" <?= ($data->CivilStatus == 'Married') ? 'selected' : ''; ?>>Married</option>
+                                                  <option value="Single"  <?= ($civilVal == 'Single') ? 'selected' : ''; ?>>Single</option>
+                                                  <option value="Married" <?= ($civilVal == 'Married') ? 'selected' : ''; ?>>Married</option>
                                               </select>
                                           </div>
                                           <div class="form-group span-2">
                                               <label>Mobile No.</label>
-    <input type="text" class="form-control" name="contactNo" value="<?= isset($data->contactNo) ? $data->contactNo : ''; ?>">
+    <input type="text" class="form-control" name="contactNo" value="<?= htmlspecialchars($contactVal, ENT_QUOTES, 'UTF-8'); ?>">
                                           </div>
 
                                      <!-- Birth Date / Age -->
     <div class="form-group">
         <label class="label-req">Birth Date</label>
         <input type="date" name="birthDate" id="bday" class="form-control"
-        onchange="calculateAge('bday','resultBday')" required value="<?= isset($data->birthDate) ? $data->birthDate : ''; ?>">
+        onchange="calculateAge('bday','resultBday')" required value="<?= htmlspecialchars($birthDateVal, ENT_QUOTES, 'UTF-8'); ?>">
     </div>
     <div class="form-group">
         <label class="label-req">Age</label>
-        <input type="text" name="Age" id="resultBday" class="form-control" readonly required value="<?= isset($data->Age) ? $data->Age : ''; ?>">
+        <input type="text" name="Age" id="resultBday" class="form-control" readonly required value="<?= htmlspecialchars($ageVal, ENT_QUOTES, 'UTF-8'); ?>">
     </div>
 
 
@@ -265,7 +315,7 @@ $sitioVal    = $pickField(['Sitio', 'sitio', 'SitioPresent', 'sitioPresent']);
 
                                         </div><!-- /.form-grid -->
 
-                                        <input type="hidden" id="StudentNumber" name="StudentNumber" value="<?= $data->StudentNumber; ?>">
+                                        <input type="hidden" name="StudentNumber_original" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>">
                                     </fieldset>
                                     <?php if (!$readOnly): ?>
                                     <div class="mt-2">
@@ -436,6 +486,68 @@ $('#city').on('change', function () {
     });
 
     loadProvinces();
+
+    // ── StudentNumber availability checker (mirrors Registration flow) ──
+    var $form = $('form.parsley-examples');
+    var checkUrl = $form.data('check-availability-url') || '';
+    var excludeSn = $form.data('exclude-student-number') || '';
+
+    function updateAvailabilityLabel($label, state, text) {
+        if (!$label || !$label.length) return;
+        $label.removeClass('is-ok is-bad is-muted');
+        if (state) $label.addClass(state);
+        $label.text(text || '');
+    }
+
+    function debounce(fn, wait) {
+        var t = null;
+        return function () {
+            var args = arguments, ctx = this;
+            clearTimeout(t);
+            t = setTimeout(function () { fn.apply(ctx, args); }, wait);
+        };
+    }
+
+    var $snInput = $('#StudentNumber');
+    var $snStatus = $('#student-number-status');
+    if ($snInput.length && $snStatus.length && checkUrl) {
+        var runCheck = debounce(function () {
+            var v = ($snInput.val() || '').toUpperCase();
+            $snInput.val(v);
+            if (!v) {
+                $snInput.get(0).setCustomValidity('');
+                updateAvailabilityLabel($snStatus, '', '');
+                return;
+            }
+            $.post(checkUrl, { field: 'studentnumber', value: v, exclude: excludeSn })
+                .done(function (payload) {
+                    var data = (typeof payload === 'object') ? payload
+                        : (function () { try { return JSON.parse(payload); } catch (e) { return null; } })();
+                    if (!data || !data.ok) {
+                        updateAvailabilityLabel($snStatus, 'is-muted', '');
+                        $snInput.get(0).setCustomValidity('');
+                        return;
+                    }
+                    if (data.exists) {
+                        updateAvailabilityLabel($snStatus, 'is-bad', data.message || 'Already exists.');
+                        $snInput.get(0).setCustomValidity(data.message || 'Already exists.');
+                    } else {
+                        updateAvailabilityLabel($snStatus, 'is-ok', data.message || 'Available.');
+                        $snInput.get(0).setCustomValidity('');
+                    }
+                })
+                .fail(function () {
+                    updateAvailabilityLabel($snStatus, 'is-muted', '');
+                    $snInput.get(0).setCustomValidity('');
+                });
+        }, 300);
+
+        $snInput.on('input blur', runCheck);
+        if (($snInput.val() || '').trim() !== '') {
+            // Don't show "available" for the unchanged value on load — just clear.
+            updateAvailabilityLabel($snStatus, '', '');
+        }
+    }
 });
 </script>
 <script>

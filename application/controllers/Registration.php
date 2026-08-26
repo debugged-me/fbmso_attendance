@@ -453,7 +453,11 @@ class Registration extends CI_Controller
                 $exists = (
                     $this->db->where('username', $studentNumber)->count_all_results('o_users') > 0
                 ) || (
+                    $this->db->where('IDNumber', $studentNumber)->count_all_results('o_users') > 0
+                ) || (
                     $this->db->where('StudentNumber', $studentNumber)->count_all_results('studentsignup') > 0
+                ) || (
+                    $this->db->where('StudentNumber', $studentNumber)->count_all_results('studeprofile') > 0
                 );
                 $response['exists'] = $exists;
                 $response['message'] = $exists ? 'Student ID already exists.' : 'Student ID is available.';

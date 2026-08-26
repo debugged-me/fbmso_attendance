@@ -21,7 +21,27 @@
           <?php
           $flashSuccess = $this->session->flashdata('success');
           $flashDanger  = $this->session->flashdata('danger');
+          $flashMessage = $this->session->flashdata('message');
           ?>
+
+          <?php if ($flashSuccess): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+              <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              <?= htmlspecialchars($flashSuccess, ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+          <?php endif; ?>
+          <?php if ($flashDanger): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+              <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              <?= htmlspecialchars($flashDanger, ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+          <?php endif; ?>
+          <?php if ($flashMessage): ?>
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+              <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              <?= htmlspecialchars($flashMessage, ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+          <?php endif; ?>
 
           <div class="row">
             <div class="col-md-12">
@@ -57,6 +77,7 @@
                       <tr>
                         <th>Student Name</th>
                         <th>Student No.</th>
+                        <th>Email</th>
                         <th style="width:110px">Birth Date</th>
                         <th style="text-align:center;width:320px">Action</th>
                       </tr>
@@ -82,6 +103,7 @@
 
                         $studno = $row->StudentNumber ?? '';
                         $bdate  = !empty($row->birthDate) ? $row->birthDate : 'N/A';
+                        $email  = trim((string)($row->email ?? ''));
                         $yl     = $row->yearLevel ?? '';
                         $sec    = $row->section ?? '';
                         $stat   = $row->signupStatus ?? '';
@@ -97,6 +119,7 @@
                             <?php endif; ?>
                           </td>
                           <td><?= htmlspecialchars($studno, ENT_QUOTES, 'UTF-8'); ?></td>
+                          <td><?= $email ? htmlspecialchars($email, ENT_QUOTES, 'UTF-8') : '<span class="text-muted">N/A</span>'; ?></td>
                           <td><?= htmlspecialchars($bdate, ENT_QUOTES, 'UTF-8'); ?></td>
                           <td class="text-center">
                             <a href="<?= view_signup_url($studno); ?>" class="btn btn-info btn-xs">

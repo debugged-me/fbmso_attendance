@@ -138,7 +138,9 @@
             <div class="col-lg-12">
               <div class="card shadow-sm border-0">
                 <div class="card-body profile-wrapper">
-                  <form method="post" autocomplete="off" class="parsley-examples">
+                  <form method="post" autocomplete="off" class="parsley-examples"
+                    data-check-availability-url="<?= htmlspecialchars(site_url('Page/checkSignupAvailability'), ENT_QUOTES, 'UTF-8'); ?>"
+                    data-exclude-student-number="<?= htmlspecialchars($studentNumber, ENT_QUOTES, 'UTF-8'); ?>">
                     <div class="profile-section">
                       <h4>Personal Information</h4>
                       <div class="profile-grid">
@@ -154,8 +156,9 @@
                             maxlength="20"
                             pattern="[A-Za-z0-9\-]+"
                             title="Use letters, numbers, and hyphen only."
-                            readonly
                             required>
+                          <input type="hidden" name="oldStudentNo" value="<?= htmlspecialchars($studentNumber, ENT_QUOTES, 'UTF-8'); ?>">
+                          <span class="availability-msg" id="student-number-status" aria-live="polite" style="display:block;min-height:18px;margin-top:6px;font-size:.72rem;font-weight:600;line-height:1.3;color:#7288b7;"></span>
                         </div>
                       </div>
 
@@ -544,6 +547,55 @@
         }
       }
     });
+  </script>
+
+  <!-- StudentNumber availability checker -->
+  <script>
+  (function($) {
+    var $form = $('form.parsley-examples');
+    var checkUrl = $form.data('check-availability-url') || '';
+    var excludeSn = $form.data('exclude-student-number') || '';
+    var $snInput = $('#StudentNumber');
+    var $snStatus = $('#student-number-status');
+    if (!$snInput.length || !$snStatus.length || !checkUrl) return;
+
+    function setLabel(state, text) {
+      $snStatus.removeClass('is-ok is-bad is-muted');
+      if (state) $snStatus.addClass(state);
+      $snStatus.text(text || '');
+    }
+
+    function debounce(fn, wait) {
+      var t = null;
+      return function() {
+        var args = arguments, ctx = this;
+        clearTimeout(t);
+        t = setTimeout(function() { fn.apply(ctx, args); }, wait);
+      };
+    }
+
+    var runCheck = debounce(function() {
+      var v = ($snInput.val() || '').toUpperCase();
+      $snInput.val(v);
+      if (!v) { $snInput[0].setCustomValidity(''); setLabel('', ''); return; }
+      $.post(checkUrl, { field: 'studentnumber', value: v, exclude: excludeSn })
+        .done(function(payload) {
+          var data = (typeof payload === 'object') ? payload
+            : (function() { try { return JSON.parse(payload); } catch (e) { return null; } })();
+          if (!data || !data.ok) { setLabel('is-muted', ''); $snInput[0].setCustomValidity(''); return; }
+          if (data.exists) {
+            setLabel('is-bad', data.message || 'Already exists.');
+            $snInput[0].setCustomValidity(data.message || 'Already exists.');
+          } else {
+            setLabel('is-ok', data.message || 'Available.');
+            $snInput[0].setCustomValidity('');
+          }
+        })
+        .fail(function() { setLabel('is-muted', ''); $snInput[0].setCustomValidity(''); });
+    }, 300);
+
+    $snInput.on('input blur', runCheck);
+  })(jQuery);
   </script>
 </body>
 
