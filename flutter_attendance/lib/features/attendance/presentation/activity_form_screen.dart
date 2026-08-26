@@ -6,6 +6,7 @@ import '../../../core/design/tokens/app_tokens.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
 import '../domain/attendance_models.dart';
+import 'activity_state_style.dart';
 
 /// Create or edit an activity. Staff only.
 class ActivityFormScreen extends StatefulWidget {
@@ -33,7 +34,9 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
   late final TextEditingController _startTime;
   late final TextEditingController _endTime;
 
-  bool _isOpen = true;
+  ActivityStatus _status = ActivityStatus.open;
+  bool _autoClose = true;
+  int _graceMinutes = 15;
   bool _saving = false;
   String? _error;
 
@@ -52,7 +55,9 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
     // Extract HH:MM from start_time / end_time
     _startTime = TextEditingController(text: _hhmm(a?.startTime));
     _endTime = TextEditingController(text: _hhmm(a?.endTime));
-    _isOpen = a?.isOpen ?? true;
+    _status = a?.manualStatus ?? ActivityStatus.open;
+    _autoClose = a?.autoClose ?? true;
+    _graceMinutes = a?.graceMinutes ?? 15;
   }
 
   String _hhmm(String? t) {
@@ -144,7 +149,9 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
               'activity_date': _date.text.trim(),
               'start_time': _startTime.text.trim(),
               'end_time': _endTime.text.trim(),
-              'is_open': _isOpen ? 1 : 0,
+              'status': _status.value,
+              'auto_close': _autoClose,
+              'grace_minutes': _graceMinutes,
             },
           )
         : await _api.createActivity(
@@ -157,7 +164,9 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
             location: _location.text.trim(),
             program: _program.text.trim(),
             description: _description.text.trim(),
-            isOpen: _isOpen,
+            status: _status,
+            autoClose: _autoClose,
+            graceMinutes: _graceMinutes,
           );
 
     if (!mounted) return;
@@ -289,38 +298,124 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                   ),
                   const SizedBox(height: 14),
                   AppCard(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    child: Row(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.toggle_on_rounded,
-                            color: AppInk.accent, size: 22),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Open for attendance',
+                        Row(
+                          children: [
+                            const Icon(Icons.event_available_rounded,
+                                color: AppInk.accent, size: 22),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Text(
+                                'Check-in availability',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
                                   color: AppInk.heading,
                                 ),
                               ),
-                              SizedBox(height: 3),
+                            ),
+                            if (widget.activity != null)
+                              ActivityStatePill(activity: widget.activity!),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+
+                        // ── Manual override ──────────────────────────
+                        DropdownButtonFormField<ActivityStatus>(
+                          initialValue: _status,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Status',
+                            helperText: 'Only “Open” accepts check-ins.',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: [
+                            for (final s in ActivityStatus.values)
+                              DropdownMenuItem(
+                                value: s,
+                                child: Text(s.label),
+                              ),
+                          ],
+                          onChanged: (v) => setState(
+                              () => _status = v ?? ActivityStatus.open),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // ── Auto-close ───────────────────────────────
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Close automatically',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppInk.heading,
+                                    ),
+                                  ),
+                                  SizedBox(height: 3),
+                                  Text(
+                                    'Block check-ins outside the activity time.',
+                                    style: TextStyle(
+                                        fontSize: 12.5, color: AppInk.muted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: _autoClose,
+                              onChanged: (v) => setState(() => _autoClose = v),
+                            ),
+                          ],
+                        ),
+
+                        // ── Grace period ─────────────────────────────
+                        if (_autoClose) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Grace period',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppInk.heading,
+                                  ),
+                                ),
+                              ),
                               Text(
-                                'Students can check in when this is on.',
-                                style: TextStyle(
-                                    fontSize: 13, color: AppInk.muted),
+                                '$_graceMinutes min',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppInk.accent,
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                        Switch(
-                          value: _isOpen,
-                          onChanged: (v) => setState(() => _isOpen = v),
-                        ),
+                          Slider(
+                            value: _graceMinutes.toDouble().clamp(0, 120),
+                            min: 0,
+                            max: 120,
+                            divisions: 24,
+                            label: '$_graceMinutes min',
+                            onChanged: (v) =>
+                                setState(() => _graceMinutes = v.round()),
+                          ),
+                          Text(
+                            'Extra time allowed before the start and after the end.',
+                            style: const TextStyle(
+                                fontSize: 12, color: AppInk.muted),
+                          ),
+                        ],
                       ],
                     ),
                   ),

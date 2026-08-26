@@ -19,7 +19,8 @@ class Attendance extends CI_Controller
     {
         $activity = $this->ActivitiesModel->find((int)$activity_id);
         if (!$activity) show_404();
-        $data['activity'] = $activity;
+        $data['activity']       = $activity;
+        $data['activity_state'] = activity_state($activity);
 
         // (optional) AUDIT: scan page opened
         $this->AuditLogModel->write(
@@ -239,14 +240,16 @@ class Attendance extends CI_Controller
             $this->load->view('activity_join_result', $data);
             return;
         }
-        if (isset($activity->is_open) && (int)$activity->is_open !== 1) {
+        $state = activity_state($activity);
+        if (!$state['is_open']) {
             $data = [
                 'activity_id'    => $activity_id,
                 'student_number' => $student_number,
                 'result'         => [
                     'ok'      => false,
                     'mode'    => 'err',
-                    'message' => 'This activity is closed for check-ins.',
+                    'message' => $state['reason'] ?: 'This activity is closed for check-ins.',
+                    'state'   => $state['state'],
                 ],
             ];
             $this->output->set_status_header(200);

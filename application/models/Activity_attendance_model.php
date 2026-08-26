@@ -84,7 +84,11 @@ class Activity_attendance_model extends CI_Model
     return $slots ? $slots[count($slots)-1]['key'] : 'am';
 }
 
-public function consume_token($activity_id, $token, $direction = 'auto')
+/**
+ * @param mixed $occurred_at Client scan time for offline queued scans; the
+ *                           auto-close window is judged against it when plausible.
+ */
+public function consume_token($activity_id, $token, $direction = 'auto', $occurred_at = null)
 {
     $activity_id = (int)$activity_id;
 
@@ -94,12 +98,19 @@ public function consume_token($activity_id, $token, $direction = 'auto')
         return ['ok' => false, 'mode' => 'err', 'message' => 'Invalid token format'];
     }
 
-    // 1) Activity open?
-    $act = $this->db->select('activity_id, is_open')->from('activities')
+    // 1) Activity open? Manual status AND the auto-close time window must both pass.
+    $act = $this->db->select('activity_id, status, is_open, start_at, end_at, activity_date, meta')
+            ->from('activities')
             ->where('activity_id', $activity_id)->limit(1)->get()->row();
     if (!$act) return ['ok'=>false,'mode'=>'err','message'=>'Activity not found'];
-    if (isset($act->is_open) && (int)$act->is_open !== 1) {
-        return ['ok'=>false,'mode'=>'err','message'=>'Activity is closed'];
+    $state = activity_state($act, activity_resolve_scan_time($occurred_at));
+    if (!$state['is_open']) {
+        return [
+            'ok'      => false,
+            'mode'    => 'err',
+            'message' => $state['reason'] ?: 'Activity is closed',
+            'state'   => $state['state'],
+        ];
     }
 
     // 2) QR must be active

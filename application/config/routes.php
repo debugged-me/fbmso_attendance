@@ -52,6 +52,7 @@ $route['activities/(:num)/poster']   = 'activities/poster/$1';
 $route['activities/(:num)/edit']     = 'activities/edit/$1';
 $route['activities/(:num)/update']   = 'activities/update/$1';
 $route['activities/(:num)/delete']   = 'activities/delete/$1';
+$route['activities/(:num)/status']   = 'activities/set_status/$1';
 $route['activities/majors']          = 'activities/majors_by_program';
 $route['activities/fill-missing']    = 'activities/fill_missing';
 $route['activities/(:num)/scan']     = 'attendance/scan/$1';

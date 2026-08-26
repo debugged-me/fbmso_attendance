@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/design/components/components.dart';
+import '../../../core/design/tokens/app_brand.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_theme.dart';
@@ -125,14 +126,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     Center(child: _Logo(config: config)),
                     const SizedBox(height: 20),
 
-                    // ── School name ──────────────────────────────────
-                    Center(
+                    // ── Brand name (generic, multi-tenant) ───────────
+                    const Center(
                       child: Text(
-                        config?.schoolName.isNotEmpty == true
-                            ? config!.schoolName
-                            : 'FBMSO Attendance',
+                        AppBrand.name,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
                           color: AppInk.heading,
@@ -141,9 +140,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Center(
+                    const Center(
                       child: Text(
-                        'Sign in with your portal account',
+                        AppBrand.tagline,
                         style: TextStyle(
                           fontSize: 13,
                           color: AppInk.muted,
@@ -299,6 +298,7 @@ class _Logo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const size = 104.0;
+    const outer = size + 28; // 132
     final url = (config?.loginLogoUrl ?? '').trim();
 
     final fallback = Image.asset(
@@ -309,12 +309,12 @@ class _Logo extends StatelessWidget {
     );
 
     return Container(
-      width: size + 28,
-      height: size + 28,
+      width: outer,
+      height: outer,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        shape: BoxShape.circle,
         border: Border.all(color: AppInk.rule),
         boxShadow: [
           BoxShadow(
@@ -324,13 +324,15 @@ class _Logo extends StatelessWidget {
           ),
         ],
       ),
-      child: url.isEmpty
-          ? fallback
-          : Image.network(
-              url,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => fallback,
-            ),
+      child: ClipOval(
+        child: url.isEmpty
+            ? fallback
+            : Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => fallback,
+              ),
+      ),
     );
   }
 }

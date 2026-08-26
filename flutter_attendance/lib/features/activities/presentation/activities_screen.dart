@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
+import '../../attendance/presentation/activity_state_style.dart';
 import 'activity_detail_sheet.dart';
 
 /// Activities list. Tapping an activity opens a detail sheet with actions:
@@ -287,8 +287,6 @@ class _ActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isOpen = activity.isOpen;
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -325,7 +323,7 @@ class _ActivityCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  _StatusPill(isOpen: isOpen),
+                  ActivityStatePill(activity: activity),
                 ],
               ),
               const SizedBox(height: 10),
@@ -386,44 +384,6 @@ class _ActivityCard extends StatelessWidget {
   }
 }
 
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.isOpen});
-  final bool isOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isOpen ? AppTheme.success : AppInk.muted;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            isOpen ? 'Open' : 'Closed',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _Meta extends StatelessWidget {
   const _Meta({required this.icon, required this.text});

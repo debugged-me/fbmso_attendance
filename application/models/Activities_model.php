@@ -7,7 +7,7 @@ class Activities_model extends CI_Model
     // Optional now (controllers write directly using DB):
     private $fillable = [
         'settingsID','code','title','description','location','program',
-        'start_at','end_at','is_open','organizer_id','meta',
+        'start_at','end_at','status','is_open','organizer_id','meta',
         'created_by','updated_by','created_at','updated_at'
     ];
 

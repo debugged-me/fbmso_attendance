@@ -7,6 +7,7 @@ import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
 import '../domain/attendance_models.dart';
 import 'activity_form_screen.dart';
+import 'activity_state_style.dart';
 import 'activity_poster_screen.dart';
 
 /// Staff activity management — list all activities with create / edit /
@@ -102,6 +103,57 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
       ),
     );
     if (result == true) _load();
+  }
+
+  /// Quick manual override from the list, mirroring the web list's lock button.
+  Future<void> _toggleStatus(Activity a) async {
+    final opening = !a.isOpen;
+
+    // Reopening something the clock closed only sticks if auto-close is lifted.
+    final liftAutoClose = opening && a.autoClosed;
+
+    if (liftAutoClose) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Reopen check-ins?'),
+          content: Text(
+            '“${a.title}” already ended. Reopening it also turns OFF auto-close, '
+            'so it will stay open until you close it again.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Reopen'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+
+    final res = await _api.setActivityStatus(
+      baseUrl: widget.session.baseUrl,
+      token: widget.session.token,
+      activityId: a.activityId,
+      status: opening ? ActivityStatus.open : ActivityStatus.closed,
+      liftAutoClose: liftAutoClose,
+    );
+
+    if (!mounted) return;
+    if (res.ok) {
+      _load();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res.message.isEmpty
+            ? 'Could not change the activity status.'
+            : res.message)),
+      );
+    }
   }
 
   @override
@@ -202,6 +254,7 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
                               posterMode: _posterMode,
                               session: widget.session,
                               onEdit: () => _openForm(a),
+                              onToggleStatus: () => _toggleStatus(a),
                             );
                           },
                         ),
@@ -223,12 +276,14 @@ class _ActivityManageCard extends StatelessWidget {
   const _ActivityManageCard({
     required this.activity,
     required this.onEdit,
+    required this.onToggleStatus,
     required this.posterMode,
     required this.session,
   });
 
   final Activity activity;
   final VoidCallback onEdit;
+  final VoidCallback onToggleStatus;
   final bool posterMode;
   final AppSession session;
 
@@ -247,7 +302,6 @@ class _ActivityManageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOpen = activity.isOpen;
-    final color = isOpen ? AppInk.positive : AppInk.muted;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -305,38 +359,27 @@ class _ActivityManageCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        isOpen ? 'Open' : 'Closed',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: color,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                ActivityStatePill(activity: activity),
                 const SizedBox(width: 6),
                 const Icon(Icons.edit_rounded, color: AppInk.muted, size: 20),
               ],
+            ),
+
+            // ── Why it is closed ────────────────────────────────────
+            if (!isOpen) ...[
+              const SizedBox(height: 10),
+              ActivityClosedNotice(activity: activity),
+            ],
+
+            // ── Quick open/close override ───────────────────────────
+            const SizedBox(height: 10),
+            AppButton(
+              label: isOpen ? 'Close check-ins' : 'Open check-ins',
+              icon: isOpen ? Icons.lock_outline_rounded : Icons.lock_open_rounded,
+              size: AppButtonSize.sm,
+              style: AppButtonStyle.outline,
+              fullWidth: true,
+              onTap: onToggleStatus,
             ),
             // ── Poster mode action row ──────────────────────────────
             if (posterMode) ...[

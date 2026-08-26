@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 
+import '../design/tokens/app_brand.dart';
 import 'secure_storage_service.dart';
 
 /// Biometric unlock service. Wraps local_auth so the rest of the app
@@ -57,7 +58,7 @@ class BiometricService {
     if (!available) return true; // device has no biometrics — don't block
 
     return await authenticate(
-      reason: 'Authenticate to open FBMSO Attendance.',
+      reason: 'Authenticate to open ${AppBrand.name}.',
     );
   }
 

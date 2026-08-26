@@ -171,13 +171,21 @@ class AttendanceApi {
     final url = '${_normalize(baseUrl)}/api/mobile/attendance/checkin/$activityId';
     final idemKey = _uuid.v4();
 
+    // When this scan actually happened. The server judges the activity's
+    // auto-close window against it, so a scan queued inside the window is still
+    // accepted if the outbox only syncs after the window has closed.
+    final occurredAt = DateTime.now().toUtc().toIso8601String();
+
     // Try online first for immediate feedback.
     if (await _isOnline()) {
       try {
         final response = await _client.post(
           Uri.parse(url),
           headers: {..._headers(token), 'X-Idempotency-Key': idemKey},
-          body: jsonEncode({'direction': direction}),
+          body: jsonEncode({
+            'direction': direction,
+            'client_submitted_at': occurredAt,
+          }),
         );
         final data = _decode(response);
         return CheckResult.fromJson(data);
@@ -192,7 +200,10 @@ class AttendanceApi {
       url: url,
       idemKey: idemKey,
       token: token,
-      payload: {'direction': direction},
+      payload: {
+        'direction': direction,
+        'client_submitted_at': occurredAt,
+      },
     );
     return CheckResult(
       ok: true,
@@ -212,6 +223,7 @@ class AttendanceApi {
   }) async {
     final url = '${_normalize(baseUrl)}/api/mobile/attendance/consume';
     final idemKey = _uuid.v4();
+    final occurredAt = DateTime.now().toUtc().toIso8601String();
 
     if (await _isOnline()) {
       try {
@@ -222,6 +234,7 @@ class AttendanceApi {
             'activity_id': activityId,
             'token': qrToken,
             'direction': direction,
+            'client_submitted_at': occurredAt,
             if (remarks.isNotEmpty) 'remarks': remarks,
           }),
         );
@@ -241,6 +254,7 @@ class AttendanceApi {
         'activity_id': activityId,
         'token': qrToken,
         'direction': direction,
+        'client_submitted_at': occurredAt,
         if (remarks.isNotEmpty) 'remarks': remarks,
       },
     );
@@ -306,7 +320,9 @@ class AttendanceApi {
     String location = '',
     String program = '',
     String description = '',
-    bool isOpen = true,
+    ActivityStatus status = ActivityStatus.open,
+    bool autoClose = true,
+    int graceMinutes = 15,
   }) async {
     final url = '${_normalize(baseUrl)}/api/mobile/activities/create';
     final idemKey = _uuid.v4();
@@ -322,7 +338,9 @@ class AttendanceApi {
           if (location.isNotEmpty) 'location': location,
           if (program.isNotEmpty) 'program': program,
           if (description.isNotEmpty) 'description': description,
-          'is_open': isOpen ? 1 : 0,
+          'status': status.value,
+          'auto_close': autoClose,
+          'grace_minutes': graceMinutes,
         }),
       );
       final data = _decode(response);
@@ -371,6 +389,28 @@ class AttendanceApi {
     } catch (e) {
       return (ok: false, message: e.toString(), activity: null);
     }
+  }
+
+  /// Flip an activity's manual open/closed override without opening the form.
+  ///
+  /// Reopening one the clock already closed also turns auto-close off, otherwise
+  /// the time window would immediately close it again — same rule the web UI uses.
+  Future<({bool ok, String message, Activity? activity})> setActivityStatus({
+    required String baseUrl,
+    required String token,
+    required int activityId,
+    required ActivityStatus status,
+    bool liftAutoClose = false,
+  }) {
+    return updateActivity(
+      baseUrl: baseUrl,
+      token: token,
+      activityId: activityId,
+      fields: {
+        'status': status.value,
+        if (liftAutoClose) 'auto_close': false,
+      },
+    );
   }
 
   /// Delete an activity. Staff only.

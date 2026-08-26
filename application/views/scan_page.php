@@ -20,12 +20,32 @@
                   <i class="ion ion-ios-qr-scanner mr-2"></i>
                   Scanner — <?= htmlspecialchars($activity->title) ?>
                   <span class="badge badge-info ml-2"><?= htmlspecialchars($activity->activity_date) ?></span>
+                  <?php $st = $activity_state ?? activity_state($activity); ?>
+                  <span class="badge badge-pill <?= activity_state_badge_class($st['state']) ?> text-uppercase ml-2">
+                    <?= htmlspecialchars($st['label'], ENT_QUOTES, 'UTF-8') ?>
+                  </span>
                 </h4>
                 <div class="clearfix"></div>
                 <hr style="border:0;height:2px;background:linear-gradient(to right,#4285F4 60%,#FBBC05 80%,#34A853 100%);border-radius:1px;margin:8px 0;" />
               </div>
             </div>
           </div>
+
+          <?php if (!$st['is_open']): ?>
+            <div class="row">
+              <div class="col-12">
+                <div class="alert alert-warning d-flex align-items-start" role="alert">
+                  <i class="ion ion-md-lock mr-2 mt-1"></i>
+                  <div>
+                    <strong>Check-ins are closed for this activity.</strong><br>
+                    <?= htmlspecialchars($st['reason'], ENT_QUOTES, 'UTF-8') ?>
+                    Scans will be rejected until it is reopened from
+                    <a href="<?= site_url('activities/' . (int)$activity->activity_id . '/edit') ?>">the activity settings</a>.
+                  </div>
+                </div>
+              </div>
+            </div>
+          <?php endif; ?>
 
           <div class="row mb-2">
             <div class="col">

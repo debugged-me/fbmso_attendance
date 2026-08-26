@@ -6,6 +6,7 @@ import '../../../core/utils/time_format.dart';
 import '../../auth/domain/app_session.dart';
 import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
+import '../../attendance/presentation/activity_state_style.dart';
 import '../../attendance/presentation/poster_scan_screen.dart';
 import '../../attendance/presentation/scan_screen.dart';
 
@@ -64,7 +65,6 @@ class ActivityDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOpen = activity.isOpen;
-    final color = isOpen ? AppInk.positive : AppInk.muted;
 
     return Container(
       decoration: const BoxDecoration(
@@ -108,39 +108,16 @@ class ActivityDetailSheet extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          isOpen ? 'Open' : 'Closed',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: color,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  ActivityStatePill(activity: activity),
                 ],
               ),
               const SizedBox(height: 16),
+
+              // ── Why it is closed ─────────────────────────────────
+              if (!isOpen) ...[
+                ActivityClosedNotice(activity: activity),
+                const SizedBox(height: 16),
+              ],
 
               // ── Description ──────────────────────────────────────
               if (activity.description.isNotEmpty) ...[
@@ -191,10 +168,13 @@ class ActivityDetailSheet extends StatelessWidget {
               // ── Actions ──────────────────────────────────────────
               if (isStudent) ...[
                 AppButton(
-                  label: 'Scan Poster QR',
-                  icon: Icons.qr_code_scanner_rounded,
+                  label: isOpen ? 'Scan Poster QR' : 'Check-in Closed',
+                  icon: isOpen
+                      ? Icons.qr_code_scanner_rounded
+                      : Icons.lock_outline_rounded,
                   fullWidth: true,
                   size: AppButtonSize.lg,
+                  disabled: !isOpen,
                   onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
@@ -218,10 +198,13 @@ class ActivityDetailSheet extends StatelessWidget {
                 ),
               ] else ...[
                 AppButton(
-                  label: 'Scan Students',
-                  icon: Icons.qr_code_scanner_rounded,
+                  label: isOpen ? 'Scan Students' : 'Check-in Closed',
+                  icon: isOpen
+                      ? Icons.qr_code_scanner_rounded
+                      : Icons.lock_outline_rounded,
                   fullWidth: true,
                   size: AppButtonSize.lg,
+                  disabled: !isOpen,
                   onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(

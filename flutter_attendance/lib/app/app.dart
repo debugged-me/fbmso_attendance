@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/design/tokens/app_brand.dart';
 import '../core/services/biometric_service.dart';
 import '../core/services/notification_service.dart';
 import '../core/theme/app_theme.dart';
@@ -55,7 +56,7 @@ class _FlutterAttendanceAppState extends State<FlutterAttendanceApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'FBMSO Attendance',
+      title: AppBrand.name,
       theme: AppTheme.build(),
       builder: (context, child) => MediaQuery.withClampedTextScaling(
         minScaleFactor: 0.85,
@@ -186,7 +187,7 @@ class _SplashScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             const Text(
-              'FBMSO Attendance',
+              AppBrand.name,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,

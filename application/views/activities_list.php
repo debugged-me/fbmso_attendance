@@ -107,6 +107,29 @@
         color: #198754
       }
 
+      .btn-close-act {
+        border-color: #b45309
+      }
+
+      .btn-close-act i {
+        color: #b45309
+      }
+
+      .btn-open-act {
+        border-color: #0f766e
+      }
+
+      .btn-open-act i {
+        color: #0f766e
+      }
+
+      .status-sub {
+        font-size: .68rem;
+        color: #6b7280;
+        margin-top: 3px;
+        text-transform: none
+      }
+
       .table thead th {
         white-space: nowrap
       }
@@ -653,11 +676,16 @@
                           </td>
 
                           <td data-label="Status">
-                            <?php
-                            $status = strtolower($r->status ?? '');
-                            $cls = $status === 'open' ? 'badge-success' : ($status === 'closed' ? 'badge-secondary' : 'badge-light');
-                            ?>
-                            <span class="badge badge-pill <?= $cls ?> text-uppercase"><?= htmlspecialchars($r->status) ?></span>
+                            <?php $st = activity_state($r); ?>
+                            <span class="badge badge-pill <?= activity_state_badge_class($st['state']) ?> text-uppercase"
+                                  <?= $st['reason'] ? 'data-toggle="tooltip" title="' . htmlspecialchars($st['reason'], ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
+                              <?= htmlspecialchars($st['label'], ENT_QUOTES, 'UTF-8') ?>
+                            </span>
+                            <?php if ($st['state'] === 'ended' && $st['manual_open']): ?>
+                              <div class="status-sub">auto-closed</div>
+                            <?php elseif ($st['state'] === 'open' && !$st['auto_close']): ?>
+                              <div class="status-sub">no auto-close</div>
+                            <?php endif; ?>
                           </td>
 
                           <td data-label="Actions" class="text-center">
@@ -677,6 +705,28 @@
                                   <span class="hint">POSTER</span><i class="ion ion-md-easel"></i>
                                 </a>
                               <?php endif; ?>
+
+                              <?php
+                              // Quick manual override. Reopening something the clock closed
+                              // also lifts auto-close for it (handled server-side).
+                              $nextStatus = $st['is_open'] ? 'closed' : 'open';
+                              $confirmMsg = $st['is_open']
+                                ? 'Students will no longer be able to check in to this activity.'
+                                : ($st['state'] === 'ended'
+                                    ? 'This activity already ended. Reopening it also turns OFF auto-close, so it stays open until you close it again.'
+                                    : 'Students will be able to check in to this activity.');
+                              ?>
+                              <form method="post" action="<?= site_url('activities/' . $r->activity_id . '/status') ?>" class="d-inline"
+                                data-ui-confirm="<?= htmlspecialchars($confirmMsg, ENT_QUOTES, 'UTF-8') ?>"
+                                data-ui-confirm-title="<?= $st['is_open'] ? 'Close check-ins?' : 'Open check-ins?' ?>"
+                                data-ui-confirm-ok="<?= $st['is_open'] ? 'Close activity' : 'Open activity' ?>">
+                                <input type="hidden" name="status" value="<?= $nextStatus ?>">
+                                <button type="submit" class="btn-icon <?= $st['is_open'] ? 'btn-close-act' : 'btn-open-act' ?>"
+                                        data-toggle="tooltip" title="<?= $st['is_open'] ? 'Close check-ins' : 'Open check-ins' ?>">
+                                  <span class="hint"><?= $st['is_open'] ? 'CLOSE' : 'OPEN' ?></span>
+                                  <i class="ion <?= $st['is_open'] ? 'ion-md-lock' : 'ion-md-unlock' ?>"></i>
+                                </button>
+                              </form>
 
                               <a class="btn-icon btn-edit" href="<?= site_url('activities/' . $r->activity_id . '/edit') ?>" data-toggle="tooltip" title="Edit">
                                 <span class="hint">EDIT</span><i class="ion ion-md-create"></i>

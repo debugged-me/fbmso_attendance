@@ -137,15 +137,17 @@ class Activities extends CI_Controller
         $program_custom = trim((string)$this->input->post('program_custom', TRUE));
         if ($program === '__custom__') $program = $program_custom;
 
-        // Sessions meta (JSON from hidden field)
-        $meta_json = (string)$this->input->post('meta'); // may be empty or "{}"
-        $meta      = null;
-        if ($meta_json !== '') {
-            $decoded = json_decode($meta_json, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $meta = json_encode($decoded, JSON_UNESCAPED_UNICODE);
-            }
-        }
+        // Sessions meta (JSON from hidden field) + auto-close knobs
+        $meta = activity_meta_merge_autoclose(
+            (string)$this->input->post('meta'),      // may be empty or "{}"
+            (string)$this->input->post('auto_close') === '1',
+            $this->input->post('grace_minutes') !== null
+                ? $this->input->post('grace_minutes')
+                : ACTIVITY_DEFAULT_GRACE_MINUTES
+        );
+
+        // Manual open/closed state
+        $status = activity_normalize_status($this->input->post('status', TRUE), 'open');
 
         // Validation
         if ($title === '' || $activity_date === '') {
@@ -171,8 +173,9 @@ class Activities extends CI_Controller
             'program'     => $program !== '' ? $program : '',
             'start_at'    => $start_at,
             'end_at'      => $end_at,
-            'is_open'     => 1,
-            'meta'        => $meta,                        // <- save sessions JSON
+            'status'      => $status,
+            'is_open'     => $status === 'open' ? 1 : 0,   // mirrored — see activity_state_helper
+            'meta'        => $meta,                        // <- sessions JSON + auto-close knobs
             'created_at'  => date('Y-m-d H:i:s'),
             'updated_at'  => date('Y-m-d H:i:s'),
         ];
@@ -214,6 +217,7 @@ class Activities extends CI_Controller
                 'program'     => $program !== '' ? $program : '',
                 'start_at'    => $start_at,
                 'end_at'      => $end_at,
+                'status'      => $status,
                 'meta'        => $meta
             ],
             1,
@@ -275,14 +279,18 @@ class Activities extends CI_Controller
         $program_custom = trim((string)$this->input->post('program_custom', TRUE));
         if ($program === '__custom__') $program = $program_custom;
 
-        $meta_json = (string)$this->input->post('meta');
-        $meta      = null;
-        if ($meta_json !== '') {
-            $decoded = json_decode($meta_json, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $meta = json_encode($decoded, JSON_UNESCAPED_UNICODE);
-            }
-        }
+        $meta = activity_meta_merge_autoclose(
+            (string)$this->input->post('meta'),
+            (string)$this->input->post('auto_close') === '1',
+            $this->input->post('grace_minutes') !== null
+                ? $this->input->post('grace_minutes')
+                : ACTIVITY_DEFAULT_GRACE_MINUTES
+        );
+
+        $status = activity_normalize_status(
+            $this->input->post('status', TRUE),
+            activity_normalize_status($row->status ?? 'open')
+        );
 
         if ($title === '' || $activity_date === '') {
             $this->session->set_flashdata('error', 'Title and Date are required.');
@@ -303,7 +311,9 @@ class Activities extends CI_Controller
             'program'     => $program !== '' ? $program : '',
             'start_at'    => $start_at,
             'end_at'      => $end_at,
-            'meta'        => $meta,                       // <- update sessions JSON
+            'status'      => $status,
+            'is_open'     => $status === 'open' ? 1 : 0,  // mirrored — see activity_state_helper
+            'meta'        => $meta,                       // <- sessions JSON + auto-close knobs
             'updated_at'  => date('Y-m-d H:i:s'),
         ];
 
@@ -317,6 +327,7 @@ class Activities extends CI_Controller
             'program'     => $row->program ?? null,
             'start_at'    => $row->start_at ?? null,
             'end_at'      => $row->end_at ?? null,
+            'status'      => $row->status ?? null,
             'meta'        => $row->meta ?? null,
         ];
 
@@ -334,6 +345,7 @@ class Activities extends CI_Controller
                 'program'     => $program !== '' ? $program : '',
                 'start_at'    => $start_at,
                 'end_at'      => $end_at,
+                'status'      => $status,
                 'meta'        => $meta
             ],
             $ok ? 1 : 0,
@@ -349,6 +361,85 @@ class Activities extends CI_Controller
         $this->session->set_flashdata('success', 'Activity updated.');
         return redirect('activities');
     }
+    /**
+     * Quick manual override from the list page: flip `status` (and its mirrored
+     * `is_open`) without opening the full edit form.
+     *
+     * POST activities/{id}/status  with field `status` = draft|open|closed|archived.
+     * Reopening a finished activity also turns auto-close off for it, otherwise
+     * the time window would immediately close it again.
+     */
+    public function set_status($id = 0)
+    {
+        $id = (int)$id;
+
+        if ($this->input->method() !== 'post') {
+            show_404();
+            return;
+        }
+
+        $level = (string)$this->session->userdata('level');
+        if (!in_array($level, ['Admin', 'Instructor', 'Registrar', 'Accounting'], true)) {
+            if ($this->input->is_ajax_request()) {
+                return $this->output->set_content_type('application/json')
+                    ->set_output(json_encode(['ok' => false, 'message' => 'Forbidden']));
+            }
+            show_error('Forbidden', 403);
+            return;
+        }
+
+        $row = $this->ActivitiesModel->find($id);
+        if (!$row) {
+            if ($this->input->is_ajax_request()) {
+                return $this->output->set_content_type('application/json')
+                    ->set_output(json_encode(['ok' => false, 'message' => 'Activity not found']));
+            }
+            show_404();
+            return;
+        }
+
+        $before = activity_state($row);
+        $status = activity_normalize_status($this->input->post('status', TRUE), 'closed');
+
+        $data = [
+            'status'     => $status,
+            'is_open'    => $status === 'open' ? 1 : 0,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+
+        // Manually reopening something the clock already closed only sticks if we
+        // also lift auto-close for that activity.
+        if ($status === 'open' && $before['state'] === 'ended') {
+            $data['meta'] = activity_meta_merge_autoclose($row->meta ?? '', false, $before['grace_minutes']);
+        }
+
+        $ok = $this->db->where('activity_id', $id)->update('activities', $data);
+
+        $this->AuditLogModel->write(
+            'update',
+            'Activities',
+            'activities',
+            $id,
+            ['status' => $row->status ?? null, 'is_open' => $row->is_open ?? null],
+            $data,
+            $ok ? 1 : 0,
+            $ok ? 'Changed activity status' : 'Failed to change activity status'
+        );
+
+        if ($this->input->is_ajax_request()) {
+            $after = $ok ? activity_state($this->ActivitiesModel->find($id)) : $before;
+            return $this->output->set_content_type('application/json')
+                ->set_output(json_encode(['ok' => (bool)$ok, 'state' => $after]));
+        }
+
+        $this->session->set_flashdata(
+            $ok ? 'success' : 'error',
+            $ok ? 'Activity marked as ' . activity_manual_statuses()[$status] . '.'
+                : 'Failed to change activity status.'
+        );
+        redirect('activities');
+    }
+
     public function majors_by_program()
     {
         $programRaw = trim((string)$this->input->get('program', TRUE));

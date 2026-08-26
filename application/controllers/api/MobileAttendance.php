@@ -215,7 +215,9 @@ class MobileAttendance extends MobileApi
 
         $oldDebug = $this->db->db_debug;
         $this->db->db_debug = false;
-        $op = $this->AttendanceModel->consume_token($activityId, $token, $direction);
+        $op = $this->AttendanceModel->consume_token(
+            $activityId, $token, $direction, $payload['client_submitted_at'] ?? null
+        );
         $this->db->db_debug = $oldDebug;
 
         // Annotate the row exactly like the web flow.
@@ -331,11 +333,13 @@ class MobileAttendance extends MobileApi
             $this->record_idempotent_response(404, $body);
             return $this->json(json_decode($body, true), 404);
         }
-        if (isset($activity->is_open) && (int)$activity->is_open !== 1) {
+        $state = activity_state($activity, activity_resolve_scan_time($payload['client_submitted_at'] ?? null));
+        if (!$state['is_open']) {
             $body = json_encode([
                 'ok' => false,
                 'mode' => 'err',
-                'message' => 'This activity is closed for check-ins.',
+                'message' => $state['reason'] ?: 'This activity is closed for check-ins.',
+                'state' => $state['state'],
             ]);
             $this->record_idempotent_response(409, $body);
             return $this->json(json_decode($body, true), 409);
@@ -355,7 +359,9 @@ class MobileAttendance extends MobileApi
 
         $oldDebug = $this->db->db_debug;
         $this->db->db_debug = false;
-        $res = $this->AttendanceModel->consume_token($activityId, $qr->token, $direction);
+        $res = $this->AttendanceModel->consume_token(
+            $activityId, $qr->token, $direction, $payload['client_submitted_at'] ?? null
+        );
         $this->db->db_debug = $oldDebug;
 
         $this->AuditLogModel->write(
@@ -580,7 +586,23 @@ class MobileAttendance extends MobileApi
         $startTime     = trim((string)($payload['start_time'] ?? ''));
         $endTime       = trim((string)($payload['end_time'] ?? ''));
         $program       = trim((string)($payload['program'] ?? ''));
-        $isOpen        = isset($payload['is_open']) ? (int)$payload['is_open'] : 1;
+
+        // Manual state: prefer explicit `status`, else fall back to the legacy
+        // `is_open` boolean older builds of the app still send.
+        if (array_key_exists('status', $payload)) {
+            $status = activity_normalize_status($payload['status'], 'open');
+        } elseif (array_key_exists('is_open', $payload)) {
+            $status = ((int)$payload['is_open'] === 1) ? 'open' : 'closed';
+        } else {
+            $status = 'open';
+        }
+
+        $autoClose = array_key_exists('auto_close', $payload)
+            ? filter_var($payload['auto_close'], FILTER_VALIDATE_BOOLEAN)
+            : true;
+        $grace = array_key_exists('grace_minutes', $payload)
+            ? activity_normalize_grace($payload['grace_minutes'])
+            : ACTIVITY_DEFAULT_GRACE_MINUTES;
 
         if ($title === '' || $activityDate === '') {
             $body = json_encode(['ok' => false, 'message' => 'Title and date are required.']);
@@ -615,11 +637,12 @@ class MobileAttendance extends MobileApi
             'end_time'      => $endTime !== '' ? $endTime . ':00' : null,
             'start_at'      => $startAt,
             'end_at'        => $endAt,
-            'is_open'       => $isOpen,
+            'status'        => $status,
+            'is_open'       => $status === 'open' ? 1 : 0,   // mirrored — see activity_state_helper
+            'meta'          => activity_meta_merge_autoclose($payload['meta'] ?? '', $autoClose, $grace),
             'sy'            => $sy,
             'semester'      => $sem,
             'created_by_str'=> $username,
-            'status'        => 'open',
             'created_at'    => date('Y-m-d H:i:s'),
             'updated_at'    => date('Y-m-d H:i:s'),
         ];
@@ -692,11 +715,30 @@ class MobileAttendance extends MobileApi
             $data['start_at'] = $date . ' ' . ($st !== '' ? $st . ':00' : '00:00:00');
             $data['end_at']   = ($et !== '') ? ($date . ' ' . $et . ':00') : null;
         }
-        if (isset($payload['is_open'])) {
-            $data['is_open'] = (int)$payload['is_open'];
+        // Manual state — `status` wins, `is_open` is the legacy fallback. Whichever
+        // arrives, both columns are written so they can never disagree.
+        if (array_key_exists('status', $payload)) {
+            $newStatus = activity_normalize_status($payload['status'], activity_normalize_status($existing->status ?? 'open'));
+            $data['status']  = $newStatus;
+            $data['is_open'] = $newStatus === 'open' ? 1 : 0;
+        } elseif (array_key_exists('is_open', $payload)) {
+            $newStatus = ((int)$payload['is_open'] === 1) ? 'open' : 'closed';
+            $data['status']  = $newStatus;
+            $data['is_open'] = $newStatus === 'open' ? 1 : 0;
         }
-        if (isset($payload['status'])) {
-            $data['status'] = trim((string)$payload['status']);
+
+        // Auto-close knobs live in meta; merge so `sessions` survives.
+        if (array_key_exists('auto_close', $payload) || array_key_exists('grace_minutes', $payload)) {
+            $cur = activity_auto_close_settings($existing->meta ?? '');
+            $data['meta'] = activity_meta_merge_autoclose(
+                $existing->meta ?? '',
+                array_key_exists('auto_close', $payload)
+                    ? filter_var($payload['auto_close'], FILTER_VALIDATE_BOOLEAN)
+                    : $cur['auto_close'],
+                array_key_exists('grace_minutes', $payload)
+                    ? $payload['grace_minutes']
+                    : $cur['grace_minutes']
+            );
         }
 
         if (empty($data)) {
@@ -770,7 +812,9 @@ class MobileAttendance extends MobileApi
 
     private function activity_shape($r): array
     {
-        $r = is_array($r) ? (object)$r : $r;
+        $r  = is_array($r) ? (object)$r : $r;
+        $st = activity_state($r);
+
         return [
             'activity_id'   => (int)($r->activity_id ?? 0),
             'title'         => (string)($r->title ?? ''),
@@ -785,8 +829,22 @@ class MobileAttendance extends MobileApi
             'program'       => (string)($r->program_effective ?? $r->program ?? ''),
             'sy'            => (string)($r->sy ?? ''),
             'semester'      => (string)($r->semester ?? ''),
-            'status'        => (string)($r->status ?? ''),
-            'is_open'       => (int)($r->is_open ?? 0) === 1,
+
+            // `status` stays the raw manual enum so existing clients keep working;
+            // `is_open` is now the EFFECTIVE answer (manual AND time window).
+            'status'        => $st['manual_status'],
+            'is_open'       => $st['is_open'],
+
+            // Detail for clients that can render more than an open/closed pill.
+            'state'         => $st['state'],          // open|scheduled|ended|closed|draft|archived
+            'state_label'   => $st['label'],
+            'closed_reason' => $st['reason'],         // null when open
+            'manual_status' => $st['manual_status'],
+            'manual_open'   => $st['manual_open'],
+            'auto_close'    => $st['auto_close'],
+            'grace_minutes' => $st['grace_minutes'],
+            'window_start'  => $st['window_start'],
+            'window_end'    => $st['window_end'],
         ];
     }
 

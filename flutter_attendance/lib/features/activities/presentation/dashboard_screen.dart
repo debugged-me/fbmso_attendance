@@ -7,6 +7,7 @@ import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
+import '../../attendance/presentation/activity_state_style.dart';
 import '../../misc/data/misc_api.dart';
 import '../../misc/domain/misc_models.dart';
 import 'activity_detail_sheet.dart';
@@ -410,9 +411,6 @@ class _ActivityMiniCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isOpen = activity.isOpen;
-    final color = isOpen ? AppInk.positive : AppInk.muted;
-
     return GestureDetector(
       onTap: () => showActivityDetailSheet(context, activity, session),
       child: Container(
@@ -451,35 +449,7 @@ class _ActivityMiniCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    isOpen ? 'Open' : 'Closed',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            ActivityStatePill(activity: activity, dense: true),
             const SizedBox(width: 6),
             Icon(Icons.chevron_right_rounded,
                 size: 18, color: AppInk.muted),

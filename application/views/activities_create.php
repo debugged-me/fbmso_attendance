@@ -27,6 +27,14 @@ if (!empty($row->meta)) {
     }
   }
 }
+
+/* -------- availability: manual status + auto-close window -------- */
+$statusOptions  = activity_manual_statuses();
+$currentStatus  = $mode === 'edit' ? activity_normalize_status($row->status ?? 'open') : 'open';
+$autoCfg        = activity_auto_close_settings($row->meta ?? '');
+$autoCloseOn    = $mode === 'edit' ? $autoCfg['auto_close'] : true;
+$graceMinutes   = $mode === 'edit' ? $autoCfg['grace_minutes'] : ACTIVITY_DEFAULT_GRACE_MINUTES;
+$liveState      = $mode === 'edit' ? activity_state($row) : null;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -53,6 +61,9 @@ if (!empty($row->meta)) {
 .session-row:not(:last-child){border-bottom:1px solid #f1f5f9}
 .session-label{font-weight:600;color:#111827}
 .session-field label{font-size:.8rem;color:#6b7280;margin-bottom:4px;display:block}
+.availability-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid #f1f5f9;background:#fafbff;border-radius:14px 14px 0 0}
+.availability-head .session-label{font-weight:600}
+.custom-control-label{font-weight:400;color:#374151}
 
 /* mobile */
 @media (max-width: 768px){
@@ -191,6 +202,56 @@ if (!empty($row->meta)) {
     </div>
   </div>
 </div>
+
+                <!-- Availability: manual status + auto-close window -->
+                <div class="sessions-card mb-3">
+                  <div class="availability-head">
+                    <span class="session-label">Check-in availability</span>
+                    <?php if ($liveState): ?>
+                      <span class="badge badge-pill <?= activity_state_badge_class($liveState['state']) ?> text-uppercase">
+                        <?= htmlspecialchars($liveState['label'], ENT_QUOTES, 'UTF-8') ?>
+                      </span>
+                    <?php endif; ?>
+                  </div>
+
+                  <div class="session-row" style="grid-template-columns:160px 1fr 1fr">
+                    <div class="session-label">Status</div>
+                    <div class="session-field">
+                      <label>Manual override</label>
+                      <select name="status" id="status" class="form-control">
+                        <?php foreach ($statusOptions as $k => $labelText): ?>
+                          <option value="<?= $k ?>" <?= $currentStatus === $k ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($labelText, ENT_QUOTES, 'UTF-8') ?>
+                          </option>
+                        <?php endforeach; ?>
+                      </select>
+                      <small class="hint">Only <strong>Open</strong> accepts check-ins.</small>
+                    </div>
+                    <div class="session-field">
+                      <label>Grace period (minutes)</label>
+                      <input type="number" class="form-control" name="grace_minutes" id="grace_minutes"
+                             min="0" max="1440" step="5" value="<?= (int)$graceMinutes ?>">
+                      <small class="hint">Extra time allowed before start and after end.</small>
+                    </div>
+                  </div>
+
+                  <div class="session-row" style="grid-template-columns:160px 1fr">
+                    <div class="session-label">Auto-close</div>
+                    <div class="session-field">
+                      <div class="custom-control custom-switch">
+                        <!-- Unchecked checkboxes are not posted; this fallback loses to the
+                             checkbox below whenever it is checked, so 0/1 is always sent. -->
+                        <input type="hidden" name="auto_close" value="0">
+                        <input type="checkbox" class="custom-control-input" id="auto_close" name="auto_close" value="1"
+                               <?= $autoCloseOn ? 'checked' : '' ?>>
+                        <label class="custom-control-label" for="auto_close">
+                          Close check-ins automatically outside the activity's time window
+                        </label>
+                      </div>
+                      <small class="hint" id="autoCloseHint"></small>
+                    </div>
+                  </div>
+                </div>
 
                   <!-- Hidden: sessions JSON + derived top times for controller -->
                   <input type="hidden" name="meta" id="meta_json">
@@ -506,6 +567,58 @@ if (!allDay || !allDay.checked)
     loadMajorsForProgram(sel.value);
   }
   updatePreview();
+
+  /* ── Availability: spell out the resulting check-in window ───────────── */
+  const statusSel  = document.getElementById('status');
+  const autoClose  = document.getElementById('auto_close');
+  const graceInput = document.getElementById('grace_minutes');
+  const autoHint   = document.getElementById('autoCloseHint');
+
+  function fmtWindow(dateStr, timeStr, offsetMin){
+    if(!dateStr) return null;
+    const base = new Date(dateStr + 'T' + (timeStr || '00:00') + ':00');
+    if (isNaN(base.getTime())) return null;
+    base.setMinutes(base.getMinutes() + offsetMin);
+    return base.toLocaleString(undefined, {
+      month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit'
+    });
+  }
+
+  function updateAvailabilityHint(){
+    if(!autoHint) return;
+
+    if (statusSel && statusSel.value !== 'open'){
+      autoHint.textContent = 'Status is “' + statusSel.options[statusSel.selectedIndex].text +
+        '” — check-ins are blocked regardless of the time window.';
+      return;
+    }
+    if (autoClose && !autoClose.checked){
+      autoHint.textContent = 'Off — this activity stays open until someone closes it manually.';
+      return;
+    }
+
+    const grace  = Math.max(0, parseInt(graceInput && graceInput.value, 10) || 0);
+    const bounds = earliestLatestFromSessions();
+    const opens  = fmtWindow(date.value, bounds.earliest || '00:00', -grace);
+    const closes = fmtWindow(date.value, bounds.latest   || '23:59',  grace);
+
+    autoHint.textContent = (opens && closes)
+      ? 'Check-ins accepted ' + opens + ' → ' + closes + ' (includes ' + grace + ' min grace).'
+      : 'Pick a date and session times to see the resulting check-in window.';
+  }
+
+  [statusSel, autoClose, graceInput, date].forEach(function(el){
+    if(!el) return;
+    el.addEventListener('change', updateAvailabilityHint);
+    el.addEventListener('input',  updateAvailabilityHint);
+  });
+  ['am_in','am_out','pm_in','pm_out','eve_in','eve_out'].forEach(function(id){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('change', updateAvailabilityHint);
+    el.addEventListener('input',  updateAvailabilityHint);
+  });
+  updateAvailabilityHint();
 })();
 </script>
 
