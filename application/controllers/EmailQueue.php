@@ -59,32 +59,23 @@ class EmailQueue extends CI_Controller
 			$counts[(string) $r->status] = (int) $r->c;
 		}
 
+		$isAdmin = in_array($level, ['Admin', 'IT', 'Super Admin'], true);
+		$suspended = fbmso_mailqueue_suspended();
+
+		// Flash message from a redirect after retry/resume.
+		$flash = (string) $this->input->get('msg', true);
+
 		// Token/cron command intentionally hidden unless explicitly requested
 		// by an account that would be setting the cron job up.
 		$showCron = '';
-		$isAdmin  = in_array($level, ['Admin', 'IT', 'Super Admin'], true);
 		if ((string) $this->input->get('show_cron') === '1' && $isAdmin) {
-			$showCron = "\nCron (every 2 minutes):\n\n"
-				. "  */2 * * * * curl -s \"" . site_url('EmailQueue/process') . '?key=' . fbmso_mailqueue_token($this) . "\" > /dev/null 2>&1\n";
+			$showCron = "*/2 * * * * curl -s \""
+				. site_url('EmailQueue/process') . '?key=' . fbmso_mailqueue_token($this)
+				. "\" > /dev/null 2>&1";
 		}
 
-		// Retry link: only show to admins, and only when there is something
-		// actually stuck to retry. Clicking it flips failed rows back to
-		// pending so the next cron tick picks them up — no DB shell needed.
-		$retryLink = '';
-		if ($isAdmin && $counts['failed'] > 0) {
-			$retryLink = "\nRetry: " . site_url('EmailQueue/retry')
-				. "   (re-queues " . $counts['failed'] . " failed message" . ($counts['failed'] === 1 ? '' : 's') . ")\n";
-		}
-
-		$this->output->set_content_type('text/plain')->set_output(
-			"FBMSO Email Queue\n"
-			. "=================\n"
-			. "Queue: pending=" . $counts['pending'] . " sent=" . $counts['sent'] . " failed=" . $counts['failed'] . "\n"
-			. $this->_mailqueue_suspended_note()
-			. $this->_mailqueue_recent_errors()
-			. $retryLink
-			. $showCron
+		$this->output->set_content_type('text/html')->set_output(
+			$this->_render_page($counts, $level, $isAdmin, $suspended, $flash, $showCron)
 		);
 	}
 
@@ -104,10 +95,8 @@ class EmailQueue extends CI_Controller
 		$was = fbmso_mailqueue_suspended();
 		@unlink(fbmso_mailqueue_suspend_file());
 
-		$this->output->set_content_type('text/plain')->set_output(
-			($was ? "Cooldown cleared. The next cron run will retry.\n" : "Sender was not in cooldown.\n")
-			. "\n" . site_url('EmailQueue/key') . "\n"
-		);
+		$msg = $was ? 'cooldown_cleared' : 'not_suspended';
+		redirect('EmailQueue/key?msg=' . $msg);
 	}
 
 	/**
@@ -144,47 +133,249 @@ class EmailQueue extends CI_Controller
 
 		$affected = $this->db->affected_rows();
 
-		$this->output->set_content_type('text/plain')->set_output(
-			"Re-queued " . $affected . " message" . ($affected === 1 ? '' : 's')
-			. " — the next cron tick (within ~2 min) will retry.\n"
-			. "\n" . site_url('EmailQueue/key') . "\n"
-		);
+		$msg = $affected > 0
+			? 'retried_' . $affected
+			: 'retried_none';
+
+		redirect('EmailQueue/key?msg=' . $msg);
 	}
 
-	private function _mailqueue_suspended_note()
+	// --------------------------------------------------------------------
+	//  HTML rendering
+	// --------------------------------------------------------------------
+
+	/**
+	 * Builds the full HTML page. Kept inline so the controller stays
+	 * self-contained — this is a diagnostics page, not a themed view.
+	 */
+	private function _render_page(array $counts, $level, $isAdmin, $suspended, $flash, $showCron)
 	{
-		if (!fbmso_mailqueue_suspended()) {
-			return "Sender: active\n";
+		$esc = function ($s) {
+			return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
+		};
+
+		// ---- Flash banner -------------------------------------------------
+		$flashHtml = '';
+		if ($flash !== '') {
+			$flashMap = [
+				'cooldown_cleared' => ['ok',   'Cooldown cleared. The next cron run will retry.'],
+				'not_suspended'    => ['info', 'Sender was not in cooldown.'],
+			];
+			if (preg_match('/^retried_(\d+)$/', $flash, $m)) {
+				$n = (int) $m[1];
+				$flashMap[$flash] = ['ok', 'Re-queued ' . $n . ' message' . ($n === 1 ? '' : 's')
+					. ' — the next cron tick (within ~2 min) will retry.'];
+			} elseif ($flash === 'retried_none') {
+				$flashMap[$flash] = ['info', 'No failed messages to re-queue.'];
+			}
+
+			if (isset($flashMap[$flash])) {
+				list($kind, $text) = $flashMap[$flash];
+				$flashHtml = '<div class="flash ' . $kind . '">' . $esc($text) . '</div>';
+			}
 		}
-		$until = (int) @file_get_contents(fbmso_mailqueue_suspend_file());
-		return "Sender: COOLDOWN until " . date('Y-m-d H:i:s', $until)
-			. " (a send failed with a transient/rate-limit error - see below)\n";
+
+		// ---- Stat cards ---------------------------------------------------
+		$cards = '';
+		foreach (['pending' => 'Pending', 'sent' => 'Sent', 'failed' => 'Failed'] as $key => $label) {
+			$cards .= '<div class="card ' . $key . '">'
+				. '<div class="card-num">' . (int) $counts[$key] . '</div>'
+				. '<div class="card-label">' . $esc($label) . '</div>'
+				. '</div>';
+		}
+
+		// ---- Sender status ------------------------------------------------
+		if ($suspended) {
+			$until = (int) @file_get_contents(fbmso_mailqueue_suspend_file());
+			$senderHtml = '<span class="status cooldown">COOLDOWN until '
+				. $esc(date('Y-m-d H:i:s', $until))
+				. '</span><p class="muted">A send failed with a transient/rate-limit error. The sender is paused.</p>';
+		} else {
+			$senderHtml = '<span class="status active">Active</span>';
+		}
+
+		// ---- Action buttons (admin only) ---------------------------------
+		$actionsHtml = '';
+		if ($isAdmin) {
+			if ($suspended) {
+				$actionsHtml .= '<a class="btn btn-warm" href="' . site_url('EmailQueue/resume') . '">'
+					. 'Clear Cooldown</a>';
+			}
+			if ($counts['failed'] > 0) {
+				$label = 'Retry Failed (' . (int) $counts['failed'] . ')';
+				$actionsHtml .= '<a class="btn btn-primary" href="' . site_url('EmailQueue/retry') . '">'
+					. $esc($label) . '</a>';
+			}
+		}
+		$actionsHtml = $actionsHtml !== ''
+			? '<div class="actions">' . $actionsHtml . '</div>'
+			: '';
+
+		// ---- Recent errors ------------------------------------------------
+		$errorsHtml = $this->_render_recent_errors($esc);
+
+		// ---- Cron block (admin + ?show_cron=1) ---------------------------
+		$cronHtml = '';
+		if ($showCron !== '') {
+			$cronHtml = '<div class="section">'
+				. '<h2>Cron <span class="muted">(every 2 minutes)</span></h2>'
+				. '<pre>' . $esc($showCron) . '</pre>'
+				. '</div>';
+		}
+
+		// ---- Admin hint ---------------------------------------------------
+		$adminHint = $isAdmin
+			? '<p class="muted">Add <code>?show_cron=1</code> to the URL to reveal the cron command.</p>'
+			: '';
+
+		return '<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FBMSO Email Queue</title>
+<style>
+  :root {
+    --bg:#f4f6f9; --card:#fff; --border:#e2e8f0; --text:#1a202c;
+    --muted:#718096; --blue:#3b82f6; --blue-d:#2563eb;
+    --green:#16a34a; --green-bg:#dcfce7;
+    --red:#dc2626;  --red-bg:#fee2e2;
+    --amber:#d97706; --amber-bg:#fef3c7;
+    --info-bg:#e0f2fe;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.6;padding:20px}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:1.5rem;margin-bottom:4px}
+  h2{font-size:1.1rem;margin-bottom:10px}
+  .muted{color:var(--muted);font-weight:400;font-size:.9rem}
+  code{background:var(--border);padding:1px 5px;border-radius:4px;font-size:.85rem}
+
+  /* flash */
+  .flash{padding:12px 16px;border-radius:8px;margin-bottom:18px;font-size:.95rem}
+  .flash.ok{background:var(--green-bg);color:var(--green);border:1px solid #bbf7d0}
+  .flash.info{background:var(--info-bg);color:#0369a1;border:1px solid #bae6fd}
+
+  /* stat cards */
+  .cards{display:flex;gap:14px;margin:18px 0;flex-wrap:wrap}
+  .card{flex:1;min-width:120px;background:var(--card);border:1px solid var(--border);
+        border-radius:10px;padding:18px;text-align:center}
+  .card-num{font-size:2rem;font-weight:700;line-height:1}
+  .card-label{text-transform:uppercase;font-size:.75rem;letter-spacing:.05em;
+              color:var(--muted);margin-top:6px}
+  .card.pending .card-num{color:var(--blue)}
+  .card.sent    .card-num{color:var(--green)}
+  .card.failed  .card-num{color:var(--red)}
+
+  /* status pill */
+  .status{display:inline-block;padding:3px 12px;border-radius:999px;font-size:.85rem;font-weight:600}
+  .status.active{background:var(--green-bg);color:var(--green)}
+  .status.cooldown{background:var(--amber-bg);color:var(--amber)}
+
+  /* buttons */
+  .actions{display:flex;gap:10px;margin:18px 0;flex-wrap:wrap}
+  .btn{display:inline-block;padding:10px 20px;border-radius:8px;text-decoration:none;
+       font-size:.9rem;font-weight:600;cursor:pointer;transition:opacity .15s}
+  .btn:hover{opacity:.85}
+  .btn-primary{background:var(--blue);color:#fff}
+  .btn-warm{background:var(--amber);color:#fff}
+
+  /* sections */
+  .section{background:var(--card);border:1px solid var(--border);border-radius:10px;
+           padding:18px;margin-bottom:18px}
+  .section pre{background:#1e293b;color:#e2e8f0;padding:14px;border-radius:8px;
+               overflow-x:auto;font-size:.85rem;white-space:pre-wrap;word-break:break-all}
+
+  /* error table */
+  table{width:100%;border-collapse:collapse;font-size:.9rem}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  td .id{font-weight:700;color:var(--muted)}
+  td .badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.75rem;font-weight:600}
+  td .badge.failed{background:var(--red-bg);color:var(--red)}
+  td .badge.pending{background:#dbeafe;color:var(--blue-d)}
+  td .err{color:#475569;font-family:monospace;font-size:.8rem;word-break:break-word;
+          max-width:520px;display:block;margin-top:2px}
+  .retry-one{font-size:.8rem;color:var(--blue);text-decoration:none;margin-left:8px}
+  .retry-one:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Email Queue</h1>
+  <p class="muted">Logged in as ' . $esc($level) . '</p>
+
+  ' . $flashHtml . '
+
+  <div class="cards">' . $cards . '</div>
+
+  <div class="section">
+    <h2>Sender</h2>
+    ' . $senderHtml . '
+  </div>
+
+  ' . $actionsHtml . '
+
+  ' . $errorsHtml . '
+
+  ' . $cronHtml . '
+
+  ' . $adminHint . '
+</div>
+</body>
+</html>';
 	}
 
 	/**
 	 * The last error recorded against each stuck message. Without this the only
 	 * way to find out why the queue stalled is a direct database query.
+	 *
+	 * Returns an HTML <table> wrapped in a section card. When the viewer is an
+	 * admin, each row gets a per-row "retry" link so a single bad address can
+	 * be revived without re-queuing every failure.
 	 */
-	private function _mailqueue_recent_errors()
+	private function _render_recent_errors($esc)
 	{
 		$rows = $this->db->select('id, to_email, status, attempts, last_error')
 			->from('fbmso_email_queue')
 			->where_in('status', ['pending', 'failed'])
 			->where('last_error !=', '')
 			->order_by('id', 'DESC')
-			->limit(5)
+			->limit(10)
 			->get()->result();
 
 		if (!$rows) {
-			return '';
+			return '<div class="section"><h2>Recent Errors</h2><p class="muted">No errors recorded.</p></div>';
 		}
 
-		$out = "\nRecent errors\n-------------\n";
+		$level = trim((string) $this->session->userdata('level'));
+		$isAdmin = in_array($level, ['Admin', 'IT', 'Super Admin'], true);
+
+		$body = '';
 		foreach ($rows as $r) {
-			$out .= '#' . (int) $r->id . ' [' . $r->status . ', attempt ' . (int) $r->attempts . '] '
-				. $r->to_email . "\n    " . $r->last_error . "\n";
+			$retryLink = '';
+			if ($isAdmin && $r->status === 'failed') {
+				$retryLink = ' <a class="retry-one" href="'
+					. site_url('EmailQueue/retry?id=' . (int) $r->id)
+					. '">retry this</a>';
+			}
+
+			$body .= '<tr>'
+				. '<td><span class="id">#' . (int) $r->id . '</span></td>'
+				. '<td>' . $esc($r->to_email) . $retryLink . '</td>'
+				. '<td><span class="badge ' . $esc($r->status) . '">' . $esc($r->status) . '</span>'
+				. ' <span class="muted">attempt ' . (int) $r->attempts . '</span></td>'
+				. '<td><span class="err">' . $esc($r->last_error) . '</span></td>'
+				. '</tr>';
 		}
 
-		return $out;
+		return '<div class="section">
+			<h2>Recent Errors</h2>
+			<table>
+				<thead><tr><th>#</th><th>To</th><th>Status</th><th>Last Error</th></tr></thead>
+				<tbody>' . $body . '</tbody>
+			</table>
+		</div>';
 	}
 }
