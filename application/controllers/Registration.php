@@ -9,7 +9,6 @@ class Registration extends CI_Controller
         $this->load->model('RegistrationModel');
         $this->load->model('SettingsModel'); // for reCAPTCHA keys + school name
         $this->load->model('StudentModel');  // for dropdowns
-        $this->load->library('email');       // CI email (uses application/config/email.php)
         $this->load->helper(['url', 'security']);
         $this->load->database();
     }
@@ -323,11 +322,6 @@ class Registration extends CI_Controller
             // 4) Send email with login details
             $schoolName = $this->SettingsModel->getSchoolName();
 
-            $this->email->set_mailtype('html');
-            $this->email->from('no-reply@srmsportal.com', 'Attendance MS');
-            $this->email->to($email);
-            $this->email->subject('Attendance Monitoring System');
-
             $htmlMessage = '
             <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
                 <h2 style="color: #2b6cb0;">Welcome to Faculty of Business and Management <br>
@@ -349,11 +343,9 @@ class Registration extends CI_Controller
                 <hr style="margin-top: 40px;">
                 <p style="font-size: 12px; color: #888;">This is an automated message. Please do not reply to this email.</p>
             </div>';
-            $this->email->message($htmlMessage);
-
-            $sent = $this->email->send();
+            $sent = fbmso_mailqueue_push($this, $email, 'Attendance Monitoring System', $htmlMessage, $schoolName);
             if (!$sent) {
-                log_message('error', 'EMAIL SEND FAILED: ' . $this->email->print_debugger(['headers', 'subject', 'body']));
+                log_message('error', 'EMAIL QUEUE FAILED for new account ' . $studentNumber . ' <' . $email . '>');
 
                 if ($isAdminFlow) {
                     // The account WAS created — only the email failed. Go to the
@@ -376,13 +368,13 @@ class Registration extends CI_Controller
             }
             if ($isAdminFlow) {
                 // ✅ Admin created the account → stay in admin area with GREEN SweetAlert
-                $this->session->set_flashdata('success', 'Account created. Login credentials were emailed to the user.');
+                $this->session->set_flashdata('success', 'Account created. Login credentials are queued and will reach the user in a couple of minutes.');
                 return redirect('Page/profileList'); // or your admin list page
             } else {
                 // 🌐 Public self-signup → go to login with an INFO SweetAlert
                 $this->session->set_flashdata(
                     'info_message',
-                    'Registration successful. Check your email for login credentials.'
+                    'Registration successful. Your login credentials are on the way to your email.'
                 );
                 return redirect('login');
             }

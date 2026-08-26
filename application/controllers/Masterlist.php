@@ -1148,9 +1148,6 @@ public function bySY()
 
 		// Optional email (non-fatal)
 		if (!empty($email)) {
-			$this->load->config('email');
-			$this->load->library('email');
-
 			$msg  = 'Dear Student,<br><br>';
 			$msg .= 'You are now officially enrolled.<br>';
 			$msg .= "Course: <b>{$data['Course']}</b><br>";
@@ -1160,12 +1157,8 @@ public function bySY()
 			$msg .= "Sem/SY: <b>{$data['Semester']}, {$data['SY']}</b><br>";
 			$msg .= "Status: <b>{$data['Status']}</b><br><br>SRMS Online";
 
-			$this->email->from('no-reply@lxeinfotechsolutions.com', 'SRMS Online');
-			$this->email->to($email);
-			$this->email->subject('Enrollment Confirmation');
-			$this->email->message($msg);
-			// Suppress failures (don’t block the workflow)
-			@$this->email->send();
+			// Hand off to the queue; delivery never blocks the workflow.
+			fbmso_mailqueue_push($this, $email, 'Enrollment Confirmation', $msg);
 		}
 
 		$this->session->set_flashdata('success', 'Student successfully enrolled under your program.');

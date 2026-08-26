@@ -473,8 +473,10 @@ class MobileAuth extends MobileApi
             return $this->json(['ok' => true, 'message' => 'If that email exists, a temporary password has been sent.']);
         }
 
+        // Returns ['ok' => bool, 'message' => string] — a bare truthiness check
+        // on the array would always pass and report success on a failed reset.
         $sent = $this->Login_model->sendTemporaryPasswordForUser((string)($account['username'] ?? ''));
-        if (!$sent) {
+        if (empty($sent['ok'])) {
             return $this->json(['ok' => false, 'message' => 'Unable to send a reset email right now. Please try again later.'], 500);
         }
 

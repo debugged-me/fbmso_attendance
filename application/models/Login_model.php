@@ -208,38 +208,10 @@ class Login_model extends CI_Model
       ];
     }
 
-    $oldPasswordHash = (string)($user['password'] ?? '');
     $tempPassword = (string) random_int(10000000, 99999999);
-    $newPasswordHash = sha1($tempPassword);
-
-    $updated = $this->db
-      ->where('username', $user['username'])
-      ->update('o_users', ['password' => $newPasswordHash]);
-
-    if (!$updated) {
-      return [
-        'ok' => false,
-        'message' => 'Unable to reset password right now. Please try again.'
-      ];
-    }
 
     $schoolSettings = $this->db->get('o_srms_settings')->row();
     $schoolName = $schoolSettings ? $schoolSettings->SchoolName : 'School Records Management System';
-    $senderEmail = trim((string)$this->config->item('smtp_user'));
-    if ($senderEmail === '' || !filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
-      $senderEmail = 'fbmso@softtechco.biz';
-    }
-
-    $this->load->config('email');
-    $this->load->library('email');
-    $this->email->clear(true);
-    $this->email->set_mailtype('html');
-    if (method_exists($this->email, 'set_newline')) {
-      $this->email->set_newline("\r\n");
-    }
-    if (method_exists($this->email, 'set_crlf')) {
-      $this->email->set_crlf("\r\n");
-    }
 
     $loginUrl = rtrim((string) base_url('login'), '/');
 
@@ -267,27 +239,23 @@ class Login_model extends CI_Model
         </div>
       </div>';
 
-    $this->email->from($senderEmail, $schoolName);
-    if (method_exists($this->email, 'reply_to')) {
-      $this->email->reply_to($senderEmail, $schoolName);
-    }
-    $this->email->to((string)$user['email']);
-    $this->email->subject('Temporary Password - ' . $schoolName);
-    $this->email->message($mailMessage);
+    // Queue first, change the password only once the email is durably owned by
+    // the queue: a failed hand-off must never leave the account on a temporary
+    // password nobody has been told about.
+    $queued = fbmso_mailqueue_push(
+      $this,
+      (string)$user['email'],
+      'Temporary Password - ' . $schoolName,
+      $mailMessage,
+      $schoolName
+    );
 
-    $sent = $this->email->send(false);
+    $queuedId = $queued ? (int)$this->db->insert_id() : 0;
 
-    if (!$sent) {
-      if ($oldPasswordHash !== '') {
-        $this->db
-          ->where('username', $user['username'])
-          ->update('o_users', ['password' => $oldPasswordHash]);
-      }
-
+    if (!$queued) {
       log_message(
         'error',
-        'Forgot password temp email failed for ' . $user['username'] . ' <' . $user['email'] . '> using sender ' . $senderEmail . ': ' .
-          trim(strip_tags($this->email->print_debugger(['headers', 'subject'])))
+        'Forgot password: could not queue temp password email for ' . $user['username'] . ' <' . $user['email'] . '>; password left unchanged.'
       );
 
       return [
@@ -296,9 +264,26 @@ class Login_model extends CI_Model
       ];
     }
 
+    $updated = $this->db
+      ->where('username', $user['username'])
+      ->update('o_users', ['password' => sha1($tempPassword)]);
+
+    if (!$updated) {
+      // The queued email now advertises a password that was never applied.
+      // Drop it rather than mail out a credential that will not work.
+      if ($queuedId > 0) {
+        $this->db->where('id', $queuedId)->delete('fbmso_email_queue');
+      }
+
+      return [
+        'ok' => false,
+        'message' => 'Unable to reset password right now. Please try again.'
+      ];
+    }
+
     return [
       'ok' => true,
-      'message' => 'A temporary password has been sent to your email. Use it to sign in.'
+      'message' => 'A temporary password is on its way to your email. It usually arrives within a couple of minutes.'
     ];
   }
 

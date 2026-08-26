@@ -18,6 +18,7 @@ $route['Registration/getBarangaysByCity'] = 'Registration/getBarangaysByCity';
 $route['Registration/checkAvailability'] = 'Registration/checkAvailability';
 $route['Messaging/send'] = 'Messaging/send';
 $route['Messaging/get_conversation'] = 'Messaging/get_conversation';
+$route['email-test'] = 'EmailTest/index';
 $route['mass-announcement'] = 'MassAnnouncement/index';
 $route['mass-announcement/send'] = 'MassAnnouncement/send';
 $route['mass-announcement/sections'] = 'MassAnnouncement/sections';

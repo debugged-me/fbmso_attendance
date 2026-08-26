@@ -406,7 +406,7 @@ class Login extends CI_Controller
                 null,
                 ['password_reset' => !empty($sendResult['ok']), 'mode' => 'temporary_password_email'],
                 !empty($sendResult['ok']) ? 1 : 0,
-                !empty($sendResult['ok']) ? 'Temporary password email sent from forgot-password form' : 'Temporary password email failed from forgot-password form',
+                !empty($sendResult['ok']) ? 'Temporary password queued from forgot-password form' : 'Temporary password could not be queued from forgot-password form',
                 ['target_email' => $email]
             );
 

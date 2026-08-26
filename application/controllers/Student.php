@@ -629,20 +629,11 @@ class Student extends CI_Controller
           </div>
       </div>';
 
-    // Send email
-    $this->load->config('email');
-    $this->load->library('email');
-    $this->email->set_mailtype("html");
-
-    $this->email->from('no-reply@srmsportal.com', $schoolName);
-    $this->email->to($student->email);
-    $this->email->subject('Your Certificate of Registration');
-    $this->email->message($mail_message);
-
-    if ($this->email->send()) {
-      $this->session->set_flashdata('success', 'CoR sent to student email successfully.');
+    // Queue it; the EmailQueue cron sender delivers it.
+    if (fbmso_mailqueue_push($this, $student->email, 'Your Certificate of Registration', $mail_message, $schoolName)) {
+      $this->session->set_flashdata('success', 'CoR queued for delivery to ' . $student->email . '. It usually arrives within a couple of minutes.');
     } else {
-      $this->session->set_flashdata('danger', 'Failed to send CoR email. Please check configuration or image URL.');
+      $this->session->set_flashdata('danger', 'Failed to queue the CoR email. Please check the student\'s email address.');
     }
 
     redirect($_SERVER['HTTP_REFERER']);
@@ -768,7 +759,6 @@ class Student extends CI_Controller
 
   public function email_grades($student_number)
   {
-    $this->load->library('email');
     $this->load->model('StudentModel');
 
     $profile = $this->StudentModel->get_student_profile($student_number);
@@ -840,16 +830,10 @@ class Student extends CI_Controller
         </p>
     </div>';
 
-    $this->email->set_mailtype("html");
-    $this->email->from('no-reply@srmsportal.com', $schoolName);
-    $this->email->to($profile->email);
-    $this->email->subject('Report of Grades – ' . $schoolName);
-    $this->email->message($mail_message);
-
-    if ($this->email->send()) {
-      $this->session->set_flashdata('success', 'Report of Grades sent to student email: <strong>' . $profile->email . '</strong>');
+    if (fbmso_mailqueue_push($this, $profile->email, 'Report of Grades – ' . $schoolName, $mail_message, $schoolName)) {
+      $this->session->set_flashdata('success', 'Report of Grades queued for delivery to <strong>' . $profile->email . '</strong>.');
     } else {
-      $this->session->set_flashdata('danger', 'Failed to send Report of Grades email.');
+      $this->session->set_flashdata('danger', 'Failed to queue the Report of Grades email.');
     }
 
     redirect($_SERVER['HTTP_REFERER']);

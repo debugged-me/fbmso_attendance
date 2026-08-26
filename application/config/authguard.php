@@ -50,6 +50,13 @@ $config['authguard_public'] = array(
     'attendance/consume',
     'attendance/checkin',
 
+    // --- Mail queue cron runner -----------------------------------------
+    // EmailQueue/process authenticates with its own shared token
+    // (hash_equals against fbmso_mailqueue_token) and is called by cron with
+    // no session. EmailQueue/key is deliberately NOT public: it stays behind
+    // the session gate so the token is only visible to signed-in staff.
+    'emailqueue/process',
+
     // --- Mobile API (native Flutter app) --------------------------------
     // The entire /api/mobile/* namespace is bearer-token authenticated
     // inside each controller (MobileAuth, MobileAttendance, ...). It does

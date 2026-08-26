@@ -1363,10 +1363,7 @@ class Page extends CI_Controller
 					'<div class="alert alert-success text-center"><b>Your data has been submitted successfully for validation.</b></div>'
 				);
 
-				// Email Notification (unchanged)
-				$this->load->config('email');
-				$this->load->library('email');
-
+				// Email Notification (queued; the cron sender delivers it)
 				$mail_message  = 'Dear ' . $fname . ',<br><br>';
 				$mail_message .= 'Your enrollment data has been submitted for validation.<br>';
 				$mail_message .= 'Course: <b>' . $Course . '</b><br>';
@@ -1377,11 +1374,7 @@ class Page extends CI_Controller
 				$mail_message .= 'You will be notified once validated.<br><br>';
 				$mail_message .= 'Thanks & Regards,<br>SRMS - Online';
 
-				$this->email->from('no-reply@srmsportal.com', 'SRMS Online Team')
-					->to($email)
-					->subject('Enrollment')
-					->message($mail_message)
-					->send();
+				fbmso_mailqueue_push($this, $email, 'Enrollment', $mail_message);
 
 				redirect('Page/enrollment');
 			}
@@ -1473,9 +1466,6 @@ class Page extends CI_Controller
 					'SY'            => $data['SY']
 				])->update('online_enrollment', ['enrolStatus' => 'Enrolled']);
 
-				$this->load->config('email');
-				$this->load->library('email');
-
 				$mail_message = 'Dear ' . $data['StudentNumber'] . ",<br><br>"; // You may replace with actual name if available
 				$mail_message .= "You are now officially enrolled.<br>";
 				$mail_message .= "Course: <b>{$data['Course']}</b><br>";
@@ -1486,11 +1476,7 @@ class Page extends CI_Controller
 				$mail_message .= "Status: <b>Validated</b><br><br>";
 				$mail_message .= "Thanks & Regards,<br>SRMS - Online";
 
-				$this->email->from('no-reply@lxeinfotechsolutions.com', 'SRMS Online Team');
-				$this->email->to($email);
-				$this->email->subject('Enrollment');
-				$this->email->message($mail_message);
-				$this->email->send();
+				fbmso_mailqueue_push($this, $email, 'Enrollment', $mail_message);
 
 				$this->session->set_flashdata('success', '<div class="alert alert-success text-center"><b>Student successfully enrolled.</b></div>');
 				redirect('Masterlist/enrolledList');
@@ -2455,20 +2441,14 @@ class Page extends CI_Controller
 				redirect('Page/profileList');
 			} else {
 				$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Uploaded Succesfully!</b></div>');
-				//Email Notification
-				$this->load->config('email');
-				$this->load->library('email');
+				//Email Notification (queued)
 				$mail_message = 'Dear ' . $FName . ',' . "\r\n";
 				$mail_message .= '<br><br>Thank you for submitting/uploading your requirements.' . "\r\n";
 
 				$mail_message .= '<br><br>Thanks & Regards,';
 				$mail_message .= '<br>SRMS - Online';
 
-				$this->email->from('no-reply@lxeinfotechsolutions.com', 'SRMS Online Team')
-					->to($email)
-					->subject('Enrollment')
-					->message($mail_message);
-				$this->email->send();
+				fbmso_mailqueue_push($this, $email, 'Enrollment', $mail_message);
 				redirect('Page/studentsprofile');
 			}
 		}
@@ -3404,50 +3384,10 @@ class Page extends CI_Controller
   </table>
 </div>';
 
-			// Send (robust)
-			$this->load->config('email');
-			$this->load->library('email');
-
-			$emailConfig = $this->config->item('email'); // if SMTP config is an array
-			if (is_array($emailConfig)) {
-				$this->email->initialize($emailConfig);
-			}
-			if (method_exists($this->email, 'set_mailtype')) $this->email->set_mailtype('html');
-			if (method_exists($this->email, 'set_newline'))  $this->email->set_newline("\r\n");
-			if (method_exists($this->email, 'set_crlf'))     $this->email->set_crlf("\r\n");
-
-			$this->email->clear(true);
-			$this->email->from('no-reply@srmsportal.com', $schoolName);
-			$this->email->to($email);
-			$this->email->subject($subject);
-			$this->email->message($mail_message);
-
-			$sent = $this->email->send(false);
-			if (!$sent) {
-				$debug = $this->email->print_debugger(['headers', 'subject', 'body']);
-				log_message('error', '[EmailFailure] acceeptPayment(): ' . $debug);
-
-				// Plain text fallback
-				$fallback = "Hello {$studentFullName},\n\n"
-					. "Your payment has been VERIFIED. Details:\n\n"
-					. "Official Receipt No.: {$ORNumber}\n"
-					. "Reference No.: {$refNo}\n"
-					. "Student Number: {$StudentNumber}\n"
-					. "Description: {$description}\n"
-					. "Amount: {$amountDisp}\n"
-					. "School Year / Term: {$SY} — {$Sem}\n"
-					. "Payment Date: {$createdDisp} (Asia/Manila)\n"
-					. "Status: VERIFIED\n\n"
-					. "{$schoolName} • This is an automated message, please do not reply.";
-				$this->email->clear(true);
-				if (is_array($emailConfig)) $this->email->initialize($emailConfig);
-				if (method_exists($this->email, 'set_newline')) $this->email->set_newline("\r\n");
-				if (method_exists($this->email, 'set_crlf'))    $this->email->set_crlf("\r\n");
-				$this->email->from('no-reply@srmsportal.com', $schoolName);
-				$this->email->to($email);
-				$this->email->subject($subject);
-				$this->email->message($fallback);
-				$this->email->send();
+			// Queue it; the EmailQueue cron sender handles SMTP, retries and the
+			// Brevo relay fallback, so a slow mail host cannot stall verification.
+			if (!fbmso_mailqueue_push($this, $email, $subject, $mail_message, $schoolName)) {
+				log_message('error', '[EmailQueue] acceeptPayment(): could not queue receipt for OR ' . $ORNumber . ' <' . $email . '>');
 			}
 		}
 		// ================== END EMAIL NOTIFICATION ==================
@@ -3544,9 +3484,7 @@ class Page extends CI_Controller
 				$que = $this->db->query("insert into atrail values('','Created Student''s Profile and User Account','$AdmissionDate','$now','$Encoder','$StudentNumber')");
 				$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Profile has been saved successfully.</b></div>');
 
-				//Email Notification
-				$this->load->config('email');
-				$this->load->library('email');
+				//Email Notification (queued)
 				$mail_message = 'Dear ' . $FirstName . ',' . "\r\n";
 				$mail_message .= '<br><br>Your profile is now encoded to SRMS. Please take note of the following:' . "\r\n";
 				$mail_message .= '<br>Username: <b>' . $StudentNumber . '</b>' . "\r\n";
@@ -3555,11 +3493,7 @@ class Page extends CI_Controller
 				$mail_message .= '<br><br>Thanks & Regards,';
 				$mail_message .= '<br>SRMS - Online';
 
-				$this->email->from('no-reply@srmsportal.com', 'SRMS Online Team')
-					->to($email)
-					->subject('Account Created')
-					->message($mail_message);
-				$this->email->send();
+				fbmso_mailqueue_push($this, $email, 'Account Created', $mail_message);
 
 				redirect('Page/profileList');
 			}
@@ -3687,11 +3621,7 @@ class Page extends CI_Controller
 			]);
 
 
-			// Load email settings
-			$this->load->config('email');
-			$this->load->library('email');
-			$this->email->set_mailtype("html"); // Ensure HTML format
-
+			// Email notification (queued)
 			$mail_message = '
 			<div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px; color: #333;">
 				<div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 6px; box-shadow: 0 0 10px rgba(0,0,0,0.05); padding: 30px;">
@@ -3727,11 +3657,7 @@ class Page extends CI_Controller
 			</div>';
 
 
-			$this->email->from('no-reply@srmsportal.com', $schoolName . ' Online Team');
-			$this->email->to($empEmail);
-			$this->email->subject('Your ' . $schoolName . ' Account Has Been Created');
-			$this->email->message($mail_message);
-			@$this->email->send();
+			fbmso_mailqueue_push($this, $empEmail, 'Your ' . $schoolName . ' Account Has Been Created', $mail_message, $schoolName);
 
 
 			redirect('Page/employeeList');
@@ -4909,43 +4835,6 @@ class Page extends CI_Controller
 
 		$targetUsername = (string)$user->username;
 
-		// Update password (always update by actual username from fetched row).
-		$ok = $this->db->where('username', $targetUsername)->update('o_users', ['password' => $hashedPassword]);
-
-		// AUDIT: unified audit (no password in logs)
-		$this->AuditLogModel->write(
-			'update',
-			'User Accounts',
-			'o_users',
-			$targetUsername,
-			null,
-			[
-				'password_reset' => true,
-				'email_to' => $user->email,
-				'reset_by' => $id,
-				'scope' => $studentOnly ? 'student' : 'user'
-			],
-			$ok ? 1 : 0,
-			$ok ? 'Reset user password' : 'Failed to reset user password'
-		);
-
-		// Send email (your existing email content)
-		$this->load->config('email');
-		$this->load->library('email');
-		$senderEmail = trim((string)$this->config->item('smtp_user'));
-		if ($senderEmail === '' || !filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
-			$senderEmail = 'fbmso@softtechco.biz';
-		}
-
-		$this->email->set_mailtype("html");
-		if (method_exists($this->email, 'set_newline')) {
-			$this->email->set_newline("\r\n");
-		}
-		if (method_exists($this->email, 'set_crlf')) {
-			$this->email->set_crlf("\r\n");
-		}
-		$this->email->clear(true);
-
 		$mail_message = '
 <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
   <div style="max-width: 600px; margin: auto; background: white; border-radius: 6px; padding: 30px;">
@@ -4966,33 +4855,59 @@ class Page extends CI_Controller
   </div>
 </div>';
 
-		$this->email->from($senderEmail, $schoolName);
-		if (method_exists($this->email, 'reply_to')) {
-			$this->email->reply_to($senderEmail, $schoolName);
-		}
-		$this->email->to($user->email);
-		$this->email->subject('Your Password Has Been Reset');
-		$this->email->message($mail_message);
-		$sent = $this->email->send(false);
+		// Queue first, change the password only once the email is durably owned
+		// by the queue: a failed hand-off must never leave the account on a
+		// password nobody has been told about.
+		$queued = fbmso_mailqueue_push($this, (string)$user->email, 'Your Password Has Been Reset', $mail_message, $schoolName);
+		$queuedId = $queued ? (int)$this->db->insert_id() : 0;
 
-		if (!$sent) {
-			log_message(
-				'error',
-				'ProfileList password reset email failed for ' . $targetUsername . ' <' . $user->email . '> using sender ' . $senderEmail . ': ' .
-					trim(strip_tags($this->email->print_debugger(['headers', 'subject'])))
+		if (!$queued) {
+			$this->AuditLogModel->write(
+				'update',
+				'User Accounts',
+				'o_users',
+				$targetUsername,
+				null,
+				['password_reset' => false, 'email_to' => $user->email, 'reset_by' => $id, 'scope' => $studentOnly ? 'student' : 'user'],
+				0,
+				'Failed to queue password reset email; password left unchanged'
 			);
+			$this->session->set_flashdata('danger', 'Password reset failed: the notification email could not be queued. Password was left unchanged.');
+			return redirect($redirectTo);
 		}
+
+		// Update password (always update by actual username from fetched row).
+		$ok = $this->db->where('username', $targetUsername)->update('o_users', ['password' => $hashedPassword]);
+
+		if (!$ok && $queuedId > 0) {
+			// The queued email advertises a password that was never applied.
+			$this->db->where('id', $queuedId)->delete('fbmso_email_queue');
+		}
+
+		// AUDIT: unified audit (no password in logs)
+		$this->AuditLogModel->write(
+			'update',
+			'User Accounts',
+			'o_users',
+			$targetUsername,
+			null,
+			[
+				'password_reset' => (bool)$ok,
+				'email_to' => $user->email,
+				'email_queued' => (bool)$ok,
+				'reset_by' => $id,
+				'scope' => $studentOnly ? 'student' : 'user'
+			],
+			$ok ? 1 : 0,
+			$ok ? 'Reset user password (email queued)' : 'Failed to reset user password'
+		);
 
 		if (!$ok) {
 			$this->session->set_flashdata('danger', 'Password reset failed. Please try again.');
 			return redirect($redirectTo);
 		}
 
-		if ($sent) {
-			$this->session->set_flashdata('success', "Password reset for {$targetUsername}. The password email was submitted to {$user->email}.");
-		} else {
-			$this->session->set_flashdata('danger', "Password reset for {$targetUsername}, but email sending failed. Check mail settings/logs.");
-		}
+		$this->session->set_flashdata('success', "Password reset for {$targetUsername}. The new password is queued for delivery to {$user->email} and usually arrives within a couple of minutes.");
 
 		return redirect($redirectTo);
 	}
@@ -5383,9 +5298,7 @@ class Page extends CI_Controller
 				$que = $this->db->query("insert into atrail values('','Requested a Document','$dateReq','$now','$id','$id')");
 				$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Your request has been submitted.</b></div>');
 
-				//Email Notification
-				$this->load->config('email');
-				$this->load->library('email');
+				//Email Notification (queued)
 				$mail_message = 'Dear ' . $fname . ',' . "\r\n";
 				$mail_message .= '<br><br>Your request with tracking number <b>' . $trackingNo . ' </b>has been submitted.' . "\r\n";
 				$mail_message .= '<br><br>Login to your portal to check the status of your request.' . "\r\n";
@@ -5393,11 +5306,7 @@ class Page extends CI_Controller
 				$mail_message .= '<br><br>Thanks & Regards,';
 				$mail_message .= '<br>SRMS - Online';
 
-				$this->email->from('no-reply@lxeinfotechsolutions.com', 'SRMS Online Team')
-					->to($email)
-					->subject('Online Request')
-					->message($mail_message);
-				$this->email->send();
+				fbmso_mailqueue_push($this, $email, 'Online Request', $mail_message);
 				if ($this->session->userdata('level') === 'Student') {
 					redirect('Page/student');
 				} else {
@@ -5604,10 +5513,7 @@ class Page extends CI_Controller
 			$Semester = $this->input->post('Semester');
 			$SY = $this->input->post('SY');
 
-			// Email notification
-			$this->load->config('email');
-			$this->load->library('email');
-
+			// Email notification (queued)
 			$mail_message = 'Dear ' . $FName . ",<br><br>";
 			$mail_message .= "Your enrollment details have been updated.<br>";
 			$mail_message .= "Course: <b>{$updateData['Course']}</b><br>";
@@ -5618,11 +5524,7 @@ class Page extends CI_Controller
 			$mail_message .= "Status: <b>Validated</b><br><br>";
 			$mail_message .= "Thanks & Regards,<br>SRMS - Online";
 
-			$this->email->from('no-reply@lxeinfotechsolutions.com', 'SRMS Online Team');
-			$this->email->to($email);
-			$this->email->subject('Enrollment Update');
-			$this->email->message($mail_message);
-			$this->email->send();
+			fbmso_mailqueue_push($this, $email, 'Enrollment Update', $mail_message);
 
 			// Set flash message and redirect
 			$this->session->set_flashdata('success', '<div class="alert alert-success text-center"><b>Enrollment details have been updated successfully.</b></div>');
@@ -5695,10 +5597,7 @@ class Page extends CI_Controller
 			$Semester = $this->input->post('Semester');
 			$SY = $this->input->post('SY');
 
-			// Email notification
-			$this->load->config('email');
-			$this->load->library('email');
-
+			// Email notification (queued)
 			$mail_message = 'Dear ' . $FName . ",<br><br>";
 			$mail_message .= "Your enrollment details have been updated.<br>";
 			$mail_message .= "Course: <b>{$updateData['Course']}</b><br>";
@@ -5709,11 +5608,7 @@ class Page extends CI_Controller
 			$mail_message .= "Status: <b>Validated</b><br><br>";
 			$mail_message .= "Thanks & Regards,<br>SRMS - Online";
 
-			$this->email->from('no-reply@lxeinfotechsolutions.com', 'SRMS Online Team');
-			$this->email->to($email);
-			$this->email->subject('Enrollment Update');
-			$this->email->message($mail_message);
-			$this->email->send();
+			fbmso_mailqueue_push($this, $email, 'Enrollment Update', $mail_message);
 
 			// Set flash message and redirect
 			$this->session->set_flashdata('success', 'Enrollment details have been updated successfully.');

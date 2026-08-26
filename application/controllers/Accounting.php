@@ -5,7 +5,6 @@ class Accounting extends CI_Controller
 {
 	private $allowedLevels = ['Admin', 'Accounting'];
 	private $receiptSettingsCache = null;
-	private $receiptBrevoSettingsCache = null;
 
 	public function __construct()
 	{
@@ -631,198 +630,6 @@ class Accounting extends CI_Controller
 		return $this->receiptSettingsCache;
 	}
 
-	private function paymentEmailConfig()
-	{
-		$this->load->config('email');
-
-		return [
-			'protocol' => (string)$this->config->item('protocol'),
-			'smtp_host' => (string)$this->config->item('smtp_host'),
-			'smtp_user' => (string)$this->config->item('smtp_user'),
-			'smtp_pass' => (string)$this->config->item('smtp_pass'),
-			'smtp_port' => (int)$this->config->item('smtp_port'),
-			'smtp_crypto' => (string)$this->config->item('smtp_crypto'),
-			'smtp_timeout' => (int)$this->config->item('smtp_timeout'),
-			'mailtype' => (string)$this->config->item('mailtype'),
-			'charset' => (string)$this->config->item('charset'),
-			'newline' => (string)$this->config->item('newline'),
-			'crlf' => (string)$this->config->item('crlf'),
-			'wordwrap' => (bool)$this->config->item('wordwrap'),
-		];
-	}
-
-	private function receiptBrevoSettings($receiptSettings = null)
-	{
-		if ($this->receiptBrevoSettingsCache !== null) {
-			return $this->receiptBrevoSettingsCache;
-		}
-
-		if ($receiptSettings === null) {
-			$receiptSettings = $this->getReceiptSettings();
-		}
-
-		$section = 'mass_announcement_email';
-		$dbSettings = $this->SettingsModel->getMassAnnouncementEmailSettings();
-		$dbSettings = $dbSettings ? (array)$dbSettings : [];
-		$senderNameFallback = trim((string)($receiptSettings->SchoolName ?? 'School Records Management System'));
-
-		$this->receiptBrevoSettingsCache = [
-			'brevo_api_url' => trim((string)($dbSettings['brevo_api_url'] ?? $this->config->item('mass_announcement_brevo_url', $section) ?? 'https://api.brevo.com/v3/smtp/email')),
-			'brevo_api_key' => trim((string)($dbSettings['brevo_api_key'] ?? $this->config->item('mass_announcement_brevo_api_key', $section) ?? '')),
-			'sender_email' => trim((string)($dbSettings['sender_email'] ?? $this->config->item('mass_announcement_sender_email', $section) ?? '')),
-			'sender_name' => trim((string)($dbSettings['sender_name'] ?? $this->config->item('mass_announcement_sender_name', $section) ?? $senderNameFallback)),
-		];
-
-		return $this->receiptBrevoSettingsCache;
-	}
-
-	private function hasReceiptBrevoSettings(array $settings)
-	{
-		return (($settings['sender_email'] ?? '') !== '')
-			&& filter_var((string)($settings['sender_email'] ?? ''), FILTER_VALIDATE_EMAIL)
-			&& (($settings['brevo_api_url'] ?? '') !== '')
-			&& filter_var((string)($settings['brevo_api_url'] ?? ''), FILTER_VALIDATE_URL)
-			&& (($settings['brevo_api_key'] ?? '') !== '');
-	}
-
-	private function buildPlainTextMessage($messageHtml)
-	{
-		$text = html_entity_decode(strip_tags((string)$messageHtml), ENT_QUOTES, 'UTF-8');
-		$text = preg_replace("/\R{3,}/", "\n\n", (string)$text);
-		return trim((string)$text);
-	}
-
-	private function receiptRecipientName($payment)
-	{
-		$lastName = trim((string)($payment->LastName ?? ''));
-		$firstName = trim((string)($payment->FirstName ?? ''));
-		$middleName = trim((string)($payment->MiddleName ?? ''));
-
-		$name = trim($lastName . ', ' . $firstName, ', ');
-		if ($middleName !== '') {
-			$name .= ' ' . strtoupper(substr($middleName, 0, 1)) . '.';
-		}
-
-		return trim($name, ', ');
-	}
-
-	private function fastReceiptTimeout($timeout)
-	{
-		$timeout = (int)$timeout;
-		if ($timeout <= 0) {
-			return 6;
-		}
-
-		return max(4, min($timeout, 6));
-	}
-
-	private function sendReceiptViaSmtp($recipientEmail, $subject, $messageHtml, $schoolName, array $emailConfig)
-	{
-		$this->load->library('email');
-		$this->email->clear(true);
-
-		$emailConfig['smtp_timeout'] = $this->fastReceiptTimeout((int)($emailConfig['smtp_timeout'] ?? 0));
-		$this->email->initialize($emailConfig);
-		if (method_exists($this->email, 'set_mailtype')) {
-			$this->email->set_mailtype('html');
-		}
-		if (method_exists($this->email, 'set_newline')) {
-			$this->email->set_newline((string)($emailConfig['newline'] ?? "\r\n"));
-		}
-		if (method_exists($this->email, 'set_crlf')) {
-			$this->email->set_crlf((string)($emailConfig['crlf'] ?? "\r\n"));
-		}
-
-		$fromEmail = trim((string)($emailConfig['smtp_user'] ?? ''));
-		if ($fromEmail === '' || !filter_var($fromEmail, FILTER_VALIDATE_EMAIL)) {
-			$fromEmail = 'no-reply@localhost';
-		}
-
-		$this->email->from($fromEmail, $schoolName);
-		$this->email->to($recipientEmail);
-		$this->email->subject($subject);
-		$this->email->message($messageHtml);
-
-		$sent = $this->email->send(false);
-		if ($sent) {
-			return [
-				'ok' => true,
-				'transport' => 'smtp',
-				'message' => '',
-			];
-		}
-
-		return [
-			'ok' => false,
-			'transport' => 'smtp',
-			'message' => trim(strip_tags($this->email->print_debugger(['headers', 'subject']))),
-		];
-	}
-
-	private function sendReceiptViaBrevoApi($recipientEmail, $recipientName, $subject, $messageHtml, $messageText, array $settings)
-	{
-		if (!function_exists('curl_init')) {
-			return ['ok' => false, 'transport' => 'brevo_api', 'message' => 'cURL is not available on this PHP server.'];
-		}
-
-		$payload = [
-			'sender' => [
-				'email' => $settings['sender_email'],
-				'name' => $settings['sender_name'],
-			],
-			'to' => [[
-				'email' => $recipientEmail,
-				'name' => $recipientName !== '' ? $recipientName : $recipientEmail,
-			]],
-			'subject' => $subject,
-			'htmlContent' => $messageHtml,
-			'textContent' => $messageText,
-		];
-
-		$body = json_encode($payload);
-		if ($body === false) {
-			return ['ok' => false, 'transport' => 'brevo_api', 'message' => 'Unable to encode the Brevo email payload.'];
-		}
-
-		$ch = curl_init($settings['brevo_api_url']);
-		curl_setopt_array($ch, [
-			CURLOPT_POST => true,
-			CURLOPT_RETURNTRANSFER => true,
-			CURLOPT_HTTPHEADER => [
-				'Accept: application/json',
-				'Content-Type: application/json',
-				'api-key: ' . $settings['brevo_api_key'],
-			],
-			CURLOPT_POSTFIELDS => $body,
-			CURLOPT_CONNECTTIMEOUT => 4,
-			CURLOPT_TIMEOUT => 12,
-		]);
-
-		$response = curl_exec($ch);
-		$curlError = curl_error($ch);
-		$statusCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-		curl_close($ch);
-
-		if ($response === false) {
-			return ['ok' => false, 'transport' => 'brevo_api', 'message' => 'Brevo request failed: ' . $curlError];
-		}
-
-		if ($statusCode >= 200 && $statusCode < 300) {
-			return ['ok' => true, 'transport' => 'brevo_api', 'message' => ''];
-		}
-
-		$responseText = trim(strip_tags((string)$response));
-		if ($responseText !== '') {
-			$responseText = substr($responseText, 0, 200);
-		}
-
-		return [
-			'ok' => false,
-			'transport' => 'brevo_api',
-			'message' => 'Brevo API returned HTTP ' . $statusCode . ($responseText !== '' ? ': ' . $responseText : '.'),
-		];
-	}
-
 	private function buildReceiptEmailPayment(array $paymentData, $student)
 	{
 		$studentData = is_object($student) ? get_object_vars($student) : (array)$student;
@@ -862,58 +669,30 @@ class Accounting extends CI_Controller
 		$schoolName = trim((string)($settings->SchoolName ?? 'School Records Management System'));
 		$subject = 'Official Receipt #' . trim((string)($payment->ORNumber ?? '')) . ' - ' . $schoolName;
 		$message = $this->buildReceiptEmailHtml($payment, $settings);
-		$messageText = $this->buildPlainTextMessage($message);
-		$recipientName = $this->receiptRecipientName($payment);
-		$emailConfig = $this->paymentEmailConfig();
-		$primaryResult = $this->sendReceiptViaSmtp($recipientEmail, $subject, $message, $schoolName, $emailConfig);
-		if (!empty($primaryResult['ok'])) {
-			return [
-				'attempted' => true,
-				'sent' => true,
-				'email' => $recipientEmail,
-				'transport' => 'smtp',
-				'fallback_used' => false,
-				'message' => 'Receipt emailed to ' . $recipientEmail . '.',
-			];
-		}
 
-		log_message('error', 'Primary receipt email send failed for payment ID ' . (int)($payment->ID ?? 0) . ': ' . (string)($primaryResult['message'] ?? 'Unknown SMTP error.'));
-
-		$brevoSettings = $this->receiptBrevoSettings($settings);
-		if ($this->hasReceiptBrevoSettings($brevoSettings)) {
-			$fallbackResult = $this->sendReceiptViaBrevoApi($recipientEmail, $recipientName, $subject, $message, $messageText, $brevoSettings);
-			if (!empty($fallbackResult['ok'])) {
-				log_message('info', 'Receipt email for payment ID ' . (int)($payment->ID ?? 0) . ' was sent through Brevo fallback.');
-
-				return [
-					'attempted' => true,
-					'sent' => true,
-					'email' => $recipientEmail,
-					'transport' => 'brevo_api',
-					'fallback_used' => true,
-					'message' => 'Receipt emailed to ' . $recipientEmail . ' via Brevo fallback.',
-				];
-			}
-
-			log_message('error', 'Brevo fallback receipt email send failed for payment ID ' . (int)($payment->ID ?? 0) . ': ' . (string)($fallbackResult['message'] ?? 'Unknown Brevo error.'));
+		// Queued, not sent inline: the EmailQueue cron sender owns SMTP, the
+		// Brevo relay fallback and the retries, so saving a payment never waits
+		// on the mail host.
+		if (!fbmso_mailqueue_push($this, $recipientEmail, $subject, $message, $schoolName)) {
+			log_message('error', 'Could not queue receipt email for payment ID ' . (int)($payment->ID ?? 0) . ' <' . $recipientEmail . '>');
 
 			return [
 				'attempted' => true,
 				'sent' => false,
 				'email' => $recipientEmail,
-				'transport' => 'brevo_api',
-				'fallback_used' => true,
-				'message' => 'Receipt email could not be sent. SMTP failed and Brevo fallback also failed.',
+				'transport' => 'queue',
+				'fallback_used' => false,
+				'message' => 'Receipt email could not be queued. Please try resending it from the payment list.',
 			];
 		}
 
 		return [
 			'attempted' => true,
-			'sent' => false,
+			'sent' => true,
 			'email' => $recipientEmail,
-			'transport' => 'smtp',
+			'transport' => 'queue',
 			'fallback_used' => false,
-			'message' => 'Receipt email could not be sent. SMTP failed and Brevo fallback is not configured.',
+			'message' => 'Receipt queued for delivery to ' . $recipientEmail . '. It usually arrives within a couple of minutes.',
 		];
 	}
 
