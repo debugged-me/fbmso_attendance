@@ -299,7 +299,14 @@ if (!function_exists('fbmso_mailqueue_deliver'))
             return [false, $source . ': missing_mail_config'];
         }
 
+        // Load MY_Email (subclass) so we can force-close any stale SMTP socket
+        // before re-initializing with a different profile. Without this, a
+        // failed AUTH on profile A leaves its socket open and profile B's
+        // credentials get sent to profile A's server -> "535 5.7.8".
         $ci->load->library('email');
+        if (method_exists($ci->email, 'disconnect')) {
+            $ci->email->disconnect();
+        }
         $ci->email->clear(true);
         $ci->email->initialize($mailConfig);
 

@@ -1,6 +1,6 @@
 {
-    "name": "flutter_attendance",
-    "short_name": "flutter_attendance",
+    "name": "Attendance Portal",
+    "short_name": "Attendance Portal",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
