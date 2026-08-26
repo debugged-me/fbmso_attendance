@@ -72,7 +72,30 @@ class EmailQueue extends CI_Controller
 			. "=================\n"
 			. "Queue: pending=" . $counts['pending'] . " sent=" . $counts['sent'] . " failed=" . $counts['failed'] . "\n"
 			. $this->_mailqueue_suspended_note()
+			. $this->_mailqueue_recent_errors()
 			. $showCron
+		);
+	}
+
+	/**
+	 * Clears the cooldown flag so the next cron run tries again immediately.
+	 * Useful after fixing the SMTP settings that caused it — otherwise you wait
+	 * out the full window for no reason.
+	 */
+	public function resume()
+	{
+		$level = trim((string) $this->session->userdata('level'));
+		if (!in_array($level, ['Admin', 'IT', 'Super Admin'], true)) {
+			show_error('Forbidden', 403);
+			return;
+		}
+
+		$was = fbmso_mailqueue_suspended();
+		@unlink(fbmso_mailqueue_suspend_file());
+
+		$this->output->set_content_type('text/plain')->set_output(
+			($was ? "Cooldown cleared. The next cron run will retry.\n" : "Sender was not in cooldown.\n")
+			. "\n" . site_url('EmailQueue/key') . "\n"
 		);
 	}
 
@@ -82,6 +105,34 @@ class EmailQueue extends CI_Controller
 			return "Sender: active\n";
 		}
 		$until = (int) @file_get_contents(fbmso_mailqueue_suspend_file());
-		return "Sender: COOLDOWN until " . date('Y-m-d H:i:s', $until) . " (provider rate limit detected)\n";
+		return "Sender: COOLDOWN until " . date('Y-m-d H:i:s', $until)
+			. " (a send failed with a transient/rate-limit error - see below)\n";
+	}
+
+	/**
+	 * The last error recorded against each stuck message. Without this the only
+	 * way to find out why the queue stalled is a direct database query.
+	 */
+	private function _mailqueue_recent_errors()
+	{
+		$rows = $this->db->select('id, to_email, status, attempts, last_error')
+			->from('fbmso_email_queue')
+			->where_in('status', ['pending', 'failed'])
+			->where('last_error !=', '')
+			->order_by('id', 'DESC')
+			->limit(5)
+			->get()->result();
+
+		if (!$rows) {
+			return '';
+		}
+
+		$out = "\nRecent errors\n-------------\n";
+		foreach ($rows as $r) {
+			$out .= '#' . (int) $r->id . ' [' . $r->status . ', attempt ' . (int) $r->attempts . '] '
+				. $r->to_email . "\n    " . $r->last_error . "\n";
+		}
+
+		return $out;
 	}
 }
