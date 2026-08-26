@@ -225,7 +225,7 @@ class EmailQueue extends CI_Controller
 
 		// ---- Admin hint ---------------------------------------------------
 		$adminHint = $isAdmin
-			? '<p class="muted">Add <code>?show_cron=1</code> to the URL to reveal the cron command.</p>'
+			? ''
 			: '';
 
 		return '<!DOCTYPE html>
@@ -304,7 +304,6 @@ class EmailQueue extends CI_Controller
 <body>
 <div class="wrap">
   <h1>Email Queue</h1>
-  <p class="muted">Logged in as ' . $esc($level) . '</p>
 
   ' . $flashHtml . '
 
