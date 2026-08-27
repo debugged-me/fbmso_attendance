@@ -39,7 +39,7 @@ $liveState      = $mode === 'edit' ? activity_state($row) : null;
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
 <body>
 <div id="wrapper">
   <?php include('includes/top-nav-bar.php'); ?>

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); // ensure head.php has <meta charset="utf-8"> ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
 
 <style>
   #vamContent{ display:flex; gap:16px; align-items:flex-start; flex-wrap:nowrap; }
@@ -29,6 +29,23 @@
   .ann-view:hover{color:#2a4090;text-decoration:underline}
   .ann-empty{text-align:center;padding:48px 16px;color:#6b7a99}
   .ann-empty .ann-empty-icon{font-size:2.6rem;color:#c7d0e6;margin-bottom:10px}
+
+  /* Mobile: stack announcement items vertically */
+  @media (max-width: 767.98px) {
+    .ann-item { flex-direction:column; align-items:stretch; gap:10px; padding:12px 14px; }
+    .ann-thumb { width:100%; min-width:0; }
+    .ann-thumb img { height:140px; }
+    .ann-body { width:100%; }
+    .ann-title { font-size:.98rem; }
+    .ann-meta { font-size:.78rem; }
+    .ann-actions { display:flex; gap:8px; }
+    .ann-actions a { margin-left:0; flex:1; text-align:center; font-size:.8rem; padding:8px 10px; }
+    /* Modal form rows stack */
+    .modal-body .form-group.row { flex-direction:column; }
+    .modal-body .form-group.row > label { width:100%; margin-bottom:4px; }
+    .modal-body .form-group.row > .col-md-8,
+    .modal-body .form-group.row > .col-md-4 { max-width:100%; width:100%; }
+  }
 </style>
 
 <body>

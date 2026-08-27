@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
 
 <body>
     <div id="wrapper">
@@ -190,7 +190,7 @@
                             <div id="collapseBySection" class="collapse" aria-labelledby="headBySection">
                                 <div class="up-card-body p-0 px-md-3">
                                     <div class="table-responsive">
-                                        <table id="bySectionTable" class="table table-striped table-sm mb-0 table-tight">
+                                        <table id="bySectionTable" class="table table-striped table-sm mb-0 table-tight up-rt">
                                             <thead>
                                                 <tr>
                                                     <th>Course</th>
@@ -202,10 +202,10 @@
                                             <tbody>
                                                 <?php foreach ($by_section as $r): ?>
                                                     <tr>
-                                                        <td><?= htmlspecialchars($r->Course ?: '—') ?></td>
-                                                        <td><?= htmlspecialchars($r->YearLevel ?: '—') ?></td>
-                                                        <td><?= htmlspecialchars($r->Section ?: '—') ?></td>
-                                                        <td class="text-right"><span class="count-badge count-purple"><?= (int)$r->total ?></span></td>
+                                                        <td data-label="Course"><?= htmlspecialchars($r->Course ?: '—') ?></td>
+                                                        <td data-label="Year Level"><?= htmlspecialchars($r->YearLevel ?: '—') ?></td>
+                                                        <td data-label="Section"><?= htmlspecialchars($r->Section ?: '—') ?></td>
+                                                        <td data-label="Students" class="text-right"><span class="count-badge count-purple"><?= (int)$r->total ?></span></td>
                                                     </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
@@ -226,7 +226,7 @@
                             <div id="collapseEvents" class="collapse" aria-labelledby="headEvents">
                                 <div class="up-card-body p-0 px-md-3">
                                     <div class="table-responsive">
-                                        <table class="table table-striped table-sm mb-0 table-tight">
+                                        <table class="table table-striped table-sm mb-0 table-tight up-rt">
                                             <thead>
                                                 <tr>
                                                     <th>Title</th>
@@ -258,12 +258,12 @@
                                                     $programText = isset($ev->program) && $ev->program !== '' ? $ev->program : '—';
                                                     ?>
                                                     <tr>
-                                                        <td><?= htmlspecialchars($ev->title) ?></td>
-                                                        <td><?= htmlspecialchars($dateText) ?></td>
-                                                        <td><?= htmlspecialchars($startText) ?></td>
-                                                        <td><?= htmlspecialchars($endText) ?></td>
-                                                        <td><?= htmlspecialchars($programText) ?></td>
-                                                        <td class="text-right"><span class="count-badge count-cyan"><?= (int)$ev->scans ?></span></td>
+                                                        <td data-label="Title"><?= htmlspecialchars($ev->title) ?></td>
+                                                        <td data-label="Date"><?= htmlspecialchars($dateText) ?></td>
+                                                        <td data-label="Start"><?= htmlspecialchars($startText) ?></td>
+                                                        <td data-label="End"><?= htmlspecialchars($endText) ?></td>
+                                                        <td data-label="Program"><?= htmlspecialchars($programText) ?></td>
+                                                        <td data-label="Scan Count" class="text-right"><span class="count-badge count-cyan"><?= (int)$ev->scans ?></span></td>
                                                     </tr>
                                                 <?php endforeach; ?>
                                                 <?php if (empty($events_summary)): ?>
@@ -289,7 +289,7 @@
                             <div id="collapseAttendance" class="collapse" aria-labelledby="headAttendance">
                                 <div class="up-card-body p-0 px-md-3">
                                     <div class="table-responsive">
-                                        <table class="table table-striped table-sm mb-0 table-tight">
+                                        <table class="table table-striped table-sm mb-0 table-tight up-rt">
                                             <thead>
                                                 <tr>
                                                     <th>#</th>
@@ -314,16 +314,16 @@
                                                     $sessionLabel = $sessionMap[$row->session ?? ''] ?? ($row->session ?: '—');
                                                 ?>
                                                     <tr>
-                                                        <td><?= $i++ ?></td>
-                                                        <td><?= htmlspecialchars($fullName ?: $row->student_number ?: '—') ?></td>
-                                                        <td><?= htmlspecialchars($row->CourseName ?: '—') ?></td>
-                                                        <td><?= htmlspecialchars(($row->yearLevel ?: '—') . ' / ' . ($row->section ?: '—')) ?></td>
-                                                        <td><?= htmlspecialchars($row->activity_title ?: '—') ?></td>
-                                                        <td><?= htmlspecialchars($sessionLabel) ?></td>
-                                                        <td><?= !empty($row->checked_in_at)  ? htmlspecialchars(date('M d, Y h:i:s A', strtotime($row->checked_in_at)))  : '—' ?></td>
-                                                        <td><?= !empty($row->checked_out_at) ? htmlspecialchars(date('M d, Y h:i:s A', strtotime($row->checked_out_at))) : '—' ?></td>
-                                                        <td><span class="badge badge-light"><?= htmlspecialchars(strtoupper($row->source ?: '—')) ?></span></td>
-                                                        <td><?= htmlspecialchars($row->remarks ?: '') ?></td>
+                                                        <td data-label="#"><?= $i++ ?></td>
+                                                        <td data-label="Student"><?= htmlspecialchars($fullName ?: $row->student_number ?: '—') ?></td>
+                                                        <td data-label="Course"><?= htmlspecialchars($row->CourseName ?: '—') ?></td>
+                                                        <td data-label="Year / Section"><?= htmlspecialchars(($row->yearLevel ?: '—') . ' / ' . ($row->section ?: '—')) ?></td>
+                                                        <td data-label="Activity"><?= htmlspecialchars($row->activity_title ?: '—') ?></td>
+                                                        <td data-label="Session"><?= htmlspecialchars($sessionLabel) ?></td>
+                                                        <td data-label="IN"><?= !empty($row->checked_in_at)  ? htmlspecialchars(date('M d, Y h:i:s A', strtotime($row->checked_in_at)))  : '—' ?></td>
+                                                        <td data-label="OUT"><?= !empty($row->checked_out_at) ? htmlspecialchars(date('M d, Y h:i:s A', strtotime($row->checked_out_at))) : '—' ?></td>
+                                                        <td data-label="Source"><span class="badge badge-light"><?= htmlspecialchars(strtoupper($row->source ?: '—')) ?></span></td>
+                                                        <td data-label="Remarks"><?= htmlspecialchars($row->remarks ?: '') ?></td>
                                                     </tr>
                                                 <?php endforeach; ?>
                                                 <?php if (empty($recent_attendance)): ?>

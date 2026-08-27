@@ -118,23 +118,23 @@
                <div class="logo-box">
                    <a href="#" class="logo text-center logo-dark">
                        <span class="logo-lg">
-                           <img src="<?= base_url(); ?>assets/images/srms-logo-1.png" alt="" height="18">
+                           <img src="<?= base_url(); ?>assets/images/srms-logo-1.png" alt="" height="14">
                            <!-- <span class="logo-lg-text-dark">Velonic</span> -->
                        </span>
                        <span class="logo-sm">
                            <!-- <span class="logo-lg-text-dark">V</span> -->
-                           <img src="<?= base_url(); ?>assets/images/Attendance.png" alt="" height="30">
+                           <img src="<?= base_url(); ?>assets/images/Attendance.png" alt="" height="22">
                        </span>
                    </a>
 
                    <a href="#" class="logo text-center logo-light">
                        <span class="logo-lg">
-                           <img src="<?= base_url(); ?>assets/images/srms-logo-1.png" alt="" height="45">
+                           <img src="<?= base_url(); ?>assets/images/srms-logo-1.png" alt="" height="30">
                            <!-- <span class="logo-lg-text-dark">Velonic</span> -->
                        </span>
                        <span class="logo-sm">
                            <!-- <span class="logo-lg-text-dark">V</span> -->
-                           <img src="<?= base_url(); ?>assets/images/Attendance.png" alt="" height="30">
+                           <img src="<?= base_url(); ?>assets/images/Attendance.png" alt="" height="22">
                        </span>
                    </a>
                </div>
@@ -167,7 +167,7 @@
            </div>
 
            <!-- ===== Change Profile Pic Modal ===== -->
-           <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
+           <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
            <style>
              /* ===== Shared modal styles ===== */
              #changeProfilePicModal .modal-content,

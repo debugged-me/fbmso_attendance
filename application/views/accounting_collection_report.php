@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
 
 <body>
     <div id="wrapper">
@@ -22,34 +23,31 @@
                         preg_replace('/[^A-Za-z0-9_-]+/', '_', (string)$to);
                     ?>
 
-                    <div class="row no-print">
-                        <div class="col-12">
-                            <div class="page-title-box d-flex flex-wrap align-items-center justify-content-between">
-                                <div>
-                                    <h4 class="page-title mb-0"><?= htmlspecialchars((string)$report_title, ENT_QUOTES, 'UTF-8'); ?></h4>
-                                    <div class="text-muted mt-1">
-                                        <?= htmlspecialchars($reportPeriod, ENT_QUOTES, 'UTF-8'); ?>
-                                    </div>
-                                </div>
-
-                                <div class="d-flex flex-wrap align-items-center justify-content-end">
-                                    <div id="collectionExportButtons" class="mr-md-2 mb-2 mb-md-0 text-md-right"></div>
-                                    <button type="button" class="btn btn-secondary mr-2 mb-2 mb-md-0" data-toggle="modal" data-target="#monthlyModal">
-                                        <i class="mdi mdi-calendar-month-outline"></i> Monthly View
-                                    </button>
-                                    <button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#yearlyModal">
-                                        <i class="mdi mdi-calendar-range-outline"></i> Yearly View
-                                    </button>
-                                </div>
-                            </div>
+                    <!-- Title + actions -->
+                    <div class="pl-header no-print">
+                        <div class="page-title-box">
+                            <h4 class="up-page-title"><?= htmlspecialchars((string)$report_title, ENT_QUOTES, 'UTF-8'); ?></h4>
+                            <div class="up-page-sub"><?= htmlspecialchars($reportPeriod, ENT_QUOTES, 'UTF-8'); ?></div>
+                            <hr class="up-divider" />
+                        </div>
+                        <div class="pl-actions">
+                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#monthlyModal">
+                                <i class="mdi mdi-calendar-month-outline"></i> Monthly View
+                            </button>
+                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#yearlyModal">
+                                <i class="mdi mdi-calendar-range-outline"></i> Yearly View
+                            </button>
                         </div>
                     </div>
 
                     <!-- Date range + stats -->
                     <div class="row mb-3 no-print">
                         <div class="col-md-7">
-                            <div class="card mb-0">
-                                <div class="card-body py-3">
+                            <div class="up-card mb-0">
+                                <div class="up-card-body py-3">
                                     <form method="get" action="<?= base_url('Accounting/collectionReport'); ?>" class="form-row align-items-end">
                                         <div class="col-md-4 mb-2">
                                             <label for="from" class="mb-1">From</label>
@@ -62,7 +60,7 @@
                                                 value="<?= htmlspecialchars((string)$to, ENT_QUOTES, 'UTF-8'); ?>" required>
                                         </div>
                                         <div class="col-md-4 mb-2 text-right">
-                                            <button class="btn btn-primary btn-block" type="submit">
+                                            <button class="up-btn up-btn-primary btn-block" type="submit">
                                                 <i class="mdi mdi-filter-outline"></i> Apply Date Range
                                             </button>
                                         </div>
@@ -74,18 +72,18 @@
                         <div class="col-md-5">
                             <div class="row">
                                 <div class="col-6">
-                                    <div class="card mb-0">
-                                        <div class="card-body py-3">
+                                    <div class="up-card mb-0">
+                                        <div class="up-card-body py-3">
                                             <h6 class="text-muted mb-1">Transactions</h6>
-                                            <h4 class="mb-0"><?= (int)$total_count; ?></h4>
+                                            <h4 class="mb-0" style="font-weight:800;color:var(--up-ink);"><?= (int)$total_count; ?></h4>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-6">
-                                    <div class="card mb-0">
-                                        <div class="card-body py-3">
+                                    <div class="up-card mb-0">
+                                        <div class="up-card-body py-3">
                                             <h6 class="text-muted mb-1">Total Collection</h6>
-                                            <h4 class="mb-0">₱<?= number_format((float)$total_amount, 2); ?></h4>
+                                            <h4 class="mb-0" style="font-weight:800;color:var(--up-blue);">₱<?= number_format((float)$total_amount, 2); ?></h4>
                                         </div>
                                     </div>
                                 </div>
@@ -97,17 +95,15 @@
                     <!-- Table -->
                     <div class="row">
                         <div class="col-12">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center justify-content-between mb-3 no-print">
-                                        <div>
-                                            <h5 class="header-title mb-1">Collection Details</h5>
-                                            <small class="text-muted">Filtered transactions included in the current report export.</small>
-                                        </div>
-                                    </div>
+                            <div class="up-card">
+                                <div class="up-card-head no-print">
+                                    <h4><i class="mdi mdi-file-document-outline"></i> Collection Details</h4>
+                                    <div id="collectionExportButtons"></div>
+                                </div>
+                                <div class="up-card-body" style="padding:0 !important;">
 
                                     <div class="table-responsive">
-                                        <table id="collectionTable" class="table table-bordered table-sm dt-responsive nowrap" style="width:100%">
+                                        <table id="collectionTable" class="table table-bordered table-sm dt-responsive nowrap up-rt" style="width:100%">
                                             <thead>
                                                 <tr>
                                                     <th>Date</th>
@@ -130,15 +126,15 @@
                                                     }
                                                     ?>
                                                     <tr>
-                                                        <td><?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td><?= htmlspecialchars((string)($row->StudentNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td><?= htmlspecialchars((string)($row->PaymentType ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td><?= htmlspecialchars(trim((string)($row->Sem ?? '') . ' ' . (string)($row->SY ?? '')), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td class="text-right"><?= number_format((float)($row->Amount ?? 0), 2); ?></td>
-                                                        <td><?= htmlspecialchars((string)($row->Cashier ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Date" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="O.R." style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:var(--up-blue);"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Student No." style="font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--up-muted);"><?= htmlspecialchars((string)($row->StudentNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Student" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Description" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Payment Type"><span class="badge badge-info" style="border-radius:6px;font-size:.72rem;font-weight:700;"><?= htmlspecialchars((string)($row->PaymentType ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                                        <td data-label="Sem/SY" style="color:var(--up-muted);font-size:.82rem;"><?= htmlspecialchars(trim((string)($row->Sem ?? '') . ' ' . (string)($row->SY ?? '')), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-ink);">₱ <?= number_format((float)($row->Amount ?? 0), 2); ?></td>
+                                                        <td data-label="Cashier" style="color:var(--up-muted);font-size:.82rem;"><?= htmlspecialchars((string)($row->Cashier ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                     </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
@@ -158,6 +154,7 @@
     </div>
 
     <?php include('includes/footer_plugins.php'); ?>
+    <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
     <!-- MONTHLY MODAL -->
     <div class="modal fade" id="monthlyModal" tabindex="-1" role="dialog" aria-labelledby="monthlyModalLabel" aria-hidden="true">
@@ -188,8 +185,8 @@
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-secondary">View Monthly</button>
+                        <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="up-btn up-btn-primary">View Monthly</button>
                     </div>
                 </form>
             </div>
@@ -219,8 +216,8 @@
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-secondary">View Yearly</button>
+                        <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="up-btn up-btn-primary">View Yearly</button>
                     </div>
                 </form>
             </div>

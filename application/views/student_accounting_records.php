@@ -255,7 +255,7 @@
                                     <span class="ar-records-count"><?= (int)count($payments ?? []); ?> entries</span>
                                 </div>
                                 <div class="ar-records-body table-responsive">
-                                    <table id="studentPaymentsTable" class="table table-bordered table-striped dt-responsive nowrap" style="width:100%">
+                                    <table id="studentPaymentsTable" class="table table-bordered table-striped dt-responsive nowrap up-rt" style="width:100%">
                                         <thead>
                                             <tr>
                                                 <th>OR No.</th>
@@ -269,12 +269,12 @@
                                         <tbody>
                                             <?php foreach (($payments ?? []) as $row): ?>
                                                 <tr>
-                                                    <td><span class="ar-or"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></td>
-                                                    <td><?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                    <td><?= htmlspecialchars((string)($row->pTime ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                    <td><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                    <td><span class="ar-type-pill"><?= htmlspecialchars((string)($row->PaymentType ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></td>
-                                                    <td class="text-right ar-amt">₱ <?= number_format((float)($row->Amount ?? 0), 2); ?></td>
+                                                    <td data-label="OR No."><span class="ar-or"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                                    <td data-label="Payment Date"><?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td data-label="Time"><?= htmlspecialchars((string)($row->pTime ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td data-label="Description"><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td data-label="Payment Type"><span class="ar-type-pill"><?= htmlspecialchars((string)($row->PaymentType ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                                    <td data-label="Amount" class="text-right ar-amt">₱ <?= number_format((float)($row->Amount ?? 0), 2); ?></td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         </tbody>

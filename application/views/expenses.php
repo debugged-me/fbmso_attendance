@@ -2,6 +2,7 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
 
 
 <body>
@@ -27,75 +28,59 @@
                 <!-- Start Content-->
                 <div class="container-fluid">
 
-                    <!-- start page title -->
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="page-title-box">
-                                <h4 class="page-title">
-                                    <!-- <a href="<?= base_url(); ?>Accounting/Addexpenses">    
-                        <button type="button" class="btn btn-info waves-effect waves-light"> <i class="fas fa-stream mr-1"></i> <span>Add New</span> </button>
-                        </a> -->
-                                    <button type="button" class="btn btn-primary waves-effect waves-light" data-toggle="modal" data-target=".bs-example-modal-lg" style="float: right;">Add New</button>
-
-                                </h4>
-
-                                <div class="page-title-right">
-                                    <ol class="breadcrumb p-0 m-0">
-                                        <li class="breadcrumb-item">
-                                            <a href="#">
-                                                <!-- <span class="badge badge-purple mb-3">Currently login to <b>SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></span></b> -->
-                                            </a>
-                                        </li>
-                                    </ol>
-                                </div>
-                                <div class="clearfix"></div>
-                                <hr style="border:0; height:2px; background:linear-gradient(to right, #4285F4 60%, #FBBC05 80%, #34A853 100%); border-radius:1px; margin:20px 0;" />
-                            </div>
+                    <!-- Title + actions -->
+                    <div class="pl-header">
+                        <div class="page-title-box">
+                            <h4 class="up-page-title">Expenses</h4>
+                            <div class="up-page-sub">Record and manage school expenses by category.</div>
+                            <hr class="up-divider" />
+                        </div>
+                        <div class="pl-actions">
+                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target=".bs-example-modal-lg">
+                                <i class="mdi mdi-plus-circle"></i> Add New
+                            </button>
                         </div>
                     </div>
 
                     <!-- start row -->
                     <div class="row">
                         <div class="col-md-12">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="clearfix">
-
-                                        <div class="float-left">
-                                            <h5 style="text-transform:uppercase">
-                                                <strong>EXPENSES</strong>
-
-
-                                            </h5>
-                                        </div>
-
-                                        <div class="table-responsive">
-                                            <table id="datatable" class="table table-bordered dt-responsive nowrap" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Description</th>
-                                                        <th style="text-align:right">Amount</th>
-                                                        <th>Responsible</th>
-                                                        <th style="text-align:center">Expense Date</th>
-                                                        <th style="text-align:center">Category</th>
-                                                        <th style="text-align:center">Manage</th>
-                                                    </tr>
-                                                </thead>
+                            <div class="up-card">
+                                <div class="up-card-head">
+                                    <h4><i class="mdi mdi-cash-register"></i> Expenses</h4>
+                                    <span class="badge badge-purple">SY <?= htmlspecialchars($this->session->userdata('sy') ?? '', ENT_QUOTES, 'UTF-8'); ?> <?= htmlspecialchars($this->session->userdata('semester') ?? '', ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+                                <div class="up-card-body" style="padding:0 !important;">
+                                    <div class="table-responsive">
+                                        <table id="datatable" class="table table-bordered dt-responsive nowrap up-rt" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
+                                            <thead>
+                                                <tr>
+                                                    <th>Description</th>
+                                                    <th style="text-align:right">Amount</th>
+                                                    <th>Responsible</th>
+                                                    <th style="text-align:center">Expense Date</th>
+                                                    <th style="text-align:center">Category</th>
+                                                    <th style="text-align:center">Manage</th>
+                                                </tr>
+                                            </thead>
                                                 <tbody>
                                                     <?php foreach ($data as $row) { ?>
                                                         <tr>
-                                                            <td><?= $row->Description; ?></td>
-                                                            <td style="text-align: right;"><?= number_format($row->Amount, 2); ?></td>
-                                                            <td><?= $row->Responsible; ?></td>
-                                                            <td style="text-align:center"><?= $row->ExpenseDate; ?></td>
-                                                            <td style="text-align:center"><?= $row->Category; ?></td>
-                                                            <td style="text-align:center">
-                                                                <a href="<?= base_url('Accounting/updateexpenses?expensesid=' . $row->expensesid); ?>" class="btn btn-primary waves-effect waves-light btn-sm">
-                                                                    <i class="mdi mdi-pencil"></i>Edit
+                                                            <td data-label="Description"><?= $row->Description; ?></td>
+                                                            <td data-label="Amount" style="text-align: right;"><?= number_format($row->Amount, 2); ?></td>
+                                                            <td data-label="Responsible"><?= $row->Responsible; ?></td>
+                                                            <td data-label="Expense Date" style="text-align:center"><?= $row->ExpenseDate; ?></td>
+                                                            <td data-label="Category" style="text-align:center"><?= $row->Category; ?></td>
+                                                            <td data-label="Manage" class="up-rt-actions" style="text-align:center">
+                                                                <a href="<?= base_url('Accounting/updateexpenses?expensesid=' . $row->expensesid); ?>" class="up-btn up-btn-ghost" style="padding:8px 12px;font-size:.78rem;">
+                                                                    <i class="mdi mdi-pencil"></i> Edit
                                                                 </a>
 
-                                                                <a href="#" onclick="setDeleteUrl('<?= base_url('Accounting/Deleteexpenses?expensesid=' . $row->expensesid); ?>')" data-toggle="modal" data-target="#confirmationModal" class="btn btn-danger waves-effect waves-light btn-sm">
-                                                                    <i class="ion ion-ios-alert"></i> Delete
+                                                                <a href="#" onclick="setDeleteUrl('<?= base_url('Accounting/Deleteexpenses?expensesid=' . $row->expensesid); ?>')" data-toggle="modal" data-target="#confirmationModal" class="up-btn up-btn-danger" style="padding:8px 12px;font-size:.78rem;">
+                                                                    <i class="mdi mdi-delete"></i> Delete
                                                                 </a>
 
                                                             </td>
@@ -105,7 +90,6 @@
                                             </table>
                                         </div>
 
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -135,8 +119,8 @@
                                     </div>
                                 </div>
                                 <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                    <a href="#" id="deleteButton" class="btn btn-danger" onclick="deleteData()">Delete</a>
+                                    <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
+                                    <a href="#" id="deleteButton" class="up-btn up-btn-danger" onclick="deleteData()">Delete</a>
                                 </div>
                             </div>
                         </div>
@@ -201,7 +185,8 @@
                                             </div>
                                         </div>
                                         <div class="modal-footer">
-                                            <input type="submit" name="save" value="Save Data" class="btn btn-primary waves-effect waves-light" />
+                                            <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
+                                            <input type="submit" name="save" value="Save Data" class="up-btn up-btn-primary" />
                                         </div>
                                     </form>
                                 </div>

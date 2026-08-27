@@ -7,7 +7,7 @@
         <?php include('includes/top-nav-bar.php'); ?>
         <?php include('includes/sidebar.php'); ?>
 
-        <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
+        <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
 
         <div class="content-page">
             <div class="content">

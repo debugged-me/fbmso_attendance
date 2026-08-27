@@ -130,6 +130,19 @@
   box-shadow: 0 6px 18px rgba(13, 27, 75, .05);
   overflow: hidden;
 }
+
+/* DataTables spacing inside up-card-body (especially when padding:0) */
+.up-card-body[style*="padding:0"] .dataTables_wrapper {
+  padding: 14px 18px;
+}
+.up-card .dataTables_wrapper .dataTables_length,
+.up-card .dataTables_wrapper .dataTables_filter {
+  margin-bottom: 10px;
+}
+.up-card .dataTables_wrapper .dataTables_info,
+.up-card .dataTables_wrapper .dataTables_paginate {
+  padding-top: 10px;
+}
 .up-card-head {
   padding: 18px 22px;
   border-bottom: 1px solid var(--up-line);
@@ -229,4 +242,156 @@
 @media (max-width: 767.98px) {
   .up-id-strip .up-id-pill { margin-left: 0; }
   .up-card-body { padding: 18px 16px; }
+}
+
+/* ============================================================
+   Shared title + actions header (one row on desktop, stacked on mobile)
+   Any page can wrap .page-title-box + .pl-actions in .pl-header
+   ============================================================ */
+.pl-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.pl-header .page-title-box { flex: 1 1 auto; margin: 0; }
+.pl-header .page-title-box .up-divider { margin: 10px 0 0; }
+.pl-header .pl-actions { flex: 0 0 auto; align-self: center; }
+
+@media (max-width: 767.98px) {
+  .pl-header { flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .pl-header .pl-actions { align-self: flex-start; }
+  .pl-actions .up-btn { font-size: .8rem; padding: 8px 14px; }
+}
+
+/* ============================================================
+   Shared responsive table → card system
+   Any page can add class "up-rt" to a <table> to get card layout on mobile.
+   Cells need data-label="..." attributes for the card labels.
+   ============================================================ */
+@media (max-width: 767.98px) {
+  /* DataTables wrapper overrides for card mode */
+  .up-rt.dataTables_wrapper { display: block !important; }
+  .up-rt-host.table-responsive,
+  .table-responsive:has(.up-rt) {
+    overflow: visible !important;
+    border: 0 !important;
+  }
+  .dataTables_scrollHead { display: none !important; }
+  .dataTables_scrollBody:has(.up-rt) {
+    overflow: visible !important;
+    height: auto !important;
+    border: 0 !important;
+  }
+
+  /* Convert table to stacked cards */
+  table.up-rt {
+    width: 100% !important;
+    border: 0 !important;
+  }
+  table.up-rt thead { display: none; }
+  table.up-rt tbody { display: block; }
+  table.up-rt tbody tr {
+    display: block;
+    margin: 0 0 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--up-line) !important;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 6px 18px rgba(13, 27, 75, .06);
+  }
+  table.up-rt tbody tr:last-child { margin-bottom: 0; }
+  table.up-rt tbody tr:hover { background: #f8faff !important; }
+  table.up-rt tbody td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .6rem;
+    width: 100%;
+    padding: 7px 0 !important;
+    border: 0 !important;
+    border-bottom: 1px solid #f0f3f8 !important;
+    font-size: .9rem;
+    text-align: right;
+    white-space: normal;
+  }
+  table.up-rt tbody tr:last-child td:last-child { border-bottom: 0 !important; }
+  table.up-rt tbody td::before {
+    flex: 0 0 42%;
+    content: attr(data-label);
+    color: var(--up-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    text-align: left;
+  }
+  table.up-rt tbody td[data-label=""]::before,
+  table.up-rt tbody td:not([data-label])::before { content: ''; }
+  /* Action cell: full-width stacked buttons */
+  table.up-rt tbody td.up-rt-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    border-bottom: 0 !important;
+  }
+  table.up-rt tbody td.up-rt-actions::before { display: none; }
+  table.up-rt tbody td.up-rt-actions .btn,
+  table.up-rt tbody td.up-rt-actions a,
+  table.up-rt tbody td.up-rt-actions button {
+    width: 100%;
+    text-align: center;
+    font-size: .82rem;
+    padding: 8px 12px;
+  }
+  /* Show d-none cells in card mode (e.g. hidden name column) */
+  table.up-rt tbody td.d-none { display: flex !important; }
+
+  /* DataTables filter/length/pagination stacking */
+  .dataTables_wrapper .dataTables_filter,
+  .dataTables_wrapper .dataTables_length {
+    float: none !important;
+    text-align: left !important;
+    padding: 10px 0 !important;
+  }
+  .dataTables_wrapper .dataTables_filter input {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+  .dataTables_wrapper .dataTables_info,
+  .dataTables_wrapper .dataTables_paginate {
+    float: none !important;
+    text-align: center !important;
+    padding: 8px 0 !important;
+  }
+  .dataTables_paginate .paginate_button { min-width: 34px; min-height: 34px; }
+
+  /* Card head: stack record count + export buttons */
+  .up-card-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+}
+
+/* ============================================================
+   Print: force table.up-rt back to normal table layout
+   (undo the mobile card transformation for printing)
+   ============================================================ */
+@media print {
+  table.up-rt { display: table !important; width: 100% !important; border-collapse: collapse !important; }
+  table.up-rt thead { display: table-header-group !important; }
+  table.up-rt tbody { display: table-row-group !important; }
+  table.up-rt tbody tr {
+    display: table-row !important; margin: 0 !important; padding: 0 !important;
+    border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: #fff !important;
+  }
+  table.up-rt tbody td {
+    display: table-cell !important; padding: 5px 8px !important;
+    border: 1px solid #ccc !important; text-align: left !important; width: auto !important;
+    border-bottom: 1px solid #ccc !important;
+  }
+  table.up-rt tbody td::before { content: '' !important; display: none !important; }
+  table.up-rt tbody td.d-none { display: table-cell !important; }
+  .dataTables_scrollHead { display: none !important; }
+  .dataTables_scrollBody { height: auto !important; overflow: visible !important; border: 0 !important; }
+  .table-responsive { overflow: visible !important; border: 0 !important; }
 }

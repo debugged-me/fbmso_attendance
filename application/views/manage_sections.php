@@ -2,6 +2,7 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
 
 <link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
 
@@ -64,7 +65,7 @@
                                             </h5>
                                         </div>
                                         <div class="table-responsive">
-                                            <table id="datatable" class="table table-bordered dt-responsive nowrap" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
+                                            <table id="datatable" class="table table-bordered dt-responsive nowrap up-rt" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
                                                 <thead>
                                                     <tr>
                                                         <th>Course</th>
@@ -83,15 +84,15 @@
                                                         $sectionName = trim($section->section ?? '');
                                                         ?>
                                                         <tr>
-                                                            <td>
+                                                            <td data-label="Course">
                                                                 <?= htmlspecialchars($courseLabel, ENT_QUOTES, 'UTF-8') ?>
                                                                 <?php if ($courseExtra !== ''): ?>
                                                                     <div class="text-muted small"><?= htmlspecialchars($courseExtra, ENT_QUOTES, 'UTF-8') ?></div>
                                                                 <?php endif; ?>
                                                             </td>
-                                                            <td><?= htmlspecialchars($section->year_level, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                            <td><?= htmlspecialchars($sectionName, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                            <td style="text-align:center;">
+                                                            <td data-label="Year Level"><?= htmlspecialchars($section->year_level, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td data-label="Section"><?= htmlspecialchars($sectionName, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td data-label="Action" class="up-rt-actions" style="text-align:center;">
                                                                 <a href="<?= base_url('Page/editSection/' . $section->id); ?>" class="btn btn-primary btn-sm"><i class="mdi mdi-pencil"></i> Edit</a>
                                                                 <a href="<?= base_url('Page/deleteSection/' . $section->id); ?>" class="btn btn-danger btn-sm section-delete-btn"
                                                                     data-delete-url="<?= base_url('Page/deleteSection/' . $section->id); ?>"
@@ -161,6 +162,7 @@
 
     <!-- Vendor js -->
     <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
+    <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
     <script src="<?= base_url(); ?>assets/libs/moment/moment.min.js"></script>
     <script src="<?= base_url(); ?>assets/libs/jquery-scrollto/jquery.scrollTo.min.js"></script>

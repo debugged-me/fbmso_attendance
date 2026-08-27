@@ -109,6 +109,7 @@
 
 <!-- Vendor js -->
 <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
+<script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
 <script src="<?= base_url(); ?>assets/libs/moment/moment.min.js"></script>
 <script src="<?= base_url(); ?>assets/libs/jquery-scrollto/jquery.scrollTo.min.js"></script>

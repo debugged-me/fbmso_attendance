@@ -2,6 +2,7 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
 
 <body>
 
@@ -26,20 +27,20 @@
                 <!-- Start Content-->
                 <div class="container-fluid">
 
-                    <!-- start page title -->
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="page-title-box">
-                                <h4 class="page-title">Expenses Report</h4>
-                                <div class="page-title-right">
-                                    <ol class="breadcrumb p-0 m-0">
-                                        <li class="breadcrumb-item"><a href="#custom-modal" class="btn btn-primary waves-effect waves-light" data-animation="fadein" data-plugin="custommodal" data-overlayspeed="200" data-overlaycolor="#36404a"><button class="btn btn-primary">Add New Expense</button></a></li>
-
-                                    </ol>
-                                </div>
-                                <div class="clearfix"></div>
-                                <hr style="border:0; height:2px; background:linear-gradient(to right, #4285F4 60%, #FBBC05 80%, #34A853 100%); border-radius:1px; margin:20px 0;" />
-                            </div>
+                    <!-- Title + actions -->
+                    <div class="pl-header">
+                        <div class="page-title-box">
+                            <h4 class="up-page-title">Expenses Report</h4>
+                            <div class="up-page-sub">All expenses across all categories and dates.</div>
+                            <hr class="up-divider" />
+                        </div>
+                        <div class="pl-actions">
+                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <a href="#custom-modal" class="up-btn up-btn-primary" data-animation="fadein" data-plugin="custommodal" data-overlayspeed="200" data-overlaycolor="#36404a">
+                                <i class="mdi mdi-plus-circle"></i> Add New Expense
+                            </a>
                         </div>
                     </div>
 
@@ -48,11 +49,15 @@
                     <div class="row">
 
                         <div class="col-md-12">
-                            <div class="card">
-                                <div class="card-body table-responsive">
+                            <div class="up-card">
+                                <div class="up-card-head">
+                                    <h4><i class="mdi mdi-file-document-multiple-outline"></i> All Expenses</h4>
+                                    <span class="badge badge-purple"><?= count($data); ?> entries</span>
+                                </div>
+                                <div class="up-card-body table-responsive">
 
 
-                                    <table id="datatable" class="table table-bordered dt-responsive nowrap" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
+                                    <table id="datatable" class="table table-bordered dt-responsive nowrap up-rt" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
                                         <thead>
                                             <tr>
                                                 <th>Description</th>
@@ -67,11 +72,11 @@
                                             <?php
                                             foreach ($data as $row) {
                                                 echo "<tr>";
-                                                echo "<td>" . $row->Description . "</td>";
-                                                echo "<td>" . $row->Amount . "</td>";
-                                                echo "<td>" . $row->Responsible . "</td>";
-                                                echo "<td>" . $row->ExpenseDate . "</td>";
-                                                echo "<td>" . $row->Category . "</td>";
+                                                echo "<td data-label=\"Description\" style=\"font-weight:600;color:var(--up-ink);\">" . htmlspecialchars($row->Description, ENT_QUOTES, 'UTF-8') . "</td>";
+                                                echo "<td data-label=\"Amount\" style=\"font-weight:700;color:var(--up-blue);\">₱ " . htmlspecialchars(number_format($row->Amount, 2), ENT_QUOTES, 'UTF-8') . "</td>";
+                                                echo "<td data-label=\"Responsible\" style=\"color:var(--up-muted);\">" . htmlspecialchars($row->Responsible, ENT_QUOTES, 'UTF-8') . "</td>";
+                                                echo "<td data-label=\"Date\" style=\"color:var(--up-muted);\">" . htmlspecialchars($row->ExpenseDate, ENT_QUOTES, 'UTF-8') . "</td>";
+                                                echo "<td data-label=\"Category\"><span class=\"badge badge-secondary\" style=\"border-radius:6px;font-size:.72rem;font-weight:700;\">" . htmlspecialchars($row->Category, ENT_QUOTES, 'UTF-8') . "</span></td>";
                                             }
 
 
@@ -175,7 +180,7 @@
 
                 <div class="form-group mb-0 justify-content-end row">
                     <div class="col-md-9">
-                        <input type="submit" name="submit" class="btn btn-info waves-effect waves-light" value="Submit">
+                        <input type="submit" name="submit" class="up-btn up-btn-primary" value="Submit">
                     </div>
                 </div>
             </form>

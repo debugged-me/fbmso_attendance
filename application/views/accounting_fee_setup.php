@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
 
 <body>
     <div id="wrapper">
@@ -15,39 +17,47 @@
                     $flashDanger  = $this->session->flashdata('danger');
                     ?>
 
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="page-title-box d-flex align-items-center justify-content-between">
-                                <div>
-                                    <h4 class="page-title mb-0">Fees Setup</h4>
-                                </div>
-                                <div class="d-flex align-items-center">
-                                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addFeeModal">
-                                        <i class="mdi mdi-plus-circle"></i> Add Fee
-                                    </button>
-                                </div>
-                            </div>
+                    <!-- Title + actions -->
+                    <div class="pl-header">
+                        <div class="page-title-box">
+                            <h4 class="up-page-title">Fees Setup</h4>
+                            <div class="up-page-sub">Configure fee descriptions and amounts used for student payments.</div>
+                            <hr class="up-divider" />
+                        </div>
+                        <div class="pl-actions">
+                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#addFeeModal">
+                                <i class="mdi mdi-plus-circle"></i> Add Fee
+                            </button>
                         </div>
                     </div>
 
                     <?php if (!empty($flashSuccess)): ?>
-                        <div class="alert alert-success" role="alert"><?= htmlspecialchars($flashSuccess, ENT_QUOTES, 'UTF-8'); ?></div>
+                        <div class="up-flash up-flash-success">
+                            <?= htmlspecialchars($flashSuccess, ENT_QUOTES, 'UTF-8'); ?>
+                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        </div>
                     <?php endif; ?>
                     <?php if (!empty($flashDanger)): ?>
-                        <div class="alert alert-danger" role="alert"><?= htmlspecialchars($flashDanger, ENT_QUOTES, 'UTF-8'); ?></div>
+                        <div class="up-flash up-flash-danger">
+                            <?= htmlspecialchars($flashDanger, ENT_QUOTES, 'UTF-8'); ?>
+                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        </div>
                     <?php endif; ?>
 
-                    <!-- CONFIGURED FEES AT THE BOTTOM -->
+                    <!-- Configured Fees -->
                     <div class="row">
                         <div class="col-12">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center justify-content-between mb-2">
-                                        <h5 class="header-title mb-0">Configured Fees</h5>
-                                    </div>
-
+                            <div class="up-card">
+                                <div class="up-card-head">
+                                    <h4><i class="mdi mdi-currency-usd"></i> Configured Fees</h4>
+                                    <span class="badge badge-purple"><?= count($fees); ?> items</span>
+                                </div>
+                                <div class="up-card-body" style="padding:0 !important;">
                                     <div class="table-responsive">
-                                        <table id="feesTable" class="table table-bordered table-sm dt-responsive nowrap" style="width:100%">
+                                        <table id="feesTable" class="table table-bordered table-sm dt-responsive nowrap up-rt" style="width:100%">
                                             <thead>
                                                 <tr>
                                                     <th>Description</th>
@@ -58,43 +68,35 @@
                                             <tbody>
                                                 <?php foreach ($fees as $fee): ?>
                                                     <tr>
-                                                        <td><?= htmlspecialchars((string)$fee->Description, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td class="text-right"><?= number_format((float)$fee->Amount, 2); ?></td>
-                                                        <td>
-                                                            <div class="d-flex align-items-center">
-
-                                                                <!-- EDIT BUTTON -->
-                                                                <button
-                                                                    type="button"
-                                                                    class="btn btn-info btn-sm mr-2 edit-fee-btn"
-                                                                    data-feesid="<?= (int)$fee->feesid; ?>"
-                                                                    data-description="<?= htmlspecialchars((string)$fee->Description, ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-amount="<?= htmlspecialchars((string)$fee->Amount, ENT_QUOTES, 'UTF-8'); ?>">
-                                                                    <i class="mdi mdi-pencil"></i>
+                                                        <td data-label="Description" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars((string)$fee->Description, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-blue);">₱ <?= number_format((float)$fee->Amount, 2); ?></td>
+                                                        <td data-label="Action" class="up-rt-actions">
+                                                            <button type="button"
+                                                                class="up-btn up-btn-ghost edit-fee-btn"
+                                                                style="padding:8px 14px;font-size:.8rem;"
+                                                                data-feesid="<?= (int)$fee->feesid; ?>"
+                                                                data-description="<?= htmlspecialchars((string)$fee->Description, ENT_QUOTES, 'UTF-8'); ?>"
+                                                                data-amount="<?= htmlspecialchars((string)$fee->Amount, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                <i class="mdi mdi-pencil"></i> Edit
+                                                            </button>
+                                                            <form method="post"
+                                                                action="<?= base_url('Accounting/course_setUp'); ?>"
+                                                                class="delete-fee-form mb-0"
+                                                                data-ui-confirm="Assessments already computed with this fee are not recalculated."
+                                                                data-ui-confirm-title="Delete this fee item?"
+                                                                data-ui-confirm-ok="Delete fee">
+                                                                <input type="hidden" name="action" value="delete">
+                                                                <input type="hidden" name="feesid" value="<?= (int)$fee->feesid; ?>">
+                                                                <button type="submit" class="up-btn up-btn-danger" style="padding:8px 14px;font-size:.8rem;">
+                                                                    <i class="mdi mdi-delete"></i> Delete
                                                                 </button>
-
-                                                                <!-- DELETE FORM -->
-                                                                <form method="post"
-                                                                    action="<?= base_url('Accounting/course_setUp'); ?>"
-                                                                    class="delete-fee-form mb-0"
-                                                                    data-ui-confirm="Assessments already computed with this fee are not recalculated."
-                                                                    data-ui-confirm-title="Delete this fee item?"
-                                                                    data-ui-confirm-ok="Delete fee">
-                                                                    <input type="hidden" name="action" value="delete">
-                                                                    <input type="hidden" name="feesid" value="<?= (int)$fee->feesid; ?>">
-                                                                    <button type="submit" class="btn btn-danger btn-sm">
-                                                                        <i class="mdi mdi-delete"></i>
-                                                                    </button>
-                                                                </form>
-
-                                                            </div>
+                                                            </form>
                                                         </td>
                                                     </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
                                         </table>
                                     </div>
-
                                 </div>
                             </div>
                         </div>
@@ -108,8 +110,6 @@
     </div>
 
     <?php include('includes/footer_plugins.php'); ?>
-
-
 
     <!-- ADD FEE MODAL -->
     <div class="modal fade" id="addFeeModal" tabindex="-1" role="dialog" aria-labelledby="addFeeModalLabel" aria-hidden="true">
@@ -142,8 +142,8 @@
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="up-btn up-btn-primary">
                             <i class="mdi mdi-plus-circle-outline"></i> Add Fee
                         </button>
                     </div>
@@ -152,7 +152,7 @@
         </div>
     </div>
 
-    <!-- EDIT FEE MODAL (same as yours) -->
+    <!-- EDIT FEE MODAL -->
     <div class="modal fade" id="editFeeModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -161,7 +161,7 @@
                     <input type="hidden" name="feesid" id="editFeeId" value="">
 
                     <div class="modal-header">
-                        <h5 class="modal-title">Edit Fee</h5>
+                        <h5 class="modal-title"><i class="mdi mdi-pencil"></i> Edit Fee</h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
@@ -180,8 +180,8 @@
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="up-btn up-btn-primary">Save Changes</button>
                     </div>
                 </form>
             </div>
@@ -201,7 +201,6 @@
 
                 // cleanup add modal on close (prevents double-init)
                 $('#addFeeModal').on('hidden.bs.modal', function() {
-                    // optional: reset form
                     $('#addFeeForm')[0].reset();
                     $('#feeDescription').val('');
                     $('#feeAmount').val('');
@@ -224,8 +223,6 @@
 
                     $('#editFeeModal').modal('show');
                 });
-
-                // delete confirm — see data-ui-confirm on .delete-fee-form
             });
         })();
     </script>

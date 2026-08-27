@@ -10,7 +10,7 @@
     <div class="content-page">
       <div class="content">
         <div class="container-fluid">
-          <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
+          <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
           <style>
             .profile-wrapper {
               max-width: 960px;
@@ -387,6 +387,7 @@
   </div>
 
   <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
+  <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
   <script src="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.js"></script>
   <script>
     // Flash messages are shown by the shared toast bridge (includes/ui_kit.php).

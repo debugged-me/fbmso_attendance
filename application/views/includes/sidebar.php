@@ -19,7 +19,23 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
 
     /* Sticky logout button */
     .left-side-menu { display:flex; flex-direction:column; }
-    .left-side-menu > .slimscroll-menu { flex:1 1 auto; overflow-y:auto; }
+    .left-side-menu > .slimscroll-menu {
+        flex:1 1 auto;
+        overflow-y:auto !important;
+        -webkit-overflow-scrolling:touch;
+    }
+    /* Override slimScroll when it breaks — allow native scroll */
+    .left-side-menu > .slimscroll-menu .slimScrollDiv {
+        overflow-y:auto !important;
+        height:auto !important;
+    }
+    .left-side-menu > .slimscroll-menu .slimScrollBar { display:none !important; }
+    /* When collapsed (enlarged), don't force scroll — let it auto-size */
+    body.enlarged .left-side-menu > .slimscroll-menu,
+    body.enlarged .left-side-menu > .slimscroll-menu .slimScrollDiv {
+        overflow:visible !important;
+        height:auto !important;
+    }
     .sidebar-logout {
         flex-shrink:0;
         padding:14px 18px;

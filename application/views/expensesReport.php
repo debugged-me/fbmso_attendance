@@ -2,6 +2,7 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
 
 
 <body>
@@ -27,29 +28,17 @@
                 <!-- Start Content-->
                 <div class="container-fluid">
 
-                    <!-- start page title -->
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="page-title-box">
-                                <h4 class="page-title">
-                                    <!-- <a href="<?= base_url(); ?>Accounting/Addexpenses">    
-                        <button type="button" class="btn btn-info waves-effect waves-light"> <i class="fas fa-stream mr-1"></i> <span>Add New</span> </button>
-                        </a> -->
-                                    <!-- EXPENSES REPORT -->
-                                </h4>
-
-                                <div class="page-title-right">
-                                    <ol class="breadcrumb p-0 m-0">
-                                        <li class="breadcrumb-item">
-                                            <a href="#">
-                                                <!-- <span class="badge badge-purple mb-3">Currently login to <b>SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></span></b> -->
-                                            </a>
-                                        </li>
-                                    </ol>
-                                </div>
-                                <div class="clearfix"></div>
-                                <hr style="border:0; height:2px; background:linear-gradient(to right, #4285F4 60%, #FBBC05 80%, #34A853 100%); border-radius:1px; margin:20px 0;" />
-                            </div>
+                    <!-- Title + actions -->
+                    <div class="pl-header">
+                        <div class="page-title-box">
+                            <h4 class="up-page-title">Expenses Report</h4>
+                            <div class="up-page-sub">Filter expenses by category and date range. Export or print as needed.</div>
+                            <hr class="up-divider" />
+                        </div>
+                        <div class="pl-actions">
+                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
                         </div>
                     </div>
 
@@ -60,15 +49,13 @@
                     <!-- start row -->
                     <div class="row">
                         <div class="col-md-12">
-                            <div class="card">
-                                <div class="card-header bg-info py-3 text-white">
-                                    <!-- <h5>EXPENSES REPORT</h5> -->
-                                    <strong>EXPENSES REPORT</strong>
+                            <div class="up-card">
+                                <div class="up-card-head">
+                                    <h4><i class="mdi mdi-file-document-multiple-outline"></i> Expenses Report</h4>
                                 </div>
-                                <div class="card-body">
-                                    <div class="clearfix">
+                                <div class="up-card-body">
 
-                                        <!-- Start Form Section -->
+                                    <!-- Start Form Section -->
                                         <div class="row mb-3 no-print">
                                             <!-- Dropdown to select Category -->
                                             <div class="col-lg-3">
@@ -106,7 +93,7 @@
 
                                         <!-- Existing Expenses Table -->
                                         <div class="table-responsive">
-                                            <table id="expensesTable" class="table table-bordered dt-responsive nowrap" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
+                                            <table id="expensesTable" class="table table-bordered dt-responsive nowrap up-rt" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
                                                 <thead>
                                                     <tr>
                                                         <th>Description</th>
@@ -119,11 +106,11 @@
                                                 <tbody>
                                                     <?php foreach ($data as $row) { ?>
                                                         <tr>
-                                                            <td><?= htmlspecialchars((string)$row->Description, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                            <td><?= htmlspecialchars((string)$row->Responsible, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                            <td><?= htmlspecialchars((string)$row->ExpenseDate, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                            <td><?= htmlspecialchars((string)$row->Category, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                            <td><?= number_format((float)$row->Amount, 2); ?></td>
+                                                            <td data-label="Description" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars((string)$row->Description, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td data-label="Responsible" style="color:var(--up-muted);"><?= htmlspecialchars((string)$row->Responsible, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td data-label="Expense Date" style="color:var(--up-muted);"><?= htmlspecialchars((string)$row->ExpenseDate, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                            <td data-label="Category"><span class="badge badge-secondary" style="border-radius:6px;font-size:.72rem;font-weight:700;"><?= htmlspecialchars((string)$row->Category, ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                                            <td data-label="Amount" style="font-weight:700;color:var(--up-blue);">₱ <?= number_format((float)$row->Amount, 2); ?></td>
                                                         </tr>
                                                     <?php } ?>
                                                 </tbody>
@@ -132,7 +119,7 @@
 
                                         <!-- Summary Table -->
                                         <div class="table-responsive mt-4 no-print" id="summaryWrap">
-                                            <table id="summaryTable" class="table table-bordered dt-responsive nowrap" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
+                                            <table id="summaryTable" class="table table-bordered dt-responsive nowrap up-rt" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
                                                 <thead>
                                                     <tr>
                                                         <th>Description</th>
@@ -141,15 +128,14 @@
                                                 </thead>
                                                 <tbody>
                                                     <tr>
-                                                        <td id="summaryDescription">No data available</td>
-                                                        <td id="summaryTotal"><a href="#" id="summaryTotalLink">0.00</a></td>
+                                                        <td data-label="Description" id="summaryDescription">No data available</td>
+                                                        <td data-label="Total Amount" id="summaryTotal"><a href="#" id="summaryTotalLink">0.00</a></td>
 
 
                                                     </tr>
                                                 </tbody>
                                             </table>
                                         </div>
-                                    </div>
 
                                 </div>
 

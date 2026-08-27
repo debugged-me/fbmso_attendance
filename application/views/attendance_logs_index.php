@@ -2,7 +2,7 @@
 <html lang="en">
 <?php include('includes/head.php'); ?>
 <link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
 <?php
 // ---------------- Helpers ----------------
 if (!function_exists('h')) {
@@ -182,9 +182,18 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
     <style>
         .badge-course-code { font-size:.72rem; font-weight:700; letter-spacing:.4px; border-radius:6px; }
         .student-number-cell .student-name-mobile { color:#6b7a99; font-size:.82rem; }
-        .pl-actions { display:flex; flex-wrap:wrap; gap:10px; margin:4px 0 20px; }
+        .pl-actions { display:flex; flex-wrap:wrap; gap:10px; margin:0; }
         .pl-actions > .up-btn, .pl-actions > a.up-btn, .pl-actions > button.up-btn { margin-right:10px; margin-bottom:6px; }
         @supports (gap:10px) { .pl-actions > .up-btn { margin-right:0; } }
+
+        /* Title + actions on one row */
+        .pl-header {
+            display:flex; align-items:flex-start; justify-content:space-between;
+            gap:18px; flex-wrap:wrap; margin-bottom:16px;
+        }
+        .pl-header .page-title-box { flex:1 1 auto; margin:0; }
+        .pl-header .page-title-box .up-divider { margin:10px 0 0; }
+        .pl-header .pl-actions { flex:0 0 auto; align-self:center; }
 
         /* Filter badges */
         .filter-badges { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
@@ -237,8 +246,8 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
         #printHeader { display:none; }
         @media print {
             #wrapper .topbar, #wrapper .left-side-menu, #wrapper .sidebar, #wrapper .right-bar,
-            .themecustomizer, .footer, .page-title-box, .pl-actions, .up-card-head, .up-flash,
-            .filter-badges, .export-actions, .btn,
+            .themecustomizer, .footer, .page-title-box, .pl-actions, .pl-header, .up-card-head, .up-flash,
+            .filter-badges, .export-actions, .btn, .ms-tabbar, .ms-scrim,
             .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_length,
             .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate { display:none !important; }
             #printHeader { display:block !important; text-align:center; margin-bottom:20px; }
@@ -252,18 +261,84 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
             .content-page { margin-left:0 !important; margin-top:0 !important; padding:0 !important; }
             .up-card { border:none !important; box-shadow:none !important; border-radius:0 !important; }
             .up-card-body { padding:0 !important; }
-            #logsTable { font-size:9pt; border-collapse:collapse; width:100% !important; }
+            #logsTable { font-size:9pt; border-collapse:collapse; width:100% !important; display:table !important; }
+            #logsTable thead { display:table-header-group !important; }
             #logsTable thead th {
                 background:#2a4090 !important; color:#fff !important; font-size:7.5pt; font-weight:700;
                 text-transform:uppercase; letter-spacing:.5px; padding:8px 8px !important;
                 border:1px solid #2a4090 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;
             }
-            #logsTable tbody td { padding:5px 8px !important; font-size:9pt; color:#1a1a1a !important; border:1px solid #ccc !important; }
+            #logsTable tbody { display:table-row-group !important; }
+            #logsTable tbody tr { display:table-row !important; margin:0 !important; padding:0 !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; background:#fff !important; }
+            #logsTable tbody td { display:table-cell !important; padding:5px 8px !important; font-size:9pt; color:#1a1a1a !important; border:1px solid #ccc !important; text-align:left !important; width:auto !important; border-bottom:1px solid #ccc !important; }
+            #logsTable tbody td::before { content:'' !important; display:none !important; }
+            #logsTable tbody td.d-none { display:table-cell !important; }
             #logsTable tbody tr:nth-child(even) td { background:#f5f7fc !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
             #logsTable tbody tr:hover { background:transparent !important; }
             .dataTables_wrapper { display:block !important; }
-            .dataTables_scrollBody { height:auto !important; overflow:visible !important; }
-            #logsTable tbody tr { display:table-row !important; }
+            .dataTables_scrollHead { display:none !important; }
+            .dataTables_scrollBody { height:auto !important; overflow:visible !important; border:0 !important; }
+            .table-responsive { overflow:visible !important; border:0 !important; }
+        }
+
+        /* ===== Mobile: table becomes cards ===== */
+        @media (max-width: 767.98px) {
+            .pl-header { flex-direction:column; gap:10px; margin-bottom:14px; }
+            .pl-header .pl-actions { align-self:flex-start; }
+            .pl-actions .up-btn { font-size:.8rem; padding:8px 14px; }
+            .filter-badges { gap:6px; }
+            .filter-badge { font-size:.72rem; padding:5px 10px; }
+
+            .dataTables_wrapper { display:block !important; }
+            .dataTables_scrollHead { display:none !important; }
+            .dataTables_scrollBody {
+                overflow:visible !important; height:auto !important; border:0 !important;
+            }
+            .table-responsive { overflow:visible !important; border:0 !important; }
+
+            #logsTable thead { display:none; }
+            #logsTable { width:100% !important; border:0 !important; }
+            #logsTable tbody { display:block; }
+            #logsTable tbody tr {
+                display:block; margin:0 0 14px; padding:14px 16px;
+                border:1px solid #e6ebf5 !important; border-radius:14px; background:#fff;
+                box-shadow:0 6px 18px rgba(13,27,75,.06);
+            }
+            #logsTable tbody tr:last-child { margin-bottom:0; }
+            #logsTable tbody tr:hover { background:#f8faff !important; }
+            #logsTable tbody td {
+                display:flex; align-items:flex-start; justify-content:space-between;
+                gap:.6rem; width:100%; padding:7px 0 !important;
+                border:0 !important; border-bottom:1px solid #f0f3f8 !important;
+                font-size:.9rem; text-align:right; white-space:normal;
+            }
+            #logsTable tbody tr:last-child td:last-child { border-bottom:0 !important; }
+            #logsTable tbody td::before {
+                flex:0 0 42%; content:attr(data-label);
+                color:#6b7a99; font-size:.72rem; font-weight:700;
+                letter-spacing:.04em; text-transform:uppercase; text-align:left;
+            }
+            /* Show the name cell on mobile (hidden by d-none d-lg-table-cell) */
+            #logsTable tbody td.d-none { display:flex !important; }
+            #logsTable tbody td.d-none::before { display:block; }
+
+            .dataTables_wrapper .dataTables_filter,
+            .dataTables_wrapper .dataTables_length {
+                float:none !important; text-align:left !important; padding:10px 0 !important;
+            }
+            .dataTables_wrapper .dataTables_filter input {
+                width:100% !important; margin-left:0 !important;
+            }
+            .dataTables_wrapper .dataTables_info,
+            .dataTables_wrapper .dataTables_paginate {
+                float:none !important; text-align:center !important; padding:8px 0 !important;
+            }
+            .dataTables_paginate .paginate_button { min-width:34px; min-height:34px; }
+
+            /* Card head: stack record count + export buttons */
+            .up-card-head { flex-direction:column; align-items:flex-start; gap:10px; }
+            .up-card-head .export-actions { width:100%; }
+            .up-card-head .export-actions .up-btn { flex:1; text-align:center; }
         }
     </style>
 
@@ -291,25 +366,22 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
                     <?php if ($flashError): ?><div class="up-flash up-flash-danger"><?= h($flashError); ?></div><?php endif; ?>
                     <?php if ($flashInfo): ?><div class="up-flash up-flash-info"><?= h($flashInfo); ?></div><?php endif; ?>
 
-                    <!-- Title -->
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="page-title-box">
-                                <h4 class="up-page-title">Attendance Logs</h4>
-                                <div class="up-page-sub">View and filter attendance records by activity, section, and session.</div>
-                                <hr class="up-divider" />
-                            </div>
+                    <!-- Title + actions on one row -->
+                    <div class="pl-header">
+                        <div class="page-title-box">
+                            <h4 class="up-page-title">Attendance Logs</h4>
+                            <div class="up-page-sub">View and filter attendance records by activity, section, and session.</div>
+                            <hr class="up-divider" />
                         </div>
-                    </div>
 
-                    <!-- Action buttons -->
-                    <div class="pl-actions">
-                        <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
-                            <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                        </a>
-                        <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#filterModal">
-                            <i class="mdi mdi-filter-variant"></i> Select Activity
-                        </button>
+                        <div class="pl-actions">
+                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#filterModal">
+                                <i class="mdi mdi-filter-variant"></i> Select Activity
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Active filter badges -->
@@ -418,29 +490,29 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
                                                             $remarkOut = $remarkRaw !== '' ? $remarkRaw : ($srcLower === 'qr' ? 'Scanned via QR' : '—');
                                                         ?>
                                                             <tr>
-                                                                <td class="student-number-cell">
+                                                                <td data-label="Student #" class="student-number-cell">
                                                                     <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:#2a4090;"><?= h($r->student_number) ?></span>
                                                                     <?php if (trim((string)$r->student_name) !== ''): ?>
                                                                         <small class="student-name-mobile d-block d-lg-none"><?= h($r->student_name) ?></small>
                                                                     <?php endif; ?>
                                                                 </td>
-                                                                <td class="d-none d-lg-table-cell" style="font-weight:600;"><?= h($r->student_name) ?></td>
-                                                                <td style="color:#6b7a99;"><?= h($r->section) ?></td>
-                                                                <td>
+                                                                <td data-label="Name" class="d-none d-lg-table-cell" style="font-weight:600;"><?= h($r->student_name) ?></td>
+                                                                <td data-label="Section" style="color:#6b7a99;"><?= h($r->section) ?></td>
+                                                                <td data-label="Session">
                                                                     <?php if ($sessionCode !== ''): ?>
                                                                         <span class="badge badge-info" style="border-radius:6px;font-size:.72rem;font-weight:700;"><?= h($sessionCode) ?></span>
                                                                     <?php endif; ?>
                                                                 </td>
-                                                                <td style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;"><?= h(fmt_time_ampm($r->checked_in_at)) ?></td>
-                                                                <td style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;"><?= h(fmt_time_ampm($r->checked_out_at)) ?></td>
-                                                                <td>
+                                                                <td data-label="Check-In" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;"><?= h(fmt_time_ampm($r->checked_in_at)) ?></td>
+                                                                <td data-label="Check-Out" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;"><?= h(fmt_time_ampm($r->checked_out_at)) ?></td>
+                                                                <td data-label="Course">
                                                                     <?php if ($courseDisplay !== ''): ?>
                                                                         <span class="badge badge-secondary badge-course-code" title="<?= h($courseRaw) ?>"><?= h($courseDisplay) ?></span>
                                                                     <?php endif; ?>
                                                                 </td>
-                                                                <td style="color:#6b7a99;"><?= h($r->YearLevel) ?></td>
-                                                                <td style="color:#6b7a99;font-size:.82rem;"><?= h($remarkOut) ?></td>
-                                                                <td style="color:#6b7a99;font-size:.82rem;"><?= h($r->checked_in_by) ?></td>
+                                                                <td data-label="Year" style="color:#6b7a99;"><?= h($r->YearLevel) ?></td>
+                                                                <td data-label="Remarks" style="color:#6b7a99;font-size:.82rem;"><?= h($remarkOut) ?></td>
+                                                                <td data-label="Checked-In By" style="color:#6b7a99;font-size:.82rem;"><?= h($r->checked_in_by) ?></td>
                                                             </tr>
                                                         <?php endforeach; ?>
                                                     </tbody>
@@ -554,6 +626,7 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
     <?php include('includes/themecustomizer.php'); ?>
 
     <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
+    <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
     <script src="<?= base_url(); ?>assets/libs/moment/moment.min.js"></script>
     <script src="<?= base_url(); ?>assets/libs/jquery-scrollto/jquery.scrollTo.min.js"></script>
     <script src="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.js"></script>
@@ -665,11 +738,26 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
             if ($printButton.length) {
                 $printButton.on('click', function(event) {
                     event.preventDefault();
-                    window.print();
+                    var dt = null;
+                    try { dt = $('#logsTable').DataTable(); } catch(e) {}
+                    if (dt) {
+                        var savedLen = dt.page.len();
+                        dt.page.len(-1).draw(false);
+                        // Wait for the redraw to finish before printing
+                        setTimeout(function() {
+                            window.print();
+                            // Restore after print dialog closes
+                            setTimeout(function() {
+                                dt.page.len(savedLen).draw(false);
+                            }, 300);
+                        }, 250);
+                    } else {
+                        window.print();
+                    }
                 });
             }
 
-            // Print: expand DataTable to show all rows, then restore
+            // Fallback: also handle browser's native print (Ctrl+P)
             var dtLogs = null;
             var savedPageLenLogs = null;
             window.addEventListener('beforeprint', function() {

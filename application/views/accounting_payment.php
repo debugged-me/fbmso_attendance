@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
 
 <body>
     <div id="wrapper">
@@ -18,49 +20,53 @@
                     $openPaymentModal = !empty($open_payment_modal);
                     ?>
 
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="page-title-box d-flex align-items-center justify-content-between">
-                                <div>
-                                    <h4 class="page-title mb-0">Payment Entry</h4>
-                                    <?php if (!empty($semester) || !empty($sy)): ?>
-                                        <div class="mt-1">
-
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-
-                                <div class="d-flex align-items-center">
-                                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#paymentModal">
-                                        <i class="mdi mdi-plus-circle"></i> Add Payment
-                                    </button>
-                                </div>
-                            </div>
+                    <!-- Title + actions -->
+                    <div class="pl-header">
+                        <div class="page-title-box">
+                            <h4 class="up-page-title">Payment Entry</h4>
+                            <div class="up-page-sub">Record and manage student payments. Print receipts on demand.</div>
+                            <hr class="up-divider" />
+                        </div>
+                        <div class="pl-actions">
+                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#paymentModal">
+                                <i class="mdi mdi-plus-circle"></i> Add Payment
+                            </button>
                         </div>
                     </div>
 
                     <?php if (!empty($flashSuccess)): ?>
-                        <div class="alert alert-success" role="alert"><?= htmlspecialchars($flashSuccess, ENT_QUOTES, 'UTF-8'); ?></div>
+                        <div class="up-flash up-flash-success">
+                            <?= htmlspecialchars($flashSuccess, ENT_QUOTES, 'UTF-8'); ?>
+                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        </div>
                     <?php endif; ?>
                     <?php if (!empty($flashWarning)): ?>
-                        <div class="alert alert-warning" role="alert"><?= htmlspecialchars($flashWarning, ENT_QUOTES, 'UTF-8'); ?></div>
+                        <div class="up-flash up-flash-info">
+                            <?= htmlspecialchars($flashWarning, ENT_QUOTES, 'UTF-8'); ?>
+                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        </div>
                     <?php endif; ?>
                     <?php if (!empty($flashDanger)): ?>
-                        <div class="alert alert-danger" role="alert"><?= htmlspecialchars($flashDanger, ENT_QUOTES, 'UTF-8'); ?></div>
+                        <div class="up-flash up-flash-danger">
+                            <?= htmlspecialchars($flashDanger, ENT_QUOTES, 'UTF-8'); ?>
+                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        </div>
                     <?php endif; ?>
 
-                    <!-- RECENT PAYMENTS BELOW -->
+                    <!-- RECENT PAYMENTS -->
                     <div class="row">
                         <div class="col-12">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center justify-content-between mb-2">
-                                        <h5 class="header-title mb-0">Recent Student Payments</h5>
-                                        <small class="text-muted">Latest entries</small>
-                                    </div>
-
+                            <div class="up-card">
+                                <div class="up-card-head">
+                                    <h4><i class="mdi mdi-cash-multiple"></i> Recent Student Payments</h4>
+                                    <span class="badge badge-purple"><?= count($recent_payments); ?> entries</span>
+                                </div>
+                                <div class="up-card-body" style="padding:0 !important;">
                                     <div class="table-responsive">
-                                        <table id="recentPaymentsTable" class="table table-bordered table-sm dt-responsive nowrap" style="width:100%">
+                                        <table id="recentPaymentsTable" class="table table-bordered table-sm dt-responsive nowrap up-rt" style="width:100%">
                                             <thead>
                                                 <tr>
                                                     <th>Date</th>
@@ -81,16 +87,16 @@
                                                     $rowId = (int)($row->ID ?? 0);
                                                     ?>
                                                     <tr>
-                                                        <td><?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td class="text-right"><?= number_format((float)($row->Amount ?? 0), 2); ?></td>
-                                                        <td>
-                                                            <!-- ACTIONS: spaced + tooltip labels -->
+                                                        <td data-label="Date" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="O.R." style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:var(--up-blue);"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Student" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Description" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-ink);">₱ <?= number_format((float)($row->Amount ?? 0), 2); ?></td>
+                                                        <td data-label="Actions" class="up-rt-actions">
                                                             <div class="action-wrap">
                                                                 <button type="button"
-                                                                    class="btn btn-sm btn-outline-primary action-btn print-receipt-btn"
+                                                                    class="up-btn up-btn-ghost print-receipt-btn"
+                                                                    style="padding:8px 12px;font-size:.78rem;"
                                                                     data-toggle="tooltip" data-placement="top" title="Print Receipt"
                                                                     data-id="<?= $rowId; ?>"
                                                                     data-ornumber="<?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
@@ -102,11 +108,12 @@
                                                                     data-sem="<?= htmlspecialchars((string)($row->Sem ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                                     data-sy="<?= htmlspecialchars((string)($row->SY ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                                     data-cashier="<?= htmlspecialchars((string)($row->Cashier ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-                                                                    <i class="mdi mdi-printer"></i>
+                                                                    <i class="mdi mdi-printer"></i> Receipt
                                                                 </button>
 
                                                                 <button type="button"
-                                                                    class="btn btn-sm btn-outline-info action-btn edit-payment-btn"
+                                                                    class="up-btn up-btn-ghost edit-payment-btn"
+                                                                    style="padding:8px 12px;font-size:.78rem;"
                                                                     data-toggle="tooltip" data-placement="top" title="Edit Payment"
                                                                     data-id="<?= $rowId; ?>"
                                                                     data-studentno="<?= htmlspecialchars((string)($row->StudentNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
@@ -114,7 +121,7 @@
                                                                     data-date="<?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                                     data-description="<?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                                                     data-amount="<?= htmlspecialchars((string)($row->Amount ?? 0), ENT_QUOTES, 'UTF-8'); ?>">
-                                                                    <i class="mdi mdi-pencil"></i>
+                                                                    <i class="mdi mdi-pencil"></i> Edit
                                                                 </button>
 
                                                                 <form method="post" action="<?= base_url('Accounting/deletePayment'); ?>" class="delete-payment-form d-inline"
@@ -123,9 +130,10 @@
                                                                     data-ui-confirm-ok="Delete payment">
                                                                     <input type="hidden" name="id" value="<?= $rowId; ?>">
                                                                     <button type="submit"
-                                                                        class="btn btn-sm btn-outline-danger action-btn"
+                                                                        class="up-btn up-btn-danger"
+                                                                        style="padding:8px 12px;font-size:.78rem;"
                                                                         data-toggle="tooltip" data-placement="top" title="Delete Payment">
-                                                                        <i class="mdi mdi-delete"></i>
+                                                                        <i class="mdi mdi-delete"></i> Delete
                                                                     </button>
                                                                 </form>
                                                             </div>
@@ -135,7 +143,6 @@
                                             </tbody>
                                         </table>
                                     </div>
-
                                 </div>
                             </div>
                         </div>
@@ -149,6 +156,7 @@
     </div>
 
     <?php include('includes/footer_plugins.php'); ?>
+    <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
     <!-- ADD PAYMENT MODAL -->
     <div class="modal fade" id="paymentModal" tabindex="-1" role="dialog" aria-labelledby="paymentModalLabel" aria-hidden="true">
@@ -241,10 +249,10 @@
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-dismiss="modal">
+                        <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">
                             <i class="mdi mdi-close"></i> Close
                         </button>
-                        <button type="submit" class="btn btn-primary" id="paymentSubmitBtn">
+                        <button type="submit" class="up-btn up-btn-primary" id="paymentSubmitBtn">
                             <i class="mdi mdi-content-save"></i> Save Payment
                         </button>
                     </div>
@@ -332,10 +340,10 @@
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-dismiss="modal">
+                        <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">
                             <i class="mdi mdi-close"></i> Close
                         </button>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="up-btn up-btn-primary">
                             <i class="mdi mdi-content-save"></i> Save Changes
                         </button>
                     </div>
@@ -408,8 +416,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" onclick="printReceipt()">
+                    <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Close</button>
+                    <button type="button" class="up-btn up-btn-primary" onclick="printReceipt()">
                         <i class="mdi mdi-printer"></i> Print
                     </button>
                 </div>

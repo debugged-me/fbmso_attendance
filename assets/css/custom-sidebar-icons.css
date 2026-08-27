@@ -1,6 +1,19 @@
+/* === Sidebar font scale (smaller, less oversized) === */
+#sidebar-menu > ul > li > a {
+    font-size: 14px !important;
+    padding-top: 11px !important;
+    padding-bottom: 11px !important;
+}
+#sidebar-menu .menu-title {
+    font-size: 0.65rem !important;
+}
+#sidebar-menu > ul > li > ul a {
+    font-size: 13px !important;
+}
+
 /* === Pro sidebar icon system === */
 #side-menu i.menu-icon {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     width: 1.85rem;
     min-width: 1.85rem;
     line-height: 1.15rem;
