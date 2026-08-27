@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="<?= base_url(); ?>assets/vendor/bootstrap/css/bootstrap.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/fonts/font-awesome-4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.css">
-  <link rel="stylesheet" href="<?= base_url(); ?>assets/css/home.css?v=30260827">
+  <link rel="stylesheet" href="<?= base_url(); ?>assets/css/home.css?v=30260829">
   <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=30260820" rel="stylesheet">
   <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=6'); ?>">
   <meta name="theme-color" content="#1a2942">
@@ -43,6 +43,7 @@
           <div class="qr-corner bl"></div>
           <div class="qr-corner br"></div>
           <div class="scan-beam"></div>
+          <div class="scan-beam-h"></div>
           <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="12" y="12" width="48" height="48" rx="8" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="2" />
             <rect x="22" y="22" width="28" height="28" rx="4" fill="rgba(255,255,255,.15)" />
