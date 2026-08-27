@@ -50,6 +50,7 @@
         }
     </script>
 
+    <script src="<?= base_url('assets/js/anti-inspect.js?v=1'); ?>"></script>
 </head>
 
 <body>

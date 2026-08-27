@@ -62,6 +62,7 @@
       .url{border:none;padding:0;margin-top:6px;background:transparent}
     }
   </style>
+    <script src="<?= base_url('assets/js/anti-inspect.js?v=1'); ?>"></script>
 </head>
 <body>
 <div class="wrap">

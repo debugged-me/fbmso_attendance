@@ -27,6 +27,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="<?= base_url('assets/images/icons/attendance-192.png'); ?>">
     <script src="<?= base_url('assets/js/mobile-shell-early.js?v=5'); ?>"></script>
+    <script src="<?= base_url('assets/js/anti-inspect.js?v=1'); ?>"></script>
 
     <?php include(APPPATH . 'views/includes/ui_kit.php'); ?>
 </head>

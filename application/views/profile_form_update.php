@@ -93,6 +93,7 @@
             document.getElementById(resultInputId).value = isFinite(age)?age:'';
         }
     </script>
+    <script src="<?= base_url('assets/js/anti-inspect.js?v=1'); ?>"></script>
 </head>
 <body>
 <?php

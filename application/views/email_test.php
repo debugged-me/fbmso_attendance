@@ -143,6 +143,7 @@
 
         .note { margin-top: 18px; color: var(--muted); font-size: 13.5px; }
     </style>
+    <script src="<?= base_url('assets/js/anti-inspect.js?v=1'); ?>"></script>
 </head>
 <body>
     <div class="wrap">

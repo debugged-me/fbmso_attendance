@@ -26,6 +26,7 @@ $amountValue = (float)($payment->Amount ?? 0);
 <head>
     <meta charset="utf-8">
     <title>Acknowledgement Receipt</title>
+    <script src="<?= base_url('assets/js/anti-inspect.js?v=1'); ?>"></script>
 </head>
 
 <body style="margin:0;padding:28px;background:#eef4ff;font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;color:#1f2937;">

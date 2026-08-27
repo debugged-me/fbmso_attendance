@@ -25,6 +25,7 @@
   <script src="<?= base_url('assets/js/mobile-shell-early.js?v=5'); ?>"></script>
 
   <?php include(APPPATH . 'views/includes/ui_kit.php'); ?>
+    <script src="<?= base_url('assets/js/anti-inspect.js?v=1'); ?>"></script>
 </head>
 
 <body data-layout="horizontal">
