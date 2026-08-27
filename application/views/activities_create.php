@@ -39,60 +39,50 @@ $liveState      = $mode === 'edit' ? activity_state($row) : null;
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
 <body>
 <div id="wrapper">
   <?php include('includes/top-nav-bar.php'); ?>
   <?php include('includes/sidebar.php'); ?>
 
   <style>
-    .page-title-box{background:linear-gradient(135deg,#eef2ff 0%,#f5f7ff 60%,#ffffff 100%);border:1px solid #e5e7eb;border-radius:16px;padding:18px 20px;box-shadow:0 6px 14px rgba(31,41,55,.06)}
-    .accent-hr{border:0;height:2px;margin:10px 0 0;background:linear-gradient(to right,#4285F4 55%,#A142F4 75%,#34A853 100%);border-radius:2px}
-    .card-rich{border:1px solid #eef0f4;border-radius:18px;box-shadow:0 10px 28px rgba(17,24,39,.08)}
     .label-required::after{content:" *";color:#ef4444;font-weight:600}
-    .hint{color:#6b7280;font-size:.85rem}
-    .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:.75rem;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb}
-    .preview-banner{background:linear-gradient(135deg,#1e40af 0%,#3b82f6 60%,#38bdf8 100%);color:#fff;border-radius:14px 14px 0 0;padding:14px 16px;box-shadow:inset 0 -1px 0 rgba(255,255,255,.25)}
-    .shadow-soft{box-shadow:0 6px 18px rgba(0,0,0,.08)}
-    @media (max-width: 991.98px){.page-title{font-size:1.1rem}.card-rich{border-radius:14px}}
-    @media (max-width: 767.98px){.preview-banner{border-radius:14px 14px 0 0}.btn{width:100%}.pill{font-size:.72rem}}
+    .hint{color:#6b7a99;font-size:.85rem}
+    .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:.75rem;background:#f5f7fc;color:#0d1b4b;border:1px solid #e6ebf5}
+    .preview-qr-box{width:84px;height:84px;border-radius:8px;background:#e6ebf5}
     /* Sessions layout */
-.sessions-card{border:1px solid #e5e7eb;border-radius:14px;background:#fff}
-.session-row{display:grid;grid-template-columns:160px 1fr 1fr;gap:14px;align-items:center;padding:12px 14px}
-.session-row:not(:last-child){border-bottom:1px solid #f1f5f9}
-.session-label{font-weight:600;color:#111827}
-.session-field label{font-size:.8rem;color:#6b7280;margin-bottom:4px;display:block}
-.availability-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid #f1f5f9;background:#fafbff;border-radius:14px 14px 0 0}
-.availability-head .session-label{font-weight:600}
-.custom-control-label{font-weight:400;color:#374151}
-
-/* mobile */
-@media (max-width: 768px){
-  .session-row{grid-template-columns:1fr;gap:8px}
-  .session-label{padding-top:6px}
-}
-
+    .sessions-card{border:1px solid #e6ebf5;border-radius:14px;background:#fff;overflow:hidden}
+    .session-row{display:grid;grid-template-columns:160px 1fr 1fr;gap:14px;align-items:center;padding:12px 14px}
+    .session-row:not(:last-child){border-bottom:1px solid #e6ebf5}
+    .session-label{font-weight:600;color:#0d1b4b}
+    .session-field label{font-size:.8rem;color:#6b7a99;margin-bottom:4px;display:block}
+    .availability-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid #e6ebf5;background:#f5f7fc}
+    .availability-head .session-label{font-weight:600}
+    .custom-control-label{font-weight:400;color:#3b4a6b}
+    /* mobile */
+    @media (max-width: 768px){
+      .session-row{grid-template-columns:1fr;gap:8px}
+      .session-label{padding-top:6px}
+    }
+    @media (max-width: 767.98px){.up-btn{width:100%}.pill{font-size:.72rem}}
   </style>
 
   <div class="content-page">
     <div class="content">
       <div class="container-fluid">
-        <div class="page-title-box mb-3">
-          <div class="d-flex align-items-center justify-content-between flex-wrap">
-            <div class="mb-2">
-              <h4 class="page-title mb-0"><?= $titlebar ?></h4>
-              <div class="mt-1">
-                <span class="pill">Step 1 of 2</span>
-                <span class="pill">Details &amp; Sessions</span>
-              </div>
-            </div>
-          </div>
-          <hr class="accent-hr"/>
-        </div>
+
+        <!-- Title -->
+        <h4 class="up-page-title"><?= $titlebar ?></h4>
+        <div class="up-page-sub">Add a new co-curricular activity for QR attendance.</div>
+        <hr class="up-divider" />
 
         <div class="row">
           <div class="col-lg-7">
-            <div class="card card-rich mb-4">
-              <div class="card-body">
+            <div class="up-card mb-4">
+              <div class="up-card-head">
+                <h4><i class="mdi mdi-calendar-plus"></i> Activity Details</h4>
+              </div>
+              <div class="up-card-body">
                 <form method="post" autocomplete="off" id="activityForm" action="<?= $action ?>">
 
                   <!-- Title -->
@@ -259,10 +249,10 @@ $liveState      = $mode === 'edit' ? activity_state($row) : null;
                   <input type="hidden" name="end_time"   id="derived_end_time" value="">
 
                   <div class="mt-2 d-flex flex-wrap gap-2">
-                    <button class="btn btn-primary shadow-soft mr-2 mb-2" type="submit">
-                      <span class="mr-1"><?= $btn_text ?></span>
+                    <button class="up-btn up-btn-primary mb-2" type="submit">
+                      <i class="mdi mdi-content-save mr-1"></i><?= $btn_text ?>
                     </button>
-                    <a class="btn btn-light mb-2" href="<?= site_url('activities'); ?>">Cancel</a>
+                    <a class="up-btn up-btn-ghost mb-2" href="<?= site_url('activities'); ?>">Cancel</a>
                   </div>
                 </form>
               </div>
@@ -271,31 +261,29 @@ $liveState      = $mode === 'edit' ? activity_state($row) : null;
 
           <!-- Preview -->
           <div class="col-lg-5">
-            <div class="card card-rich mb-4">
-              <div class="preview-banner">
-                <div class="d-flex align-items-center justify-content-between">
-                  <strong class="text-white">Activity Preview</strong>
-                  <span class="pill" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.25);">QR Attendance</span>
-                </div>
+            <div class="up-card mb-4">
+              <div class="up-card-head" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;">
+                <h4 style="color:#fff;"><i class="mdi mdi-eye"></i> Activity Preview</h4>
+                <span class="pill" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.25);">QR Attendance</span>
               </div>
-              <div class="card-body">
-                <h5 id="pvTitle" class="mb-1">Untitled Activity</h5>
-                <div id="pvProgram" class="mb-2 text-muted">Program: —</div>
+              <div class="up-card-body">
+                <h5 id="pvTitle" class="mb-1" style="font-weight:800;color:#0d1b4b;">Untitled Activity</h5>
+                <div id="pvProgram" class="mb-2" style="color:#6b7a99;">Program: —</div>
                 <div class="mb-2">
-                  <div class="small text-muted">Schedule</div>
-                  <div id="pvSchedule" class="font-weight-600">—</div>
+                  <div class="small" style="color:#6b7a99;">Schedule</div>
+                  <div id="pvSchedule" style="font-weight:600;color:#0d1b4b;">—</div>
                 </div>
                 <div class="mb-3">
-                  <div class="small text-muted">Description</div>
-                  <div id="pvDesc" class="text-secondary">No description yet.</div>
+                  <div class="small" style="color:#6b7a99;">Description</div>
+                  <div id="pvDesc" style="color:#3b4a6b;">No description yet.</div>
                 </div>
-                <div class="p-3 rounded" style="background:#f9fafb;border:1px dashed #e5e7eb;">
-                  <div class="small text-muted mb-1">QR Attendance (generated after save)</div>
+                <div class="p-3 rounded" style="background:#f5f7fc;border:1px dashed #e6ebf5;border-radius:12px;">
+                  <div class="small mb-1" style="color:#6b7a99;">QR Attendance (generated after save)</div>
                   <div class="d-flex align-items-center">
-                    <div style="width:84px;height:84px;border-radius:8px;background:#e5e7eb;"></div>
+                    <div class="preview-qr-box"></div>
                     <div class="ml-3">
-                      <div class="font-weight-600">Attendance QR will appear here</div>
-                      <div class="text-muted small">Share or project this code for scanning.</div>
+                      <div style="font-weight:600;color:#0d1b4b;">Attendance QR will appear here</div>
+                      <div class="small" style="color:#6b7a99;">Share or project this code for scanning.</div>
                     </div>
                   </div>
                 </div>
@@ -307,10 +295,12 @@ $liveState      = $mode === 'edit' ? activity_state($row) : null;
               </div>
             </div>
 
-            <div class="card card-rich">
-              <div class="card-body">
-                <h6 class="mb-2">Tips</h6>
-                <ul class="mb-0 text-muted pl-3">
+            <div class="up-card">
+              <div class="up-card-head">
+                <h4><i class="mdi mdi-lightbulb-on"></i> Tips</h4>
+              </div>
+              <div class="up-card-body">
+                <ul class="mb-0 pl-3" style="color:#6b7a99;">
                   <li>Keep the title concise and recognizable.</li>
                   <li>If times aren’t fixed, mark the activity as All-day.</li>
                   <li>Save first to generate the QR code for attendance.</li>
@@ -319,6 +309,8 @@ $liveState      = $mode === 'edit' ? activity_state($row) : null;
             </div>
           </div>
         </div>
+
+        <div style="height:40px;"></div>
 
       </div>
     </div>

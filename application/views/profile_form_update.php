@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <title>Attendance MS</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta content="Responsive bootstrap 4 admin template" name="description" />
     <meta content="Coderthemes" name="author" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -17,9 +17,16 @@
     <link href="<?= base_url(); ?>assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" id="bootstrap-stylesheet" />
     <link href="<?= base_url(); ?>assets/css/icons.min.css" rel="stylesheet" type="text/css" />
     <link href="<?= base_url(); ?>assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-stylesheet" />
-    <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=30260827'); ?>">
 
     <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=5'); ?>">
+    <meta name="theme-color" content="#1a2942">
+    <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="<?= base_url('assets/images/icons/attendance-192.png'); ?>">
+    <script src="<?= base_url('assets/js/mobile-shell-early.js?v=5'); ?>"></script>
 
     <style>
         .card-simple {border:1px solid #e6ecf5;border-radius:14px;box-shadow:0 6px 18px rgba(36,59,83,.06)}

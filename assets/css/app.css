@@ -9,10 +9,12 @@ File: Main Css File
 @import url("https://fonts.googleapis.com/css?family=Lato:400,700|Montserrat:500,600&display=swap");
 html {
   position: relative;
-  min-height: 100%; }
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto; }
 
 body {
-  overflow-x: hidden; }
+  overflow: visible; }
 
 .metismenu {
   padding: 0; }
@@ -53,13 +55,13 @@ body {
   color: #3bc0c3; }
 
 #wrapper {
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+  overflow-x: hidden;
   width: 100%; }
 
 .content-page {
   margin-left: 240px;
-  overflow: hidden;
+  overflow-x: hidden;
   padding: 0 15px 65px 15px;
   min-height: 80vh;
   margin-top: 70px; }
@@ -246,8 +248,13 @@ body.enlarged {
   min-height: 1200px; }
 
 @media (max-width: 767.98px) {
-  body {
+  html {
     overflow-x: hidden;
+    overflow-y: auto;
+    height: auto; }
+  body {
+    overflow: visible;
+    height: auto;
     padding-bottom: 80px; }
   .left-side-menu {
     display: none;
@@ -256,7 +263,8 @@ body.enlarged {
     display: block; }
   .content-page, .enlarged .content-page {
     margin-left: 0 !important;
-    padding: 0 10px; }
+    padding: 0 10px;
+    overflow: visible !important; }
   .pro-user-name {
     display: none; }
   .logo-box {

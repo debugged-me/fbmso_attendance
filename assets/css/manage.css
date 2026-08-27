@@ -556,6 +556,7 @@
 
        #personModal .modal-body {
            max-height: calc(100vh - 180px);
+           max-height: calc(100dvh - 180px);
 
            overflow: auto;
        }

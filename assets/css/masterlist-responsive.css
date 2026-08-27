@@ -1,4 +1,6 @@
-/* Shared responsive polish for masterlist_* views */
+/* Shared desktop polish for masterlist_* views.
+   Phone table behavior now comes from mobile-shell.css via .ms-rt so wide
+   matrix reports can retain deliberate horizontal scrolling. */
 :root {
   --ml-card-shadow: 0 10px 30px rgba(15, 23, 42, .08);
   --ml-border: rgba(226, 232, 240, .9);
@@ -28,64 +30,5 @@
 
   .masterlist-page .card-body {
     padding: 1rem;
-  }
-
-  .masterlist-page .dataTables_wrapper .dataTables_filter,
-  .masterlist-page .dataTables_wrapper .dataTables_length,
-  .masterlist-page .dataTables_wrapper .dataTables_info {
-    display: none !important;
-  }
-
-  .masterlist-page table {
-    border: 0;
-  }
-
-  .masterlist-page table thead {
-    display: none;
-  }
-
-  .masterlist-page table tbody {
-    display: block;
-  }
-
-  .masterlist-page table tbody tr {
-    display: block;
-    margin-bottom: 1rem;
-    border: 1px solid var(--ml-border);
-    border-radius: 12px;
-    padding: .85rem 1rem;
-    background: #fff;
-    box-shadow: var(--ml-card-shadow);
-  }
-
-  .masterlist-page table tbody tr td {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: .35rem 0;
-    border: 0 !important;
-    font-size: .92rem;
-  }
-
-  .masterlist-page table tbody tr td::before {
-    content: attr(data-label);
-    font-weight: 600;
-    color: #6c757d;
-    flex: 0 0 45%;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    font-size: .78rem;
-  }
-
-  .masterlist-page table tbody tr td:last-child {
-    border-bottom: 0;
-  }
-
-  .masterlist-page table tbody tr td[data-label='']::before {
-    content: '';
-  }
-
-  .masterlist-page table tbody tr td.control {
-    display: none !important;
   }
 }

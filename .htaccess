@@ -1,5 +1,9 @@
 RewriteEngine On
 
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+</IfModule>
+
 # Redirect fbmso.softtechco.biz to fbmso.srmsportal.com
 RewriteCond %{HTTP_HOST} ^(www\.)?fbmso\.softtechco\.biz$ [NC]
 RewriteRule ^(.*)$ https://fbmso.srmsportal.com/$1 [R=301,L]

@@ -31,7 +31,6 @@
                             <div class="up-id-name"><?= htmlspecialchars($this->session->userdata('username'), ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="up-id-meta">Profile photo upload</div>
                         </div>
-                        <div class="up-id-pill">SY <?= htmlspecialchars($this->session->userdata('sy'), ENT_QUOTES, 'UTF-8'); ?> <?= htmlspecialchars($this->session->userdata('semester'), ENT_QUOTES, 'UTF-8'); ?></div>
                     </div>
 
                     <!-- Upload card -->

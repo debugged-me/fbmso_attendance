@@ -2,463 +2,102 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
 
 <style>
-  a.text-decoration-none:hover {
-    text-decoration: none;
-  }
+  a.text-decoration-none:hover { text-decoration: none; }
 
+  /* ===== KPI stat cards (match student accounting stat cards) ===== */
   .kpi {
-    border: 0;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
-    box-shadow: 0 6px 18px rgba(36, 59, 83, .08);
-    transition: transform .22s ease, box-shadow .22s ease
-  }
-
-  .kpi:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 26px rgba(36, 59, 83, .14)
-  }
-
-  .kpi .card-body {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1.1rem 1.25rem
-  }
-
-  .kpi .count {
-    font-size: 2.0rem;
-    font-weight: 800;
-    color: #1f2d3d;
-    margin: 0;
-    line-height: 1
-  }
-
-  .kpi .label {
-    margin: .15rem 0 0;
-    color: #546e7a;
-    font-weight: 700;
-    letter-spacing: .2px
-  }
-
-  .kpi .icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 14px;
-    display: grid;
-    place-items: center;
-    font-size: 28px
-  }
-
-  .kpi.blue .icon {
-    background: rgba(37, 99, 235, .08);
-    color: #2563eb
-  }
-
-  .kpi.pink .icon {
-    background: rgba(236, 72, 153, .10);
-    color: #ec4899
-  }
-
-  .kpi.purple .icon {
-    background: rgba(139, 92, 246, .10);
-    color: #8b5cf6
-  }
-
-  .kpi.cyan .icon {
-    background: rgba(6, 182, 212, .10);
-    color: #06b6d4
-  }
-
-  .kpi.primary .icon {
-    background: rgba(59, 130, 246, .10);
-    color: #3b82f6
-  }
-
-  .card.announcement-card {
-    transition: transform .3s ease, box-shadow .3s ease, border .3s ease;
-    border: 1px solid #dee2e6;
-    border-radius: 6px
-  }
-
-  .card.announcement-card:hover {
-    transform: scale(1.03);
-    border: 2px solid #007bff;
-    box-shadow: 0 8px 20px rgba(0, 123, 255, .2)
-  }
-
-  .card.reg-ann {
-    border: 1px solid #dee2e6
-  }
-
-  .card.reg-ann .card-header {
-    background: #17a2b8;
-    color: #fff;
-    padding: .9rem 1rem
-  }
-
-  .card.reg-ann .card-title {
-    margin: 0;
-    font-weight: 600
-  }
-
-  .ann-row {
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 1.0rem;
-    background: #fdfdfd;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, .05);
-    transition: transform .25s ease, box-shadow .25s ease;
-    margin-bottom: 12px
-  }
-
-  .ann-row:hover {
-    transform: scale(1.01);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, .1)
-  }
-
-  .ann-title {
-    font-size: 1.05rem;
-    font-weight: 800;
-    color: #2c3e50;
-    margin-bottom: .25rem;
-    border-left: 5px solid #007bff;
-    padding-left: .5rem
-  }
-
-  .ann-meta {
-    font-size: .9rem;
-    color: #6c757d;
-    margin-bottom: .5rem
-  }
-
-  .ann-actions a {
-    font-weight: 600;
-    color: #007bff;
-    text-decoration: none
-  }
-
-  .ann-actions a:hover {
-    text-decoration: underline
-  }
-
-  .modal-body img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 6px
-  }
-
-  #viewAnnouncementModal .modal-body {
-    max-height: 75vh;
-    overflow: auto
-  }
-
-  .ann-flex {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-    flex-wrap: nowrap
-  }
-
-  .ann-text {
-    flex: 1;
-    font-size: 1rem;
-    line-height: 1.6;
-    max-height: 60vh;
-    overflow: auto
-  }
-
-  .ann-aside {
-    width: 38%;
-    min-width: 260px
-  }
-
-  .ann-aside img {
-    width: 100%;
-    height: auto;
-    border-radius: 8px;
-    object-fit: contain
-  }
-
-  @media (max-width:768px) {
-    .ann-flex {
-      flex-direction: column
-    }
-
-    .ann-aside {
-      width: 100%;
-      min-width: 0
-    }
-
-    .ann-text {
-      max-height: none
-    }
-  }
-
-  .card .table th {
-    font-weight: 700;
-  }
-
-  .card .table td,
-  .card .table th {
-    vertical-align: middle;
-  }
-
-  .page-title-box .page-title {
-    white-space: normal !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
-    word-break: break-word;
-    hyphens: auto;
-    line-height: 1.25;
-  }
-
-  @media (max-width: 767.98px) {
-    .page-title-box {
-      display: block;
-    }
-
-    .page-title-right {
-      float: none !important;
-      margin-top: .5rem;
-    }
-
-    .page-title-right .breadcrumb,
-    .page-title-right .badge {
-      white-space: normal !important;
-    }
-  }
-
-  .card.enroll-card {
-    border: 1px solid #dee2e6;
-  }
-
-  .card.enroll-card .card-header {
-    background: #6f42c1;
-    color: #fff;
-    padding: .9rem 1rem;
-  }
-
-  .card.enroll-card .card-title {
-    margin: 0;
-    font-weight: 600;
-  }
-
-  .card.enroll-card .badge-term {
-    background: #5a32a6;
-  }
-
-  .card.enroll-card .table thead th {
-    background: #f8f9fc;
-  }
-
-  .card.enroll-card .card-body {
-    background: #f7f9fc;
-  }
-
-  /* ===== KPI widgets: identical width + identical height ===== */
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 16px;
-    align-items: stretch;
-  }
-
-  .kpi-grid>a {
-    display: block;
-    height: 100%;
-  }
-
-  .kpi-grid>a>.card.kpi {
-    height: 100%;
+    border: 1px solid var(--up-line, #e6ebf5);
+    border-radius: 18px;
+    background: var(--up-card, #fff);
+    box-shadow: 0 6px 18px rgba(13,27,75,.05);
+    transition: transform .22s ease, box-shadow .22s ease;
     margin-bottom: 0;
   }
+  .kpi:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(13,27,75,.09); }
+  .kpi .card-body { display:flex; align-items:center; justify-content:space-between; padding:20px 22px; height:100%; gap:12px; }
+  .kpi .count { font-size:1.6rem; font-weight:800; color:var(--up-ink,#0d1b4b); margin:0; line-height:1; letter-spacing:-.01em; }
+  .kpi .label { margin:6px 0 0; color:var(--up-muted,#6b7a99); font-weight:700; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; }
+  .kpi .icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:24px; flex:0 0 auto; }
+  .kpi.blue   .icon { background:#eef2ff; color:#4266d4; }
+  .kpi.pink   .icon { background:#fce7f3; color:#ec4899; }
+  .kpi.purple .icon { background:#f3e8ff; color:#8b5cf6; }
+  .kpi.cyan   .icon { background:#cffafe; color:#06b6d4; }
+  .kpi.primary .icon { background:#dbeafe; color:#3b82f6; }
 
-  .kpi .card-body {
-    height: 100%;
-    gap: 12px;
-  }
+  /* ===== KPI grid ===== */
+  .kpi-grid { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:16px; align-items:stretch; }
+  .kpi-grid>a { display:block; height:100%; text-decoration:none; }
+  .kpi-grid>a>.card.kpi { height:100%; }
+  .kpi .card-body>div:first-child { min-width:0; }
+  @media (max-width:1499.98px){ .kpi-grid{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:991.98px){ .kpi-grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:575.98px){ .kpi-grid{gap:12px} .kpi .card-body{padding:16px} .kpi .count{font-size:1.35rem} .kpi .icon{width:40px;height:40px;font-size:20px} }
 
-  .kpi .card-body>div:first-child {
-    min-width: 0;
-  }
+  /* ===== Enrollment summary (uniform card) ===== */
+  .enroll-card-wrap { background:var(--up-card,#fff); border:1px solid var(--up-line,#e6ebf5); border-radius:18px; overflow:hidden; box-shadow:0 6px 18px rgba(13,27,75,.05); }
+  .enroll-card-head { padding:18px 22px; border-bottom:1px solid var(--up-line,#e6ebf5); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:linear-gradient(135deg,#1a2a6c,#2a4090); color:#fff; }
+  .enroll-card-head h5 { margin:0; font-weight:800; font-size:1rem; color:#fff; display:flex; align-items:center; gap:8px; }
+  .enroll-card-head .badge-term { background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25); color:#fff; padding:5px 12px; border-radius:999px; font-size:.76rem; font-weight:700; }
+  .enroll-card-body { padding:22px; }
 
-  .kpi .icon {
-    flex: 0 0 auto;
-  }
+  .enroll-split { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:20px; align-items:stretch; }
+  @media (max-width:1199.98px){ .enroll-split{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:767.98px){ .enroll-split{grid-template-columns:1fr; gap:16px} }
 
-  @media (max-width: 1699.98px) {
-    .kpi .count {
-      font-size: 1.75rem;
-    }
+  .enroll-col { display:flex; flex-direction:column; min-width:0; background:#fff; border:1px solid var(--up-line,#e6ebf5); border-radius:14px; padding:16px; box-shadow:0 2px 8px rgba(13,27,75,.04); }
+  .sum-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+  .sum-head h6 { margin:0; font-weight:800; font-size:.68rem; letter-spacing:.18em; text-transform:uppercase; color:var(--up-muted,#6b7a99); display:flex; align-items:center; gap:8px; }
+  .sum-head h6::before { content:''; width:8px; height:8px; border-radius:50%; background:linear-gradient(135deg,var(--up-blue,#2a4090),var(--up-blue-2,#4266d4)); flex-shrink:0; }
+  .sum-head .badge { flex:0 0 auto; border-radius:999px; font-size:.72rem; font-weight:700; padding:4px 12px; }
+  .sum-chart { position:relative; height:240px; margin-bottom:10px; }
+  .sum-empty { display:grid; place-items:center; height:100%; font-size:.85rem; color:var(--up-muted,#6b7a99); }
+  .sum-filter { margin-bottom:8px; border-radius:10px !important; border:1px solid var(--up-line,#e6ebf5) !important; font-size:.84rem !important; }
+  .sum-scroll { flex:1 1 auto; max-height:250px; overflow-y:auto; border-top:1px solid #eef1f5; }
+  .sum-scroll table { margin-bottom:0; }
+  .sum-scroll thead th { position:sticky; top:0; z-index:2; background:#f8f9fc; border-top:0; font-size:.72rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--up-muted,#6b7a99); }
+  .sum-scroll td { font-size:.86rem; color:var(--up-ink,#0d1b4b); }
+  .sum-scroll td.sum-name { max-width:0; width:99%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sum-scroll td.sum-count { width:1%; white-space:nowrap; }
+  .sum-scroll td.sum-count .btn { min-width:48px; border-radius:10px; font-weight:700; font-size:.78rem; }
+  .sum-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:7px; vertical-align:middle; flex:0 0 auto; }
+  .sum-scroll::-webkit-scrollbar { width:8px; }
+  .sum-scroll::-webkit-scrollbar-thumb { background:#cfd8e3; border-radius:8px; }
 
-    .kpi .icon {
-      width: 48px;
-      height: 48px;
-      font-size: 24px;
-      border-radius: 12px;
-    }
-  }
+  /* ===== Announcements (uniform card) ===== */
+  .ann-card-wrap { background:var(--up-card,#fff); border:1px solid var(--up-line,#e6ebf5); border-radius:18px; overflow:hidden; box-shadow:0 6px 18px rgba(13,27,75,.05); }
+  .ann-card-head { padding:18px 22px; border-bottom:1px solid var(--up-line,#e6ebf5); display:flex; align-items:center; justify-content:space-between; background:linear-gradient(135deg,#1a2a6c,#2a4090); color:#fff; }
+  .ann-card-head h5 { margin:0; font-weight:800; font-size:1rem; color:#fff; display:flex; align-items:center; gap:8px; }
+  .ann-card-body { padding:22px; }
 
-  @media (max-width: 1499.98px) {
-    .kpi-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
+  .ann-row { border:1px solid var(--up-line,#e6ebf5); border-radius:14px; padding:16px 18px; background:#fff; box-shadow:0 2px 8px rgba(13,27,75,.04); transition:transform .25s ease, box-shadow .25s ease; margin-bottom:12px; }
+  .ann-row:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(13,27,75,.08); }
+  .ann-title { font-size:1rem; font-weight:800; color:var(--up-ink,#0d1b4b); margin-bottom:.25rem; padding-left:.6rem; border-left:4px solid var(--up-blue-2,#4266d4); }
+  .ann-meta { font-size:.82rem; color:var(--up-muted,#6b7a99); margin-bottom:.5rem; }
+  .ann-actions a { font-weight:700; color:var(--up-blue-2,#4266d4); text-decoration:none; font-size:.84rem; }
+  .ann-actions a:hover { text-decoration:underline; }
 
-  @media (max-width: 991.98px) {
-    .kpi-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
+  .modal-body img { max-width:100%; height:auto; border-radius:8px; }
+  #viewAnnouncementModal .modal-body { max-height:75vh; overflow:auto; }
+  .ann-flex { display:flex; gap:16px; align-items:flex-start; flex-wrap:nowrap; }
+  .ann-text { flex:1; font-size:.92rem; line-height:1.6; max-height:60vh; overflow:auto; color:var(--up-ink,#0d1b4b); }
+  .ann-aside { width:38%; min-width:260px; }
+  .ann-aside img { width:100%; height:auto; border-radius:10px; object-fit:contain; }
+  @media (max-width:768px){ .ann-flex{flex-direction:column} .ann-aside{width:100%;min-width:0} .ann-text{max-height:none} }
 
-  @media (max-width: 575.98px) {
-    .kpi-grid {
-      gap: 12px;
-    }
+  .card .table th { font-weight:700; }
+  .card .table td, .card .table th { vertical-align:middle; }
 
-    .kpi .card-body {
-      padding: .9rem;
-    }
-
-    .kpi .count {
-      font-size: 1.55rem;
-    }
-
-    .kpi .label {
-      font-size: .82rem;
-    }
-
-    .kpi .icon {
-      width: 44px;
-      height: 44px;
-      font-size: 22px;
-      border-radius: 12px;
-    }
-  }
-
-  /* ===== Enrollment summary panels: equal columns, capped height ===== */
-  .enroll-split {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 20px;
-    align-items: stretch;
-  }
-
-  @media (max-width: 1199.98px) {
-    .enroll-split {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (max-width: 767.98px) {
-    .enroll-split {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 16px;
-    }
-  }
-
-  .enroll-col {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    background: #fff;
-    border: 1px solid #e9edf2;
-    border-radius: 12px;
-    padding: 14px;
-    box-shadow: 0 2px 8px rgba(36, 59, 83, .05);
-  }
-
-  .sum-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-
-  .sum-head h6 {
-    margin: 0;
-    font-weight: 700;
-    letter-spacing: .3px;
-  }
-
-  .sum-head .badge {
-    flex: 0 0 auto;
-  }
-
-  .sum-chart {
-    position: relative;
-    height: 240px;
-    margin-bottom: 10px;
-  }
-
-  .sum-empty {
-    display: grid;
-    place-items: center;
-    height: 100%;
-    font-size: .85rem;
-  }
-
-  .sum-filter {
-    margin-bottom: 8px;
-  }
-
-  .sum-scroll {
-    flex: 1 1 auto;
-    max-height: 250px;
-    overflow-y: auto;
-    border-top: 1px solid #eef1f5;
-  }
-
-  .sum-scroll table {
-    margin-bottom: 0;
-  }
-
-  .sum-scroll thead th {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    background: #f8f9fc;
-    border-top: 0;
-  }
-
-  .sum-scroll td.sum-name {
-    max-width: 0;
-    width: 99%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .sum-scroll td.sum-count {
-    width: 1%;
-    white-space: nowrap;
-  }
-
-  .sum-scroll td.sum-count .btn {
-    min-width: 48px;
-  }
-
-  .sum-dot {
-    display: inline-block;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    margin-right: 7px;
-    vertical-align: middle;
-    flex: 0 0 auto;
-  }
-
-  .sum-scroll::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  .sum-scroll::-webkit-scrollbar-thumb {
-    background: #cfd8e3;
-    border-radius: 8px;
+  /* ===== Responsive page title ===== */
+  .page-title-box .page-title { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; word-break:break-word; line-height:1.25; }
+  @media (max-width:767.98px){
+    .page-title-box{display:block}
+    .page-title-right{float:none!important;margin-top:.5rem}
+    .page-title-right .breadcrumb,.page-title-right .badge{white-space:normal!important}
+    .enroll-card-body{padding:16px!important}
+    .ann-card-body{padding:16px!important}
   }
 </style>
 
@@ -475,23 +114,11 @@
           <div class="row">
             <div class="col-12">
               <div class="page-title-box">
-                <h4 class="page-title">
-                  <?php echo $data18[0]->SchoolName; ?><br />
-                  <small class="text-muted"><?php echo $data18[0]->SchoolAddress; ?></small>
+                <h4 class="up-page-title">
+                  <?= htmlspecialchars($data18[0]->SchoolName, ENT_QUOTES, 'UTF-8'); ?>
                 </h4>
-
-                <div class="page-title-right">
-                  <ol class="breadcrumb p-0 m-0">
-                    <li class="breadcrumb-item">
-                      <span class="badge badge-purple mb-3">
-                        Currently login to <b>SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></b>
-                      </span>
-                    </li>
-                  </ol>
-                </div>
-
-                <div class="clearfix"></div>
-                <hr style="border:0;height:2px;background:linear-gradient(to right,#4285F4 60%,#FBBC05 80%,#34A853 100%);border-radius:1px;margin:20px 0;">
+                <div class="up-page-sub"><?= htmlspecialchars($data18[0]->SchoolAddress, ENT_QUOTES, 'UTF-8'); ?></div>
+                <hr class="up-divider" />
               </div>
             </div>
           </div>
@@ -616,14 +243,10 @@
           ?>
           <div class="row mt-4">
             <div class="col-xl-12">
-              <div class="card enroll-card">
-                <div class="card-header d-flex align-items-center justify-content-between">
+              <div class="enroll-card-wrap">
+                <div class="enroll-card-head">
                   <div>
-                    <h5 class="card-title mb-0" style="color: white;">ENROLLMENT SUMMARY</h5>
-                    <small class="badge badge-term badge-light text-white">
-                      <?= htmlspecialchars($sem ?? $this->session->userdata('semester')); ?>,
-                      SY <?= htmlspecialchars($sy ?? $this->session->userdata('sy')); ?>
-                    </small>
+                    <h5><i class="mdi mdi-chart-donut"></i> Student Summary</h5>
                   </div>
                   <div class="card-widgets">
                     <a data-toggle="collapse" href="#enrollSummary" role="button" aria-expanded="true" aria-controls="enrollSummary">
@@ -632,7 +255,7 @@
                   </div>
                 </div>
                 <div id="enrollSummary" class="collapse show">
-                  <div class="card-body">
+                  <div class="enroll-card-body">
                     <div class="enroll-split">
                       <div class="enroll-col">
                         <div class="sum-head">
@@ -836,20 +459,23 @@
 
               <div class="row mt-4">
                 <div class="col-xl-12">
-                  <div class="card reg-ann">
-                    <div class="card-header">
+                  <div class="ann-card-wrap">
+                    <div class="ann-card-head">
+                      <h5><i class="mdi mdi-bullhorn-outline"></i> Announcements</h5>
                       <div class="card-widgets">
                         <a data-toggle="collapse" href="#adminAnnouncements" role="button" aria-expanded="true" aria-controls="adminAnnouncements">
                           <i class="mdi mdi-minus text-white"></i>
                         </a>
                       </div>
-                      <h5 class="card-title mb-0" style="color: white;">ANNOUNCEMENT</h5>
                     </div>
 
                     <div id="adminAnnouncements" class="collapse show">
-                      <div class="card-body">
+                      <div class="ann-card-body">
                         <?php if (empty($announcements)): ?>
-                          <div class="text-muted">No announcements.</div>
+                          <div style="text-align:center;padding:40px 20px;color:var(--up-muted,#6b7a99);">
+                            <i class="mdi mdi-bullhorn-off-outline" style="font-size:42px;display:block;margin-bottom:10px;"></i>
+                            No announcements.
+                          </div>
                         <?php else: ?>
                           <?php $i = 0;
                           foreach ($announcements as $row): $i++;
@@ -882,8 +508,8 @@
                             <div class="modal fade" id="<?= $modalID; ?>" tabindex="-1" role="dialog" aria-labelledby="<?= $modalID; ?>Label" aria-hidden="true">
                               <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
                                 <div class="modal-content">
-                                  <div class="modal-header bg-primary text-white">
-                                    <h5 class="modal-title" id="<?= $modalID; ?>Label"><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></h5>
+                                  <div class="modal-header" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;">
+                                    <h5 class="modal-title" id="<?= $modalID; ?>Label" style="font-weight:800;"><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></h5>
                                     <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                                       <span aria-hidden="true">&times;</span>
                                     </button>
@@ -918,6 +544,7 @@
               </div>
             </div>
           </div>
+          <div style="height:40px;"></div>
 
         </div>
       </div>

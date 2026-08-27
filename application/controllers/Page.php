@@ -2817,6 +2817,7 @@ class Page extends CI_Controller
 		$result['data'] = $this->StudentModel->getsignProfile();  // <— swap this line
 		// (Optional) if your view's transfer modal needs a list:
 		$result['prof'] = $result['data'];
+		$result['school'] = $this->SettingsModel->getSchoolInfo();
 
 		if ($this->input->post('submit')) {
 			$StudentNumber  = $this->input->post('dataid', true);

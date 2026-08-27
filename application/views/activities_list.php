@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
 
 <body>
   <div id="wrapper">
@@ -10,6 +11,113 @@
       .page-title-box {
         position: relative;
         z-index: 0;
+      }
+
+      /* Uniform table styling */
+      .resp-table thead th {
+        background: #f5f7fc;
+        color: #6b7a99;
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        border-bottom: 1px solid #e6ebf5 !important;
+        padding: 14px 16px;
+        white-space: nowrap;
+        border-left: none;
+        border-right: none;
+      }
+      .resp-table tbody td {
+        padding: 14px 16px;
+        vertical-align: middle;
+        font-size: .86rem;
+        color: #0d1b4b;
+        border-bottom: 1px solid #eef1f5 !important;
+        border-left: none;
+        border-right: none;
+      }
+      .resp-table tbody tr:hover {
+        background: #f8faff !important;
+      }
+      .resp-table tbody tr:last-child td {
+        border-bottom: none !important;
+      }
+      /* Monospace IDs / numbers in blue */
+      .resp-table td[data-label="#"] {
+        font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+        color: #2a4090;
+        font-weight: 700;
+      }
+
+      /* Empty state */
+      .al-empty {
+        text-align: center;
+        padding: 48px 20px;
+        color: #6b7a99;
+      }
+      .al-empty i {
+        font-size: 42px;
+        display: block;
+        margin-bottom: 10px;
+        color: #9aa5b8;
+      }
+
+      /* Uniform log table (modal) */
+      #logTable thead th {
+        background: #f5f7fc;
+        color: #6b7a99;
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        border-bottom: 1px solid #e6ebf5 !important;
+        padding: 12px 14px;
+        white-space: nowrap;
+        border-left: none;
+        border-right: none;
+      }
+      #logTable tbody td {
+        padding: 11px 14px;
+        vertical-align: middle;
+        font-size: .84rem;
+        color: #0d1b4b;
+        border-bottom: 1px solid #eef1f5 !important;
+        border-left: none;
+        border-right: none;
+      }
+      #logTable tbody tr:hover {
+        background: #f8faff !important;
+      }
+      #logTable tbody tr:last-child td {
+        border-bottom: none !important;
+      }
+      #logTable td[data-label="#"] {
+        font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+        color: #2a4090;
+        font-weight: 700;
+      }
+
+      /* DataTables (uniform) — in case it gets enabled */
+      .dataTables_wrapper .dataTables_info,
+      .dataTables_wrapper .dataTables_paginate { padding:14px 18px !important; margin:0 !important; }
+      .dataTables_wrapper .dataTables_filter,
+      .dataTables_wrapper .dataTables_length { padding:16px 18px 12px !important; margin:0 !important; }
+      .dataTables_wrapper .dataTables_filter input {
+        border-radius:10px !important; border:1px solid #e6ebf5 !important;
+        padding:8px 14px !important; font-size:.86rem !important; margin-left:6px !important;
+      }
+      .dataTables_wrapper .dataTables_filter input:focus { border-color:#4266d4 !important; box-shadow:0 0 0 3px rgba(66,102,212,.12) !important; outline:none !important; }
+      .dataTables_wrapper .dataTables_length select {
+        border-radius:10px !important; border:1px solid #e6ebf5 !important; padding:6px 10px !important; margin-left:6px !important;
+      }
+      .dataTables_paginate .paginate_button {
+        border-radius:8px !important; min-width:38px; min-height:38px;
+        display:inline-flex !important; align-items:center; justify-content:center;
+      }
+      .dataTables_paginate .paginate_button.current,
+      .dataTables_paginate .paginate_button.current:hover {
+        background:linear-gradient(135deg,#2a4090,#4266d4) !important; color:#fff !important;
+        border-color:#2a4090 !important;
       }
 
       .actions {
@@ -76,43 +184,43 @@
       }
 
       .btn-scan {
-        border-color: #6c757d
+        border-color: #6b7a99
       }
 
       .btn-scan i {
-        color: #6c757d
+        color: #6b7a99
       }
 
       .btn-poster {
-        border-color: #0d6efd
+        border-color: #2a4090
       }
 
       .btn-poster i {
-        color: #0d6efd
+        color: #2a4090
       }
 
       .btn-delete {
-        border-color: #dc3545
+        border-color: #ef4444
       }
 
       .btn-delete i {
-        color: #dc3545
+        color: #ef4444
       }
 
       .btn-edit {
-        border-color: #198754
+        border-color: #16a34a
       }
 
       .btn-edit i {
-        color: #198754
+        color: #16a34a
       }
 
       .btn-close-act {
-        border-color: #b45309
+        border-color: #f59e0b
       }
 
       .btn-close-act i {
-        color: #b45309
+        color: #f59e0b
       }
 
       .btn-open-act {
@@ -503,31 +611,29 @@
           <div class="row">
             <div class="col-12">
               <div class="page-title-box">
-                <h4 class="page-title d-flex align-items-center">
-                  <i class="ion ion-ios-qr-scanner mr-2"></i> List of Activities
-                  <span class="badge badge-info ml-2">QR Attendance</span>
+                <h4 class="up-page-title d-flex align-items-center">
+                  <i class="ion ion-ios-qr-scanner mr-2"></i> Activities
                 </h4>
-                <br><br>
-                <hr style="border:0;height:2px;background:linear-gradient(to right,#4285F4 60%,#FBBC05 80%,#34A853 100%);border-radius:1px;margin:8px 0;" />
+                <div class="up-page-sub">Create activities, open the scanner, or print a poster QR for self check-in.</div>
+                <hr class="up-divider" />
               </div>
             </div>
           </div>
 
           <div class="row mb-2">
-            <div class="col-12 col-md">
-              <small class="text-muted d-block mb-2 mb-md-0">
-                Create activities, open the scanner, or print a poster QR for self check-in.
-              </small>
-            </div>
-            <div class="col-12 col-md-auto">
-              <a href="<?= site_url('activities/create'); ?>" class="btn btn-primary btn-block btn-md">
-                <i class="ion ion-md-add-circle-outline mr-1"></i> Create Activity
+            <div class="col-12 col-md-auto ml-md-auto">
+              <a href="<?= site_url('activities/create'); ?>" class="up-btn up-btn-primary">
+                <i class="ion ion-md-add-circle-outline"></i> Create Activity
               </a>
             </div>
           </div>
 
-          <div class="card">
-            <div class="card-body p-0">
+          <div class="up-card">
+            <div class="up-card-head">
+              <h4><i class="ion ion-ios-qr-scanner"></i> List of Activities</h4>
+              <span class="badge badge-light" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;color:#6b7a99;border:1px solid #e6ebf5;">QR Attendance</span>
+            </div>
+            <div class="up-card-body" style="padding:0 !important;">
               <div class="table-responsive">
                 <table class="table table-hover table-striped mb-0 align-middle resp-table">
                   <thead class="thead-light">
@@ -671,7 +777,7 @@
 
                           <td data-label="Program">
                             <?= !empty($r->program_effective)
-                              ? '<span class="badge badge-pill badge-primary">' . htmlspecialchars($r->program_effective, ENT_QUOTES, 'UTF-8') . '</span>'
+                              ? '<span class="badge badge-pill" style="background:linear-gradient(135deg,#2a4090,#4266d4);color:#fff;">' . htmlspecialchars($r->program_effective, ENT_QUOTES, 'UTF-8') . '</span>'
                               : '<span class="text-muted">—</span>'; ?>
                           </td>
 
@@ -746,7 +852,10 @@
                       <?php endforeach;
                     else: ?>
                       <tr>
-                        <td colspan="6" class="text-center text-muted py-4">No activities yet.</td>
+                        <td colspan="6" class="al-empty">
+                          <i class="ion ion-md-calendar"></i>
+                          No activities yet.
+                        </td>
                       </tr>
                     <?php endif; ?>
                   </tbody>
@@ -759,19 +868,19 @@
           <div class="modal fade" id="logModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
               <div class="modal-content">
-                <div class="modal-header align-items-center">
+                <div class="modal-header align-items-center" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;padding:18px 24px;">
                   <h5 class="modal-title">
-                    Attendance Log <span class="badge badge-primary ml-2" id="logCount">0</span>
+                    Attendance Log <span class="badge badge-light ml-2" id="logCount" style="color:#2a4090;">0</span>
                   </h5>
                   <div class="ml-auto d-none d-md-flex align-items-center">
                     <div class="custom-control custom-switch mr-3">
                       <input type="checkbox" class="custom-control-input" id="autoRefreshSwitch" checked>
                     </div>
-                    <button id="btnRefreshLog" class="btn btn-sm btn-outline-secondary">
+                    <button id="btnRefreshLog" class="up-btn up-btn-ghost" style="padding:6px 12px;font-size:.78rem;min-height:auto;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.25);">
                       <i class="mdi mdi-refresh"></i> Refresh
                     </button>
                   </div>
-                  <button type="button" class="close ml-2" data-dismiss="modal" aria-label="Close">
+                  <button type="button" class="close ml-2" data-dismiss="modal" aria-label="Close" style="color:#fff;opacity:.9;">
                     <span aria-hidden="true">&times;</span>
                   </button>
                 </div>
@@ -783,8 +892,8 @@
                   </div>
 
                   <div class="table-responsive">
-                    <table class="table table-sm table-bordered mb-0 w-100" id="logTable">
-                      <thead class="thead-light">
+                    <table class="table table-sm mb-0 w-100" id="logTable" style="border:none;">
+                      <thead>
                         <tr>
                           <th style="width:56px">#</th>
                           <th>Student</th>
@@ -806,10 +915,10 @@
                   <div class="custom-control custom-switch mr-auto">
                     <input type="checkbox" class="custom-control-input" id="autoRefreshSwitchSm" checked>
                   </div>
-                  <button id="btnRefreshLogSm" class="btn btn-sm btn-outline-secondary">
+                  <button id="btnRefreshLogSm" class="up-btn up-btn-ghost" style="padding:6px 12px;font-size:.78rem;min-height:auto;">
                     <i class="mdi mdi-refresh"></i> Refresh
                   </button>
-                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Close</button>
                 </div>
               </div>
             </div>
@@ -817,6 +926,7 @@
 
         </div>
       </div>
+      <div style="height:40px;"></div>
       <?php include('includes/footer.php'); ?>
     </div>
   </div>

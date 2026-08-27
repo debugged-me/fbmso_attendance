@@ -4,7 +4,7 @@
     <head>
         <meta charset="utf-8" />
         <title>SRMS</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         <meta content="Responsive bootstrap 4 admin template" name="description" />
         <meta content="Coderthemes" name="author" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -15,6 +15,13 @@
         <link href="<?= base_url(); ?>assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" id="bootstrap-stylesheet" />
         <link href="<?= base_url(); ?>assets/css/icons.min.css" rel="stylesheet" type="text/css" />
         <link href="<?= base_url(); ?>assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-stylesheet" />
+        <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=5'); ?>">
+        <meta name="theme-color" content="#1a2942">
+        <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <link rel="apple-touch-icon" href="<?= base_url('assets/images/icons/attendance-192.png'); ?>">
+        <script src="<?= base_url('assets/js/mobile-shell-early.js?v=5'); ?>"></script>
 
     </head>
 
@@ -70,6 +77,8 @@
 
         <!-- App js -->
         <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
+        <?php include(APPPATH . 'views/includes/mobile-tabbar.php'); ?>
+        <script src="<?= base_url('assets/js/mobile-shell.js?v=5'); ?>"></script>
 
     </body>
 

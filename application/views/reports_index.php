@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
 
 <body>
     <div id="wrapper">
@@ -12,22 +13,23 @@
                 <div class="container-fluid section-gutters">
                     <div class="row">
                         <div class="col-12">
-                            <div class="page-title-box d-flex align-items-center justify-content-between mb-2">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
                                 <div>
-                                    <h4 class="page-title mb-1">Reports & Insights</h4>
+                                    <h4 class="up-page-title">Reports</h4>
+                                    <p class="up-page-sub">Generate and view attendance and enrollment reports.</p>
                                 </div>
                                 <div class="btn-group no-print">
-                                    <button type="button" id="printBtn" class="btn btn-primary btn-sm">
+                                    <button type="button" id="printBtn" class="up-btn up-btn-primary">
                                         <i class="mdi mdi-printer"></i> Print
                                     </button>
                                 </div>
                             </div>
-                            <hr style="border:0;height:2px;background:linear-gradient(to right,#4285F4 60%,#FBBC05 80%,#34A853 100%);border-radius:1px;margin:10px 0 16px" />
+                            <hr class="up-divider" />
                         </div>
                     </div>
                     <div class="row" id="section-kpis" data-print-id="kpis">
                         <div class="col-md-3 mb-3">
-                            <div class="card kpi p-3">
+                            <div class="up-card kpi p-3">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <div class="text-muted small">Total Courses</div>
@@ -38,7 +40,7 @@
                             </div>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <div class="card kpi p-3">
+                            <div class="up-card kpi p-3">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <div class="text-muted small">Total Sections</div>
@@ -54,7 +56,7 @@
                             </div>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <div class="card kpi p-3">
+                            <div class="up-card kpi p-3">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <div class="text-muted small">Total Students (unique)</div>
@@ -70,7 +72,7 @@
                             </div>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <div class="card kpi p-3">
+                            <div class="up-card kpi p-3">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <div class="text-muted small">Events / Scans</div>
@@ -86,8 +88,8 @@
                         </div>
                     </div>
                     <div id="reportsAccordion" class="accordion">
-                        <div class="card mb-3 section-card" id="section-yearlevel" data-print-id="by_yearlevel">
-                            <div class="card-header py-2 px-3" id="headYearLevel">
+                        <div class="up-card mb-3 section-card" id="section-yearlevel" data-print-id="by_yearlevel">
+                            <div class="up-card-head py-2 px-3" id="headYearLevel">
                                 <h6 class="mb-0">
                                     <button class="btn btn-link collapsed section-toggle no-print" type="button" data-target="#collapseYearLevel">
                                         <i class="mdi mdi-chevron-right mr-1"></i> Students by Year Level
@@ -96,7 +98,7 @@
                                 </h6>
                             </div>
                             <div id="collapseYearLevel" class="collapse" aria-labelledby="headYearLevel">
-                                <div class="card-body p-0 px-md-3">
+                                <div class="up-card-body p-0 px-md-3">
                                     <table class="table table-sm mb-0 table-tight">
                                         <thead>
                                             <tr>
@@ -116,8 +118,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="card mb-3 section-card" id="section-course" data-print-id="by_course">
-                            <div class="card-header py-2 px-3" id="headCourse">
+                        <div class="up-card mb-3 section-card" id="section-course" data-print-id="by_course">
+                            <div class="up-card-head py-2 px-3" id="headCourse">
                                 <h6 class="mb-0">
                                     <button class="btn btn-link collapsed section-toggle no-print" type="button" data-target="#collapseCourse">
                                         <i class="mdi mdi-chevron-right mr-1"></i> Students by Course
@@ -126,7 +128,7 @@
                                 </h6>
                             </div>
                             <div id="collapseCourse" class="collapse" aria-labelledby="headCourse">
-                                <div class="card-body p-0 px-md-3">
+                                <div class="up-card-body p-0 px-md-3">
                                     <table class="table table-sm mb-0 table-tight">
                                         <thead>
                                             <tr>
@@ -146,8 +148,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="card mb-3 section-card" id="section-sections" data-print-id="sections_per_course">
-                            <div class="card-header py-2 px-3" id="headSectionsCount">
+                        <div class="up-card mb-3 section-card" id="section-sections" data-print-id="sections_per_course">
+                            <div class="up-card-head py-2 px-3" id="headSectionsCount">
                                 <h6 class="mb-0">
                                     <button class="btn btn-link collapsed section-toggle no-print" type="button" data-target="#collapseSectionsCount">
                                         <i class="mdi mdi-chevron-right mr-1"></i> Number of Sections per Course
@@ -156,7 +158,7 @@
                                 </h6>
                             </div>
                             <div id="collapseSectionsCount" class="collapse" aria-labelledby="headSectionsCount">
-                                <div class="card-body p-0 px-md-3">
+                                <div class="up-card-body p-0 px-md-3">
                                     <table class="table table-sm mb-0 table-tight">
                                         <thead>
                                             <tr>
@@ -176,8 +178,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="card mb-3 section-card" id="section-bysection" data-print-id="by_section">
-                            <div class="card-header py-2 px-3 d-flex align-items-center justify-content-between" id="headBySection">
+                        <div class="up-card mb-3 section-card" id="section-bysection" data-print-id="by_section">
+                            <div class="up-card-head py-2 px-3 d-flex align-items-center justify-content-between" id="headBySection">
                                 <h6 class="mb-0">
                                     <button class="btn btn-link collapsed section-toggle no-print" type="button" data-target="#collapseBySection">
                                         <i class="mdi mdi-chevron-right mr-1"></i> Students by Section
@@ -186,7 +188,7 @@
                                 </h6>
                             </div>
                             <div id="collapseBySection" class="collapse" aria-labelledby="headBySection">
-                                <div class="card-body p-0 px-md-3">
+                                <div class="up-card-body p-0 px-md-3">
                                     <div class="table-responsive">
                                         <table id="bySectionTable" class="table table-striped table-sm mb-0 table-tight">
                                             <thead>
@@ -212,8 +214,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="card mb-3 section-card" id="section-events" data-print-id="events">
-                            <div class="card-header py-2 px-3" id="headEvents">
+                        <div class="up-card mb-3 section-card" id="section-events" data-print-id="events">
+                            <div class="up-card-head py-2 px-3" id="headEvents">
                                 <h6 class="mb-0">
                                     <button class="btn btn-link collapsed section-toggle no-print" type="button" data-target="#collapseEvents">
                                         <i class="mdi mdi-chevron-right mr-1"></i> Events & Attendance (latest)
@@ -222,7 +224,7 @@
                                 </h6>
                             </div>
                             <div id="collapseEvents" class="collapse" aria-labelledby="headEvents">
-                                <div class="card-body p-0 px-md-3">
+                                <div class="up-card-body p-0 px-md-3">
                                     <div class="table-responsive">
                                         <table class="table table-striped table-sm mb-0 table-tight">
                                             <thead>
@@ -275,8 +277,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="card mb-3 section-card" id="section-attendance" data-print-id="attendance">
-                            <div class="card-header py-2 px-3" id="headAttendance">
+                        <div class="up-card mb-3 section-card" id="section-attendance" data-print-id="attendance">
+                            <div class="up-card-head py-2 px-3" id="headAttendance">
                                 <h6 class="mb-0">
                                     <button class="btn btn-link collapsed section-toggle no-print" type="button" data-target="#collapseAttendance">
                                         <i class="mdi mdi-chevron-right mr-1"></i> Recent Attendance (latest 100)
@@ -285,7 +287,7 @@
                                 </h6>
                             </div>
                             <div id="collapseAttendance" class="collapse" aria-labelledby="headAttendance">
-                                <div class="card-body p-0 px-md-3">
+                                <div class="up-card-body p-0 px-md-3">
                                     <div class="table-responsive">
                                         <table class="table table-striped table-sm mb-0 table-tight">
                                             <thead>
@@ -338,6 +340,7 @@
 
                     </div>
 
+                    <div style="height:40px;"></div>
                 </div>
             </div>
             <?php include('includes/footer.php'); ?>
@@ -388,8 +391,8 @@
                     </div>
                 </div>
                 <div class="modal-footer py-2">
-                    <button type="button" class="btn btn-light btn-sm" data-dismiss="modal">Cancel</button>
-                    <button type="button" id="confirmPrint" class="btn btn-primary btn-sm"><i class="mdi mdi-printer"></i> Print</button>
+                    <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
+                    <button type="button" id="confirmPrint" class="up-btn up-btn-primary"><i class="mdi mdi-printer"></i> Print</button>
                 </div>
             </div>
         </div>
@@ -405,11 +408,11 @@
 
             $('#reportsAccordion .collapse')
                 .on('shown.bs.collapse', function() {
-                    $(this).prev('.card-header').find('.mdi')
+                    $(this).prev('.up-card-head').find('.mdi')
                         .removeClass('mdi-chevron-right').addClass('mdi-chevron-down');
                 })
                 .on('hidden.bs.collapse', function() {
-                    $(this).prev('.card-header').find('.mdi')
+                    $(this).prev('.up-card-head').find('.mdi')
                         .removeClass('mdi-chevron-down').addClass('mdi-chevron-right');
                 });
 
@@ -491,13 +494,13 @@
             }
         }
 
-        .section-card .card-body {
+        .section-card .up-card-body {
             padding-left: .25rem;
             padding-right: .25rem;
         }
 
         @media (min-width:768px) {
-            .section-card .card-body {
+            .section-card .up-card-body {
                 padding-left: 1rem;
                 padding-right: 1rem;
             }
@@ -603,20 +606,31 @@
             box-shadow: none;
         }
 
-        .card-header {
-            background: #fff;
+        .up-card-head {
+            background: linear-gradient(135deg, #1a2a6c, #2a4090);
+            color: #fff;
         }
 
-        .card-header h6 {
+        .up-card-head h6 {
             line-height: 1;
+            color: #fff;
         }
 
-        .accordion .card {
+        .up-card-head .section-toggle {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .up-card-head .section-toggle:hover {
+            color: #fff;
+        }
+
+        .accordion .up-card {
             border-radius: 12px;
             overflow: hidden;
         }
 
-        .accordion .card+.card {
+        .accordion .up-card+.up-card {
             margin-top: .5rem;
         }
 
@@ -624,6 +638,8 @@
             background: #f8fafc;
             border-bottom: 1px solid #e2e8f0 !important;
             font-size: .82rem;
+            text-transform: uppercase;
+            letter-spacing: .04em;
             color: #334155;
             vertical-align: middle;
         }
@@ -631,6 +647,10 @@
         .table-tight tbody td {
             padding: .45rem .75rem;
             vertical-align: middle;
+        }
+
+        .table-tight tbody tr:hover {
+            background: #f8faff;
         }
 
         .print-hide {
@@ -659,12 +679,12 @@
                 margin: 0 !important;
             }
 
-            .card,
+            .up-card,
             .kpi {
                 box-shadow: none !important;
             }
 
-            .card {
+            .up-card {
                 border: 1px solid #ddd;
                 margin-bottom: .75rem;
             }
@@ -695,6 +715,15 @@
         .display-5 {
             font-size: 2rem;
         }
+
+        /* DataTables uniform styling */
+        .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate { padding:14px 18px !important; margin:0 !important; }
+        .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_length { padding:16px 18px 12px !important; margin:0 !important; }
+        .dataTables_wrapper .dataTables_filter input { border-radius:10px !important; border:1px solid #e6ebf5 !important; padding:8px 14px !important; font-size:.86rem !important; margin-left:6px !important; }
+        .dataTables_wrapper .dataTables_filter input:focus { border-color:#4266d4 !important; box-shadow:0 0 0 3px rgba(66,102,212,.12) !important; outline:none !important; }
+        .dataTables_wrapper .dataTables_length select { border-radius:10px !important; border:1px solid #e6ebf5 !important; padding:6px 10px !important; margin-left:6px !important; }
+        .dataTables_paginate .paginate_button { border-radius:8px !important; min-width:38px; min-height:38px; display:inline-flex !important; align-items:center; justify-content:center; }
+        .dataTables_paginate .paginate_button.current, .dataTables_paginate .paginate_button.current:hover { background:linear-gradient(135deg,#2a4090,#4266d4) !important; color:#fff !important; border-color:#2a4090 !important; }
     </style>
 </body>
 

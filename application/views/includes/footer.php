@@ -1,6 +1,8 @@
 <link rel="stylesheet" href="<?= base_url('assets/css/request-bell.css'); ?>">
 <script src="<?= base_url('assets/js/req-bell.js'); ?>"></script>
 <script src="<?= base_url('assets/js/masterlist-mobile.js'); ?>"></script>
+<?php include(APPPATH . 'views/includes/mobile-tabbar.php'); ?>
+<script src="<?= base_url('assets/js/mobile-shell.js?v=5'); ?>"></script>
 
 <footer class="footer">
     <div class="container-fluid">

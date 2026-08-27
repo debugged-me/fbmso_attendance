@@ -2,6 +2,7 @@
 <html lang="en">
 <?php include('includes/head.php'); ?>
 <link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
 <?php
 // ---------------- Helpers ----------------
 if (!function_exists('h')) {
@@ -179,32 +180,105 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
 
 <body>
     <style>
-        .badge-course-code {
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.4px
+        .badge-course-code { font-size:.72rem; font-weight:700; letter-spacing:.4px; border-radius:6px; }
+        .student-number-cell .student-name-mobile { color:#6b7a99; font-size:.82rem; }
+        .pl-actions { display:flex; flex-wrap:wrap; gap:10px; margin:4px 0 20px; }
+        .pl-actions > .up-btn, .pl-actions > a.up-btn, .pl-actions > button.up-btn { margin-right:10px; margin-bottom:6px; }
+        @supports (gap:10px) { .pl-actions > .up-btn { margin-right:0; } }
+
+        /* Filter badges */
+        .filter-badges { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+        .filter-badge {
+            display:inline-flex; align-items:center; gap:6px;
+            background:#f5f7fc; border:1px solid #e6ebf5; border-radius:999px;
+            padding:6px 14px; font-size:.78rem; font-weight:700; color:#2a4090;
+        }
+        .filter-badge i { font-size:15px; color:#4266d4; }
+
+        /* Table */
+        #logsTable thead th {
+            background:#f5f7fc; color:#6b7a99; font-size:.72rem; font-weight:800;
+            letter-spacing:.1em; text-transform:uppercase; border-bottom:1px solid #e6ebf5 !important;
+            padding:14px 16px; white-space:nowrap; border-left:none; border-right:none;
+        }
+        #logsTable tbody td {
+            padding:14px 16px; vertical-align:middle; font-size:.86rem; color:#0d1b4b;
+            border-bottom:1px solid #eef1f5 !important; border-left:none; border-right:none;
+        }
+        #logsTable tbody tr:hover { background:#f8faff !important; }
+        #logsTable tbody tr:last-child td { border-bottom:none !important; }
+        .dataTables_wrapper .dataTables_info,
+        .dataTables_wrapper .dataTables_paginate { padding:14px 18px !important; margin:0 !important; }
+        .dataTables_wrapper .dataTables_filter,
+        .dataTables_wrapper .dataTables_length { padding:16px 18px 12px !important; margin:0 !important; }
+        .dataTables_wrapper .dataTables_filter input {
+            border-radius:10px !important; border:1px solid #e6ebf5 !important;
+            padding:8px 14px !important; font-size:.86rem !important; margin-left:6px !important;
+        }
+        .dataTables_wrapper .dataTables_filter input:focus { border-color:#4266d4 !important; box-shadow:0 0 0 3px rgba(66,102,212,.12) !important; outline:none !important; }
+        .dataTables_wrapper .dataTables_length select {
+            border-radius:10px !important; border:1px solid #e6ebf5 !important; padding:6px 10px !important; margin-left:6px !important;
+        }
+        .dataTables_paginate .paginate_button {
+            border-radius:8px !important; min-width:38px; min-height:38px;
+            display:inline-flex !important; align-items:center; justify-content:center;
+        }
+        .dataTables_paginate .paginate_button.current,
+        .dataTables_paginate .paginate_button.current:hover {
+            background:linear-gradient(135deg,#2a4090,#4266d4) !important; color:#fff !important;
+            border-color:#2a4090 !important;
         }
 
-        .student-number-cell .student-name-mobile {
-            color: #6c757d;
-            font-size: 0.85rem
-        }
+        /* Empty states */
+        .al-empty { text-align:center; padding:48px 20px; color:#6b7a99; }
+        .al-empty i { font-size:42px; display:block; margin-bottom:10px; color:#9aa5b8; }
 
+        /* Print document header */
+        #printHeader { display:none; }
         @media print {
-
-            .export-actions,
-            .dataTables_wrapper .dataTables_length,
-            .dataTables_wrapper .dataTables_filter,
-            .dataTables_wrapper .dataTables_info,
-            .dataTables_wrapper .dataTables_paginate {
-                display: none !important;
+            #wrapper .topbar, #wrapper .left-side-menu, #wrapper .sidebar, #wrapper .right-bar,
+            .themecustomizer, .footer, .page-title-box, .pl-actions, .up-card-head, .up-flash,
+            .filter-badges, .export-actions, .btn,
+            .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_length,
+            .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate { display:none !important; }
+            #printHeader { display:block !important; text-align:center; margin-bottom:20px; }
+            #printHeader .ph-school { font-size:16pt; font-weight:800; color:#0d1b4b; margin:0; }
+            #printHeader .ph-address { font-size:10pt; color:#555; margin:2px 0 10px; }
+            #printHeader .ph-title { font-size:13pt; font-weight:700; color:#2a4090; text-transform:uppercase; letter-spacing:1px; margin:8px 0 4px; }
+            #printHeader .ph-meta { font-size:9pt; color:#777; display:flex; justify-content:center; gap:20px; }
+            #printHeader .ph-line { height:2px; background:linear-gradient(to right,#2a4090,#4266d4,#2a4090); margin:10px 0 16px; border-radius:1px; }
+            @page { size:A4 portrait; margin:14mm; }
+            body { margin:0; background:#fff !important; }
+            .content-page { margin-left:0 !important; margin-top:0 !important; padding:0 !important; }
+            .up-card { border:none !important; box-shadow:none !important; border-radius:0 !important; }
+            .up-card-body { padding:0 !important; }
+            #logsTable { font-size:9pt; border-collapse:collapse; width:100% !important; }
+            #logsTable thead th {
+                background:#2a4090 !important; color:#fff !important; font-size:7.5pt; font-weight:700;
+                text-transform:uppercase; letter-spacing:.5px; padding:8px 8px !important;
+                border:1px solid #2a4090 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;
             }
-
-            .table-responsive {
-                overflow: visible !important;
-            }
+            #logsTable tbody td { padding:5px 8px !important; font-size:9pt; color:#1a1a1a !important; border:1px solid #ccc !important; }
+            #logsTable tbody tr:nth-child(even) td { background:#f5f7fc !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            #logsTable tbody tr:hover { background:transparent !important; }
+            .dataTables_wrapper { display:block !important; }
+            .dataTables_scrollBody { height:auto !important; overflow:visible !important; }
+            #logsTable tbody tr { display:table-row !important; }
         }
     </style>
+
+    <!-- Print-only document header -->
+    <div id="printHeader">
+        <div class="ph-school">FBMSO Attendance</div>
+        <div class="ph-address">Attendance Logs Report</div>
+        <div class="ph-title">Attendance Logs</div>
+        <div class="ph-meta">
+            <span>Printed: <?= date('F d, Y \a\t h:i A'); ?></span>
+            <?php if (!empty($rows)): ?><span>Total Records: <?= count($rows); ?></span><?php endif; ?>
+        </div>
+        <div class="ph-line"></div>
+    </div>
+
     <div id="wrapper">
         <?php include('includes/top-nav-bar.php'); ?>
         <?php include('includes/sidebar.php'); ?>
@@ -213,83 +287,101 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
             <div class="content">
                 <div class="container-fluid">
 
+                    <?php if ($flashSuccess): ?><div class="up-flash up-flash-success"><?= h($flashSuccess); ?></div><?php endif; ?>
+                    <?php if ($flashError): ?><div class="up-flash up-flash-danger"><?= h($flashError); ?></div><?php endif; ?>
+                    <?php if ($flashInfo): ?><div class="up-flash up-flash-info"><?= h($flashInfo); ?></div><?php endif; ?>
+
+                    <!-- Title -->
                     <div class="row">
                         <div class="col-md-12">
                             <div class="page-title-box">
-                                <h4 class="page-title d-flex flex-wrap align-items-center">
-                                    <span class="mr-3">Attendance Logs</span>
-                                    <a href="<?= base_url('Page/admin'); ?>" class="btn btn-success btn-sm d-inline-flex align-items-center mr-2 d-lg-none">
-                                        <i class="bi bi-arrow-left mr-1"></i>
-                                        <span>Back to Dashboard</span>
-                                    </a>
-                                    <button type="button" class="btn btn-info" data-toggle="modal" data-target="#filterModal">
-                                        Select Activity
-                                    </button>
-                                </h4>
-                                <div class="page-title-right">
-                                    <ol class="breadcrumb p-0 m-0"></ol>
-                                </div>
-                                <div class="clearfix"></div>
-                                <hr style="border:0;height:2px;background:linear-gradient(to right,#4285F4 60%,#FBBC05 80%,#34A853 100%);border-radius:1px;margin:20px 0;" />
+                                <h4 class="up-page-title">Attendance Logs</h4>
+                                <div class="up-page-sub">View and filter attendance records by activity, section, and session.</div>
+                                <hr class="up-divider" />
                             </div>
                         </div>
                     </div>
 
+                    <!-- Action buttons -->
+                    <div class="pl-actions">
+                        <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
+                            <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                        </a>
+                        <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#filterModal">
+                            <i class="mdi mdi-filter-variant"></i> Select Activity
+                        </button>
+                    </div>
+
+                    <!-- Active filter badges -->
                     <?php if (!empty($activity_id) || !empty($section) || !empty($year_level) || !empty($date) || !empty($session)): ?>
-                        <div class="mb-3">
-                            <?php
-                            $actTitle = '';
-                            if (!empty($activity_id)) {
-                                foreach ($activities as $a) {
-                                    if ((int)$a->activity_id === (int)$activity_id) {
-                                        $actTitle = (string)$a->title;
-                                        break;
-                                    }
+                        <?php
+                        $actTitle = '';
+                        if (!empty($activity_id)) {
+                            foreach ($activities as $a) {
+                                if ((int)$a->activity_id === (int)$activity_id) {
+                                    $actTitle = (string)$a->title;
+                                    break;
                                 }
                             }
-                            ?>
+                        }
+                        ?>
+                        <div class="filter-badges">
                             <?php if (!empty($activity_id)): ?>
-                                <span class="badge badge-light border mr-1"><i class="mdi mdi-flag-outline mr-1"></i><?= h($actTitle) ?></span>
+                                <span class="filter-badge"><i class="mdi mdi-flag-outline"></i><?= h($actTitle) ?></span>
                             <?php endif; ?>
                             <?php if (!empty($section)): ?>
-                                <span class="badge badge-light border mr-1"><i class="mdi mdi-account-group-outline mr-1"></i>Section: <?= h($section) ?></span>
+                                <span class="filter-badge"><i class="mdi mdi-account-group-outline"></i>Section: <?= h($section) ?></span>
                             <?php endif; ?>
                             <?php if (!empty($year_level)): ?>
-                                <span class="badge badge-light border mr-1"><i class="mdi mdi-school-outline mr-1"></i>Year: <?= h($year_level) ?></span>
+                                <span class="filter-badge"><i class="mdi mdi-school-outline"></i>Year: <?= h($year_level) ?></span>
                             <?php endif; ?>
                             <?php if (!empty($date)): ?>
-                                <span class="badge badge-light border mr-1"><i class="mdi mdi-calendar-range mr-1"></i>Date: <?= h($date) ?></span>
+                                <span class="filter-badge"><i class="mdi mdi-calendar-range"></i>Date: <?= h($date) ?></span>
                             <?php endif; ?>
                             <?php if (!empty($session)): ?>
-                                <span class="badge badge-light border"><i class="mdi mdi-timetable mr-1"></i>Session: <?= strtoupper(h($session)) ?></span>
+                                <span class="filter-badge"><i class="mdi mdi-timetable"></i>Session: <?= strtoupper(h($session)) ?></span>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
 
+                    <!-- Logs table card -->
                     <div class="row">
                         <div class="col-md-12">
-                            <div class="card">
-                                <div class="card-body">
+                            <div class="up-card">
+                                <?php if (!empty($activity_id) && !empty($rows)): ?>
+                                    <div class="up-card-head">
+                                        <h4><i class="mdi mdi-clipboard-list-outline"></i> Attendance Results</h4>
+                                        <div style="display:flex;align-items:center;gap:10px;">
+                                            <span class="badge badge-light" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;color:#6b7a99;border:1px solid #e6ebf5;">
+                                                <?= count($rows) ?> records
+                                            </span>
+                                            <div class="btn-group export-actions">
+                                                <?php
+                                                $csvParams = [];
+                                                if (!empty($section)) $csvParams['section'] = $section;
+                                                if (!empty($year_level)) $csvParams['year_level'] = $year_level;
+                                                if (!empty($date)) $csvParams['date'] = $date;
+                                                if (!empty($session)) $csvParams['session'] = $session;
+                                                $csvQuery = !empty($csvParams) ? '?' . http_build_query($csvParams) : '';
+                                                ?>
+                                                <a class="up-btn up-btn-ghost" style="padding:6px 12px;font-size:.78rem;min-height:auto;background:#dcfce7;color:#16a34a;border-color:#86efac;" href="<?= site_url('AttendanceLogs/export_csv/' . (int)$activity_id . $csvQuery) ?>">
+                                                    <i class="bi bi-file-earmark-spreadsheet"></i> CSV
+                                                </a>
+                                                <button type="button" class="up-btn up-btn-ghost" style="padding:6px 12px;font-size:.78rem;min-height:auto;" id="printLogsBtn">
+                                                    <i class="bi bi-printer"></i> Print
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="up-card-body" style="padding:0 !important;">
                                     <?php if (!empty($activity_id)): ?>
                                         <?php if (!empty($rows)): ?>
                                             <?php if (!empty($filter_note)): ?>
-                                                <div class="alert alert-warning mb-3"><?= h($filter_note) ?></div>
+                                                <div class="up-flash up-flash-info" style="margin:16px 18px 0;border-radius:10px;"><?= h($filter_note) ?></div>
                                             <?php endif; ?>
-
-                                            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                                                <h5 class="mb-2 mb-lg-0">Results <span class="badge badge-primary ml-1"><?= count($rows) ?></span></h5>
-                                                <div class="btn-group export-actions">
-                                                    <a class="btn btn-outline-success btn-sm" href="<?= site_url('AttendanceLogs/export_csv/' . (int)$activity_id . '?' . http_build_query(['section' => $section, 'year_level' => $year_level, 'date' => $date, 'session' => $session])) ?>">
-                                                        <i class="bi bi-file-earmark-spreadsheet"></i> CSV
-                                                    </a>
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="printLogsBtn">
-                                                        <i class="bi bi-printer"></i> Print
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <div class="table-responsive">
-                                                <table id="logsTable" class="table table-bordered table-striped dt-responsive nowrap" style="width:100%;">
+                                            <div class="table-responsive" style="padding:0;margin-top:1px;">
+                                                <table id="logsTable" class="table table-hover dt-responsive nowrap" style="width:100%;margin:0;">
                                                     <thead>
                                                         <tr>
                                                             <th>Student #</th>
@@ -302,8 +394,6 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
                                                             <th>Year</th>
                                                             <th>Remarks</th>
                                                             <th>Checked-In By</th>
-
-
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -329,45 +419,51 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
                                                         ?>
                                                             <tr>
                                                                 <td class="student-number-cell">
-                                                                    <span class="font-weight-bold"><?= h($r->student_number) ?></span>
+                                                                    <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:#2a4090;"><?= h($r->student_number) ?></span>
                                                                     <?php if (trim((string)$r->student_name) !== ''): ?>
                                                                         <small class="student-name-mobile d-block d-lg-none"><?= h($r->student_name) ?></small>
                                                                     <?php endif; ?>
                                                                 </td>
-                                                                <td class="d-none d-lg-table-cell"><?= h($r->student_name) ?></td>
-                                                                <td><?= h($r->section) ?></td>
+                                                                <td class="d-none d-lg-table-cell" style="font-weight:600;"><?= h($r->student_name) ?></td>
+                                                                <td style="color:#6b7a99;"><?= h($r->section) ?></td>
                                                                 <td>
                                                                     <?php if ($sessionCode !== ''): ?>
-                                                                        <span class="badge badge-info"><?= h($sessionCode) ?></span>
+                                                                        <span class="badge badge-info" style="border-radius:6px;font-size:.72rem;font-weight:700;"><?= h($sessionCode) ?></span>
                                                                     <?php endif; ?>
                                                                 </td>
-                                                                <td><?= h(fmt_time_ampm($r->checked_in_at)) ?></td>
-                                                                <td><?= h(fmt_time_ampm($r->checked_out_at)) ?></td>
+                                                                <td style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;"><?= h(fmt_time_ampm($r->checked_in_at)) ?></td>
+                                                                <td style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;"><?= h(fmt_time_ampm($r->checked_out_at)) ?></td>
                                                                 <td>
                                                                     <?php if ($courseDisplay !== ''): ?>
                                                                         <span class="badge badge-secondary badge-course-code" title="<?= h($courseRaw) ?>"><?= h($courseDisplay) ?></span>
                                                                     <?php endif; ?>
                                                                 </td>
-                                                                <td><?= h($r->YearLevel) ?></td>
-                                                                <td><?= h($remarkOut) ?></td> <!-- NEW -->
-                                                                <td><?= h($r->checked_in_by) ?></td>
-
+                                                                <td style="color:#6b7a99;"><?= h($r->YearLevel) ?></td>
+                                                                <td style="color:#6b7a99;font-size:.82rem;"><?= h($remarkOut) ?></td>
+                                                                <td style="color:#6b7a99;font-size:.82rem;"><?= h($r->checked_in_by) ?></td>
                                                             </tr>
-
                                                         <?php endforeach; ?>
                                                     </tbody>
                                                 </table>
                                             </div>
                                         <?php else: ?>
-                                            <div class="alert alert-info mb-0">No logs matched your filters.</div>
+                                            <div class="al-empty">
+                                                <i class="mdi mdi-magnify"></i>
+                                                No logs matched your filters.
+                                            </div>
                                         <?php endif; ?>
                                     <?php else: ?>
-                                        <div class="alert alert-secondary mb-0">Select an activity to view attendance logs.</div>
+                                        <div class="al-empty">
+                                            <i class="mdi mdi-clipboard-list-outline"></i>
+                                            Select an activity to view attendance logs.
+                                        </div>
                                     <?php endif; ?>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    <div style="height:40px;"></div>
 
                 </div>
                 <?php include('includes/footer.php'); ?>
@@ -378,18 +474,18 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
     <!-- FILTER MODAL -->
     <div class="modal fade" id="filterModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-            <div class="modal-content" style="border-radius:12px;overflow:hidden">
-                <div class="modal-header">
-                    <h5 class="modal-title">Attendance Logs</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button>
+            <div class="modal-content" style="border-radius:18px;overflow:hidden;border:none;box-shadow:0 24px 60px rgba(13,27,75,.25);">
+                <div class="modal-header" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;padding:18px 24px;">
+                    <h5 class="modal-title" style="font-weight:800;color:#fff !important;display:flex;align-items:center;gap:8px;"><i class="mdi mdi-filter-variant"></i> Filter Attendance Logs</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="font-size:1.6rem;opacity:.9;text-shadow:none;color:#fff !important;"><span>&times;</span></button>
                 </div>
 
-                <form method="get">
-                    <div class="modal-body">
+                <form method="get" id="filterForm" onsubmit="return cleanFilterForm(this);">
+                    <div class="modal-body" style="padding:24px;background:#f8fafc;">
                         <div class="form-row">
                             <div class="form-group col-lg-6">
-                                <label class="small text-muted">Activity</label>
-                                <select name="activity_id" class="form-control select2" required>
+                                <label style="font-size:.78rem;font-weight:700;color:#3b4a6b;">Activity</label>
+                                <select name="activity_id" class="form-control select2" required style="border-radius:10px !important;border:1px solid #e6ebf5 !important;padding:10px 14px !important;font-size:.9rem !important;">
                                     <option value="">Select an activity</option>
                                     <?php foreach ($activities as $a): ?>
                                         <option value="<?= (int)$a->activity_id ?>" <?= ((int)($activity_id ?? 0) === (int)$a->activity_id ? 'selected' : '') ?>><?= h($a->title) ?></option>
@@ -397,8 +493,8 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
                                 </select>
                             </div>
                             <div class="form-group col-lg-6">
-                                <label class="small text-muted">Section</label>
-                                <select name="section" class="form-control select2" data-placeholder="All sections">
+                                <label style="font-size:.78rem;font-weight:700;color:#3b4a6b;">Section</label>
+                                <select name="section" class="form-control select2" data-placeholder="All sections" style="border-radius:10px !important;border:1px solid #e6ebf5 !important;padding:10px 14px !important;font-size:.9rem !important;">
                                     <option value="">All sections</option>
                                     <?php if (!empty($sections)): foreach ($sections as $s):
                                             $sec = trim((string)($s->section ?? ''));
@@ -419,8 +515,8 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
                         </div>
                         <div class="form-row">
                             <div class="form-group col-md-4">
-                                <label class="small text-muted">Year Level</label>
-                                <select name="year_level" class="form-control select2" data-placeholder="All year levels">
+                                <label style="font-size:.78rem;font-weight:700;color:#3b4a6b;">Year Level</label>
+                                <select name="year_level" class="form-control select2" data-placeholder="All year levels" style="border-radius:10px !important;border:1px solid #e6ebf5 !important;padding:10px 14px !important;font-size:.9rem !important;">
                                     <option value="">All year levels</option>
                                     <?php if (!empty($year_levels)): foreach ($year_levels as $yl):
                                             $lvl = (string)($yl->year_level ?? '');
@@ -432,12 +528,12 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
                                 </select>
                             </div>
                             <div class="form-group col-md-4">
-                                <label class="small text-muted">Date</label>
-                                <input type="date" name="date" value="<?= h($date ?? '') ?>" class="form-control">
+                                <label style="font-size:.78rem;font-weight:700;color:#3b4a6b;">Date</label>
+                                <input type="date" name="date" value="<?= h($date ?? '') ?>" class="form-control" style="border-radius:10px !important;border:1px solid #e6ebf5 !important;padding:10px 14px !important;font-size:.9rem !important;">
                             </div>
                             <div class="form-group col-md-4">
-                                <label class="small text-muted">Session</label>
-                                <select name="session" class="form-control">
+                                <label style="font-size:.78rem;font-weight:700;color:#3b4a6b;">Session</label>
+                                <select name="session" class="form-control" style="border-radius:10px !important;border:1px solid #e6ebf5 !important;padding:10px 14px !important;font-size:.9rem !important;">
                                     <option value="">All</option>
                                     <option value="am" <?= (($session ?? '') === 'am' ? 'selected' : '') ?>>AM</option>
                                     <option value="pm" <?= (($session ?? '') === 'pm' ? 'selected' : '') ?>>PM</option>
@@ -446,9 +542,9 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <a href="<?= site_url('AttendanceLogs') ?>" class="btn btn-light">Clear</a>
-                        <button type="submit" class="btn btn-primary">View</button>
+                    <div class="modal-footer" style="border:none;padding:14px 24px;background:#f8fafc;">
+                        <a href="<?= site_url('AttendanceLogs') ?>" class="up-btn up-btn-ghost">Clear</a>
+                        <button type="submit" class="up-btn up-btn-primary"><i class="mdi mdi-magnify"></i> View Results</button>
                     </div>
                 </form>
             </div>
@@ -477,6 +573,19 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
 
     <script>
         // Flash messages are shown by the shared toast bridge (includes/ui_kit.php).
+    </script>
+
+    <script>
+        // Remove empty fields before submitting the filter form so the URL stays clean
+        function cleanFilterForm(form) {
+            var inputs = form.querySelectorAll('input, select');
+            for (var i = 0; i < inputs.length; i++) {
+                if (inputs[i].name && inputs[i].value === '') {
+                    inputs[i].disabled = true;
+                }
+            }
+            return true;
+        }
     </script>
 
     <script>
@@ -559,6 +668,24 @@ $flashMsg      = $flashMsgRaw ? strip_tags($flashMsgRaw) : null;
                     window.print();
                 });
             }
+
+            // Print: expand DataTable to show all rows, then restore
+            var dtLogs = null;
+            var savedPageLenLogs = null;
+            window.addEventListener('beforeprint', function() {
+                if (window.jQuery && $('#logsTable').length) {
+                    try {
+                        dtLogs = $('#logsTable').DataTable();
+                        savedPageLenLogs = dtLogs.page.len();
+                        dtLogs.page.len(-1).draw(false);
+                    } catch(e) {}
+                }
+            });
+            window.addEventListener('afterprint', function() {
+                if (dtLogs && savedPageLenLogs !== null) {
+                    try { dtLogs.page.len(savedPageLenLogs).draw(false); } catch(e) {}
+                }
+            });
         });
     </script>
 

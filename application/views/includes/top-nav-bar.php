@@ -6,12 +6,12 @@
     </script> -->
 
 
-           <div class="navbar-custom">
-               <ul class="list-unstyled topnav-menu float-right mb-0">
+           <div class="navbar-custom ms-appbar" id="ms-appbar">
+               <ul class="list-unstyled topnav-menu float-right mb-0" id="ms-top-actions">
                    <?php if ($this->session->userdata('level') === 'Student'): ?>
 
                    <?php else: ?>
-                       <li class="dropdown notification-list" id="bday-li">
+                       <li class="dropdown notification-list ms-overflow-source" id="bday-li">
                            <a id="bdayDropdown"
                                class="nav-link dropdown-toggle waves-effect"
                                data-toggle="dropdown" href="#" role="button"
@@ -54,7 +54,7 @@
 
                        <?php include(APPPATH . 'views/includes/req_bell.php'); ?>
                    <?php endif; ?>
-                   <li class="dropdown notification-list">
+                   <li class="dropdown notification-list ms-profile-action">
                        <a class="nav-link dropdown-toggle nav-user mr-0 waves-effect" data-toggle="dropdown" href="#" role="button" aria-haspopup="false" aria-expanded="false">
                            <img src="<?= base_url(); ?>upload/profile/<?php echo $this->session->userdata('avatar'); ?>" alt="user-image" class="rounded-circle">
                            <span class="pro-user-name ml-1">
@@ -103,7 +103,7 @@
                        </div>
                    </li>
 
-                   <li class="dropdown notification-list">
+                   <li class="dropdown notification-list ms-settings-action ms-overflow-source">
                        <a href="javascript:void(0);" class="nav-link right-bar-toggle waves-effect">
                            <i class="mdi mdi-settings-outline noti-icon"></i>
                        </a>
@@ -111,6 +111,8 @@
 
 
                </ul>
+
+               <span class="ms-appbar-title" aria-live="polite">Attendance Portal</span>
 
                <!-- LOGO -->
                <div class="logo-box">
@@ -140,9 +142,9 @@
                <!-- LOGO -->
 
 
-               <ul class="list-unstyled topnav-menu topnav-menu-left m-0">
+               <ul class="list-unstyled topnav-menu topnav-menu-left m-0" id="ms-topnav-left">
                    <li>
-                       <button class="button-menu-mobile waves-effect">
+                       <button class="button-menu-mobile waves-effect" id="ms-drawer-toggle" type="button" aria-label="Open menu">
                            <i class="mdi mdi-menu"></i>
                        </button>
                    </li>

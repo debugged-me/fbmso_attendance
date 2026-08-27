@@ -4,9 +4,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Course Subjects</title>
     <!-- Add your stylesheets and scripts here -->
+    <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=5'); ?>">
+    <meta name="theme-color" content="#1a2942">
+    <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="<?= base_url('assets/images/icons/attendance-192.png'); ?>">
+    <script src="<?= base_url('assets/js/mobile-shell-early.js?v=5'); ?>"></script>
 </head>
 <body>
     <div class="container">
@@ -51,5 +58,6 @@
             <button type="submit">Filter</button>
         </form>
     </div>
+    <script src="<?= base_url('assets/js/mobile-shell.js?v=5'); ?>"></script>
 </body>
 </html>

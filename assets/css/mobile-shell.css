@@ -1,0 +1,1027 @@
+/* ========================================================================== 
+   Mobile Shell — phone-first application chrome and responsive overrides
+   Loaded after the Velonic/Hyper theme on shared application pages.
+
+   All existing-layout overrides are confined to the phone breakpoint. The
+   small set of rules above it are universal overflow and accessibility guards.
+   ========================================================================== */
+
+:root {
+  /* Layout metrics */
+  --ms-appbar-h: 56px;
+  --ms-tabbar-h: 56px;
+  --ms-safe-top: env(safe-area-inset-top, 0px);
+  --ms-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ms-safe-left: env(safe-area-inset-left, 0px);
+  --ms-safe-right: env(safe-area-inset-right, 0px);
+
+  /* Touch */
+  --ms-touch: 44px;
+  --ms-radius: 16px;
+  --ms-radius-sm: 10px;
+
+  /* Motion — shared with ui-kit.css */
+  --ms-ease: cubic-bezier(.22, 1, .36, 1);
+  --ms-dur: .26s;
+
+  /* ui-kit.css owns 20800–21800; the app shell stays below it. */
+  --ms-z-scrim: 1040;
+  --ms-z-drawer: 1050;
+  --ms-z-tabbar: 1030;
+  --ms-z-appbar: 1035;
+
+  --ms-bp: 767.98px; /* Documentation only; custom properties do not work in media queries. */
+}
+
+html {
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+img,
+video,
+canvas,
+svg,
+iframe,
+embed,
+object {
+  max-width: 100%;
+  height: auto;
+}
+
+body {
+  overflow-wrap: anywhere;
+}
+
+td,
+th,
+.card-body,
+.dropdown-item {
+  overflow-wrap: anywhere;
+}
+
+.ms-tabbar,
+.ms-scrim,
+.ms-appbar-title,
+.ms-wide-hint,
+.ms-row-actions,
+.ms-overflow-action,
+.ms-drawer-about {
+  display: none;
+}
+
+html.ms-drawer-locked,
+body.ms-drawer-locked {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* ========================================================================== 
+   Phone application shell
+   ========================================================================== */
+
+@media (max-width: 767.98px) {
+  html,
+  body {
+    max-width: 100%;
+    overscroll-behavior-y: contain;
+  }
+
+  body {
+    padding-left: var(--ms-safe-left);
+    padding-right: var(--ms-safe-right);
+  }
+
+  h1,
+  .h1 {
+    font-size: clamp(1.35rem, 5.5vw, 1.75rem);
+  }
+
+  h2,
+  .h2 {
+    font-size: clamp(1.2rem, 4.8vw, 1.5rem);
+  }
+
+  h3,
+  .h3 {
+    font-size: clamp(1.1rem, 4.2vw, 1.35rem);
+  }
+
+  h4,
+  .h4 {
+    font-size: clamp(1rem, 3.8vw, 1.2rem);
+  }
+
+  h5,
+  .h5 {
+    font-size: clamp(.95rem, 3.4vw, 1.05rem);
+  }
+
+  .content-page,
+  .enlarged .content-page {
+    margin-top: 0;
+    min-width: 0;
+    padding-top: calc(var(--ms-appbar-h) + var(--ms-safe-top) + 12px);
+    padding-bottom: calc(var(--ms-tabbar-h) + var(--ms-safe-bottom) + 8px);
+  }
+
+  .content-page > .content > .container-fluid {
+    min-width: 0;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .row {
+    min-width: 0;
+  }
+
+  .card {
+    min-width: 0;
+    border-radius: 14px;
+  }
+
+  .card-body {
+    min-width: 0;
+    padding: 1rem;
+  }
+
+  /* These declarations intentionally use !important: they must beat fixed
+     inline widths in legacy views, which normal stylesheet rules cannot do. */
+  .content-page [style*="width"] {
+    max-width: 100% !important;
+  }
+
+  .content-page [style*="min-width"] {
+    min-width: 0 !important;
+  }
+
+  .footer {
+    display: none;
+  }
+
+  /* ------------------------------------------------------------------------
+     Compact app bar
+     ------------------------------------------------------------------------ */
+
+  .navbar-custom.ms-appbar {
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: calc(var(--ms-appbar-h) + var(--ms-safe-top));
+    padding: var(--ms-safe-top) var(--ms-safe-right) 0 var(--ms-safe-left);
+    z-index: var(--ms-z-appbar);
+  }
+
+  .navbar-custom.ms-appbar .logo-box {
+    display: none;
+  }
+
+  .navbar-custom.ms-appbar .topnav-menu-left {
+    position: absolute;
+    z-index: 2;
+    top: var(--ms-safe-top);
+    left: var(--ms-safe-left);
+  }
+
+  .navbar-custom.ms-appbar .button-menu-mobile {
+    width: var(--ms-appbar-h);
+    min-width: var(--ms-touch);
+    height: var(--ms-appbar-h);
+    line-height: var(--ms-appbar-h);
+    margin: 0;
+  }
+
+  .navbar-custom.ms-appbar #ms-top-actions {
+    position: absolute;
+    z-index: 2;
+    top: var(--ms-safe-top);
+    right: var(--ms-safe-right);
+    display: flex;
+    align-items: center;
+    height: var(--ms-appbar-h);
+  }
+
+  .navbar-custom.ms-appbar #ms-top-actions > li {
+    float: none;
+  }
+
+  .navbar-custom.ms-appbar #ms-top-actions .nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--ms-touch);
+    height: var(--ms-appbar-h);
+    max-height: var(--ms-appbar-h);
+    padding: 0 8px;
+    line-height: 1;
+  }
+
+  .navbar-custom.ms-appbar .ms-profile-action .nav-user {
+    /* app.css declares .nav-user padding with !important. */
+    padding: 0 5px !important;
+  }
+
+  .navbar-custom.ms-appbar .ms-profile-action .nav-user img {
+    width: 34px;
+    height: 34px;
+  }
+
+  .navbar-custom.ms-appbar .ms-profile-action .pro-user-name,
+  .navbar-custom.ms-appbar .ms-overflow-source,
+  .navbar-custom.ms-appbar .req-bell {
+    display: none;
+  }
+
+  .ms-appbar-title {
+    position: absolute;
+    z-index: 1;
+    top: var(--ms-safe-top);
+    left: 50%;
+    display: block;
+    width: calc(100% - 188px - var(--ms-safe-left) - var(--ms-safe-right));
+    height: var(--ms-appbar-h);
+    overflow: hidden;
+    transform: translateX(-50%);
+    color: #1a2942;
+    font-size: .98rem;
+    font-weight: 700;
+    line-height: var(--ms-appbar-h);
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .ms-overflow-action {
+    display: block;
+  }
+
+  .ms-overflow-action .mdi-dots-vertical {
+    font-size: 24px;
+  }
+
+  .ms-overflow-menu {
+    /* app.css uses !important on dropdown edges below 600px. */
+    right: 8px !important;
+    left: auto !important;
+    width: min(286px, calc(100vw - 20px));
+    margin-top: 0;
+    border: 0;
+    border-radius: 14px;
+    box-shadow: 0 16px 42px rgba(15, 23, 42, .18);
+  }
+
+  .ms-overflow-menu .dropdown-item {
+    gap: 10px;
+    min-height: var(--ms-touch);
+  }
+
+  .ms-overflow-menu .mdi {
+    width: 22px;
+    font-size: 19px;
+    text-align: center;
+  }
+
+  .ms-overflow-menu .badge {
+    margin-left: auto;
+  }
+
+  /* ------------------------------------------------------------------------
+     Drawer and scrim
+     ------------------------------------------------------------------------ */
+
+  .left-side-menu {
+    top: calc(var(--ms-appbar-h) + var(--ms-safe-top));
+    right: auto;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    width: min(86vw, 320px);
+    height: auto;
+    max-width: calc(100vw - 36px);
+    padding-top: 8px;
+    transform: translate3d(-100%, 0, 0);
+    transition: transform var(--ms-dur) var(--ms-ease);
+    /* app.css pins the mobile sidebar z-index with !important. */
+    z-index: var(--ms-z-drawer) !important;
+    will-change: auto;
+  }
+
+  body.sidebar-enable .left-side-menu {
+    display: flex;
+    transform: translate3d(0, 0, 0);
+  }
+
+  body.ms-drawer-dragging .left-side-menu {
+    transition: none;
+    will-change: transform;
+  }
+
+  .left-side-menu > .slimscroll-menu {
+    min-height: 0;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .left-side-menu a {
+    min-height: var(--ms-touch);
+  }
+
+  .ms-drawer-about {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: var(--ms-touch);
+    padding: 10px 20px;
+    border: 0;
+    background: transparent;
+    color: #70809a;
+    font: inherit;
+    text-align: left;
+  }
+
+  .ms-drawer-about:hover,
+  .ms-drawer-about:focus {
+    color: #3bc0c3;
+  }
+
+  .ms-scrim {
+    position: fixed;
+    inset: 0;
+    display: block;
+    border: 0;
+    padding: 0;
+    background: rgba(15, 23, 42, .48);
+    opacity: 0;
+    transition: opacity var(--ms-dur) var(--ms-ease), visibility 0s linear var(--ms-dur);
+    visibility: hidden;
+    z-index: var(--ms-z-scrim);
+  }
+
+  body.sidebar-enable .ms-scrim {
+    opacity: 1;
+    transition-delay: 0s;
+    visibility: visible;
+  }
+
+  /* ------------------------------------------------------------------------
+     Bottom navigation
+     ------------------------------------------------------------------------ */
+
+  .ms-tabbar {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--ms-z-tabbar);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-around;
+    height: calc(var(--ms-tabbar-h) + var(--ms-safe-bottom));
+    padding: 0 var(--ms-safe-right) var(--ms-safe-bottom) var(--ms-safe-left);
+    border-top: 1px solid rgba(226, 232, 240, .96);
+    background: rgba(255, 255, 255, .96);
+    box-shadow: 0 -8px 28px rgba(15, 23, 42, .08);
+  }
+
+  @supports (backdrop-filter: blur(12px)) {
+    .ms-tabbar {
+      background: rgba(255, 255, 255, .88);
+      backdrop-filter: blur(14px);
+    }
+  }
+
+  .ms-tab {
+    position: relative;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    height: var(--ms-tabbar-h);
+    padding: 5px 2px 4px;
+    color: #738096;
+    font-size: .66rem;
+    font-weight: 600;
+    line-height: 1.15;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ms-tab:hover,
+  .ms-tab:focus,
+  .ms-tab.is-active {
+    color: #1a4fb3;
+    text-decoration: none;
+  }
+
+  .ms-tab.is-active::before {
+    position: absolute;
+    top: 2px;
+    left: 50%;
+    width: 28px;
+    height: 3px;
+    border-radius: 99px;
+    background: #2f64c9;
+    content: '';
+    transform: translateX(-50%);
+  }
+
+  .ms-tab .mdi {
+    margin-bottom: 2px;
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .ms-tab-label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body.ms-scanner-running .ms-tabbar {
+    transform: translate3d(0, 110%, 0);
+    transition: transform var(--ms-dur) var(--ms-ease);
+  }
+
+  body.ms-scanner-running .content-page {
+    padding-bottom: 8px;
+  }
+
+  /* ------------------------------------------------------------------------
+     Responsive card tables and deliberately wide tables
+     ------------------------------------------------------------------------ */
+
+  .ms-rt {
+    width: 100%;
+    border: 0;
+  }
+
+  .ms-rt thead {
+    display: none;
+  }
+
+  .ms-rt tbody {
+    display: block;
+  }
+
+  .ms-rt tbody tr {
+    display: block;
+    width: 100%;
+    margin-bottom: 1rem;
+    padding: .85rem 1rem;
+    border: 1px solid rgba(226, 232, 240, .9);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, .08);
+    content-visibility: auto;
+    contain-intrinsic-size: 180px;
+  }
+
+  .ms-rt tbody td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    min-width: 0;
+    padding: .4rem 0;
+    /* Matches the existing masterlist card-table override. */
+    border: 0 !important;
+    font-size: .92rem;
+    text-align: right;
+    white-space: normal;
+  }
+
+  .ms-rt tbody td::before {
+    flex: 0 0 45%;
+    color: #6c757d;
+    content: attr(data-label);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .ms-rt tbody td[data-label='']::before {
+    content: '';
+  }
+
+  .ms-rt tbody td.control {
+    /* DataTables' responsive control cell must disappear in card mode. */
+    display: none !important;
+  }
+
+  .table-responsive.ms-rt-host {
+    overflow-x: visible;
+  }
+
+  .ms-wide-host {
+    position: relative;
+    max-width: 100%;
+  }
+
+  .table-responsive.ms-wide-host {
+    overflow-x: visible;
+  }
+
+  .ms-wide-table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ms-wide-host::after {
+    position: absolute;
+    top: 28px;
+    right: 0;
+    bottom: 0;
+    width: 34px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, .96));
+    content: '';
+    opacity: 1;
+    pointer-events: none;
+    transition: opacity .2s ease;
+  }
+
+  .ms-wide-host.is-scrolled::after {
+    opacity: 0;
+  }
+
+  .ms-wide-hint {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 28px;
+    margin: 0 0 4px;
+    color: #6c757d;
+    font-size: .76rem;
+    font-weight: 600;
+    transition: opacity .2s ease;
+  }
+
+  .ms-wide-host.is-scrolled .ms-wide-hint {
+    opacity: 0;
+  }
+
+  .ms-row-actions {
+    position: relative;
+    display: inline-flex;
+    margin-left: auto;
+  }
+
+  .ms-row-actions-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--ms-touch);
+    min-width: var(--ms-touch);
+    height: var(--ms-touch);
+    padding: 0;
+    border: 1px solid #d8e0eb;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #1a2942;
+    font-size: 23px;
+  }
+
+  .ms-row-actions-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 6px);
+    z-index: 20;
+    display: none;
+    min-width: 176px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 14px 36px rgba(15, 23, 42, .18);
+  }
+
+  .ms-row-actions.is-open .ms-row-actions-menu {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ms-row-actions-menu .btn,
+  .ms-row-actions-menu a,
+  .ms-row-actions-menu button {
+    justify-content: flex-start;
+    width: 100%;
+    min-height: var(--ms-touch);
+    margin: 0;
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    color: #334155;
+    box-shadow: none;
+    text-align: left;
+  }
+
+  .ms-row-actions-menu .btn:hover,
+  .ms-row-actions-menu a:hover,
+  .ms-row-actions-menu button:hover {
+    background: #f1f5f9;
+  }
+
+  .ms-dt-top {
+    position: sticky;
+    top: calc(var(--ms-appbar-h) + var(--ms-safe-top));
+    z-index: 12;
+    margin: -2px 0 12px;
+    padding: 8px 0;
+    background: #f4f5f7;
+  }
+
+  .ms-dt-top .dataTables_filter {
+    display: block;
+    float: none;
+    width: 100%;
+    margin: 0;
+    text-align: left;
+  }
+
+  .ms-dt-top .dataTables_filter label {
+    display: block;
+    width: 100%;
+    margin: 0;
+    font-size: 0;
+  }
+
+  .ms-dt-top .dataTables_filter input {
+    width: 100%;
+    min-height: var(--ms-touch);
+    margin: 0;
+    padding: 8px 16px;
+    border: 1px solid #d8e0eb;
+    border-radius: 999px;
+    background: #fff;
+    font-size: 16px;
+    box-shadow: 0 5px 18px rgba(15, 23, 42, .06);
+  }
+
+  .ms-dt-bottom .pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* ------------------------------------------------------------------------
+     Forms, touch targets, and persistent actions
+     ------------------------------------------------------------------------ */
+
+  input,
+  select,
+  textarea,
+  button,
+  a,
+  [role='button'] {
+    touch-action: manipulation;
+  }
+
+  input,
+  select,
+  textarea,
+  .form-control,
+  .form-control-sm,
+  .custom-select,
+  .select2-container .select2-selection--single {
+    min-height: var(--ms-touch);
+    border-radius: var(--ms-radius-sm);
+    font-size: 16px;
+  }
+
+  .select2-container {
+    max-width: 100%;
+  }
+
+  .btn,
+  .dropdown-item,
+  .nav-link,
+  .page-link,
+  .left-side-menu a,
+  table td a.btn {
+    min-height: var(--ms-touch);
+    align-items: center;
+  }
+
+  .btn,
+  .dropdown-item,
+  .nav-link,
+  .left-side-menu a,
+  table td a.btn {
+    display: inline-flex;
+  }
+
+  a,
+  button,
+  .btn {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn:active {
+    transform: scale(.97);
+  }
+
+  .btn-block + .btn-block {
+    margin-top: .5rem;
+  }
+
+  .card-footer,
+  .modal-footer,
+  .ms-form-actions {
+    gap: 8px;
+  }
+
+  .card-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .card-footer .btn,
+  .modal-footer .btn,
+  .ms-form-actions .btn,
+  .ms-form-actions button[type='submit'],
+  .ms-form-actions input[type='submit'] {
+    justify-content: center;
+    width: 100%;
+    margin: 0;
+  }
+
+  .modal-footer {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .ms-form-actions:not(.modal-footer) {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .card-footer .btn-primary,
+  .ms-form-actions:not(.modal-footer) button[type='submit'],
+  .ms-form-actions:not(.modal-footer) input[type='submit'] {
+    order: -1;
+  }
+
+  form .ms-form-actions:not(.modal-footer) {
+    position: sticky;
+    bottom: var(--ms-safe-bottom);
+    z-index: 16;
+    margin: 12px -4px 0;
+    padding: 10px;
+    border: 1px solid rgba(226, 232, 240, .94);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .96);
+    box-shadow: 0 -8px 24px rgba(15, 23, 42, .08);
+  }
+
+  body.ms-has-tabbar form .ms-form-actions:not(.modal-footer) {
+    bottom: calc(var(--ms-tabbar-h) + var(--ms-safe-bottom));
+  }
+
+  /* ------------------------------------------------------------------------
+     Bootstrap modals and UI-kit dialogs become bottom sheets
+     ------------------------------------------------------------------------ */
+
+  .modal.fade .modal-dialog,
+  .modal .modal-dialog {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    transform: translate3d(0, 100%, 0);
+    transition: transform var(--ms-dur) var(--ms-ease);
+  }
+
+  .modal.show .modal-dialog,
+  .modal.fade.show .modal-dialog {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .modal .modal-content {
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow: hidden;
+    /* Existing view-level modal rules use inline/!important radii. This
+       phone-only override must beat them so every modal has sheet corners. */
+    border-radius: 20px 20px 0 0 !important;
+  }
+
+  #changeProfilePicModal.modal .modal-content,
+  #changePasswordModal.modal .modal-content {
+    /* top-nav-bar.php uses ID-scoped !important radii after this stylesheet. */
+    border-radius: 20px 20px 0 0 !important;
+  }
+
+  .modal .modal-content::before,
+  .uk-backdrop .uk-modal::before {
+    display: block;
+    flex: 0 0 auto;
+    width: 36px;
+    height: 4px;
+    margin: 8px auto 0;
+    border-radius: 99px;
+    background: #c8d0db;
+    content: '';
+  }
+
+  .modal .modal-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-dialog-centered {
+    align-items: flex-end;
+    min-height: 0;
+  }
+
+  .uk-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .uk-backdrop .uk-modal {
+    width: 100%;
+    max-width: none;
+    max-height: 90vh;
+    max-height: 90dvh;
+    margin: auto 0 0;
+    border-radius: 20px 20px 0 0;
+    opacity: 1;
+    transform: translate3d(0, 100%, 0);
+    transition: transform var(--ms-dur) var(--ms-ease), opacity var(--ms-dur) var(--ms-ease);
+  }
+
+  .uk-backdrop.uk-in .uk-modal {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  /* ------------------------------------------------------------------------
+     Scanner flagship flow
+     ------------------------------------------------------------------------ */
+
+  body.ms-scan-page .content-page > .content > .container-fluid {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  body.ms-scan-page .ms-scan-controls {
+    display: block;
+  }
+
+  body.ms-scan-page .ms-scan-controls > .col,
+  body.ms-scan-page .ms-scan-controls > .ms-scan-actions {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  body.ms-scan-page .ms-scan-controls .form-inline {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    width: 100%;
+  }
+
+  body.ms-scan-page .ms-scan-controls .form-inline select,
+  body.ms-scan-page .ms-scan-actions select {
+    grid-column: 1 / -1;
+    width: 100%;
+    /* Bootstrap spacing utilities use !important. */
+    margin: 0 !important;
+  }
+
+  body.ms-scan-page .ms-scan-controls .btn,
+  body.ms-scan-page .ms-scan-actions .btn {
+    justify-content: center;
+    width: 100%;
+    /* Bootstrap spacing utilities use !important. */
+    margin: 0 !important;
+  }
+
+  body.ms-scan-page .ms-scan-actions {
+    position: fixed;
+    right: calc(8px + var(--ms-safe-right));
+    bottom: calc(var(--ms-tabbar-h) + var(--ms-safe-bottom) + 6px);
+    left: calc(8px + var(--ms-safe-left));
+    z-index: 15;
+    display: block;
+    width: auto;
+    max-width: none;
+    padding: 10px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .96);
+    box-shadow: 0 10px 32px rgba(15, 23, 42, .14);
+  }
+
+  body.ms-scan-page.ms-scanner-running .ms-scan-actions {
+    bottom: calc(var(--ms-safe-bottom) + 6px);
+  }
+
+  body.ms-scan-page .content-page {
+    padding-bottom: calc(var(--ms-tabbar-h) + var(--ms-safe-bottom) + 132px);
+  }
+
+  body.ms-scan-page.ms-scanner-running .content-page {
+    padding-bottom: calc(var(--ms-safe-bottom) + 132px);
+  }
+
+  body.ms-scan-page .ms-scan-card .card-body {
+    padding: 0;
+  }
+
+  body.ms-scan-page .scan-wrap {
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+  }
+
+  body.ms-scan-page #reader {
+    width: 100%;
+    min-height: 0;
+    aspect-ratio: 1;
+    border-radius: 18px;
+  }
+
+  body.ms-scan-page #reader video,
+  body.ms-scan-page #reader canvas {
+    /* html5-qrcode injects inline dimensions; the square viewport owns them. */
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+  }
+
+  .ms-scan-reticle {
+    position: absolute;
+    z-index: 3;
+    top: 50%;
+    left: 50%;
+    width: min(68vw, 260px);
+    height: min(68vw, 260px);
+    border: 2px solid rgba(255, 255, 255, .78);
+    border-radius: 22px;
+    box-shadow: 0 0 0 999px rgba(0, 0, 0, .18), inset 0 0 28px rgba(59, 192, 195, .12);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .ms-scan-reticle::before,
+  .ms-scan-reticle::after {
+    position: absolute;
+    left: 12%;
+    width: 76%;
+    height: 2px;
+    border-radius: 99px;
+    background: rgba(59, 192, 195, .9);
+    content: '';
+  }
+
+  .ms-scan-reticle::before {
+    top: 12%;
+  }
+
+  .ms-scan-reticle::after {
+    bottom: 12%;
+  }
+
+  body.ms-scan-page #scanStatus {
+    bottom: 16px;
+    max-width: calc(100% - 32px);
+    text-align: center;
+  }
+
+  body.ms-scan-page #scanTips {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  body.ms-scan-page .btn-group {
+    flex-wrap: wrap;
+  }
+}

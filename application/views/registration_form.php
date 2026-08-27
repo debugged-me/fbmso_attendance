@@ -4,17 +4,24 @@
 <head>
   <meta charset="UTF-8">
   <title>Attendance Portal | Registration</title>
-  <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+  <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
 
   <link rel="shortcut icon" href="<?= base_url(); ?>assets/images/Attendance.png">
   <link href="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.css" rel="stylesheet" type="text/css" />
   <link href="<?= base_url(); ?>assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" id="bootstrap-stylesheet" />
   <link href="<?= base_url(); ?>assets/css/icons.min.css" rel="stylesheet" type="text/css" />
   <link href="<?= base_url(); ?>assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-stylesheet" />
-  <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=20260820" rel="stylesheet">
+  <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=30260820" rel="stylesheet">
 
   <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
-  <link href="<?= base_url(); ?>assets/css/registration_form.css?v=20260827" rel="stylesheet" type="text/css" />
+  <link href="<?= base_url(); ?>assets/css/registration_form.css?v=30260827" rel="stylesheet" type="text/css" />
+  <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=5'); ?>">
+  <meta name="theme-color" content="#1a2942">
+  <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="<?= base_url('assets/images/icons/attendance-192.png'); ?>">
+  <script src="<?= base_url('assets/js/mobile-shell-early.js?v=5'); ?>"></script>
 
   <?php include(APPPATH . 'views/includes/ui_kit.php'); ?>
 </head>
@@ -272,7 +279,8 @@
   <script src="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.js"></script>
   <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
-  <script src="<?= base_url(); ?>assets/js/registration_form.js?v=20260820"></script>
+  <script src="<?= base_url(); ?>assets/js/registration_form.js?v=30260820"></script>
+  <script src="<?= base_url('assets/js/mobile-shell.js?v=5'); ?>"></script>
   <script>
   // Lazy-load reCAPTCHA only when the user interacts with the form,
   // instead of blocking page load with the external Google script.

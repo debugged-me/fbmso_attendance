@@ -4,7 +4,7 @@
 <head>
   <?php include('includes/title.php'); ?>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -12,10 +12,15 @@
   <link rel="stylesheet" href="<?= base_url(); ?>assets/vendor/bootstrap/css/bootstrap.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/fonts/font-awesome-4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.css">
-  <link rel="stylesheet" href="<?= base_url(); ?>assets/css/home.css?v=20260827">
-  <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=20260820" rel="stylesheet">
-
-
+  <link rel="stylesheet" href="<?= base_url(); ?>assets/css/home.css?v=30260827">
+  <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=30260820" rel="stylesheet">
+  <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=5'); ?>">
+  <meta name="theme-color" content="#1a2942">
+  <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="<?= base_url('assets/images/icons/attendance-192.png'); ?>">
+  <script src="<?= base_url('assets/js/mobile-shell-early.js?v=5'); ?>"></script>
   <?php include(APPPATH . 'views/includes/ui_kit.php'); ?>
 </head>
 
@@ -239,7 +244,8 @@
       checkResetEmailUrl: <?= json_encode(site_url('login/check_reset_email')); ?>
     };
   </script>
-  <script src="<?= base_url(); ?>assets/js/home.js?v=20260820"></script>
+  <script src="<?= base_url(); ?>assets/js/home.js?v=30260820"></script>
+  <script src="<?= base_url('assets/js/mobile-shell.js?v=5'); ?>"></script>
 
 </body>
 

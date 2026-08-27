@@ -2,7 +2,7 @@
 <html lang="en">
 <?php include('includes/head.php'); ?>
 
-<body>
+<body class="ms-scan-page">
   <div id="wrapper">
     <!-- Topbar & Sidebar -->
     <?php include('includes/top-nav-bar.php'); ?>
@@ -47,15 +47,15 @@
             </div>
           <?php endif; ?>
 
-          <div class="row mb-2">
+          <div class="row mb-2 ms-scan-controls">
             <div class="col">
               <small class="text-muted">
                 Use the camera below to scan a <b>student’s permanent QR</b>. Other codes will be rejected.
               </small>
             </div>
-            <div class="col-auto">
+            <div class="col-auto ms-scan-actions">
               <div class="form-inline">
-                <select id="cameraSelect" class="form-control form-control-sm mr-2" style="min-width:240px"></select>
+                <select id="cameraSelect" class="form-control form-control-sm mr-2" aria-label="Camera"></select>
                 <button id="btnStart" class="btn btn-sm btn-success mr-1"><i class="mdi mdi-play"></i> Start</button>
                 <button id="btnStop" class="btn btn-sm btn-outline-secondary mr-2"><i class="mdi mdi-stop"></i> Stop</button>
 
@@ -264,13 +264,14 @@
 
           <div class="row">
             <div class="col-lg-7">
-              <div class="card">
+              <div class="card ms-scan-card">
                 <div class="card-header py-2 d-flex align-items-center justify-content-between">
                   <h5 class="mb-0">Live Scanner</h5>
                 </div>
                 <div class="card-body">
                   <div class="scan-wrap">
                     <div id="reader"></div>
+                    <div class="ms-scan-reticle" aria-hidden="true"></div>
                     <div id="scanStatus" aria-live="polite">Looking for a QR code…</div>
                   </div>
                   <div id="scanTips"></div>
@@ -588,7 +589,7 @@
       function resizeReader() {
         const isSmall = window.innerWidth < 768;
         const w = readerEl.clientWidth || 480;
-        const ar = isSmall ? (4 / 3) : (16 / 9);
+        const ar = isSmall ? 1 : (16 / 9);
         readerEl.style.height = Math.round(w / ar) + 'px';
       }
       window.addEventListener('resize', resizeReader);
@@ -745,6 +746,7 @@
 
           await qr.start(cameraConfig, cfg, onScanSuccess, onScanFailure);
           running = true;
+          document.body.classList.add('ms-scanner-running');
           setStatus('Looking for a QR code…', '');
 
           const vid = readerEl.querySelector('video');
@@ -760,6 +762,7 @@
 
           tryEnhanceCamera();
         } catch (err) {
+          document.body.classList.remove('ms-scanner-running');
           addLine('× Start failed: ' + err, 'text-danger');
           setStatus('Camera error — check permissions', 'text-warning');
         } finally {
@@ -775,6 +778,7 @@
         } catch (e) {} finally {
           running = false;
           stopping = false;
+          document.body.classList.remove('ms-scanner-running');
           setStatus('Scanner stopped', '');
           const zw = document.getElementById('qrZoomWrap');
           if (zw && zw.parentNode) zw.parentNode.removeChild(zw);
@@ -814,8 +818,28 @@
         };
       }
 
+      function successFeedback() {
+        if (navigator.vibrate) navigator.vibrate(60);
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) return;
+          const context = new AudioContext();
+          const oscillator = context.createOscillator();
+          const gain = context.createGain();
+          oscillator.type = 'sine';
+          oscillator.frequency.value = 880;
+          gain.gain.setValueAtTime(.0001, context.currentTime);
+          gain.gain.exponentialRampToValueAtTime(.12, context.currentTime + .01);
+          gain.gain.exponentialRampToValueAtTime(.0001, context.currentTime + .09);
+          oscillator.connect(gain);
+          gain.connect(context.destination);
+          oscillator.start();
+          oscillator.stop(context.currentTime + .1);
+          oscillator.addEventListener('ended', () => context.close());
+        } catch (_e) {}
+      }
+
       function onScanSuccess(decodedText) {
-        if (navigator.vibrate) navigator.vibrate(40);
         setStatus('QR detected — processing…', 'text-success');
 
         const payload = parsePayload(decodedText);
@@ -879,6 +903,8 @@
               (j.ok && j.mode === 'checked_out') ? 'out' :
               (j.ok && j.mode === 'duplicate') ? 'dup' :
               'err';
+
+            if (outcome === 'in' || outcome === 'out') successFeedback();
 
             if (outcome === 'in') {
               addLine('✔ CHECKED IN: ' + j.student_number + ' (' + (j.session || '—') + ')', 'text-success');

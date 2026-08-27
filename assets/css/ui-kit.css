@@ -93,6 +93,7 @@ body.uk-locked {
     display: flex;
     flex-direction: column;
     max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
     outline: 0;
 }
 
