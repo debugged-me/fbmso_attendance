@@ -509,20 +509,23 @@
                  reader.readAsDataURL(file);
              });
 
-             /* Reset modals on close */
-             $('#changeProfilePicModal').on('hidden.bs.modal', function(){
-               ppPreviewWrap.classList.remove('show');
-               ppDropzone.classList.remove('has-preview');
-               ppSubmit.disabled = true;
-               ppInput.value = '';
-             });
-             $('#changePasswordModal').on('hidden.bs.modal', function(){
-               document.getElementById('changePwdForm').reset();
-               fill.className = 'pwd-strength-fill'; fill.style.width='0%';
-               label.className = 'pwd-strength-label'; label.textContent='Enter a password';
-               matchEl.textContent=''; matchEl.className='pwd-match';
-               pwdSubmit.disabled = true;
-               document.querySelectorAll('.caps-warn').forEach(function(w){ w.classList.remove('show'); });
+             /* Reset modals on close — wrapped in DOMContentLoaded because jQuery
+                loads at the bottom of the page, after this inline script runs. */
+             document.addEventListener('DOMContentLoaded', function() {
+               $('#changeProfilePicModal').on('hidden.bs.modal', function(){
+                 ppPreviewWrap.classList.remove('show');
+                 ppDropzone.classList.remove('has-preview');
+                 ppSubmit.disabled = true;
+                 ppInput.value = '';
+               });
+               $('#changePasswordModal').on('hidden.bs.modal', function(){
+                 document.getElementById('changePwdForm').reset();
+                 fill.className = 'pwd-strength-fill'; fill.style.width='0%';
+                 label.className = 'pwd-strength-label'; label.textContent='Enter a password';
+                 matchEl.textContent=''; matchEl.className='pwd-match';
+                 pwdSubmit.disabled = true;
+                 document.querySelectorAll('.caps-warn').forEach(function(w){ w.classList.remove('show'); });
+               });
              });
            })();
            </script>

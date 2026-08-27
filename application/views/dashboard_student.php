@@ -528,7 +528,7 @@ $flashDanger  = $this->session->flashdata('danger');
   <script defer src="<?= base_url(); ?>assets/libs/morris-js/morris.min.js"></script>
   <script defer src="<?= base_url(); ?>assets/libs/raphael/raphael.min.js"></script>
   <script defer src="<?= base_url(); ?>assets/libs/jquery-sparkline/jquery.sparkline.min.js"></script>
-  <script src="<?= base_url(); ?>assets/js/pages/dashboard.init.js"></script>
+  <script defer src="<?= base_url(); ?>assets/js/pages/dashboard.init.js"></script>
   <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
   <script defer src="<?= base_url(); ?>assets/libs/jquery-ui/jquery-ui.min.js"></script>
   <script src="<?= base_url(); ?>assets/libs/datatables/jquery.dataTables.min.js"></script>

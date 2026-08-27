@@ -565,7 +565,7 @@
   <script defer src="<?= base_url(); ?>assets/libs/morris-js/morris.min.js"></script>
   <script defer src="<?= base_url(); ?>assets/libs/raphael/raphael.min.js"></script>
   <script defer src="<?= base_url(); ?>assets/libs/jquery-sparkline/jquery.sparkline.min.js"></script>
-  <script src="<?= base_url(); ?>assets/js/pages/dashboard.init.js"></script>
+  <script defer src="<?= base_url(); ?>assets/js/pages/dashboard.init.js"></script>
   <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
   <script defer src="<?= base_url(); ?>assets/libs/jquery-ui/jquery-ui.min.js"></script>
   <script src="<?= base_url(); ?>assets/libs/datatables/jquery.dataTables.min.js"></script>
@@ -584,8 +584,9 @@
   <script src="<?= base_url(); ?>assets/js/pages/datatables.init.js"></script>
   <script defer src="<?= base_url(); ?>assets/libs/chart-js/Chart.bundle.min.js"></script>
   <script>
-    /* ===== Enrollment summary donut charts ===== */
-    (function () {
+    /* ===== Enrollment summary donut charts =====
+       Wrapped in DOMContentLoaded so Chart.js (deferred above) is available. */
+    document.addEventListener('DOMContentLoaded', function () {
       if (typeof Chart === 'undefined') {
         return;
       }
@@ -736,7 +737,7 @@
           $table.find('tbody').append('<tr class="sum-noresult"><td colspan="2" class="text-muted text-center">No match.</td></tr>');
         }
       });
-    })();
+    });
   </script>
   <script>
     $('#viewAnnouncementModal').on('show.bs.modal', function(e) {
