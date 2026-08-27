@@ -356,39 +356,24 @@ $flashDanger  = $this->session->flashdata('danger');
                     </div>
                   </div>
                 <?php else: ?>
+                  <?php
+                  $hour = (int)date('G');
+                  if ($hour < 12) {
+                    $greeting = 'Good morning';
+                    $greetEmoji = '☀️';
+                  } elseif ($hour < 18) {
+                    $greeting = 'Good afternoon';
+                    $greetEmoji = '🌤️';
+                  } else {
+                    $greeting = 'Good evening';
+                    $greetEmoji = '🌙';
+                  }
+                  ?>
                   <div class="welcome-hero mb-3">
                     <div class="wh-text">
-                      <div class="wh-kicker">Welcome back 👋</div>
+                      <div class="wh-kicker"><?= $greeting . ' ' . $greetEmoji; ?></div>
                       <h2 class="wh-title mb-1"><?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?></h2>
-                      <p class="mb-0">Quick links you’ll probably need today.</p>
-                    </div>
-                  </div>
-
-                  <div class="row quick-actions">
-
-                    <div class="col-6 col-md-3 mb-3">
-                      <a class="qa-card" href="<?= site_url('student/my_qr'); ?>">
-                        <div class="qa-icon"><i class="fa-solid fa-qrcode"></i></div>
-                        <div class="qa-label">My QR Code</div>
-                      </a>
-                    </div>
-                    <div class="col-6 col-md-3 mb-3">
-                      <a class="qa-card" href="<?= base_url('Page/changepassword'); ?>">
-                        <div class="qa-icon"><i class="ion ion-ios-key"></i></div>
-                        <div class="qa-label">Change Password</div>
-                      </a>
-                    </div>
-                    <div class="col-6 col-md-3 mb-3">
-                      <a class="qa-card" href="<?= $changeDpUrl; ?>">
-                        <div class="qa-icon"><i class="ion ion-md-contact"></i></div>
-                        <div class="qa-label">Change Profile Picture</div>
-                      </a>
-                    </div>
-                    <div class="col-6 col-md-3 mb-3">
-                      <a class="qa-card logout-confirm" href="<?= base_url('Login/logout'); ?>">
-                        <div class="qa-icon"><i class="mdi mdi-logout-variant"></i></div>
-                        <div class="qa-label">Logout</div>
-                      </a>
+                      <p class="mb-0">Here’s what’s happening on your dashboard today.</p>
                     </div>
                   </div>
                 <?php endif; ?>
