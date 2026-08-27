@@ -141,11 +141,11 @@
     <!-- Buttons examples -->
     <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.buttons.min.js"></script>
     <script src="<?= base_url(); ?>assets/libs/datatables/buttons.bootstrap4.min.js"></script>
-    <script src="<?= base_url(); ?>assets/libs/jszip/jszip.min.js"></script>
-    <script src="<?= base_url(); ?>assets/libs/pdfmake/pdfmake.min.js"></script>
-    <script src="<?= base_url(); ?>assets/libs/pdfmake/vfs_fonts.js"></script>
-    <script src="<?= base_url(); ?>assets/libs/datatables/buttons.html5.min.js"></script>
-    <script src="<?= base_url(); ?>assets/libs/datatables/buttons.print.min.js"></script>
+    <script defer src="<?= base_url(); ?>assets/libs/jszip/jszip.min.js"></script>
+    <script defer src="<?= base_url(); ?>assets/libs/pdfmake/pdfmake.min.js"></script>
+    <script defer src="<?= base_url(); ?>assets/libs/pdfmake/vfs_fonts.js"></script>
+    <script defer src="<?= base_url(); ?>assets/libs/datatables/buttons.html5.min.js"></script>
+    <script defer src="<?= base_url(); ?>assets/libs/datatables/buttons.print.min.js"></script>
 
     <!-- Responsive examples -->
     <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.responsive.min.js"></script>

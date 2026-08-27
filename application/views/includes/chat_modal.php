@@ -1,4 +1,4 @@
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<link href="<?= base_url('assets/fonts/bootstrap-icons/bootstrap-icons.css'); ?>" rel="stylesheet">
 <?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
 
 <style>
@@ -611,8 +611,8 @@
 </script>
 
 
-<!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- jQuery (local — avoids CDN DNS round-trip) -->
+<script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
 <script>
 let isActionActive = false;
 let isDialogOpen = false;
