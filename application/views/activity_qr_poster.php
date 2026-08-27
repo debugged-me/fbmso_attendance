@@ -6,89 +6,174 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- QR generator -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=30260820" rel="stylesheet">
   <style>
-    :root{--ink:#111;--ring:#e5e7eb;--btn:#111}
+    :root{--ink:#0d1b4b;--muted:#6b7a99;--ring:#e6ebf5;--accent:#2a4090;--accent2:#4266d4}
     *{box-sizing:border-box}
     body{
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-      color:var(--ink);
-      margin:24px; line-height:1.35; background:#fff;
-    }
-    .wrap{max-width:960px;margin:0 auto;padding:0 12px}
-    .hdr{
-      display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap
-    }
-    .hdr h1{font-size:1.1rem;margin:0}
-    .hdr small{color:#6b7280}
-    .btn{
-      display:inline-block;padding:10px 14px;border:1px solid var(--btn);
-      text-decoration:none;border-radius:10px;background:#fff;color:var(--btn);font-weight:600
-    }
-    .btn:active{transform:translateY(1px)}
-    .btn-group{display:flex;gap:8px;flex-wrap:wrap}
-
-    .card{border:1px solid var(--ring);border-radius:16px;padding:20px}
-    .qr{
-      width:100%;max-width:520px;aspect-ratio:1/1;margin:0 auto;
-      display:flex;align-items:center;justify-content:center
+      font-family:'Sora',system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color:var(--ink); margin:0; line-height:1.5;
+      background:linear-gradient(135deg,#f5f7fc 0%,#eef2fa 100%);
+      min-height:100vh;
     }
 
-    .meta{text-align:center;margin-top:16px}
-    .meta h2{font-size:1.5rem;margin:.25rem 0;word-break:break-word}
-    .meta .sub{color:#374151;margin-top:4px}
-    .meta small{display:block;margin-top:4px;color:#6b7280;word-break:break-word}
+    /* ===== Top bar ===== */
+    .poster-topbar{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; flex-wrap:wrap; padding:18px 24px;
+      background:#fff; border-bottom:1px solid var(--ring);
+      box-shadow:0 2px 12px rgba(15,23,42,.04);
+    }
+    .poster-topbar .pt-brand{display:flex;align-items:center;gap:10px}
+    .poster-topbar .pt-logo{
+      width:36px;height:36px;border-radius:10px;overflow:hidden;
+      border:1px solid var(--ring);background:#f4f8ff;
+      display:flex;align-items:center;justify-content:center;
+    }
+    .poster-topbar .pt-logo img{width:100%;height:100%;object-fit:contain}
+    .poster-topbar .pt-title{font-size:1rem;font-weight:800;color:var(--ink)}
+    .poster-topbar .pt-sub{font-size:.76rem;color:var(--muted)}
+    .poster-topbar .pt-actions{display:flex;gap:8px;flex-wrap:wrap}
 
-    .url{
-      font-family:ui-monospace,Menlo,monospace;
-      word-break:break-all; margin-top:12px; border:1px dashed var(--ring);
-      padding:10px;border-radius:8px; font-size:.95rem; background:#fafafa;
-      user-select:all; /* tap to select if they need to copy manually */
+    .pt-btn{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:9px 16px; border:1px solid var(--ring); border-radius:10px;
+      background:#fff; color:var(--ink); font-size:.84rem; font-weight:700;
+      text-decoration:none; cursor:pointer; transition:all .15s ease;
+    }
+    .pt-btn:hover{border-color:var(--accent2);color:var(--accent2);box-shadow:0 3px 10px rgba(66,102,212,.1);text-decoration:none}
+    .pt-btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent}
+    .pt-btn-primary:hover{color:#fff;box-shadow:0 6px 18px rgba(42,64,144,.25)}
+
+    /* ===== Poster card ===== */
+    .poster-wrap{max-width:680px;margin:32px auto;padding:0 16px}
+
+    .poster-card{
+      background:#fff; border:1px solid var(--ring); border-radius:24px;
+      padding:40px 32px; box-shadow:0 20px 60px rgba(42,64,144,.1);
+      text-align:center;
     }
 
-    /* Mobile */
+    .poster-kicker{
+      font-size:.78rem; font-weight:700; letter-spacing:.12em;
+      text-transform:uppercase; color:var(--accent2); margin-bottom:8px;
+    }
+
+    .poster-qr{
+      width:100%; max-width:420px; aspect-ratio:1/1; margin:0 auto 24px;
+      display:flex; align-items:center; justify-content:center;
+      border-radius:20px; overflow:hidden;
+      background:#fff; padding:16px;
+      border:2px solid var(--ring);
+    }
+
+    .poster-title{
+      font-size:1.6rem; font-weight:800; color:var(--ink);
+      margin:0 0 8px; word-break:break-word; line-height:1.25;
+    }
+
+    .poster-meta{
+      display:flex; justify-content:center; align-items:center;
+      gap:8px; flex-wrap:wrap; margin-bottom:6px;
+    }
+    .poster-meta .pm-chip{
+      display:inline-flex; align-items:center; gap:5px;
+      padding:5px 12px; border-radius:999px;
+      font-size:.78rem; font-weight:600;
+      background:#f4f7ff; color:var(--accent); border:1px solid #dce5ff;
+    }
+    .poster-meta .pm-chip i{font-size:14px}
+
+    .poster-program{
+      font-size:.82rem; color:var(--muted); margin:8px 0 20px;
+    }
+
+    .poster-url{
+      font-family:ui-monospace,Menlo,Consolas,monospace;
+      word-break:break-all; margin-top:16px;
+      border:1px dashed var(--ring); padding:12px 16px;
+      border-radius:12px; font-size:.84rem; background:#fafbff;
+      color:var(--accent); user-select:all;
+    }
+
+    .poster-instructions{
+      display:flex; justify-content:center; gap:24px; flex-wrap:wrap;
+      margin-top:28px; padding-top:24px; border-top:1px solid var(--ring);
+    }
+    .poster-instructions .pi-step{
+      display:flex; align-items:center; gap:8px;
+      font-size:.78rem; color:var(--muted); font-weight:600;
+    }
+    .poster-instructions .pi-step .pi-num{
+      width:24px;height:24px;border-radius:50%;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      color:#fff;font-size:.72rem;font-weight:800;
+      display:flex;align-items:center;justify-content:center;
+      flex-shrink:0;
+    }
+
+    /* ===== Mobile ===== */
     @media (max-width:600px){
-      body{margin:16px}
-      .btn{width:100%;text-align:center}
-      .meta h2{font-size:1.25rem}
-      .url{font-size:.9rem}
+      .poster-topbar{padding:14px 16px}
+      .poster-topbar .pt-actions{width:100%}
+      .pt-btn{flex:1;justify-content:center}
+      .poster-wrap{margin:16px auto}
+      .poster-card{padding:28px 18px;border-radius:18px}
+      .poster-title{font-size:1.25rem}
+      .poster-qr{max-width:300px}
+      .poster-instructions{gap:14px}
     }
 
-    /* Print-friendly: bigger QR, clean margins, no borders */
+    /* ===== Print ===== */
     @media print{
       .no-print{display:none !important}
-      body{margin:0.6in}
-      .card{border:none;padding:0}
-      .qr{max-width:6.5in}        /* enlarge QR on paper */
-      .url{border:none;padding:0;margin-top:6px;background:transparent}
+      body{background:#fff;margin:0}
+      .poster-card{border:none;box-shadow:none;padding:0;border-radius:0}
+      .poster-qr{max-width:5in;border:none}
+      .poster-url{border:none;padding:0;margin-top:8px;background:transparent}
+      .poster-instructions{display:none}
     }
   </style>
-    <script src="<?= base_url('assets/js/anti-inspect.js?v=1'); ?>"></script>
+  <script src="<?= base_url('assets/js/anti-inspect.js?v=1'); ?>"></script>
 </head>
 <body>
-<div class="wrap">
-  <div class="hdr no-print">
+
+<!-- Top bar -->
+<div class="poster-topbar no-print">
+  <div class="pt-brand">
+    <div class="pt-logo"><img src="<?= base_url(); ?>upload/banners/logo1.png" alt="FBMSO"></div>
     <div>
-      <h1>Printable QR for Activity</h1>
-      <small>Students scan this with their phones</small>
-    </div>
-    <div class="btn-group">
-      <a href="<?= site_url('activities'); ?>" class="btn">Back</a>
-      <button class="btn" onclick="window.print()">Print</button>
+      <div class="pt-title">FBMSO Attendance</div>
+      <div class="pt-sub">Printable QR Poster</div>
     </div>
   </div>
+  <div class="pt-actions">
+    <a href="<?= site_url('activities'); ?>" class="pt-btn"><i class="mdi mdi-arrow-left"></i> Back</a>
+    <button class="pt-btn pt-btn-primary" onclick="window.print()"><i class="mdi mdi-printer"></i> Print</button>
+  </div>
+</div>
 
-  <div class="card">
-    <div id="qrcode" class="qr"></div>
-    <div class="meta">
-      <h2><?= htmlspecialchars($activity->title) ?></h2>
-      <div class="sub">
-        <?= htmlspecialchars($activity->activity_date) ?>
-        <?= $activity->location ? ' • '.htmlspecialchars($activity->location) : '' ?>
-      </div>
-      <?php if (!empty($activity->program)): ?>
-        <small>Program: <?= htmlspecialchars($activity->program) ?></small>
+<!-- Poster card -->
+<div class="poster-wrap">
+  <div class="poster-card">
+    <div class="poster-kicker">Scan to Check In</div>
+    <div id="qrcode" class="poster-qr"></div>
+    <h2 class="poster-title"><?= htmlspecialchars($activity->title) ?></h2>
+    <div class="poster-meta">
+      <span class="pm-chip"><i class="mdi mdi-calendar-range"></i> <?= htmlspecialchars($activity->activity_date) ?></span>
+      <?php if ($activity->location): ?>
+        <span class="pm-chip"><i class="mdi mdi-map-marker"></i> <?= htmlspecialchars($activity->location) ?></span>
       <?php endif; ?>
-      <div class="url"><?= htmlspecialchars($checkin_url) ?></div>
+    </div>
+    <?php if (!empty($activity->program)): ?>
+      <div class="poster-program">Program: <?= htmlspecialchars($activity->program) ?></div>
+    <?php endif; ?>
+    <div class="poster-url"><?= htmlspecialchars($checkin_url) ?></div>
+
+    <div class="poster-instructions no-print">
+      <div class="pi-step"><span class="pi-num">1</span> Open your phone camera</div>
+      <div class="pi-step"><span class="pi-num">2</span> Point at the QR code</div>
+      <div class="pi-step"><span class="pi-num">3</span> Tap the link to check in</div>
     </div>
   </div>
 </div>
@@ -96,15 +181,13 @@
 <script>
 (function(){
   var container = document.getElementById('qrcode');
-  // Use unescaped slashes so the QR payload matches the URL exactly
   var url = <?= json_encode($checkin_url, JSON_UNESCAPED_SLASHES) ?>;
 
   var qr = null, rafId = null;
 
   function size(){
-    // Wider cap for large screens; still responsive on phones
-    var w = container.clientWidth || 520;
-    var px = Math.max(180, Math.min(680, Math.floor(w)));
+    var w = container.clientWidth || 420;
+    var px = Math.max(180, Math.min(560, Math.floor(w - 32)));
     return px;
   }
 
@@ -114,7 +197,7 @@
       text: url,
       width: size(),
       height: size(),
-      correctLevel: QRCode.CorrectLevel.H // ~30% ECC for robust scans
+      correctLevel: QRCode.CorrectLevel.H
     });
   }
 

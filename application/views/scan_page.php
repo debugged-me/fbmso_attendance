@@ -1,10 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+
+<style>
+  /* ===== Page header ===== */
+  .pl-header {
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:18px; flex-wrap:wrap; margin-bottom:20px;
+  }
+  .pl-header .page-title-box { flex:1 1 auto; margin:0; }
+  .pl-header .page-title-box .up-divider { margin:10px 0 0; }
+  .pl-header .pl-actions { flex:0 0 auto; align-self:center; display:flex; gap:10px; }
+  .scan-state-badges { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .scan-state-badges .badge { font-size:.72rem; font-weight:700; padding:5px 12px; border-radius:999px; }
+
+  /* ===== Scanner card ===== */
+  .scan-card {
+    background:#fff; border:1px solid #e6ebf5; border-radius:18px;
+    box-shadow:0 6px 18px rgba(13,27,75,.05); overflow:hidden;
+  }
+  .scan-card-head {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; flex-wrap:wrap; padding:16px 20px; border-bottom:1px solid #eef1f5;
+  }
+  .scan-card-head .sch-title {
+    font-size:.92rem; font-weight:800; color:#0d1b4b; display:flex; align-items:center; gap:8px;
+  }
+  .scan-card-head .sch-title i { font-size:18px; color:#4266d4; }
+  .scan-card-body { padding:20px; }
+
+  /* ===== Camera controls row ===== */
+  .cam-controls {
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  .cam-controls select {
+    border-radius:10px; border:1px solid #e6ebf5; font-size:.82rem;
+    padding:8px 12px; height:38px; background:#fff; color:#374151;
+    min-width:140px;
+  }
+  .cam-controls select:focus { outline:none; border-color:#4266d4; box-shadow:0 0 0 3px rgba(66,102,212,.1); }
+
+  /* ===== Mode selector ===== */
+  .mode-row {
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    margin-top:14px; padding-top:14px; border-top:1px solid #eef1f5;
+  }
+  .mode-row .mr-label { font-size:.78rem; font-weight:700; color:#6b7a99; white-space:nowrap; }
+  .mode-pills { display:inline-flex; border:1px solid #e6ebf5; border-radius:10px; overflow:hidden; }
+  .mode-pills .mode-pill {
+    padding:8px 18px; border:none; background:#fff; color:#6b7a99;
+    font-size:.78rem; font-weight:700; cursor:pointer; transition:all .15s ease;
+    border-right:1px solid #e6ebf5;
+  }
+  .mode-pills .mode-pill:last-child { border-right:none; }
+  .mode-pills .mode-pill:hover { background:#f4f7ff; color:#0d1b4b; }
+  .mode-pills .mode-pill.active { color:#fff; }
+  .mode-pills .mode-pill.active[data-mode="auto"] { background:linear-gradient(135deg,#2a4090,#4266d4); }
+  .mode-pills .mode-pill.active[data-mode="in"] { background:linear-gradient(135deg,#15803d,#16a34a); }
+  .mode-pills .mode-pill.active[data-mode="out"] { background:linear-gradient(135deg,#1e40af,#3b82f6); }
+
+  /* ===== Remarks ===== */
+  .remarks-row {
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    margin-top:14px; padding-top:14px; border-top:1px solid #eef1f5;
+  }
+  .remarks-row .rr-label { font-size:.78rem; font-weight:700; color:#6b7a99; white-space:nowrap; }
+  .remarks-row input {
+    flex:1; min-width:200px; border-radius:10px; border:1px solid #e6ebf5;
+    font-size:.82rem; padding:8px 14px; height:38px; background:#fff; color:#374151;
+  }
+  .remarks-row input:focus { outline:none; border-color:#4266d4; box-shadow:0 0 0 3px rgba(66,102,212,.1); }
+
+  /* ===== Scanner viewport ===== */
+  .scan-wrap {
+    position:relative; width:100%; max-width:560px; margin:20px auto 0;
+  }
+  #reader {
+    position:relative; width:100%; height:auto; min-height:300px;
+    background:#0a0e1a; border-radius:14px; overflow:hidden;
+  }
+  #scanStatus {
+    position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
+    background:rgba(17,24,39,.75); color:#fff;
+    border:1px solid rgba(255,255,255,.15);
+    padding:6px 16px; border-radius:999px; font-size:.82rem; font-weight:600;
+    backdrop-filter:blur(4px); z-index:4; white-space:nowrap;
+    max-width:90%; overflow:hidden; text-overflow:ellipsis;
+  }
+  #scanTips { margin-top:10px; font-size:.82rem; color:#475569; }
+  .tip {
+    display:inline-flex; align-items:center;
+    border:1px solid #e2e8f0; border-radius:999px;
+    padding:4px 10px; margin:3px 6px 0 0; background:#f8fafc;
+  }
+  .tip i { font-size:14px; margin-right:6px; opacity:.8; }
+  #reader button, #reader input[type=range] { margin:6px; }
+
+  /* ===== Last scan result banner ===== */
+  .last-scan {
+    display:flex; align-items:center; gap:12px;
+    padding:14px 18px; border-radius:14px; margin-bottom:14px;
+    transition:all .2s ease;
+  }
+  .last-scan.ls-in { background:#f0fdf4; border:1px solid #bbf7d0; }
+  .last-scan.ls-out { background:#eff6ff; border:1px solid #bfdbfe; }
+  .last-scan.ls-dup { background:#fffbeb; border:1px solid #fde68a; }
+  .last-scan.ls-err { background:#fef2f2; border:1px solid #fecaca; }
+  .last-scan.ls-hidden { display:none; }
+  .last-scan .ls-avatar {
+    width:44px; height:44px; border-radius:10px; overflow:hidden;
+    background:#f3f4f6; border:1px solid #e5e7eb;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .last-scan .ls-avatar img { width:100%; height:100%; object-fit:cover; }
+  .last-scan .ls-avatar i { font-size:22px; color:#94a3b8; }
+  .last-scan .ls-info { flex:1; min-width:0; }
+  .last-scan .ls-top { display:flex; align-items:center; gap:8px; }
+  .last-scan .ls-badge {
+    font-size:.68rem; font-weight:800; padding:3px 10px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.05em; color:#fff;
+  }
+  .last-scan .ls-badge.ls-badge-in { background:#16a34a; }
+  .last-scan .ls-badge.ls-badge-out { background:#3b82f6; }
+  .last-scan .ls-badge.ls-badge-dup { background:#f59e0b; }
+  .last-scan .ls-badge.ls-badge-err { background:#ef4444; }
+  .last-scan .ls-time { font-size:.74rem; color:#9aa5b8; }
+  .last-scan .ls-name { font-size:.92rem; font-weight:700; color:#0d1b4b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .last-scan .ls-sn { font-size:.78rem; color:#6b7a99; font-family:ui-monospace,Menlo,Consolas; }
+
+  /* ===== Scan log ===== */
+  #log {
+    max-height:400px; overflow:auto;
+    font-family:ui-monospace,Menlo,Consolas; font-size:.78rem;
+    padding:14px 18px;
+  }
+  #log > div { padding:5px 0; border-bottom:1px solid #f1f4f9; }
+  #log > div:last-child { border-bottom:none; }
+  #log .text-success { color:#16a34a; }
+  #log .text-warning { color:#d97706; }
+  #log .text-danger { color:#dc2626; }
+  #log .text-primary { color:#3b82f6; }
+  #log .text-info { color:#0ea5e9; }
+
+  /* ===== Profile modal ===== */
+  #profileModal .modal-content { border-radius:16px; overflow:hidden; background:#fff; }
+  #profileModal .pcard { display:flex; background:#fff; border-radius:16px; overflow:hidden; }
+  #profileModal .pcard-strip { width:10px; background:#e5e7eb; }
+  #profileModal .pcard-inner { flex:1; padding:16px 18px; }
+  #profileModal .pcard-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  #profileModal #pBadge {
+    border-radius:999px; padding:4px 10px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.06em; font-size:.75rem; color:#fff;
+  }
+  #profileModal .pcard-when { font-size:.85rem; color:#6b7280; }
+  #profileModal .pcard-main { display:flex; gap:14px; }
+  #profileModal .pro-avatar {
+    width:84px; height:84px; border-radius:12px; overflow:hidden;
+    background:#f3f4f6; border:1px solid #e5e7eb;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #profileModal #pPhoto { width:100%; height:100%; object-fit:cover; display:none; }
+  #profileModal #pIcon { font-size:36px; color:#94a3b8; }
+  #profileModal .pcard-info { flex:1; min-width:0; }
+  #profileModal .pcard-name { font-size:1.25rem; line-height:1.2; font-weight:700; color:#1f2937; margin-bottom:2px; }
+  #profileModal .pcard-sn { font-family:ui-monospace,Menlo,Consolas; color:#4b5563; margin-bottom:2px; }
+  #profileModal .pcard-meta { color:#6b7280; }
+  #profileModal #pBadge.badge-success { background:#16a34a; }
+  #profileModal #pBadge.badge-warning { background:#f59e0b; }
+  #profileModal #pBadge.badge-danger { background:#ef4444; }
+  .badge-primary { background:#3b82f6; }
+
+  /* ===== Mobile ===== */
+  @media (max-width:767.98px) {
+    .pl-header { flex-direction:column; gap:10px; }
+    .pl-header .pl-actions { align-self:flex-start; }
+    .cam-controls { width:100%; }
+    .cam-controls select { flex:1; min-width:0; }
+    .mode-row { padding-top:12px; margin-top:12px; }
+    .remarks-row input { min-width:0; }
+  }
+</style>
 
 <body class="ms-scan-page">
   <div id="wrapper">
-    <!-- Topbar & Sidebar -->
     <?php include('includes/top-nav-bar.php'); ?>
     <?php include('includes/sidebar.php'); ?>
 
@@ -12,306 +191,111 @@
       <div class="content">
         <div class="container-fluid">
 
-          <!-- Page title -->
-          <div class="row">
-            <div class="col-12">
-              <div class="page-title-box">
-                <h4 class="page-title d-flex align-items-center">
-                  <i class="ion ion-ios-qr-scanner mr-2"></i>
-                  Scanner — <?= htmlspecialchars($activity->title) ?>
-                  <span class="badge badge-info ml-2"><?= htmlspecialchars($activity->activity_date) ?></span>
-                  <?php $st = $activity_state ?? activity_state($activity); ?>
-                  <span class="badge badge-pill <?= activity_state_badge_class($st['state']) ?> text-uppercase ml-2">
-                    <?= htmlspecialchars($st['label'], ENT_QUOTES, 'UTF-8') ?>
-                  </span>
-                </h4>
-                <div class="clearfix"></div>
-                <hr style="border:0;height:2px;background:linear-gradient(to right,#4285F4 60%,#FBBC05 80%,#34A853 100%);border-radius:1px;margin:8px 0;" />
+          <!-- ===== Page header ===== -->
+          <div class="pl-header">
+            <div class="page-title-box">
+              <h4 class="up-page-title d-flex align-items-center">
+                <i class="ion ion-ios-qr-scanner mr-2"></i>
+                <?= htmlspecialchars($activity->title) ?>
+              </h4>
+              <div class="scan-state-badges">
+                <span class="badge badge-info"><?= htmlspecialchars($activity->activity_date) ?></span>
+                <?php $st = $activity_state ?? activity_state($activity); ?>
+                <span class="badge badge-pill <?= activity_state_badge_class($st['state']) ?> text-uppercase">
+                  <?= htmlspecialchars($st['label'], ENT_QUOTES, 'UTF-8') ?>
+                </span>
               </div>
+              <hr class="up-divider" />
+            </div>
+            <div class="pl-actions">
+              <a href="<?= site_url('activities'); ?>" class="up-btn up-btn-ghost">
+                <i class="mdi mdi-arrow-left"></i> Back
+              </a>
             </div>
           </div>
 
           <?php if (!$st['is_open']): ?>
-            <div class="row">
-              <div class="col-12">
-                <div class="alert alert-warning d-flex align-items-start" role="alert">
-                  <i class="ion ion-md-lock mr-2 mt-1"></i>
-                  <div>
-                    <strong>Check-ins are closed for this activity.</strong><br>
-                    <?= htmlspecialchars($st['reason'], ENT_QUOTES, 'UTF-8') ?>
-                    Scans will be rejected until it is reopened from
-                    <a href="<?= site_url('activities/' . (int)$activity->activity_id . '/edit') ?>">the activity settings</a>.
-                  </div>
-                </div>
+            <div class="alert alert-warning d-flex align-items-start mb-3" role="alert" style="border-radius:14px;">
+              <i class="ion ion-md-lock mr-2 mt-1"></i>
+              <div>
+                <strong>Check-ins are closed.</strong>
+                <?= htmlspecialchars($st['reason'], ENT_QUOTES, 'UTF-8') ?>
+                Reopen from <a href="<?= site_url('activities/' . (int)$activity->activity_id . '/edit') ?>">activity settings</a>.
               </div>
             </div>
           <?php endif; ?>
 
-          <div class="row mb-2 ms-scan-controls">
-            <div class="col">
-              <small class="text-muted">
-                Use the camera below to scan a <b>student’s permanent QR</b>. Other codes will be rejected.
-              </small>
-            </div>
-            <div class="col-auto ms-scan-actions">
-              <div class="form-inline">
-                <select id="cameraSelect" class="form-control form-control-sm mr-2" aria-label="Camera"></select>
-                <button id="btnStart" class="btn btn-sm btn-success mr-1"><i class="mdi mdi-play"></i> Start</button>
-                <button id="btnStop" class="btn btn-sm btn-outline-secondary mr-2"><i class="mdi mdi-stop"></i> Stop</button>
-
-                <button id="btnUpload" class="btn btn-sm btn-info mr-2"><i class="mdi mdi-upload"></i> Upload QR</button>
-                <input type="file" id="qrFileInput" accept="image/*" class="d-none">
-              </div>
-            </div>
-          </div>
-          <!-- Manual Remarks (optional) -->
-          <div class="row mb-2" id="manual-remarks-row">
-            <div class="col d-flex align-items-center">
-              <input id="remarkInline"
-                class="form-control form-control-sm"
-                placeholder="Remarks ( Leave blank → saved as Scanned via QR )"
-                style="min-width:280px; max-width:520px;">
-
-            </div>
-          </div>
-
-          <!-- Scan Mode selector -->
-          <div class="row mb-2">
-            <div class="col d-flex align-items-center">
-              <div class="btn-group btn-group-sm" role="group" aria-label="Scan mode">
-                <span class="mr-2 text-muted">Scan mode:</span>
-                <button id="btnModeIn" type="button" class="btn btn-success active">IN</button>
-                <button id="btnModeOut" type="button" class="btn btn-outline-primary">OUT</button>
-              </div>
-              <small class="text-muted ml-2">Choose <b>IN</b> or <b>OUT</b> to prevent accidental toggles.</small>
-            </div>
-          </div>
-
-          <style>
-            .scan-wrap {
-              position: relative;
-              width: 100%;
-              max-width: 680px;
-              margin: auto;
-            }
-
-            #reader {
-              position: relative;
-              width: 100%;
-              height: auto;
-              min-height: 320px;
-              background: #000;
-              border-radius: 12px;
-              overflow: hidden
-            }
-
-            #scanStatus {
-              position: absolute;
-              bottom: 12px;
-              left: 50%;
-              transform: translateX(-50%);
-              background: rgba(17, 24, 39, .7);
-              color: #fff;
-              border: 1px solid rgba(255, 255, 255, .15);
-              padding: 6px 12px;
-              border-radius: 999px;
-              font-size: .85rem;
-              backdrop-filter: blur(4px);
-              z-index: 4;
-            }
-
-            #scanTips {
-              margin-top: 8px;
-              font-size: .85rem;
-              color: #475569
-            }
-
-            .tip {
-              display: inline-flex;
-              align-items: center;
-              border: 1px solid #e2e8f0;
-              border-radius: 999px;
-              padding: 4px 10px;
-              margin: 3px 6px 0 0;
-              background: #f8fafc
-            }
-
-            .tip i {
-              font-size: 14px;
-              margin-right: 6px;
-              opacity: .8
-            }
-
-            #reader button,
-            #reader input[type=range] {
-              margin: 6px
-            }
-
-            /* Profile modal card */
-            #profileModal .pcard {
-              display: flex;
-              background: #fff;
-              border-radius: 16px;
-              overflow: hidden;
-            }
-
-            #profileModal .pcard-strip {
-              width: 10px;
-              background: #e5e7eb;
-            }
-
-            #profileModal .pcard-inner {
-              flex: 1;
-              padding: 16px 18px;
-            }
-
-            #profileModal .pcard-head {
-              display: flex;
-              align-items: center;
-              gap: 10px;
-              margin-bottom: 12px;
-            }
-
-            #profileModal #pBadge {
-              border-radius: 999px;
-              padding: 4px 10px;
-              font-weight: 700;
-              text-transform: uppercase;
-              letter-spacing: .06em;
-              font-size: .75rem;
-              color: #fff;
-            }
-
-            #profileModal .pcard-when {
-              font-size: .85rem;
-              color: #6b7280;
-            }
-
-            #profileModal .pcard-main {
-              display: flex;
-              gap: 14px;
-            }
-
-            #profileModal .pro-avatar {
-              width: 84px;
-              height: 84px;
-              border-radius: 12px;
-              overflow: hidden;
-              background: #f3f4f6;
-              border: 1px solid #e5e7eb;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            }
-
-            #profileModal #pPhoto {
-              width: 100%;
-              height: 100%;
-              object-fit: cover;
-              display: none;
-            }
-
-            #profileModal #pIcon {
-              font-size: 36px;
-              color: #94a3b8;
-            }
-
-            #profileModal .pcard-info {
-              flex: 1;
-              min-width: 0;
-            }
-
-            #profileModal .pcard-name {
-              font-size: 1.25rem;
-              line-height: 1.2;
-              font-weight: 700;
-              color: #1f2937;
-              margin-bottom: 2px;
-            }
-
-            #profileModal .pcard-sn {
-              font-family: ui-monospace, Menlo, Consolas;
-              color: #4b5563;
-              margin-bottom: 2px;
-            }
-
-            #profileModal .pcard-meta {
-              color: #6b7280;
-            }
-
-            #profileModal #pBadge.badge-success {
-              background: #16a34a;
-            }
-
-            #profileModal #pBadge.badge-warning {
-              background: #f59e0b;
-            }
-
-            #profileModal #pBadge.badge-danger {
-              background: #ef4444;
-            }
-
-            .badge-primary {
-              background: #3b82f6
-            }
-
-            .alert-primary {
-              background: #e5efff;
-              border-color: #bfd2ff;
-              color: #1e40af
-            }
-          </style>
-
           <div class="row">
+            <!-- ===== Left: Scanner ===== -->
             <div class="col-lg-7">
-              <div class="card ms-scan-card">
-                <div class="card-header py-2 d-flex align-items-center justify-content-between">
-                  <h5 class="mb-0">Live Scanner</h5>
+              <div class="scan-card">
+                <!-- Camera controls -->
+                <div class="scan-card-head">
+                  <div class="sch-title"><i class="ion ion-ios-videocam"></i> Scanner</div>
+                  <div class="cam-controls">
+                    <select id="cameraSelect" aria-label="Camera"></select>
+                    <button id="btnStart" class="up-btn up-btn-primary up-btn-sm"><i class="mdi mdi-play"></i> Start</button>
+                    <button id="btnStop" class="up-btn up-btn-ghost up-btn-sm"><i class="mdi mdi-stop"></i> Stop</button>
+                    <button id="btnUpload" class="up-btn up-btn-ghost up-btn-sm"><i class="mdi mdi-upload"></i> Upload</button>
+                    <input type="file" id="qrFileInput" accept="image/*" class="d-none">
+                  </div>
                 </div>
-                <div class="card-body">
+
+                <div class="scan-card-body">
+                  <!-- Camera viewport -->
                   <div class="scan-wrap">
                     <div id="reader"></div>
                     <div class="ms-scan-reticle" aria-hidden="true"></div>
-                    <div id="scanStatus" aria-live="polite">Looking for a QR code…</div>
+                    <div id="scanStatus" aria-live="polite">Press Start to scan</div>
                   </div>
                   <div id="scanTips"></div>
+
+                  <!-- Mode selector -->
+                  <div class="mode-row">
+                    <span class="mr-label">Mode</span>
+                    <div class="mode-pills">
+                      <button class="mode-pill active" data-mode="auto" id="btnModeAuto">AUTO</button>
+                      <button class="mode-pill" data-mode="in" id="btnModeIn">IN</button>
+                      <button class="mode-pill" data-mode="out" id="btnModeOut">OUT</button>
+                    </div>
+                  </div>
+
+                  <!-- Remarks -->
+                  <div class="remarks-row">
+                    <span class="rr-label">Remarks</span>
+                    <input id="remarkInline" placeholder="Optional — leave blank for default">
+                  </div>
                 </div>
               </div>
             </div>
 
+            <!-- ===== Right: Last result + Log ===== -->
             <div class="col-lg-5">
-              <div class="card">
-                <div class="card-header py-2 d-flex align-items-center justify-content-between">
-                  <h5 class="mb-0">Scan Log</h5>
-                  <button id="btnClear" class="btn btn-xs btn-light"><i class="mdi mdi-broom"></i> Clear</button>
+              <!-- Last scan result -->
+              <div id="lastRec" class="last-scan ls-hidden">
+                <div class="ls-avatar">
+                  <img id="lrPhoto" src="" alt="" style="display:none;">
+                  <i id="lrIcon" class="ion ion-md-person"></i>
                 </div>
-
-                <!-- Last Recorded -->
-                <div id="lastRec" class="alert alert-success mt-2 d-none" role="alert">
-                  <div class="d-flex align-items-center">
-                    <div class="rounded overflow-hidden border" style="width:44px;height:44px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;">
-                      <img id="lrPhoto" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-                      <i id="lrIcon" class="ion ion-md-person" style="font-size:22px;color:#94a3b8;"></i>
-                    </div>
-                    <div class="ml-2">
-                      <div>
-                        <span id="lrBadge" class="badge badge-success mr-1">RECORDED</span>
-                        <small id="lrWhen" class="text-muted"></small>
-                      </div>
-                      <div id="lrName" class="font-weight-600">—</div>
-                      <div id="lrSN" class="text-monospace">—</div>
-                    </div>
+                <div class="ls-info">
+                  <div class="ls-top">
+                    <span id="lrBadge" class="ls-badge ls-badge-in">IN</span>
+                    <span id="lrWhen" class="ls-time"></span>
                   </div>
-                </div>
-
-                <div class="card-body" id="log" style="max-height:460px; overflow:auto; font-family:ui-monospace,Menlo,Consolas;">
-                  <div class="text-muted">Waiting for scans…</div>
+                  <div id="lrName" class="ls-name">—</div>
+                  <div id="lrSN" class="ls-sn">—</div>
                 </div>
               </div>
 
-              <div class="alert alert-info mt-2 mb-0">
-                <i class="mdi mdi-information-outline"></i>
-                The scanner accepts <b>permanent student QR tokens</b> only. Duplicates are marked automatically.
+              <!-- Scan log -->
+              <div class="scan-card">
+                <div class="scan-card-head">
+                  <div class="sch-title"><i class="mdi mdi-format-list-bulleted"></i> Scan Log</div>
+                  <button id="btnClear" class="up-btn up-btn-ghost up-btn-sm"><i class="mdi mdi-broom"></i> Clear</button>
+                </div>
+                <div id="log">
+                  <div class="text-muted" style="padding:24px 16px;text-align:center;">Waiting for scans…</div>
+                </div>
               </div>
             </div>
           </div>
@@ -445,25 +429,20 @@
         if (remarkInline) remarkInline.value = '';
       }
 
-      // --- Scan mode (button UI) ---
-      let scanMode = 'in';
+      // --- Scan mode (button UI) — AUTO is default ---
+      let scanMode = 'auto';
+      const btnModeAuto = document.getElementById('btnModeAuto');
       const btnModeIn = document.getElementById('btnModeIn');
       const btnModeOut = document.getElementById('btnModeOut');
 
       function setMode(m) {
         scanMode = m;
-        if (m === 'in') {
-          btnModeIn.classList.add('btn-success', 'active');
-          btnModeIn.classList.remove('btn-outline-success');
-          btnModeOut.classList.add('btn-outline-primary');
-          btnModeOut.classList.remove('btn-primary', 'active');
-        } else {
-          btnModeOut.classList.add('btn-primary', 'active');
-          btnModeOut.classList.remove('btn-outline-primary');
-          btnModeIn.classList.add('btn-outline-success');
-          btnModeIn.classList.remove('btn-success', 'active');
-        }
+        [btnModeAuto, btnModeIn, btnModeOut].forEach(b => b.classList.remove('active'));
+        if (m === 'auto') btnModeAuto.classList.add('active');
+        else if (m === 'in') btnModeIn.classList.add('active');
+        else if (m === 'out') btnModeOut.classList.add('active');
       }
+      btnModeAuto.addEventListener('click', () => setMode('auto'));
       btnModeIn.addEventListener('click', () => setMode('in'));
       btnModeOut.addEventListener('click', () => setMode('out'));
 
@@ -605,7 +584,9 @@
 
       function recentlyScanned(token) {
         const now = Date.now();
-        if (token === lastToken && (now - lastWhen) < 1500) return true;
+        // 3-second debounce for the same token — prevents the camera
+        // from firing twice on the same QR before the backend responds.
+        if (token === lastToken && (now - lastWhen) < 3000) return true;
         lastToken = token;
         lastWhen = now;
         return false;
@@ -884,17 +865,24 @@
             // Friendly client-side mapping for common errors
             if (j && j.ok === false) {
               if (j.mode === 'already_in' || /1062/.test(String(j.message || ''))) {
-                addLine('• Already recorded for this session: ' + (j.student_number || ''), 'text-warning');
-                setStatus('Already recorded for this session', 'text-warning');
+                addLine('• Already checked in: ' + (j.student_number || '') + ' — scan in OUT mode or use AUTO', 'text-warning');
+                setStatus('Already checked in — use AUTO or OUT', 'text-warning');
                 showLastRecorded(studentPayload || (j.student_number || '—'), 'dup');
-                if (pauseOnHit) showProfileCard(studentPayload || (j.student_number || '—'), 'dup', 'Already recorded for this session');
+                if (pauseOnHit) showProfileCard(studentPayload || (j.student_number || '—'), 'dup', 'Already checked in. Switch to AUTO or OUT to check them out.');
                 return;
               }
               if (j.mode === 'no_open') {
-                addLine('• No open check-in to check out.', 'text-warning');
-                setStatus('No open check-in to check out', 'text-warning');
+                addLine('• No open check-in to check out: ' + (j.student_number || '') + ' — scan in IN mode or use AUTO', 'text-warning');
+                setStatus('No open check-in — use AUTO or IN', 'text-warning');
                 showLastRecorded(studentPayload || (j.student_number || '—'), 'err');
-                if (pauseOnHit) showProfileCard(studentPayload || (j.student_number || '—'), 'dup', 'No open check-in to check out');
+                if (pauseOnHit) showProfileCard(studentPayload || (j.student_number || '—'), 'dup', 'No open check-in to check out. Switch to AUTO or IN to check them in.');
+                return;
+              }
+              if (j.mode === 'too_soon_after_in') {
+                addLine('• Just checked in: ' + (j.student_number || '') + ' — ' + (j.message || 'scan again to check out'), 'text-info');
+                setStatus('Just checked in — scan again to check OUT', 'text-info');
+                showLastRecorded(studentPayload || (j.student_number || '—'), 'dup');
+                if (pauseOnHit) showProfileCard(studentPayload || (j.student_number || '—'), 'dup', j.message || 'Checked in moments ago — scan again to check out.');
                 return;
               }
             }
@@ -908,16 +896,16 @@
 
             if (outcome === 'in') {
               addLine('✔ CHECKED IN: ' + j.student_number + ' (' + (j.session || '—') + ')', 'text-success');
-              setStatus('Checked IN ✓', 'text-success');
+              setStatus('Checked IN ✓ — ' + (j.student_number || ''), 'text-success');
             } else if (outcome === 'out') {
               addLine('↘ CHECKED OUT: ' + j.student_number + ' (' + (j.session || '—') + ')', 'text-primary');
-              setStatus('Checked OUT ✓', 'text-success');
+              setStatus('Checked OUT ✓ — ' + (j.student_number || ''), 'text-success');
             } else if (outcome === 'dup') {
-              addLine('• Already recorded for this session: ' + j.student_number + ' (' + (j.session || '—') + ')', 'text-warning');
-              setStatus('Already recorded for this session', 'text-warning');
+              addLine('• Already completed this session: ' + j.student_number + ' (' + (j.session || '—') + ')', 'text-warning');
+              setStatus('Already completed this session', 'text-warning');
             } else {
               addLine('× Failed: ' + (j.message || 'Unknown error'), 'text-danger');
-              setStatus('Error — see log', 'text-danger');
+              setStatus('Error — ' + (j.message || 'see log'), 'text-danger');
             }
 
             showLastRecorded(studentPayload || (j.student_number || payload.token), outcome);
@@ -949,24 +937,25 @@
         if (!lastRec) return;
         const prof = await hydrateStudent(studentOrSn);
 
-        lastRec.classList.remove('alert-success', 'alert-primary', 'alert-warning', 'alert-danger', 'd-none');
-        lrBadge.classList.remove('badge-success', 'badge-primary', 'badge-warning', 'badge-danger');
+        // Reset classes
+        lastRec.className = 'last-scan';
+        lrBadge.className = 'ls-badge';
 
         if (outcome === 'in') {
-          lastRec.classList.add('alert-success');
-          lrBadge.classList.add('badge-success');
+          lastRec.classList.add('ls-in');
+          lrBadge.classList.add('ls-badge-in');
           lrBadge.textContent = 'IN';
         } else if (outcome === 'out') {
-          lastRec.classList.add('alert-primary');
-          lrBadge.classList.add('badge-primary');
+          lastRec.classList.add('ls-out');
+          lrBadge.classList.add('ls-badge-out');
           lrBadge.textContent = 'OUT';
         } else if (outcome === 'dup') {
-          lastRec.classList.add('alert-warning');
-          lrBadge.classList.add('badge-warning');
+          lastRec.classList.add('ls-dup');
+          lrBadge.classList.add('ls-badge-dup');
           lrBadge.textContent = 'DUPLICATE';
         } else {
-          lastRec.classList.add('alert-danger');
-          lrBadge.classList.add('badge-danger');
+          lastRec.classList.add('ls-err');
+          lrBadge.classList.add('ls-badge-err');
           lrBadge.textContent = 'INVALID';
         }
 

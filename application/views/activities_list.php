@@ -8,6 +8,65 @@
     <?php include('includes/top-nav-bar.php'); ?>
     <?php include('includes/sidebar.php'); ?>
     <style>
+      /* ===== Attendance Log modal table ===== */
+      #logModal .modal-content {
+        background:#fff !important; color:#374151 !important;
+      }
+      #logModal .modal-body { background:#fff !important; }
+      /* Modal title white on dark gradient header */
+      #logModal .modal-header .modal-title,
+      #logModal .modal-header h5 {
+        color:#fff !important;
+      }
+
+      #logTable thead th {
+        background:#f5f7fc; color:#475569; font-size:.72rem; font-weight:800;
+        letter-spacing:.1em; text-transform:uppercase;
+        border-bottom:2px solid #e6ebf5 !important;
+        padding:12px 14px; white-space:nowrap; border-left:none; border-right:none;
+      }
+      #logTable tbody td {
+        padding:10px 14px; vertical-align:middle; font-size:.84rem; color:#374151;
+        border-bottom:1px solid #eef1f5 !important; border-left:none; border-right:none;
+      }
+      #logTable tbody tr:hover { background:#f8faff !important; }
+      #logTable tbody tr:last-child td { border-bottom:none !important; }
+
+      .log-export-bar {
+        display:flex; gap:6px; padding:12px 16px;
+        border-bottom:1px solid #eef1f5; background:#fafbff;
+      }
+
+      /* DataTables controls inside modal */
+      #logTable_wrapper .dataTables_filter,
+      #logTable_wrapper .dataTables_length {
+        padding:12px 16px 6px !important; margin:0 !important;
+      }
+      #logTable_wrapper .dataTables_filter input {
+        border-radius:8px !important; border:1px solid #e6ebf5 !important;
+        padding:6px 12px !important; font-size:.82rem !important; margin-left:6px !important;
+        color:#374151 !important; background:#fff !important;
+      }
+      #logTable_wrapper .dataTables_length select {
+        border-radius:8px !important; border:1px solid #e6ebf5 !important;
+        padding:4px 8px !important; margin-left:6px !important;
+        color:#374151 !important; background:#fff !important;
+      }
+      #logTable_wrapper .dataTables_info,
+      #logTable_wrapper .dataTables_paginate {
+        padding:10px 16px !important; margin:0 !important; color:#6b7a99 !important;
+      }
+      #logTable_wrapper .dataTables_paginate .paginate_button {
+        border-radius:6px !important; min-width:32px; min-height:32px;
+        display:inline-flex !important; align-items:center; justify-content:center;
+        color:#374151 !important;
+      }
+      #logTable_wrapper .dataTables_paginate .paginate_button.current,
+      #logTable_wrapper .dataTables_paginate .paginate_button.current:hover {
+        background:linear-gradient(135deg,#2a4090,#4266d4) !important; color:#fff !important;
+        border-color:#2a4090 !important;
+      }
+
       .page-title-box {
         position: relative;
         z-index: 0;
@@ -133,115 +192,58 @@
         border-color:#2a4090 !important;
       }
 
-      .actions {
-        display: flex;
-        justify-content: center;
-        gap: .35rem;
-        flex-wrap: wrap
+      /* ===== Actions dropdown (replaces scattered icon buttons) ===== */
+      .act-dropdown { position: relative; display: inline-block; }
+
+      .act-trigger {
+        width: 38px; height: 38px;
+        border: 1px solid #e6ebf5; border-radius: 10px;
+        background: #fff; color: #6b7a99;
+        display: inline-flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: all .15s ease;
+        font-size: 20px;
+      }
+      .act-trigger:hover, .act-trigger:focus {
+        border-color: #4266d4; color: #4266d4;
+        box-shadow: 0 3px 10px rgba(66,102,212,.12);
+        outline: none;
+      }
+      .act-trigger i { font-size: 20px; line-height: 1; }
+
+      .act-menu {
+        min-width: 200px; padding: 6px;
+        border: 1px solid #e6ebf5 !important; border-radius: 14px !important;
+        box-shadow: 0 12px 36px rgba(15,23,42,.14) !important;
+        margin-top: 6px !important;
       }
 
-      .btn-icon {
-        position: relative;
-        width: 40px;
-        height: 40px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid #ced4da;
-        border-radius: 10px;
-        background: #fff;
-        transition: all .15s ease
-      }
-
-      .btn-icon:hover {
-        box-shadow: 0 3px 10px rgba(0, 0, 0, .08);
-        transform: translateY(-1px)
-      }
-
-      .btn-icon i {
-        font-size: 18px;
-        line-height: 1
-      }
-
-      .btn-icon .hint {
-        position: absolute;
-        bottom: 110%;
-        left: 50%;
-        transform: translate(-50%, 4px);
-        background: #343a40;
-        color: #fff;
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: .3px;
-        padding: 2px 6px;
-        border-radius: 4px;
+      .act-item, .act-item-btn {
+        display: flex !important; align-items: center; gap: 10px;
+        padding: 9px 14px; border: none; background: none;
+        border-radius: 8px; font-size: .84rem; font-weight: 600;
+        color: #0d1b4b; text-decoration: none; cursor: pointer;
+        width: 100%; text-align: left; transition: background .12s ease;
         white-space: nowrap;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity .15s ease, transform .15s ease
       }
-
-      .btn-icon .hint::after {
-        content: "";
-        position: absolute;
-        top: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        border: 5px solid transparent;
-        border-top-color: #343a40
+      .act-item:hover, .act-item-btn:hover {
+        background: #f4f7ff; color: #0d1b4b; text-decoration: none;
       }
+      .act-item-btn { font-family: inherit; }
 
-      .btn-icon:hover .hint {
-        opacity: 1;
-        transform: translate(-50%, 0)
-      }
+      .act-item-danger { color: #dc2626 !important; }
+      .act-item-danger:hover { background: #fef2f2 !important; color: #dc2626 !important; }
 
-      .btn-scan {
-        border-color: #6b7a99
-      }
+      .act-ic { font-size: 18px; line-height: 1; width: 20px; text-align: center; flex-shrink: 0; }
+      .act-ic-scan { color: #6b7a99; }
+      .act-ic-log { color: #2563eb; }
+      .act-ic-poster { color: #2a4090; }
+      .act-ic-edit { color: #16a34a; }
+      .act-ic-close { color: #f59e0b; }
+      .act-ic-open { color: #0f766e; }
+      .act-ic-delete { color: #ef4444; }
 
-      .btn-scan i {
-        color: #6b7a99
-      }
-
-      .btn-poster {
-        border-color: #2a4090
-      }
-
-      .btn-poster i {
-        color: #2a4090
-      }
-
-      .btn-delete {
-        border-color: #ef4444
-      }
-
-      .btn-delete i {
-        color: #ef4444
-      }
-
-      .btn-edit {
-        border-color: #16a34a
-      }
-
-      .btn-edit i {
-        color: #16a34a
-      }
-
-      .btn-close-act {
-        border-color: #f59e0b
-      }
-
-      .btn-close-act i {
-        color: #f59e0b
-      }
-
-      .btn-open-act {
-        border-color: #0f766e
-      }
-
-      .btn-open-act i {
-        color: #0f766e
+      .act-divider {
+        height: 1px; background: #eef1f5; margin: 4px 8px;
       }
 
       .status-sub {
@@ -359,13 +361,8 @@
           color: #6b7280
         }
 
-        .actions {
-          justify-content: flex-start
-        }
-
-        .btn-icon {
-          width: 44px;
-          height: 44px
+        .act-trigger {
+          width: 44px; height: 44px;
         }
 
         .date-icons {
@@ -570,10 +567,8 @@
           margin: 0 6px 6px 0;
         }
 
-        td[data-label="Actions"] .actions {
-          justify-content: flex-start;
-          flex-wrap: wrap;
-          gap: .4rem;
+        td[data-label="Actions"] .act-dropdown {
+          display: inline-flex;
         }
 
       }
@@ -658,7 +653,7 @@
                       <th style="width:180px">Date</th>
                       <th style="width:160px">Program</th>
                       <th style="width:110px">Status</th>
-                      <th style="width:220px" class="text-center">Actions</th>
+                      <th style="width:80px" class="text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -810,57 +805,63 @@
                           </td>
 
                           <td data-label="Actions" class="text-center">
-                            <div class="actions">
-                              <?php if (!$posterMode): ?>
-                                <a class="btn-icon btn-scan" href="<?= site_url('activities/' . $r->activity_id . '/scan') ?>" data-toggle="tooltip" title="Scan">
-                                  <span class="hint">SCAN</span><i class="ion ion-md-qr-scanner"></i>
+                            <div class="act-dropdown">
+                              <button type="button" class="act-trigger" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="ion ion-md-more"></i>
+                              </button>
+                              <div class="act-menu dropdown-menu dropdown-menu-right">
+
+                                <?php if (!$posterMode): ?>
+                                  <a class="act-item" href="<?= site_url('activities/' . $r->activity_id . '/scan') ?>">
+                                    <i class="ion ion-md-qr-scanner act-ic act-ic-scan"></i> Scan
+                                  </a>
+                                <?php endif; ?>
+
+                                <a class="act-item" href="javascript:void(0)" onclick="viewLog(<?= (int)$r->activity_id ?>)">
+                                  <i class="ion ion-md-list act-ic act-ic-log"></i> View Attendance
                                 </a>
-                              <?php endif; ?>
 
-                              <a class="btn-icon btn-log" href="javascript:void(0)" onclick="viewLog(<?= (int)$r->activity_id ?>)" data-toggle="tooltip" title="View Attendance">
-                                <span class="hint">View Attendance</span><i class="ion ion-md-list"></i>
-                              </a>
+                                <?php if ($posterMode): ?>
+                                  <a class="act-item" href="<?= site_url('activities/' . $r->activity_id . '/poster') ?>" target="_blank" rel="noopener">
+                                    <i class="ion ion-md-easel act-ic act-ic-poster"></i> View Poster
+                                  </a>
+                                <?php endif; ?>
 
-                              <?php if ($posterMode): ?>
-                                <a class="btn-icon btn-poster" href="<?= site_url('activities/' . $r->activity_id . '/poster') ?>" target="_blank" rel="noopener" data-toggle="tooltip" title="View Poster">
-                                  <span class="hint">POSTER</span><i class="ion ion-md-easel"></i>
+                                <?php
+                                $nextStatus = $st['is_open'] ? 'closed' : 'open';
+                                $confirmMsg = $st['is_open']
+                                  ? 'Students will no longer be able to check in to this activity.'
+                                  : ($st['state'] === 'ended'
+                                      ? 'This activity already ended. Reopening it also turns OFF auto-close, so it stays open until you close it again.'
+                                      : 'Students will be able to check in to this activity.');
+                                ?>
+                                <form method="post" action="<?= site_url('activities/' . $r->activity_id . '/status') ?>"
+                                  data-ui-confirm="<?= htmlspecialchars($confirmMsg, ENT_QUOTES, 'UTF-8') ?>"
+                                  data-ui-confirm-title="<?= $st['is_open'] ? 'Close check-ins?' : 'Open check-ins?' ?>"
+                                  data-ui-confirm-ok="<?= $st['is_open'] ? 'Close activity' : 'Open activity' ?>">
+                                  <input type="hidden" name="status" value="<?= $nextStatus ?>">
+                                  <button type="submit" class="act-item act-item-btn">
+                                    <i class="ion <?= $st['is_open'] ? 'ion-md-lock act-ic-close' : 'ion-md-unlock act-ic-open' ?>"></i>
+                                    <?= $st['is_open'] ? 'Close check-ins' : 'Open check-ins' ?>
+                                  </button>
+                                </form>
+
+                                <a class="act-item" href="<?= site_url('activities/' . $r->activity_id . '/edit') ?>">
+                                  <i class="ion ion-md-create act-ic act-ic-edit"></i> Edit
                                 </a>
-                              <?php endif; ?>
 
-                              <?php
-                              // Quick manual override. Reopening something the clock closed
-                              // also lifts auto-close for it (handled server-side).
-                              $nextStatus = $st['is_open'] ? 'closed' : 'open';
-                              $confirmMsg = $st['is_open']
-                                ? 'Students will no longer be able to check in to this activity.'
-                                : ($st['state'] === 'ended'
-                                    ? 'This activity already ended. Reopening it also turns OFF auto-close, so it stays open until you close it again.'
-                                    : 'Students will be able to check in to this activity.');
-                              ?>
-                              <form method="post" action="<?= site_url('activities/' . $r->activity_id . '/status') ?>" class="d-inline"
-                                data-ui-confirm="<?= htmlspecialchars($confirmMsg, ENT_QUOTES, 'UTF-8') ?>"
-                                data-ui-confirm-title="<?= $st['is_open'] ? 'Close check-ins?' : 'Open check-ins?' ?>"
-                                data-ui-confirm-ok="<?= $st['is_open'] ? 'Close activity' : 'Open activity' ?>">
-                                <input type="hidden" name="status" value="<?= $nextStatus ?>">
-                                <button type="submit" class="btn-icon <?= $st['is_open'] ? 'btn-close-act' : 'btn-open-act' ?>"
-                                        data-toggle="tooltip" title="<?= $st['is_open'] ? 'Close check-ins' : 'Open check-ins' ?>">
-                                  <span class="hint"><?= $st['is_open'] ? 'CLOSE' : 'OPEN' ?></span>
-                                  <i class="ion <?= $st['is_open'] ? 'ion-md-lock' : 'ion-md-unlock' ?>"></i>
-                                </button>
-                              </form>
+                                <div class="act-divider"></div>
 
-                              <a class="btn-icon btn-edit" href="<?= site_url('activities/' . $r->activity_id . '/edit') ?>" data-toggle="tooltip" title="Edit">
-                                <span class="hint">EDIT</span><i class="ion ion-md-create"></i>
-                              </a>
+                                <form method="post" action="<?= site_url('activities/' . $r->activity_id . '/delete'); ?>"
+                                  data-ui-confirm="&ldquo;<?= htmlspecialchars((string)$r->title, ENT_QUOTES, 'UTF-8'); ?>&rdquo; and its QR check-in link stop working. This cannot be undone."
+                                  data-ui-confirm-title="Delete this activity?"
+                                  data-ui-confirm-ok="Delete activity">
+                                  <button type="submit" class="act-item act-item-btn act-item-danger">
+                                    <i class="ion ion-md-trash act-ic act-ic-delete"></i> Delete
+                                  </button>
+                                </form>
 
-                              <form method="post" action="<?= site_url('activities/' . $r->activity_id . '/delete'); ?>" class="d-inline"
-                                data-ui-confirm="&ldquo;<?= htmlspecialchars((string)$r->title, ENT_QUOTES, 'UTF-8'); ?>&rdquo; and its QR check-in link stop working. This cannot be undone."
-                                data-ui-confirm-title="Delete this activity?"
-                                data-ui-confirm-ok="Delete activity">
-                                <button type="submit" class="btn-icon btn-delete" data-toggle="tooltip" title="Delete">
-                                  <span class="hint">DELETE</span><i class="ion ion-md-trash"></i>
-                                </button>
-                              </form>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -882,28 +883,41 @@
           <!-- Attendance Log Modal -->
           <div class="modal fade" id="logModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
-              <div class="modal-content">
-                <div class="modal-header align-items-center" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;padding:18px 24px;">
-                  <h5 class="modal-title">
-                    Attendance Log <span class="badge badge-light ml-2" id="logCount" style="color:#2a4090;">0</span>
+              <div class="modal-content" style="border-radius:16px;overflow:hidden;">
+
+                <!-- Header -->
+                <div class="modal-header align-items-center" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;padding:16px 24px;">
+                  <h5 class="modal-title" style="font-weight:800;display:flex;align-items:center;gap:8px;">
+                    <i class="mdi mdi-clipboard-list-outline"></i>
+                    Attendance Log
+                    <span class="badge badge-light ml-1" id="logCount" style="color:#2a4090;font-size:.76rem;">0</span>
                   </h5>
-                  <div class="ml-auto d-none d-md-flex align-items-center">
-                    <div class="custom-control custom-switch mr-3">
+                  <div class="ml-auto d-flex align-items-center gap-2">
+                    <div class="custom-control custom-switch d-none d-md-block mr-2">
                       <input type="checkbox" class="custom-control-input" id="autoRefreshSwitch" checked>
+                      <label class="custom-control-label text-white-50" for="autoRefreshSwitch" style="font-size:.76rem;">Auto</label>
                     </div>
                     <button id="btnRefreshLog" class="up-btn up-btn-ghost" style="padding:6px 12px;font-size:.78rem;min-height:auto;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.25);">
                       <i class="mdi mdi-refresh"></i> Refresh
                     </button>
+                    <button type="button" class="close ml-1" data-dismiss="modal" aria-label="Close" style="color:#fff;opacity:.9;font-size:1.2rem;line-height:1;">
+                      <i class="mdi mdi-close"></i>
+                    </button>
                   </div>
-                  <button type="button" class="close ml-2" data-dismiss="modal" aria-label="Close" style="color:#fff;opacity:.9;">
-                    <span aria-hidden="true">&times;</span>
-                  </button>
                 </div>
 
-                <div class="modal-body position-relative">
+                <!-- Body -->
+                <div class="modal-body position-relative" style="padding:0;">
                   <div id="logSpinner" class="text-center"
-                    style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,.6);z-index:5;">
-                    <div class="spinner-border text-secondary" role="status"><span class="sr-only">Loading…</span></div>
+                    style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,.7);z-index:5;">
+                    <div class="spinner-border text-primary" role="status"><span class="sr-only">Loading…</span></div>
+                  </div>
+
+                  <!-- Export buttons bar -->
+                  <div class="log-export-bar" id="logExportBar" style="display:none;">
+                    <button class="up-btn up-btn-ghost up-btn-sm" onclick="logTableExport('csv')"><i class="mdi mdi-file-delimited"></i> CSV</button>
+                    <button class="up-btn up-btn-ghost up-btn-sm" onclick="logTableExport('excel')"><i class="mdi mdi-file-excel"></i> Excel</button>
+                    <button class="up-btn up-btn-ghost up-btn-sm" onclick="logTableExport('print')"><i class="mdi mdi-printer"></i> Print</button>
                   </div>
 
                   <div class="table-responsive">
@@ -912,28 +926,28 @@
                         <tr>
                           <th style="width:56px">#</th>
                           <th>Student</th>
-                          <th style="width:180px">IN</th>
-                          <th style="width:180px">OUT</th>
-                          <th style="width:120px">Session</th>
-                          <th style="width:110px">Source</th>
+                          <th style="width:160px">IN</th>
+                          <th style="width:160px">OUT</th>
+                          <th style="width:110px">Session</th>
+                          <th style="width:90px">Source</th>
                           <th>Remarks</th>
                         </tr>
                       </thead>
                       <tbody></tbody>
                     </table>
                   </div>
-
-                  <small class="text-muted d-block mt-2">Tip: Click a student to copy the name.</small>
                 </div>
 
-                <div class="modal-footer d-flex d-md-none">
+                <!-- Mobile footer -->
+                <div class="modal-footer d-flex d-md-none" style="border-top:1px solid #e6ebf5;padding:12px 20px;">
                   <div class="custom-control custom-switch mr-auto">
                     <input type="checkbox" class="custom-control-input" id="autoRefreshSwitchSm" checked>
+                    <label class="custom-control-label" for="autoRefreshSwitchSm" style="font-size:.76rem;">Auto</label>
                   </div>
-                  <button id="btnRefreshLogSm" class="up-btn up-btn-ghost" style="padding:6px 12px;font-size:.78rem;min-height:auto;">
+                  <button id="btnRefreshLogSm" class="up-btn up-btn-ghost up-btn-sm">
                     <i class="mdi mdi-refresh"></i> Refresh
                   </button>
-                  <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Close</button>
+                  <button type="button" class="up-btn up-btn-ghost up-btn-sm" data-dismiss="modal">Close</button>
                 </div>
               </div>
             </div>
@@ -953,6 +967,14 @@
   <script src="<?= base_url(); ?>assets/libs/jquery-scrollto/jquery.scrollTo.min.js"></script>
   <script src="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.js"></script>
   <script src="<?= base_url(); ?>assets/libs/datatables/jquery.dataTables.min.js"></script>
+  <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.bootstrap4.min.js"></script>
+  <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.buttons.min.js"></script>
+  <script src="<?= base_url(); ?>assets/libs/datatables/buttons.bootstrap4.min.js"></script>
+  <script defer src="<?= base_url(); ?>assets/libs/jszip/jszip.min.js"></script>
+  <script defer src="<?= base_url(); ?>assets/libs/pdfmake/pdfmake.min.js"></script>
+  <script defer src="<?= base_url(); ?>assets/libs/pdfmake/vfs_fonts.js"></script>
+  <script defer src="<?= base_url(); ?>assets/libs/datatables/buttons.html5.min.js"></script>
+  <script defer src="<?= base_url(); ?>assets/libs/datatables/buttons.print.min.js"></script>
   <script>
     if (window.$ && $.fn.tooltip) {
       $('[data-toggle="tooltip"]').tooltip();
@@ -967,11 +989,96 @@
       const btnRefreshSm = document.getElementById('btnRefreshLogSm');
       const autoSw = document.getElementById('autoRefreshSwitch');
       const autoSwSm = document.getElementById('autoRefreshSwitchSm');
+      const exportBar = document.getElementById('logExportBar');
+      let _logDt = null; // DataTable instance
+      let _logRows = []; // raw rows data for full export/print
 
       window.viewLog = function(activityId) {
         _logActivityId = activityId;
         $('#logModal').modal('show');
         fetchAndRender(true);
+      };
+
+      // Helper: format a single row into <td> cells
+      function buildLogRowHtml(row, idx) {
+        function sesLbl(s) {
+          return ({am:'Morning', pm:'Afternoon', eve:'Evening'})[s || ''] || '—';
+        }
+        function remarkFor(r) {
+          var v = (r.remarks || '').trim();
+          if (v) return v;
+          return ((r.source || '').toLowerCase() === 'qr') ? 'Scanned via QR' : '—';
+        }
+        function srcText(s) {
+          var v = (s || '').toLowerCase();
+          if (v === 'qr') return 'QR';
+          if (v === 'manual') return 'Manual';
+          if (v === 'import') return 'Import';
+          return '—';
+        }
+        var dash = '—';
+        var inAt  = row.checked_in_at  ? fmt(row.checked_in_at)  : dash;
+        var outAt = row.checked_out_at ? fmt(row.checked_out_at) : dash;
+        var name  = (row.student_name && row.student_name.trim()) ? row.student_name : (row.full_name || '');
+        return '<tr>' +
+          '<td>' + (idx + 1) + '</td>' +
+          '<td>' + name + '</td>' +
+          '<td>' + inAt + '</td>' +
+          '<td>' + outAt + '</td>' +
+          '<td>' + sesLbl(row.session) + '</td>' +
+          '<td>' + srcText(row.source) + '</td>' +
+          '<td>' + remarkFor(row) + '</td>' +
+        '</tr>';
+      }
+
+      // Export function for CSV/Excel/Print
+      window.logTableExport = function(type) {
+        if (!_logDt) return;
+        if (type === 'csv') { _logDt.button(0).trigger(); return; }
+        if (type === 'excel') { _logDt.button(1).trigger(); return; }
+        if (type === 'print') {
+          // Custom print: build a fresh table from ALL rows (not paginated DOM)
+          var actTitle = document.querySelector('#logModal .modal-title');
+          var titleText = actTitle ? actTitle.textContent.trim() : 'Attendance Log';
+          var rows = _logRows || [];
+
+          // Build full table HTML from raw data
+          var tbodyHtml = '';
+          if (!rows.length) {
+            tbodyHtml = '<tr><td colspan="7" style="text-align:center;padding:20px;">No records.</td></tr>';
+          } else {
+            // Sort same way as the on-screen table
+            rows.forEach(function(row, idx) {
+              tbodyHtml += buildLogRowHtml(row, idx);
+            });
+          }
+
+          var w = window.open('', '_blank', 'width=900,height=600');
+          if (!w) { alert('Please allow popups to print.'); return; }
+          w.document.write(
+            '<html><head><title>' + titleText + '</title>' +
+            '<style>' +
+            'body{font-family:Arial,Helvetica,sans-serif;color:#333;margin:24px;}' +
+            'h2{font-size:16px;margin:0 0 4px;}' +
+            'small{color:#888;font-size:11px;}' +
+            'table{width:100%;border-collapse:collapse;margin-top:12px;}' +
+            'th{padding:8px 10px;border:1px solid #ddd;background:#f5f7fc;font-size:11px;text-transform:uppercase;letter-spacing:.05em;text-align:left;}' +
+            'td{padding:6px 10px;border:1px solid #ddd;font-size:12px;}' +
+            'tr:nth-child(even){background:#fafbff;}' +
+            '@media print{.no-print{display:none}body{margin:12px;}}' +
+            '</style></head><body>' +
+            '<h2>' + titleText + '</h2>' +
+            '<small>Printed: ' + new Date().toLocaleString() + ' &mdash; ' + rows.length + ' record(s)</small>' +
+            '<table><thead><tr>' +
+            '<th>#</th><th>Student</th><th>IN</th><th>OUT</th><th>Session</th><th>Source</th><th>Remarks</th>' +
+            '</tr></thead><tbody>' + tbodyHtml + '</tbody></table>' +
+            '<div class="no-print" style="margin-top:20px;"><button onclick="window.print()" style="padding:8px 20px;font-size:14px;cursor:pointer;">Print</button> <button onclick="window.close()" style="padding:8px 20px;font-size:14px;cursor:pointer;">Close</button></div>' +
+            '</body></html>'
+          );
+          w.document.close();
+          w.focus();
+          return;
+        }
       };
 
       function showSpinner(s) {
@@ -986,12 +1093,12 @@
         return '<span class="src-badge" style="background:#eee;border:1px solid #ddd;color:#555">—</span>';
       }
 
+      // 12-hour format: h:mm:ss AM/PM
       function fmt(iso) {
         if (!iso) return '';
         try {
           return moment(iso).format('h:mm:ss A');
-        } // 12-hour
-        catch (e) {
+        } catch (e) {
           return iso;
         }
       }
@@ -1014,11 +1121,14 @@
           .then(j => {
             showSpinner(false);
             const rows = (j.ok && Array.isArray(j.rows)) ? j.rows : [];
+            _logRows = rows; // store for full export/print
             if (countEl) countEl.textContent = String(rows.length);
 
             tbodyEl.innerHTML = '';
             if (!rows.length) {
-              tbodyEl.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No records.</td></tr>';
+              tbodyEl.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px 16px;color:#9aa5b8;"><i class="mdi mdi-clipboard-outline" style="font-size:36px;display:block;margin-bottom:8px;"></i>No attendance records yet.</td></tr>';
+              if (exportBar) exportBar.style.display = 'none';
+              if (_logDt) { _logDt.destroy(); _logDt = null; }
               return;
             }
             rows.sort((a, b) => {
@@ -1139,10 +1249,52 @@
                 setTimeout(() => $(this).removeClass('row-flash'), 800);
               });
 
+            // Initialize DataTable with export buttons
+            if (_logDt) { _logDt.destroy(); _logDt = null; }
+            _logDt = logTableEl.DataTable({
+              dom: '<"row"<"col-sm-6"l><"col-sm-6 text-right"f>>rtip',
+              pageLength: 25,
+              lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+              order: [], // no initial sort — keep our custom name sort
+              buttons: [
+                {
+                  extend: 'csvHtml5',
+                  text: 'CSV',
+                  titleAttr: 'Export CSV',
+                  className: 'd-none',
+                  exportOptions: { modifier: { page: 'all' } }
+                },
+                {
+                  extend: 'excelHtml5',
+                  text: 'Excel',
+                  titleAttr: 'Export Excel',
+                  className: 'd-none',
+                  exportOptions: { modifier: { page: 'all' } }
+                }
+              ],
+              columnDefs: [
+                { targets: [2, 3], type: 'string' }, // IN/OUT as string for sorting
+                { targets: [4, 5], orderable: false } // Session/Source not sortable
+              ],
+              language: {
+                search: "",
+                searchPlaceholder: "Search student...",
+                lengthMenu: "Show _MENU_",
+                info: "Showing _START_–_END_ of _TOTAL_",
+                infoEmpty: "No records",
+                infoFiltered: "(filtered from _MAX_)",
+                zeroRecords: "No matching records."
+              }
+            });
+            // Show export bar when data is loaded
+            if (exportBar) exportBar.style.display = 'flex';
+
           })
           .catch(() => {
             showSpinner(false);
-            tbodyEl.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to load.</td></tr>';
+            tbodyEl.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px 16px;color:#dc2626;"><i class="mdi mdi-alert-circle-outline" style="font-size:36px;display:block;margin-bottom:8px;"></i>Failed to load attendance log.</td></tr>';
+            if (exportBar) exportBar.style.display = 'none';
+            if (_logDt) { _logDt.destroy(); _logDt = null; }
           });
       }
 
@@ -1166,6 +1318,8 @@
         })
         .on('hidden.bs.modal', function() {
           setAuto(false);
+          if (_logDt) { _logDt.destroy(); _logDt = null; }
+          if (exportBar) exportBar.style.display = 'none';
         });
     })();
     // Strong close for the Attendance Log modal
@@ -1178,6 +1332,11 @@
         $('body').removeClass('modal-open');
         $('.modal-backdrop').remove();
       });
+
+    // Close action dropdown when a non-form action link is clicked
+    $(document).on('click', '.act-menu .act-item:not(.act-item-btn)', function() {
+      $(this).closest('.act-dropdown').find('.act-trigger').dropdown('toggle');
+    });
   </script>
 </body>
 

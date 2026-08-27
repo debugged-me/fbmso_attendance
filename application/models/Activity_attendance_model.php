@@ -247,6 +247,25 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
 
         /* AUTO TOGGLE */
         if ($openRow) {
+            // Anti-accidental-double-scan: if the check-in happened very
+            // recently, don't immediately check them out.  This prevents
+            // the camera reading the same QR twice in quick succession
+            // from creating a bogus 2-second IN→OUT record.
+            $AUTO_OUT_DEBOUNCE_SEC = 10; // configurable
+            $checkedInTs = strtotime((string)$openRow->checked_in_at);
+            if ($checkedInTs && (time() - $checkedInTs) <= $AUTO_OUT_DEBOUNCE_SEC) {
+                $this->db->trans_rollback();
+                $elapsed = time() - $checkedInTs;
+                return [
+                    'ok'             => false,
+                    'mode'           => 'too_soon_after_in',
+                    'message'        => 'Checked in ' . $elapsed . 's ago — scan again to check out.',
+                    'student_number' => $student_number,
+                    'session'        => $openRow->session ?: $sess,
+                    'student'        => $student_payload,
+                ];
+            }
+
             $this->db->where('id', (int)$openRow->id)
                      ->where('checked_out_at IS NULL', null, false)
                      ->set('checked_out_at', $nowTs)
