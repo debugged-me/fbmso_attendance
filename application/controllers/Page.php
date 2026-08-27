@@ -119,7 +119,7 @@ class Page extends CI_Controller
 			//   - 'xyz' -> exact major filter
 
 			$this->load->model('AnnouncementModel');
-			$data['announcements'] = $this->AnnouncementModel->getAnnouncements();
+			$data['announcements'] = $this->AnnouncementModel->getActiveAnnouncementsFor('Admin');
 
 			$this->load->model('Message_model');
 			$result['unreadMessages'] = $this->Message_model->getUnreadMessages($this->session->userdata('IDNumber'));
@@ -212,7 +212,7 @@ class Page extends CI_Controller
 			$this->load->model('Message_model');
 			$this->load->model('AnnouncementModel');
 
-			$result['announcements'] = $this->AnnouncementModel->getAnnouncements();
+			$result['announcements'] = $this->AnnouncementModel->getActiveAnnouncementsFor('School Admin');
 
 			$result['unreadMessages'] = $this->Message_model->getUnreadMessages($this->session->userdata('IDNumber'));
 			$result['users']          = $this->Message_model->get_all_users($this->session->userdata('IDNumber'));
