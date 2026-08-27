@@ -1,162 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <?php include('includes/head.php'); ?>
 
 <body>
-
-    <!-- Begin page -->
     <div id="wrapper">
-
-        <!-- Topbar Start -->
         <?php include('includes/top-nav-bar.php'); ?>
-        <!-- end Topbar --> <!-- ========== Left Sidebar Start ========== -->
-
-        <!-- Lef Side bar -->
         <?php include('includes/sidebar.php'); ?>
-        <!-- Left Sidebar End -->
 
-        <!-- ============================================================== -->
-        <!-- Start Page Content here -->
-        <!-- ============================================================== -->
+        <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
 
         <div class="content-page">
             <div class="content">
-
-                <!-- Start Content-->
                 <div class="container-fluid">
 
-                    <!-- start page title -->
+                    <!-- Title -->
                     <div class="row">
-
-                        <div class="col-md-12">
+                        <div class="col-12">
                             <div class="page-title-box">
-                                <h4 class="page-title">Change Profile Picture</h4>
-
-                                <div class="page-title-right">
-                                    <ol class="breadcrumb p-0 m-0">
-                                        <li class="breadcrumb-item"><a href="#">Currently login to <b>SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></b></a></li>
-                                    </ol>
-                                </div>
-                                <div class="clearfix"></div>
-                                <hr style="border:0; height:2px; background:linear-gradient(to right, #4285F4 60%, #FBBC05 80%, #34A853 100%); border-radius:1px; margin:20px 0;" />
+                                <h4 class="up-page-title">Change Profile Picture</h4>
+                                <div class="up-page-sub">Upload a clear photo to personalize your account.</div>
+                                <hr class="up-divider" />
                             </div>
                         </div>
                     </div>
 
-                    <!-- end page title -->
+                    <!-- Identity strip -->
+                    <div class="up-id-strip">
+                        <div class="up-id-icon"><i class="mdi mdi-account-circle-outline"></i></div>
+                        <div>
+                            <div class="up-id-name"><?= htmlspecialchars($this->session->userdata('username'), ENT_QUOTES, 'UTF-8'); ?></div>
+                            <div class="up-id-meta">Profile photo upload</div>
+                        </div>
+                        <div class="up-id-pill">SY <?= htmlspecialchars($this->session->userdata('sy'), ENT_QUOTES, 'UTF-8'); ?> <?= htmlspecialchars($this->session->userdata('semester'), ENT_QUOTES, 'UTF-8'); ?></div>
+                    </div>
+
+                    <!-- Upload card -->
                     <div class="row">
-                        <div class="col-md-12">
-                            <div class="card card-info">
-                                <h4 class="m-t-0 header-title mb-4"><?php echo $this->session->flashdata('msg'); ?></h4>
+                        <div class="col-12">
+                            <?php $flashMsg = $this->session->flashdata('msg'); ?>
+                            <?php if ($flashMsg): ?>
+                                <div class="up-flash up-flash-info"><?= $flashMsg; ?></div>
+                            <?php endif; ?>
 
+                            <div class="up-card">
+                                <div class="up-card-head">
+                                    <h4><i class="mdi mdi-upload"></i> Upload Photo</h4>
+                                </div>
+                                <div class="up-card-body">
+                                    <form role="form" action="<?= site_url('Page/uploadProfPic'); ?>" method="POST" enctype="multipart/form-data">
+                                        <input type="hidden" name="StudentNumber" value="<?= htmlspecialchars($this->session->userdata('username'), ENT_QUOTES, 'UTF-8'); ?>" readonly required>
 
-<form role="form"
-      action="<?= site_url('Page/uploadProfPic'); ?>"
-      method="POST" enctype="multipart/form-data">
-                                    <input type="hidden" class="form-control" name="StudentNumber" value="<?php echo $this->session->userdata('username'); ?>" readonly required>
-                                    <div class="card-body">
-
-                                        <div class="row">
-
-                                            <div class="col-md-8 form-group">
-                                                <label>Profile Picture</label>
-                                                <input type="file" class="form-control" name="nonoy" required>
-                                                <p>Limit the size to <span style="color:red; font-weight:bold">2MB only</span>. The recommended size is <span style="color:red; font-weight:bold">215px by 215x</span>.</p>
-                                            </div>
-
+                                        <div class="up-section-head">
+                                            <div class="up-section-dot"></div>
+                                            <div class="up-section-label">Select Image</div>
+                                            <div class="up-section-line"></div>
                                         </div>
-                                        <input type="submit" name="submit" class="btn btn-info" value="Upload">
-                                    </div>
 
+                                        <div class="form-group">
+                                            <label>Profile Picture</label>
+                                            <input type="file" class="form-control" name="nonoy" accept="image/*" required>
+                                            <div class="up-hint">
+                                                Limit the size to <span style="color:var(--up-red);font-weight:700">2MB only</span>.
+                                                The recommended size is <span style="color:var(--up-red);font-weight:700">215px by 215px</span>.
+                                            </div>
+                                        </div>
 
-
-
-                                    <div class="card-footer">
-
-
-                                    </div>
-                                </form>
-
+                                        <div class="d-flex gap-2 mt-3">
+                                            <button type="submit" name="submit" class="up-btn up-btn-primary">
+                                                <i class="mdi mdi-upload"></i> Upload
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <!-- end container-fluid -->
 
                 </div>
-                <!-- end content -->
-
-
-
-                <!-- Footer Start -->
-                <?php include('includes/footer.php'); ?>
-                <!-- end Footer -->
-
             </div>
 
-            <!-- ============================================================== -->
-            <!-- End Page content -->
-            <!-- ============================================================== -->
-
+            <?php include('includes/footer.php'); ?>
         </div>
-        <!-- END wrapper -->
+    </div>
 
-
-        <!-- Right Sidebar -->
-        <?php include('includes/themecustomizer.php'); ?>
-        <!-- /Right-bar -->
-
-
-        <!-- Vendor js -->
-        <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
-
-        <script src="<?= base_url(); ?>assets/libs/moment/moment.min.js"></script>
-        <script src="<?= base_url(); ?>assets/libs/jquery-scrollto/jquery.scrollTo.min.js"></script>
-        <script src="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.js"></script>
-
-        <!-- Chat app -->
-        <script src="<?= base_url(); ?>assets/js/pages/jquery.chat.js"></script>
-
-        <!-- Todo app -->
-        <script src="<?= base_url(); ?>assets/js/pages/jquery.todo.js"></script>
-
-        <!--Morris Chart-->
-        <script src="<?= base_url(); ?>assets/libs/morris-js/morris.min.js"></script>
-        <script src="<?= base_url(); ?>assets/libs/raphael/raphael.min.js"></script>
-
-        <!-- Sparkline charts -->
-        <script src="<?= base_url(); ?>assets/libs/jquery-sparkline/jquery.sparkline.min.js"></script>
-
-        <!-- Dashboard init JS -->
-        <script src="<?= base_url(); ?>assets/js/pages/dashboard.init.js"></script>
-
-        <!-- App js -->
-        <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
-
-        <!-- Required datatable js -->
-        <script src="<?= base_url(); ?>assets/libs/datatables/jquery.dataTables.min.js"></script>
-        <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.bootstrap4.min.js"></script>
-        <!-- Buttons examples -->
-        <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.buttons.min.js"></script>
-        <script src="<?= base_url(); ?>assets/libs/datatables/buttons.bootstrap4.min.js"></script>
-        <script src="<?= base_url(); ?>assets/libs/jszip/jszip.min.js"></script>
-        <script src="<?= base_url(); ?>assets/libs/pdfmake/pdfmake.min.js"></script>
-        <script src="<?= base_url(); ?>assets/libs/pdfmake/vfs_fonts.js"></script>
-        <script src="<?= base_url(); ?>assets/libs/datatables/buttons.html5.min.js"></script>
-        <script src="<?= base_url(); ?>assets/libs/datatables/buttons.print.min.js"></script>
-        <script src="<?= base_url(); ?>assets/libs/bootstrap-datepicker/bootstrap-datepicker.min.js"></script>
-        <!-- Responsive examples -->
-        <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.responsive.min.js"></script>
-        <script src="<?= base_url(); ?>assets/libs/datatables/responsive.bootstrap4.min.js"></script>
-
-        <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.keyTable.min.js"></script>
-        <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.select.min.js"></script>
-
-        <!-- Datatables init -->
-        <script src="<?= base_url(); ?>assets/js/pages/datatables.init.js"></script>
-
-
+    <?php include('includes/themecustomizer.php'); ?>
+    <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
+    <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 </body>
-
 </html>

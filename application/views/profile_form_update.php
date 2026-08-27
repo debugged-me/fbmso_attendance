@@ -17,12 +17,14 @@
     <link href="<?= base_url(); ?>assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" id="bootstrap-stylesheet" />
     <link href="<?= base_url(); ?>assets/css/icons.min.css" rel="stylesheet" type="text/css" />
     <link href="<?= base_url(); ?>assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-stylesheet" />
+    <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
 
     <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
 
     <style>
         .card-simple {border:1px solid #e6ecf5;border-radius:14px;box-shadow:0 6px 18px rgba(36,59,83,.06)}
-        .section-title{font-weight:700;color:#243b53;margin:8px 0 14px}
+        .section-title{font-weight:800;color:var(--up-muted,#6b7a99);font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;margin:8px 0 14px;display:flex;align-items:center;gap:10px}
+        .section-title::before{content:'';width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,var(--up-blue,#2a4090),var(--up-blue-2,#4266d4));flex-shrink:0}
         .label-req::after{content:" *"; color:#e55353}
 
         /* CSS grid for tidy alignment */
@@ -168,36 +170,25 @@ $ageVal        = $pickField(['Age', 'age']);
             <div class="container-fluid">
                 <!-- title -->
                 <div class="row">
-                    
+
                     <div class="col-md-12">
                         <div class="page-title-box">
-                            
-                            <h4 class="page-title"><?= $readOnly ? 'VIEW PROFILE' : 'UPDATE PROFILE'; ?></h4>
-                            
-                            <div class="page-title-right">
-                                
-                                <ol class="breadcrumb p-0 m-0">
-                                    <li class="breadcrumb-item"><a href="#">Home</a></li>
-                                    <li class="breadcrumb-item"><a href="#">Update Student</a></li>
-                                    <li class="breadcrumb-item"><a href="#"></a></li>
-                                </ol>
-                            </div>
-                            
-                            <div class="clearfix"></div>
-                          
-                            <hr style="border:0;height:2px;background:linear-gradient(to right,#4285F4 60%,#FBBC05 80%,#34A853 100%);border-radius:1px;margin:20px 0;" />
-                               <a href="<?= base_url('Page/profileList'); ?>" class="btn btn-secondary"> Back </a>
+
+                            <h4 class="up-page-title"><?= $readOnly ? 'VIEW PROFILE' : 'UPDATE PROFILE'; ?></h4>
+                            <div class="up-page-sub"><?= $readOnly ? 'Viewing student details (read-only).' : 'Update student personal and academic information.'; ?></div>
+                            <hr class="up-divider" />
+                               <a href="<?= base_url('Page/profileList'); ?>" class="up-btn up-btn-ghost"><i class="mdi mdi-arrow-left"></i> Back</a>
                         </div>
 
-                        
+
                     </div>
                 </div>
 
                 <!-- form -->
                 <div class="row">
                     <div class="col-md-12">
-                        <div class="card card-simple">
-                            <div class="card-body">
+                        <div class="up-card">
+                            <div class="up-card-body">
                                 <form class="parsley-examples" method="post" enctype="multipart/form-data"
                                     data-check-availability-url="<?= htmlspecialchars(site_url('Page/checkSignupAvailability'), ENT_QUOTES, 'UTF-8'); ?>"
                                     data-exclude-student-number="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>">
@@ -318,8 +309,8 @@ $ageVal        = $pickField(['Age', 'age']);
                                         <input type="hidden" name="StudentNumber_original" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>">
                                     </fieldset>
                                     <?php if (!$readOnly): ?>
-                                    <div class="mt-2">
-                                        <input type="submit" name="submit" class="btn btn-info" value="Update Profile">
+                                    <div class="mt-3">
+                                        <button type="submit" name="submit" class="up-btn up-btn-primary"><i class="mdi mdi-content-save"></i> Update Profile</button>
                                     </div>
                                     <?php endif; ?>
                                 </form>

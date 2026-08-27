@@ -10,10 +10,11 @@
     <div class="content-page">
       <div class="content">
         <div class="container-fluid">
+          <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260827'); ?>">
           <style>
             .profile-wrapper {
               max-width: 960px;
-              margin: 0 auto 48px;
+              margin: 0 auto;
             }
 
             .profile-section+.profile-section {
@@ -21,10 +22,21 @@
             }
 
             .profile-section h4 {
-              font-weight: 600;
-              font-size: 1.05rem;
+              font-weight: 800;
+              font-size: .68rem;
+              letter-spacing: .18em;
+              text-transform: uppercase;
+              color: var(--up-muted, #6b7a99);
               margin-bottom: 20px;
-              color: #1f2937;
+              display: flex;
+              align-items: center;
+              gap: 10px;
+            }
+            .profile-section h4::before {
+              content: '';
+              width: 8px; height: 8px; border-radius: 50%;
+              background: linear-gradient(135deg, var(--up-blue, #2a4090), var(--up-blue-2, #4266d4));
+              flex-shrink: 0;
             }
 
             .profile-grid {
@@ -120,24 +132,25 @@
             <div class="col-12">
               <div class="page-title-box d-flex justify-content-between align-items-center flex-wrap">
                 <div class="title-block">
-                  <h4 class="page-title mb-1"><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></h4>
-                  <p class="text-muted mb-0"><?= htmlspecialchars($pageDescription, ENT_QUOTES, 'UTF-8'); ?></p>
+                  <h4 class="up-page-title mb-1"><?= htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></h4>
+                  <p class="up-page-sub mb-0"><?= htmlspecialchars($pageDescription, ENT_QUOTES, 'UTF-8'); ?></p>
                 </div>
                 <?php if ($backUrl !== ''): ?>
-                  <div>
-                    <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-outline-secondary btn-sm">
+                  <div class="up-header-actions">
+                    <a href="<?= htmlspecialchars($backUrl, ENT_QUOTES, 'UTF-8'); ?>" class="up-btn up-btn-ghost">
                       <i class="mdi mdi-arrow-left"></i> <?= htmlspecialchars($backLabel, ENT_QUOTES, 'UTF-8'); ?>
                     </a>
                   </div>
                 <?php endif; ?>
               </div>
+              <hr class="up-divider" />
             </div>
           </div>
 
           <div class="row">
             <div class="col-lg-12">
-              <div class="card shadow-sm border-0">
-                <div class="card-body profile-wrapper">
+              <div class="up-card">
+                <div class="up-card-body profile-wrapper">
                   <form method="post" autocomplete="off" class="parsley-examples"
                     data-check-availability-url="<?= htmlspecialchars(site_url('Page/checkSignupAvailability'), ENT_QUOTES, 'UTF-8'); ?>"
                     data-exclude-student-number="<?= htmlspecialchars($studentNumber, ENT_QUOTES, 'UTF-8'); ?>">
@@ -357,7 +370,7 @@
                     </div>
                     <br>
                     <div class="text-right">
-                      <button type="submit" class="btn btn-primary">
+                      <button type="submit" class="up-btn up-btn-primary">
                         <i class="mdi mdi-content-save-outline"></i> <?= htmlspecialchars($submitLabel, ENT_QUOTES, 'UTF-8'); ?>
                       </button>
                     </div>

@@ -16,6 +16,30 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
     .left-side-menu .metismenu li>ul.mm-show {
         display: block !important;
     }
+
+    /* Sticky logout button */
+    .left-side-menu { display:flex; flex-direction:column; }
+    .left-side-menu > .slimscroll-menu { flex:1 1 auto; overflow-y:auto; }
+    .sidebar-logout {
+        flex-shrink:0;
+        padding:14px 18px;
+        border-top:1px solid rgba(255,255,255,.06);
+        background:#1a2942;
+    }
+    .sidebar-logout-btn {
+        display:flex; align-items:center; justify-content:center; gap:8px;
+        width:100%; padding:11px 16px;
+        border-radius:12px; border:none;
+        background:linear-gradient(135deg,#991b1b,#b91c1c);
+        color:#fff; font-weight:700; font-size:.86rem; letter-spacing:.02em;
+        cursor:pointer; transition:transform .15s ease, box-shadow .15s ease;
+        text-decoration:none;
+    }
+    .sidebar-logout-btn:hover {
+        color:#fff; text-decoration:none; transform:translateY(-1px);
+        box-shadow:0 8px 20px rgba(153,27,27,.35);
+    }
+    .sidebar-logout-btn i { font-size:18px; }
 </style>
 
 <div class="left-side-menu">
@@ -59,26 +83,6 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         </a>
                     </li>
 
-                    <li class="<?= $isActive('Page/changeDP'); ?>">
-                        <a href="<?= base_url('Page/changeDP?id=' . urlencode((string)$this->session->userdata('username'))); ?>" class="waves-effect">
-                            <i class="mdi mdi-account-circle-outline"></i>
-                            <span> Change Profile Picture </span>
-                        </a>
-                    </li>
-
-                    <li class="<?= $isActive('Page/changepassword'); ?>">
-                        <a href="<?= base_url('Page/changepassword'); ?>" class="waves-effect">
-                            <i class="ion bi bi-shield-lock"></i>
-                            <span> Change Password </span>
-                        </a>
-                    </li>
-
-                    <li>
-                        <a href="<?= base_url('Login/logout'); ?>" class="waves-effect logout-confirm">
-                            <i class="ion bi bi-box-arrow-right"></i>
-                            <span> Logout </span>
-                        </a>
-                    </li>
                 </ul>
             </div>
 
@@ -337,26 +341,8 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     </li>
 
                     <li>
-                        <a href="javascript: void(0);" class="waves-effect">
-                            <i class="ion ion-md-settings"></i>
-                            <span> User Settings </span>
-                            <span class="menu-arrow"></span>
-                        </a>
-                        <ul class="nav-second-level" aria-expanded="false">
-                            <li><a href="<?= base_url('Page/changeDP?id=' . urlencode($this->session->userdata('username'))); ?>">Change Profile Picture</a></li>
-
-                            <li><a href="<?= base_url('Page/changepassword'); ?>">Change Password</a></li>
-                        </ul>
-                    </li>
-                    <li>
                         <a href="<?= base_url('FbmsoPersonnels/manage') ?>">
                             <i class="mdi mdi-account-group"></i> <span> FBMSO Officials </span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="<?= base_url('Login/logout'); ?>" class="waves-effect logout-confirm">
-                            <i class="ion bi bi-box-arrow-right"></i>
-                            <span> Logout </span>
                         </a>
                     </li>
                     <!-- Settings (keep visible) -->
@@ -456,18 +442,6 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
 
                         </a>
 
-                    </li>
-
-                    <li>
-                        <a href="javascript: void(0);" class="waves-effect">
-                            <i class="ion ion-md-settings"></i>
-                            <span> User Settings </span>
-                            <span class="menu-arrow"></span>
-                        </a>
-                        <ul class="nav-second-level" aria-expanded="false">
-                            <li><a href="<?= base_url('Page/changepassword'); ?>">Change Password</a></li>
-                            <li><a href="<?= base_url('Page/changeDP?id=' . urlencode($this->session->userdata('username'))); ?>">Change Profile Picture</a></li>
-                        </ul>
                     </li>
 
                 </ul>
@@ -600,18 +574,6 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         </ul>
                     </li> -->
 
-
-                    <li>
-                        <a href="javascript: void(0);" class="waves-effect">
-                            <i class="ion ion-md-settings"></i>
-                            <span> User Settings </span>
-                            <span class="menu-arrow"></span>
-                        </a>
-                        <ul class="nav-second-level" aria-expanded="false">
-                            <li><a href="<?= base_url('Page/changepassword'); ?>">Change Password</a></li>
-                            <li><a href="<?= base_url('Page/changeDP?id=' . urlencode($this->session->userdata('username'))); ?>">Change Profile Picture</a></li>
-                        </ul>
-                    </li>
 
                 </ul>
 
@@ -771,15 +733,6 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
 
                         </a>
 
-                    </li>
-
-
-
-                    <li>
-                        <a href="<?= base_url(); ?>Page/changepassword" class="waves-effect">
-                            <i class=" ion bi bi-shield-lock"></i>
-                            <span> Change Password </span>
-                        </a>
                     </li>
 
                 </ul>
@@ -992,14 +945,6 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
 
                         </a>
 
-                    </li>
-
-
-                    <li>
-                        <a href="<?= base_url(); ?>Page/changepassword" class="waves-effect">
-                            <i class=" ion bi bi-shield-lock"></i>
-                            <span> Change Password </span>
-                        </a>
                     </li>
 
                     <li>
@@ -1264,13 +1209,6 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         </a>
                     </li>
 
-                    <li class="<?= $active('Page/changepassword'); ?>">
-                        <a href="<?= base_url('Page/changepassword'); ?>" class="waves-effect">
-                            <i class=" ion bi bi-shield-lock"></i>
-                            <span> Change Password </span>
-                        </a>
-                    </li>
-
                     <li>
                         <a href="<?= base_url('FAQ'); ?>" target="_blank" class="waves-effect">
                             <i class="ion ion-md-help"></i>
@@ -1320,30 +1258,12 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     </li>
 
                     <li>
-                        <a href="javascript: void(0);" class="waves-effect">
-                            <i class="ion ion-md-settings"></i>
-                            <span> User Settings </span>
-                            <span class="menu-arrow"></span>
-                        </a>
-                        <ul class="nav-second-level" aria-expanded="false">
-                            <li><a href="<?= base_url('Page/changeDP?id=' . urlencode($this->session->userdata('username'))); ?>">Change Profile Picture</a></li>
-
-                            <li><a href="<?= base_url('Page/changepassword'); ?>">Change Password</a></li>
-                        </ul>
-                    </li>
-                    <li>
                         <a href="<?= base_url('FbmsoPersonnels'); ?>" class="waves-effect">
                             <i class="mdi mdi-account-group"></i>
                             <span> FBMSO Officials </span>
                         </a>
                     </li>
 
-                    <li>
-                        <a href="<?= base_url('Login/logout'); ?>" class="waves-effect logout-confirm">
-                            <i class="ion bi bi-box-arrow-right"></i>
-                            <span> Logout </span>
-                        </a>
-                    </li>
                 </ul>
             </div>
 
@@ -1357,12 +1277,6 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                             <span> Dashboard </span>
                         </a>
                     </li>
-                    <li>
-                        <a href="<?= base_url('Login/logout'); ?>" class="waves-effect logout-confirm">
-                            <i class="ion bi bi-box-arrow-right"></i>
-                            <span> Logout </span>
-                        </a>
-                    </li>
                 </ul>
             </div>
 
@@ -1374,6 +1288,13 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
 
     </div>
     <!-- Sidebar -left -->
+
+    <!-- Sticky logout -->
+    <div class="sidebar-logout">
+        <a href="<?= base_url('Login/logout'); ?>" class="sidebar-logout-btn logout-confirm">
+            <i class="ion bi bi-box-arrow-right"></i> Logout
+        </a>
+    </div>
 
 </div>
 

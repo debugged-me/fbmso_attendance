@@ -1,0 +1,232 @@
+/* ============================================================
+   Uniform page styles — shared across profile/account pages
+   Matches the design language of the QR / accounting pages.
+   ============================================================ */
+
+:root {
+  --up-ink: #0d1b4b;
+  --up-muted: #6b7a99;
+  --up-line: #e6ebf5;
+  --up-card: #ffffff;
+  --up-soft: #f5f7fc;
+  --up-blue: #2a4090;
+  --up-blue-2: #4266d4;
+  --up-green: #16a34a;
+  --up-amber: #f59e0b;
+  --up-red: #ef4444;
+}
+
+/* Page title */
+.up-page-title {
+  font-weight: 800;
+  letter-spacing: .02em;
+  color: var(--up-ink);
+  margin: 0;
+}
+.up-page-sub {
+  color: var(--up-muted);
+  font-size: .9rem;
+  margin-top: 2px;
+}
+.up-divider {
+  border: 0;
+  height: 3px;
+  width: 64px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--up-blue), var(--up-blue-2));
+  margin: 14px 0 22px;
+}
+
+/* Header actions */
+.up-header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.up-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: .84rem;
+  letter-spacing: .02em;
+  border: none;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  text-decoration: none;
+}
+.up-btn:hover { transform: translateY(-1px); text-decoration: none; }
+.up-btn-primary {
+  background: linear-gradient(135deg, var(--up-blue), var(--up-blue-2));
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(42, 64, 144, .22);
+}
+.up-btn-primary:hover { color: #fff; box-shadow: 0 10px 22px rgba(42, 64, 144, .28); }
+.up-btn-ghost {
+  background: var(--up-soft);
+  color: var(--up-ink);
+  border: 1px solid var(--up-line);
+}
+.up-btn-ghost:hover { background: #eef2fb; color: var(--up-blue); }
+.up-btn-danger {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(220, 38, 38, .22);
+}
+.up-btn-danger:hover { color: #fff; box-shadow: 0 10px 22px rgba(220, 38, 38, .28); }
+
+/* Identity strip */
+.up-id-strip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: linear-gradient(135deg, #2a4090 0%, #3b5fd4 100%);
+  color: #fff;
+  border-radius: 18px;
+  padding: 18px 22px;
+  margin-bottom: 22px;
+  box-shadow: 0 14px 30px rgba(42, 64, 144, .22);
+}
+.up-id-strip .up-id-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  flex: 0 0 auto;
+  background: rgba(255, 255, 255, .18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+.up-id-strip .up-id-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+.up-id-strip .up-id-meta {
+  font-size: .82rem;
+  opacity: .85;
+  margin-top: 2px;
+}
+.up-id-strip .up-id-pill {
+  margin-left: auto;
+  background: rgba(255, 255, 255, .16);
+  border: 1px solid rgba(255, 255, 255, .25);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+/* Card */
+.up-card {
+  background: var(--up-card);
+  border: 1px solid var(--up-line);
+  border-radius: 18px;
+  box-shadow: 0 6px 18px rgba(13, 27, 75, .05);
+  overflow: hidden;
+}
+.up-card-head {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--up-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.up-card-head h4,
+.up-card-head h5 {
+  margin: 0;
+  font-weight: 800;
+  color: var(--up-ink);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.up-card-body { padding: 22px; }
+
+/* Section header inside cards */
+.up-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  margin-top: 28px;
+}
+.up-section-head:first-child { margin-top: 0; }
+.up-section-dot {
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, var(--up-blue), var(--up-blue-2));
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.up-section-label {
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--up-muted);
+}
+.up-section-line {
+  flex: 1;
+  height: 1px;
+  background: var(--up-line);
+}
+
+/* Form fields */
+.up-card .form-control,
+.up-card select.form-control {
+  border-radius: 12px;
+  border: 1px solid var(--up-line);
+  padding: 10px 14px;
+  font-size: .88rem;
+  color: var(--up-ink);
+  height: auto;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.up-card .form-control:focus {
+  border-color: var(--up-blue-2);
+  box-shadow: 0 0 0 3px rgba(66, 102, 212, .12);
+}
+.up-card label {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--up-muted);
+  letter-spacing: .02em;
+  margin-bottom: 4px;
+}
+.up-card .form-group { margin-bottom: 16px; }
+.up-card .text-danger { color: var(--up-red) !important; }
+
+/* Hint text */
+.up-hint {
+  font-size: .76rem;
+  color: var(--up-muted);
+  margin-top: 6px;
+}
+
+/* Flash messages */
+.up-flash {
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-size: .86rem;
+  font-weight: 600;
+  margin-bottom: 18px;
+  border: 1px solid;
+}
+.up-flash-success { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+.up-flash-danger  { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.up-flash-info    { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
+
+/* Responsive */
+@media (max-width: 767.98px) {
+  .up-id-strip .up-id-pill { margin-left: 0; }
+  .up-card-body { padding: 18px 16px; }
+}
