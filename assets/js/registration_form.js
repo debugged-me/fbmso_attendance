@@ -374,5 +374,38 @@
         }
       });
     }
+
+    /* ===== Sticky progress indicator — tracks which section is in view ===== */
+    var sections = [
+      { id: 'section-credentials', step: 1 },
+      { id: 'section-personal',    step: 2 },
+      { id: 'section-academic',    step: 3 }
+    ];
+    var stepEls = document.querySelectorAll('.reg-progress-step');
+    var lineEls = document.querySelectorAll('.reg-progress-line');
+
+    function updateProgress() {
+      var scrollY = window.scrollY + window.innerHeight * 0.35;
+      var currentStep = 1;
+      for (var i = 0; i < sections.length; i++) {
+        var el = document.getElementById(sections[i].id);
+        if (el && el.offsetTop <= scrollY) {
+          currentStep = sections[i].step;
+        }
+      }
+      stepEls.forEach(function (el) {
+        var s = parseInt(el.getAttribute('data-step'), 10);
+        el.classList.remove('active', 'done');
+        if (s < currentStep) { el.classList.add('done'); }
+        else if (s === currentStep) { el.classList.add('active'); }
+      });
+      lineEls.forEach(function (el, idx) {
+        if (idx < currentStep - 1) { el.classList.add('filled'); }
+        else { el.classList.remove('filled'); }
+      });
+    }
+
+    window.addEventListener('scroll', updateProgress, { passive: true });
+    updateProgress();
   });
 })(window, document, window.jQuery);

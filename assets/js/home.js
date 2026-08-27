@@ -20,7 +20,7 @@
   var form = document.querySelector('form[action*="Login/auth"]');
   if (!form) return;
 
-  form.addEventListener('submit', function() {
+  form.addEventListener('submit', function(e) {
     var u = document.getElementById('username');
     var p = document.getElementById('password');
 
@@ -29,6 +29,12 @@
     }
     if (p && typeof p.value === 'string') {
       p.value = p.value.replace(/\u00a0/g, ' ').replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '').trim();
+    }
+
+    // Loading state on the submit button
+    var btn = document.getElementById('loginBtn');
+    if (btn && u && p && u.value.trim() && p.value.trim()) {
+      btn.classList.add('is-loading');
     }
   });
 })();

@@ -663,3 +663,86 @@ select.field {
     font-size: 1.35rem;
   }
 }
+
+/* ===== Sticky form progress indicator ===== */
+.reg-progress {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(255, 255, 255, .95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 12px 0 14px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #e6ebf5;
+}
+
+.reg-progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.reg-progress-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  opacity: .4;
+  transition: opacity .3s ease;
+}
+
+.reg-progress-step.active { opacity: 1; }
+.reg-progress-step.done { opacity: .7; }
+
+.reg-progress-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #e6ebf5;
+  color: #6b7a99;
+  font-size: .76rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background .3s ease, color .3s ease;
+}
+
+.reg-progress-step.active .reg-progress-num {
+  background: linear-gradient(135deg, #2a4090, #4266d4);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(66, 102, 212, .3);
+}
+
+.reg-progress-step.done .reg-progress-num {
+  background: #10b981;
+  color: #fff;
+}
+
+.reg-progress-text {
+  font-size: .76rem;
+  font-weight: 700;
+  color: #0d1b4b;
+  white-space: nowrap;
+}
+
+.reg-progress-line {
+  flex: 1;
+  height: 2px;
+  background: #e6ebf5;
+  margin: 0 12px;
+  border-radius: 2px;
+  transition: background .3s ease;
+}
+
+.reg-progress-line.filled {
+  background: linear-gradient(90deg, #10b981, #4266d4);
+}
+
+@media (max-width: 575.98px) {
+  .reg-progress-text { display: none; }
+  .reg-progress-num { width: 24px; height: 24px; font-size: .72rem; }
+  .reg-progress-line { margin: 0 8px; }
+}

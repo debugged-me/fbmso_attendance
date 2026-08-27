@@ -14,7 +14,7 @@
   <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=30260820" rel="stylesheet">
 
   <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
-  <link href="<?= base_url(); ?>assets/css/registration_form.css?v=30260829" rel="stylesheet" type="text/css" />
+  <link href="<?= base_url(); ?>assets/css/registration_form.css?v=30260830" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=6'); ?>">
   <meta name="theme-color" content="#1a2942">
   <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
@@ -115,7 +115,28 @@
         <input type="hidden" name="VaccStat" value="">
         <input type="hidden" id="resultBday" name="age" value="<?= $old('age'); ?>" readonly required autocomplete="off">
         <input type="hidden" name="Major1" id="major1" value="<?= $old('Major1'); ?>">
-        <div class="section-head">
+
+        <!-- Sticky form progress indicator -->
+        <div class="reg-progress" id="regProgress">
+          <div class="reg-progress-bar">
+            <div class="reg-progress-step active" data-step="1">
+              <span class="reg-progress-num">1</span>
+              <span class="reg-progress-text">Credentials</span>
+            </div>
+            <div class="reg-progress-line"></div>
+            <div class="reg-progress-step" data-step="2">
+              <span class="reg-progress-num">2</span>
+              <span class="reg-progress-text">Personal</span>
+            </div>
+            <div class="reg-progress-line"></div>
+            <div class="reg-progress-step" data-step="3">
+              <span class="reg-progress-num">3</span>
+              <span class="reg-progress-text">Academic</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-head" id="section-credentials">
           <div class="section-dot"></div>
           <div class="section-label">Student Credentials</div>
           <div class="section-line"></div>
@@ -160,7 +181,7 @@
             </div>
           </div>
         </div>
-        <div class="section-head">
+        <div class="section-head" id="section-personal">
           <div class="section-dot"></div>
           <div class="section-label">Personal Information</div>
           <div class="section-line"></div>
@@ -207,7 +228,7 @@
             <input type="text" id="contactNo" class="field" name="contactNo" value="<?= $old('contactNo'); ?>" placeholder="09XX XXX XXXX" required>
           </div>
         </div>
-        <div class="section-head">
+        <div class="section-head" id="section-academic">
           <div class="section-dot"></div>
           <div class="section-label">Academic Information</div>
           <div class="section-line"></div>
@@ -282,7 +303,7 @@
   <script src="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.js"></script>
   <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
-  <script src="<?= base_url(); ?>assets/js/registration_form.js?v=30260820"></script>
+  <script src="<?= base_url(); ?>assets/js/registration_form.js?v=30260830"></script>
   <script src="<?= base_url('assets/js/mobile-shell.js?v=5'); ?>"></script>
   <script>
   // Lazy-load reCAPTCHA only when the user interacts with the form,

@@ -17,6 +17,7 @@
     margin-bottom: 0;
   }
   .kpi:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(13,27,75,.09); }
+  .kpi:active { transform: translateY(-1px) scale(.97); }
   .kpi .card-body { display:flex; align-items:center; justify-content:space-between; padding:20px 22px; height:100%; gap:12px; }
   .kpi .count { font-size:1.6rem; font-weight:800; color:var(--up-ink,#0d1b4b); margin:0; line-height:1; letter-spacing:-.01em; }
   .kpi .label { margin:6px 0 0; color:var(--up-muted,#6b7a99); font-weight:700; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; }
@@ -28,12 +29,12 @@
   .kpi.primary .icon { background:#dbeafe; color:#3b82f6; }
 
   /* ===== KPI grid ===== */
-  .kpi-grid { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:16px; align-items:stretch; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; align-items:stretch; }
   .kpi-grid>a { display:block; height:100%; text-decoration:none; }
   .kpi-grid>a>.card.kpi { height:100%; }
   .kpi .card-body>div:first-child { min-width:0; }
-  @media (max-width:1499.98px){ .kpi-grid{grid-template-columns:repeat(3,1fr)} }
-  @media (max-width:991.98px){ .kpi-grid{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:1499.98px){ .kpi-grid{grid-template-columns:repeat(auto-fit, minmax(160px, 1fr))} }
+  @media (max-width:991.98px){ .kpi-grid{grid-template-columns:repeat(auto-fit, minmax(150px, 1fr))} }
   @media (max-width:575.98px){ .kpi-grid{gap:12px} .kpi .card-body{padding:16px} .kpi .count{font-size:1.35rem} .kpi .icon{width:40px;height:40px;font-size:20px} }
 
   /* ===== Enrollment summary (uniform card) ===== */
@@ -54,7 +55,12 @@
   .sum-head .badge { flex:0 0 auto; border-radius:999px; font-size:.72rem; font-weight:700; padding:4px 12px; }
   .sum-chart { position:relative; height:240px; margin-bottom:10px; }
   .sum-empty { display:grid; place-items:center; height:100%; font-size:.85rem; color:var(--up-muted,#6b7a99); }
+
+  /* Skeleton shimmer placeholder for charts while loading */
+  .sum-chart.skeleton { background:linear-gradient(90deg, #f0f3f8 25%, #e6ebf5 50%, #f0f3f8 75%); background-size:200% 100%; animation:shimmer 1.4s ease-in-out infinite; border-radius:12px; }
+  @keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
   .sum-filter { margin-bottom:8px; border-radius:10px !important; border:1px solid var(--up-line,#e6ebf5) !important; font-size:.84rem !important; }
+  .sum-filter-count { font-size:.72rem; color:var(--up-muted,#6b7a99); font-weight:600; margin-bottom:8px; }
   .sum-scroll { flex:1 1 auto; max-height:250px; overflow-y:auto; border-top:1px solid #eef1f5; }
   .sum-scroll table { margin-bottom:0; }
   .sum-scroll thead th { position:sticky; top:0; z-index:2; background:#f8f9fc; border-top:0; font-size:.72rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--up-muted,#6b7a99); }
@@ -65,6 +71,11 @@
   .sum-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:7px; vertical-align:middle; flex:0 0 auto; }
   .sum-scroll::-webkit-scrollbar { width:8px; }
   .sum-scroll::-webkit-scrollbar-thumb { background:#cfd8e3; border-radius:8px; }
+
+  /* Empty state — consistent across all summary tables */
+  .sum-empty-row td { padding:32px 16px !important; text-align:center; }
+  .sum-empty-row .sum-empty-icon { font-size:32px; color:var(--up-muted,#6b7a99); display:block; margin-bottom:8px; opacity:.5; }
+  .sum-empty-row .sum-empty-text { font-size:.84rem; color:var(--up-muted,#6b7a99); font-weight:600; }
 
   /* ===== Announcements (uniform card) ===== */
   .ann-card-wrap { background:var(--up-card,#fff); border:1px solid var(--up-line,#e6ebf5); border-radius:18px; overflow:hidden; box-shadow:0 6px 18px rgba(13,27,75,.05); }
@@ -78,6 +89,21 @@
   .ann-meta { font-size:.82rem; color:var(--up-muted,#6b7a99); margin-bottom:.5rem; }
   .ann-actions a { font-weight:700; color:var(--up-blue-2,#4266d4); text-decoration:none; font-size:.84rem; }
   .ann-actions a:hover { text-decoration:underline; }
+
+  /* View Details as a proper button with 44px touch target */
+  .ann-view-btn {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:10px 20px; border-radius:12px;
+    background:var(--up-blue-2,#4266d4); color:#fff !important;
+    font-size:.82rem; font-weight:700; text-decoration:none !important;
+    min-height:44px; transition:background .18s ease, transform .18s ease;
+  }
+  .ann-view-btn:hover { background:var(--up-blue,#2a4090); transform:translateY(-1px); text-decoration:none !important; }
+  .ann-view-btn:active { transform:translateY(0) scale(.97); }
+
+  /* Expiry date styling */
+  .ann-expires { font-weight:600; color:var(--up-muted,#6b7a99); }
+  .ann-expires-expired { color:#ef4444; font-weight:700; }
 
   .modal-body img { max-width:100%; height:auto; border-radius:8px; }
   #viewAnnouncementModal .modal-body { max-height:75vh; overflow:auto; }
@@ -262,7 +288,7 @@
                           <h6 class="text-uppercase text-muted mb-0">By Course</h6>
                           <span class="badge badge-primary">Total: <?= number_format($courseTotal); ?></span>
                         </div>
-                        <div class="sum-chart"><canvas id="chartByCourse"></canvas></div>
+                        <div class="sum-chart skeleton"><canvas id="chartByCourse"></canvas></div>
                         <div class="sum-scroll">
                           <table class="table table-sm table-hover mb-0" id="tblByCourse">
                             <thead>
@@ -289,7 +315,7 @@
                                 <?php endforeach; ?>
                               <?php else: ?>
                                 <tr>
-                                  <td colspan="2" class="text-muted text-center">No data.</td>
+                                  <td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-off-outline"></i></span><span class="sum-empty-text">No data available</span></td>
                                 </tr>
                               <?php endif; ?>
                             </tbody>
@@ -321,7 +347,7 @@
                                 <?php endforeach; ?>
                               <?php else: ?>
                                 <tr>
-                                  <td colspan="2" class="text-muted text-center">No data.</td>
+                                  <td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-off-outline"></i></span><span class="sum-empty-text">No data available</span></td>
                                 </tr>
                               <?php endif; ?>
                             </tbody>
@@ -333,7 +359,7 @@
                           <h6 class="text-uppercase text-muted mb-0">By Year Level</h6>
                           <span class="badge badge-info">Total: <?= number_format($ylTotal); ?></span>
                         </div>
-                        <div class="sum-chart"><canvas id="chartByYearLevel"></canvas></div>
+                        <div class="sum-chart skeleton"><canvas id="chartByYearLevel"></canvas></div>
                         <div class="sum-scroll">
                           <table class="table table-sm table-hover mb-0" id="tblByYearLevel">
                             <thead>
@@ -360,7 +386,7 @@
                                 <?php endforeach; ?>
                               <?php else: ?>
                                 <tr>
-                                  <td colspan="2" class="text-muted text-center">No data.</td>
+                                  <td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-off-outline"></i></span><span class="sum-empty-text">No data available</span></td>
                                 </tr>
                               <?php endif; ?>
                             </tbody>
@@ -383,7 +409,8 @@
                           </div>
                         <?php endif; ?>
                         <input type="text" class="form-control form-control-sm sum-filter" data-target="#tblBySection" placeholder="Search section..." autocomplete="off">
-                        <div class="sum-chart"><canvas id="chartBySection"></canvas></div>
+                        <div class="sum-filter-count" id="sectionFilterCount">Showing <?= count($sectionData); ?> of <?= count($sectionData); ?></div>
+                        <div class="sum-chart skeleton"><canvas id="chartBySection"></canvas></div>
                         <div class="sum-scroll">
                           <table class="table table-sm table-hover mb-0" id="tblBySection">
                             <thead>
@@ -410,7 +437,7 @@
                                 <?php endforeach; ?>
                               <?php else: ?>
                                 <tr>
-                                  <td colspan="2" class="text-muted text-center">No data.</td>
+                                  <td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-off-outline"></i></span><span class="sum-empty-text">No data available</span></td>
                                 </tr>
                               <?php endif; ?>
                             </tbody>
@@ -443,7 +470,7 @@
                         </tr>
                       <?php endforeach; ?>
                     <?php else: ?>
-                      <tr><td colspan="2" class="text-muted text-center">No data.</td></tr>
+                      <tr><td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-off-outline"></i></span><span class="sum-empty-text">No data available</span></td></tr>
                     <?php endif; ?>
                   </tbody>
                 </table>
@@ -485,6 +512,8 @@
                             $posted   = !empty($row->datePosted) ? date('F d, Y', strtotime($row->datePosted)) : '';
                             $audience = $row->audience ?? 'All';
                             $imageURL = !empty($row->image) ? base_url('upload/announcements/' . $row->image) : '';
+                            $expires  = !empty($row->date_expire) ? date('F d, Y', strtotime($row->date_expire)) : '';
+                            $isExpired = !empty($row->date_expire) && strtotime($row->date_expire) < strtotime(date('Y-m-d'));
                           ?>
                             <div class="ann-row">
                               <?php if ($imageURL): ?>
@@ -494,14 +523,14 @@
                                   </div>
                                   <div class="col-md-9">
                                     <div class="ann-title"><i class="mdi mdi-bullhorn-outline mr-1 text-primary"></i><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></div>
-                                    <div class="ann-meta">Posted on <?= $posted; ?> • Audience: <?= htmlspecialchars($audience, ENT_QUOTES, 'UTF-8'); ?></div>
-                                    <div class="ann-actions"><a href="#" data-toggle="modal" data-target="#<?= $modalID; ?>">View Details</a></div>
+                                    <div class="ann-meta">Posted on <?= $posted; ?> • Audience: <?= htmlspecialchars($audience, ENT_QUOTES, 'UTF-8'); ?><?php if ($expires): ?> • <span class="ann-expires<?= $isExpired ? ' ann-expires-expired' : ''; ?>">Expires: <?= $expires; ?></span><?php endif; ?></div>
+                                    <div class="ann-actions"><a href="#" data-toggle="modal" data-target="#<?= $modalID; ?>" class="ann-view-btn"><i class="mdi mdi-eye-outline"></i> View Details</a></div>
                                   </div>
                                 </div>
                               <?php else: ?>
                                 <div class="ann-title"><i class="mdi mdi-bullhorn-outline mr-1 text-primary"></i><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></div>
-                                <div class="ann-meta">Posted on <?= $posted; ?> • Audience: <?= htmlspecialchars($audience, ENT_QUOTES, 'UTF-8'); ?></div>
-                                <div class="ann-actions"><a href="#" data-toggle="modal" data-target="#<?= $modalID; ?>">View Details</a></div>
+                                <div class="ann-meta">Posted on <?= $posted; ?> • Audience: <?= htmlspecialchars($audience, ENT_QUOTES, 'UTF-8'); ?><?php if ($expires): ?> • <span class="ann-expires<?= $isExpired ? ' ann-expires-expired' : ''; ?>">Expires: <?= $expires; ?></span><?php endif; ?></div>
+                                <div class="ann-actions"><a href="#" data-toggle="modal" data-target="#<?= $modalID; ?>" class="ann-view-btn"><i class="mdi mdi-eye-outline"></i> View Details</a></div>
                               <?php endif; ?>
                             </div>
 
@@ -510,8 +539,8 @@
                                 <div class="modal-content">
                                   <div class="modal-header" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;">
                                     <h5 class="modal-title" id="<?= $modalID; ?>Label" style="font-weight:800;"><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></h5>
-                                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                                      <span aria-hidden="true">&times;</span>
+                                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="font-size:1.2rem;line-height:1;">
+                                      <i class="mdi mdi-close"></i>
                                     </button>
                                   </div>
                                   <div class="modal-body">
@@ -651,6 +680,8 @@
         if (!canvas) {
           return;
         }
+        var wrap = canvas.parentNode;
+        if (wrap) { wrap.classList.remove('skeleton'); }
         var rows = condense(items || [], maxSlices);
         if (!rows.length) {
           canvas.parentNode.innerHTML = '<div class="sum-empty text-muted">No data to chart.</div>';
@@ -720,8 +751,9 @@
       $('.sum-filter').on('keyup search', function () {
         var needle = $.trim($(this).val()).toLowerCase();
         var $table = $($(this).data('target'));
+        var total = $table.find('tbody tr').not('.sum-noresult').length;
         var shown = 0;
-        $table.find('tbody tr').each(function () {
+        $table.find('tbody tr').not('.sum-noresult').each(function () {
           var $row = $(this);
           if ($row.find('td').length < 2) {
             return;
@@ -734,7 +766,12 @@
         });
         $table.find('tr.sum-noresult').remove();
         if (!shown) {
-          $table.find('tbody').append('<tr class="sum-noresult"><td colspan="2" class="text-muted text-center">No match.</td></tr>');
+          $table.find('tbody').append('<tr class="sum-noresult"><td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-magnify-close"></i></span><span class="sum-empty-text">No match</span></td></tr>');
+        }
+        // Update count indicator
+        var $count = $('#sectionFilterCount');
+        if ($count.length) {
+          $count.text('Showing ' + shown + ' of ' + total);
         }
       });
     });

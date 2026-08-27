@@ -82,6 +82,19 @@ $flashDanger  = $this->session->flashdata('danger');
     text-decoration: underline
   }
 
+  .ann-view-btn {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:10px 20px; border-radius:12px;
+    background:#4266d4; color:#fff !important;
+    font-size:.82rem; font-weight:700; text-decoration:none !important;
+    min-height:44px; transition:background .18s ease, transform .18s ease;
+  }
+  .ann-view-btn:hover { background:#2a4090; transform:translateY(-1px); text-decoration:none !important; }
+  .ann-view-btn:active { transform:translateY(0) scale(.97); }
+
+  .ann-expires { font-weight:600; color:#6c757d; }
+  .ann-expires-expired { color:#ef4444; font-weight:700; }
+
   .modal-body img {
     max-width: 100%;
     height: auto;
@@ -404,7 +417,7 @@ $flashDanger  = $this->session->flashdata('danger');
                       <div class="modal-content">
                         <div class="modal-header bg-warning">
                           <h5 class="modal-title" id="flagModalLabel">Flagged Account Details</h5>
-                          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                          <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="font-size:1.2rem;line-height:1;"><i class="mdi mdi-close"></i></button>
                         </div>
                         <div class="modal-body">
                           <p><strong>Reason:</strong> <?= $flag_details->flaggedReason; ?></p>
@@ -453,6 +466,8 @@ $flashDanger  = $this->session->flashdata('danger');
                     $posted   = !empty($row->datePosted) ? date('F d, Y', strtotime($row->datePosted)) : '';
                     $audience = $row->audience ?? 'All';
                     $imageURL = !empty($row->image) ? base_url('upload/announcements/' . $row->image) : '';
+                    $expires  = !empty($row->date_expire) ? date('F d, Y', strtotime($row->date_expire)) : '';
+                    $isExpired = !empty($row->date_expire) && strtotime($row->date_expire) < strtotime(date('Y-m-d'));
                     ?>
                     <div class="ann-row">
                       <?php if ($imageURL): ?>
@@ -464,16 +479,16 @@ $flashDanger  = $this->session->flashdata('danger');
                             <div class="ann-title"><i class="mdi mdi-bullhorn-outline mr-1 text-primary"></i>
                               <?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?>
                             </div>
-                            <div class="ann-meta">Posted on <?= $posted; ?> • Audience: <?= htmlspecialchars($audience, ENT_QUOTES, 'UTF-8'); ?></div>
-                            <div class="ann-actions"><a href="#" data-toggle="modal" data-target="#<?= $modalID; ?>">View Details</a></div>
+                            <div class="ann-meta">Posted on <?= $posted; ?> • Audience: <?= htmlspecialchars($audience, ENT_QUOTES, 'UTF-8'); ?><?php if ($expires): ?> • <span class="ann-expires<?= $isExpired ? ' ann-expires-expired' : ''; ?>">Expires: <?= $expires; ?></span><?php endif; ?></div>
+                            <div class="ann-actions"><a href="#" data-toggle="modal" data-target="#<?= $modalID; ?>" class="ann-view-btn"><i class="mdi mdi-eye-outline"></i> View Details</a></div>
                           </div>
                         </div>
                       <?php else: ?>
                         <div class="ann-title"><i class="mdi mdi-bullhorn-outline mr-1 text-primary"></i>
                           <?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?>
                         </div>
-                        <div class="ann-meta">Posted on <?= $posted; ?> • Audience: <?= htmlspecialchars($audience, ENT_QUOTES, 'UTF-8'); ?></div>
-                        <div class="ann-actions"><a href="#" data-toggle="modal" data-target="#<?= $modalID; ?>">View Details</a></div>
+                        <div class="ann-meta">Posted on <?= $posted; ?> • Audience: <?= htmlspecialchars($audience, ENT_QUOTES, 'UTF-8'); ?><?php if ($expires): ?> • <span class="ann-expires<?= $isExpired ? ' ann-expires-expired' : ''; ?>">Expires: <?= $expires; ?></span><?php endif; ?></div>
+                        <div class="ann-actions"><a href="#" data-toggle="modal" data-target="#<?= $modalID; ?>" class="ann-view-btn"><i class="mdi mdi-eye-outline"></i> View Details</a></div>
                       <?php endif; ?>
                     </div>
 
@@ -482,7 +497,7 @@ $flashDanger  = $this->session->flashdata('danger');
                         <div class="modal-content">
                           <div class="modal-header text-white">
                             <h5 class="modal-title" id="<?= $modalID; ?>Label"><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></h5>
-                            <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="font-size:1.2rem;line-height:1;"><i class="mdi mdi-close"></i></button>
                           </div>
                           <div class="modal-body">
                             <div class="ann-flex">

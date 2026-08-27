@@ -50,6 +50,7 @@
       left: -150px;
       --d: 11s;
       filter: blur(60px);
+      animation: blob-float 11s ease-in-out infinite;
     }
 
     .blob-b {
@@ -60,6 +61,14 @@
       right: -100px;
       --d: 14s;
       filter: blur(50px);
+      animation: blob-float 14s ease-in-out infinite;
+      animation-delay: -3s;
+    }
+
+    @keyframes blob-float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33%      { transform: translate(30px, -20px) scale(1.05); }
+      66%      { transform: translate(-20px, 25px) scale(.97); }
     }
 
     
@@ -143,6 +152,12 @@
     .qr-box svg {
       width: 100%;
       height: 100%;
+      animation: qr-flash 2.8s ease-in-out infinite;
+    }
+
+    @keyframes qr-flash {
+      0%, 42%, 58%, 100% { filter: none; }
+      50%                { filter: brightness(1.4) drop-shadow(0 0 6px rgba(160, 205, 255, .6)); }
     }
 
     .scan-beam {
@@ -359,14 +374,6 @@
       margin-bottom: 16px;
     }
 
-    .field-group:nth-child(1) {
-      animation-delay: .25s;
-    }
-
-    .field-group:nth-child(2) {
-      animation-delay: .32s;
-    }
-
     .field-label {
       font-size: .7rem;
       font-weight: 700;
@@ -403,9 +410,37 @@
       box-shadow: 0 0 0 4px rgba(107, 143, 255, .12);
     }
 
+    /* Invalid validation state — shows after submit attempt */
+    .field:invalid:not(:placeholder-shown) {
+      border-color: #ef4444;
+      background: #fef2f2;
+    }
+    .field:invalid:not(:placeholder-shown):focus {
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, .1);
+    }
+
     .field:hover:not(:focus) {
       border-color: #c8d6ff;
     }
+
+    /* Entrance animations — the animation-delay values on field-group children now work */
+    .field-group {
+      animation: fade-in-up .5s ease both;
+    }
+    .field-group:nth-child(1) { animation-delay: .25s; }
+    .field-group:nth-child(2) { animation-delay: .32s; }
+
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .brand-row { animation: fade-in-up .5s ease both; animation-delay: .1s; }
+    .form-title { animation: fade-in-up .5s ease both; animation-delay: .15s; }
+    .form-caption { animation: fade-in-up .5s ease both; animation-delay: .2s; }
+    .forgot-row { animation: fade-in-up .5s ease both; animation-delay: .38s; }
+    .btn-main { animation: fade-in-up .5s ease both; animation-delay: .42s; }
+    .signup-note { animation: fade-in-up .5s ease both; animation-delay: .48s; }
 
     .toggle-pass {
       position: absolute;
@@ -457,6 +492,7 @@
       background: linear-gradient(135deg, #2a4090, #4266d4, #3b5fd4);
       background-size: 200% 100%;
       box-shadow: 0 12px 28px rgba(42, 64, 144, .3), 0 4px 8px rgba(42, 64, 144, .2);
+      transition: transform .18s ease, box-shadow .18s ease;
     }
 
     .btn-main:hover {
@@ -466,8 +502,27 @@
     }
 
     .btn-main:active {
-      transform: translateY(0);
+      transform: translateY(0) scale(.98);
     }
+
+    /* Loading state */
+    .btn-main.is-loading { pointer-events: none; opacity: .85; }
+    .btn-main .btn-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 20px;
+      height: 20px;
+      margin: -10px 0 0 -10px;
+      border: 2.5px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity .2s ease;
+    }
+    .btn-main.is-loading .btn-spinner { opacity: 1; animation: btn-spin .6s linear infinite; }
+    .btn-main.is-loading .btn-label { opacity: .4; }
+    @keyframes btn-spin { to { transform: rotate(360deg); } }
 
     .btn-main::after {
       content: '';
@@ -505,10 +560,65 @@
       border-color: #3b5fd4;
     }
 
+    /* ===== Legal / Privacy footer (inside the form card) ===== */
+    .legal-footer {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid #e6ebf5;
+    }
+    .legal-links {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+    .legal-links a {
+      font-size: .76rem;
+      font-weight: 600;
+      color: #6b7fa8;
+      text-decoration: none;
+      transition: color .18s ease;
+    }
+    .legal-links a:hover {
+      color: #3b5fd4;
+      text-decoration: underline;
+    }
+    .legal-dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: #b8c4df;
+      flex-shrink: 0;
+    }
+    .legal-copy {
+      font-size: .72rem;
+      color: #b8c4df;
+      margin: 0;
+    }
+
+    /* Dark mode for legal footer */
+    @media (prefers-color-scheme: dark) {
+      .legal-footer { border-top-color: #2a3a5c; }
+      .legal-links a { color: #8fa0c8; }
+      .legal-links a:hover { color: #6b8fff; }
+      .legal-dot { background: #2a3a5c; }
+      .legal-copy { color: #5a6a8e; }
+    }
+
+    @media (max-width: 700px) {
+      .legal-footer { margin-top: 16px; }
+      .legal-links { gap: 8px; }
+      .legal-links a { font-size: .72rem; }
+    }
+
     .modal-content {
       border-radius: 20px !important;
       border: 1px solid #e2e9ff !important;
       box-shadow: 0 20px 60px rgba(42, 64, 144, .15) !important;
+      color: #0d1b4b;
     }
 
     .modal-header {
@@ -517,9 +627,20 @@
 
     .modal-title {
       font-weight: 800 !important;
-      color: #0d1b4b !important;
       font-size: 1rem !important;
     }
+
+    /* Modal header with dark gradient keeps white title */
+    .modal-header[style*="linear-gradient"] .modal-title,
+    .modal-header[style*="background:linear-gradient"] .modal-title {
+      color: #fff !important;
+    }
+
+    /* Legal modal body text colors */
+    .modal-body h6 { color: #0d1b4b; }
+    .modal-body p { color: #4a5a7a; }
+    .modal-body ul { color: #4a5a7a; }
+    .modal-body strong { color: #0d1b4b; }
 
     .reset-hint {
       display: block;
@@ -676,4 +797,97 @@
       .side-form {
         justify-content: flex-start;
       }
+    }
+
+    /* ===== Auto dark mode for login page (respects OS preference) ===== */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: #0a0f1e;
+      }
+      body::before {
+        background:
+          radial-gradient(ellipse 80% 60% at 15% 20%, #1a2845 0%, transparent 55%),
+          radial-gradient(ellipse 70% 50% at 85% 80%, #1e2a4a 0%, transparent 55%),
+          #0a0f1e;
+      }
+      .blob-a { background: radial-gradient(circle, #1a284555, #0f1a3022); }
+      .blob-b { background: radial-gradient(circle, #1e2a4a44, #141d3511); }
+
+      .card {
+        background: rgba(20, 28, 48, 0.75);
+        border: 1px solid rgba(60, 80, 130, 0.3);
+        box-shadow:
+          0 2px 0 rgba(60, 80, 130, 0.15) inset,
+          0 40px 80px rgba(0, 0, 0, 0.4),
+          0 8px 20px rgba(0, 0, 0, 0.2);
+      }
+
+      .brand-text { color: #e0e8ff; }
+      .brand-text small { color: #8fa0c8; }
+
+      .form-title { color: #f0f4ff; }
+      .form-caption { color: #8fa0c8; }
+
+      .field {
+        background: #141d35;
+        border-color: #2a3a5c;
+        color: #e0e8ff;
+      }
+      .field::placeholder { color: #5a6a8e; }
+      .field:focus {
+        border-color: #6b8fff;
+        background: #1a2540;
+        box-shadow: 0 0 0 4px rgba(107, 143, 255, .15);
+      }
+      .field:invalid:not(:placeholder-shown) {
+        border-color: #ef4444;
+        background: #2a1414;
+      }
+
+      .field-label { color: #8fa0c8; }
+
+      .flash {
+        background: #2a1414;
+        border-color: #5a2020;
+        color: #ff8080;
+      }
+      .flash-success {
+        background: #0a2818;
+        border-color: #1a5030;
+        color: #60e0a0;
+      }
+
+      .forgot-link { color: #8fa0c8; }
+      .forgot-link:hover { color: #6b8fff; }
+
+      .signup-note { color: #8fa0c8; }
+      .signup-note a { color: #6b8fff; border-color: #2a3a5c; }
+
+      .toggle-pass { color: #5a6a8e; }
+      .toggle-pass:hover { color: #6b8fff; }
+
+      /* Modal dark mode */
+      .modal-content {
+        background: #141d35 !important;
+        border-color: #2a3a5c !important;
+        color: #e0e8ff !important;
+      }
+      .modal-content[style*="color"] { color: #e0e8ff !important; }
+      .modal-header { border-bottom-color: #2a3a5c !important; }
+      .modal-title { color: #f0f4ff !important; }
+      .modal-body { color: #e0e8ff !important; }
+      .modal-body h6 { color: #f0f4ff !important; }
+      .modal-body p { color: #b0c0e0 !important; }
+      .modal-body ul { color: #b0c0e0 !important; }
+      .modal-body strong { color: #e0e8ff !important; }
+      .modal-footer { border-top-color: #2a3a5c !important; }
+      .reset-hint { color: #8fa0c8; }
+      .reset-status {
+        background: #1a2540;
+        border-color: #2a3a5c;
+        color: #8fb0ff;
+      }
+      .reset-status.is-error { background: #2a1414; border-color: #5a2020; color: #ff8080; }
+      .reset-status.is-success { background: #0a2818; border-color: #1a5030; color: #60e0a0; }
+      .reset-alt-link { color: #6b8fff; border-color: #2a3a5c; }
     }

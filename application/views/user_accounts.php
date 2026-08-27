@@ -2,9 +2,60 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
 
+<style>
+  .pl-header {
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:18px; flex-wrap:wrap; margin-bottom:16px;
+  }
+  .pl-header .page-title-box { flex:1 1 auto; margin:0; }
+  .pl-header .page-title-box .up-divider { margin:10px 0 0; }
+  .pl-header .pl-actions { flex:0 0 auto; align-self:center; display:flex; flex-wrap:wrap; gap:10px; }
 
-<body>
+  .resp-table thead th {
+    background:#f5f7fc; color:#6b7a99; font-size:.72rem; font-weight:800;
+    letter-spacing:.1em; text-transform:uppercase; border-bottom:1px solid #e6ebf5 !important;
+    padding:14px 16px; white-space:nowrap; border-left:none; border-right:none;
+  }
+  .resp-table tbody td {
+    padding:14px 16px; vertical-align:middle; font-size:.86rem; color:#0d1b4b;
+    border-bottom:1px solid #eef1f5 !important; border-left:none; border-right:none;
+  }
+  .resp-table tbody tr:hover { background:#f8faff !important; }
+  .resp-table tbody tr:last-child td { border-bottom:none !important; }
+
+  .table-action-links a { display:inline-flex; align-items:center; gap:4px; margin-right:14px; font-size:.84rem; font-weight:600; }
+  .table-action-links a i { font-size:16px; }
+
+  .dataTables_wrapper .dataTables_info,
+  .dataTables_wrapper .dataTables_paginate { padding:14px 18px !important; margin:0 !important; }
+  .dataTables_wrapper .dataTables_filter,
+  .dataTables_wrapper .dataTables_length { padding:16px 18px 12px !important; margin:0 !important; }
+  .dataTables_wrapper .dataTables_filter input {
+    border-radius:10px !important; border:1px solid #e6ebf5 !important;
+    padding:8px 14px !important; font-size:.86rem !important; margin-left:6px !important;
+  }
+  .dataTables_wrapper .dataTables_length select {
+    border-radius:10px !important; border:1px solid #e6ebf5 !important; padding:6px 10px !important; margin-left:6px !important;
+  }
+  .dataTables_paginate .paginate_button {
+    border-radius:8px !important; min-width:38px; min-height:38px;
+    display:inline-flex !important; align-items:center; justify-content:center;
+  }
+  .dataTables_paginate .paginate_button.current,
+  .dataTables_paginate .paginate_button.current:hover {
+    background:linear-gradient(135deg,#2a4090,#4266d4) !important; color:#fff !important;
+    border-color:#2a4090 !important;
+  }
+
+  @media (max-width:767.98px) {
+    .pl-header { flex-direction:column; gap:10px; }
+    .pl-header .pl-actions { align-self:flex-start; }
+    .table-action-links { display:block; padding-top:8px; }
+    .table-action-links a { display:inline-flex; margin:4px 10px 4px 0; }
+  }
+</style>
 
   <!-- Begin page -->
   <div id="wrapper">
@@ -50,92 +101,20 @@
               <input type="hidden" id="flashSuccess" value="<?= htmlspecialchars($flashSuccessText, ENT_QUOTES, 'UTF-8'); ?>">
               <input type="hidden" id="flashDanger" value="<?= htmlspecialchars($flashDangerText, ENT_QUOTES, 'UTF-8'); ?>">
 
-              <style>
-                .table-action-links a+a {
-                  margin-left: 12px;
-                }
-
-                @media (max-width: 575.98px) {
-                  .dataTables_wrapper .row>div {
-                    width: 100%;
-                    text-align: left !important;
-                    margin-bottom: 0.75rem;
-                  }
-
-                  .dataTables_wrapper .dataTables_filter label {
-                    width: 100%;
-                    margin-bottom: 0;
-                  }
-
-                  .dataTables_wrapper .dataTables_filter input {
-                    width: 100% !important;
-                    margin: 0.5rem 0 0;
-                  }
-
-                  .dataTables_wrapper .dataTables_length select {
-                    width: 100% !important;
-                  }
-
-                  .dataTables_wrapper .dataTables_paginate {
-                    text-align: center !important;
-                  }
-
-                  #datatable-buttons.dataTable,
-                  #datatable-buttons.dataTable tbody td,
-                  #datatable-buttons.dataTable thead th {
-                    white-space: normal !important;
-                  }
-
-                  .table-action-links {
-                    display: block;
-                    padding-top: 10px;
-                  }
-
-                  .table-action-links a {
-                    display: inline-flex;
-                    align-items: center;
-                    margin: 6px 12px 0 0;
-                  }
-
-                  .table-action-links a i {
-                    margin-right: 6px;
-                  }
-
-                  #datatable-buttons_wrapper .row:first-child {
-                    flex-direction: column;
-                    align-items: stretch;
-                  }
-
-                  #datatable-buttons_wrapper .row:first-child .col-sm-12.col-md-6 {
-                    width: 100%;
-                  }
-
-                  #datatable-buttons_wrapper .dataTables_filter,
-                  #datatable-buttons_wrapper .dataTables_length {
-                    float: none;
-                    text-align: left !important;
-                  }
-
-                  #datatable-buttons_wrapper .dataTables_paginate {
-                    margin-top: 10px;
-                    text-align: center !important;
-                  }
-                }
-              </style>
-
-              <div class="page-title-box">
-                <h4 class="page-title">
-                  <button type="button" class="btn btn-info waves-effect waves-light" data-toggle="modal" data-target=".bs-example-modal-lg">+Add New</button>
-                  <!-- <a href="<?= base_url(); ?>Page/create_stude_accts"><button type="button" class="btn btn-success waves-effect waves-light">Create All Students' Accounts</button></a> -->
-                  <!-- <a href="<?= base_url(); ?>Page/create_teacher_accts"><button type="button" class="btn btn-success waves-effect waves-light">Create All Personnel Accounts</button></a> -->
-                  <!-- <a href="<?= base_url(); ?>Page/activate_all_accounts"><button type="button" class="btn btn-primary waves-effect waves-light">Activate All Accounts</button></a> -->
-                </h4>
-                <div class="page-title-right">
-                  <ol class="breadcrumb p-0 m-0">
-                    <!-- <li class="breadcrumb-item"><a href="#">Currently login to <b>SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></b></a></li> -->
-                  </ol>
+              <div class="pl-header">
+                <div class="page-title-box">
+                  <h4 class="up-page-title">User Accounts</h4>
+                  <div class="up-page-sub">Manage admin, staff, and personnel account credentials.</div>
+                  <hr class="up-divider" />
                 </div>
-                <div class="clearfix"></div>
+                <div class="pl-actions">
+                  <a href="<?= base_url(); ?>Page/admin" class="up-btn up-btn-ghost">
+                    <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                  </a>
+                  <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target=".bs-example-modal-lg">
+                    <i class="mdi mdi-account-plus"></i> Add New
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -143,11 +122,14 @@
 
           <div class="row">
             <div class="col-md-12">
-              <div class="card">
-                <div class="card-body table-responsive">
-                  <h4 class="m-t-0 header-title mb-4">User Accounts <br /><span class="badge badge-purple mb-3"><b>SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></b></span></h4>
-
-                  <table id="datatable-buttons" class="table table-striped table-bordered dt-responsive nowrap" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
+              <div class="up-card">
+                <div class="up-card-head">
+                  <h4><i class="mdi mdi-shield-account-outline"></i> Account List</h4>
+                  <span class="badge badge-purple" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;">SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></span>
+                </div>
+                <div class="up-card-body" style="padding:0 !important;">
+                  <div class="table-responsive">
+                  <table id="datatable-buttons" class="table table-striped dt-responsive nowrap resp-table" style="width:100%;">
                     <thead>
                       <tr>
                         <th>Account Name</th>
@@ -231,7 +213,7 @@
                       ?>
                     </tbody>
                   </table>
-
+                  </div>
                 </div>
               </div>
             </div>
@@ -273,7 +255,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="myLargeModalLabel">Add New User</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="font-size:1.2rem;line-height:1;"><i class="mdi mdi-close"></i></button>
         </div>
         <div class="modal-body">
           <form class="form-horizontal parsley-examples" method="POST">

@@ -13,6 +13,19 @@
         z-index: 0;
       }
 
+      /* Title + actions on one row (matches AttendanceLogs pattern) */
+      .pl-header {
+        display:flex; align-items:flex-start; justify-content:space-between;
+        gap:18px; flex-wrap:wrap; margin-bottom:16px;
+      }
+      .pl-header .page-title-box { flex:1 1 auto; margin:0; }
+      .pl-header .page-title-box .up-divider { margin:10px 0 0; }
+      .pl-header .pl-actions { flex:0 0 auto; align-self:center; display:flex; flex-wrap:wrap; gap:10px; }
+      @media (max-width:767.98px) {
+        .pl-header { flex-direction:column; gap:10px; }
+        .pl-header .pl-actions { align-self:flex-start; }
+      }
+
       /* Uniform table styling */
       .resp-table thead th {
         background: #f5f7fc;
@@ -610,21 +623,23 @@
 
           <div class="row">
             <div class="col-12">
-              <div class="page-title-box">
-                <h4 class="up-page-title d-flex align-items-center">
-                  <i class="ion ion-ios-qr-scanner mr-2"></i> Activities
-                </h4>
-                <div class="up-page-sub">Create activities, open the scanner, or print a poster QR for self check-in.</div>
-                <hr class="up-divider" />
+              <div class="pl-header">
+                <div class="page-title-box">
+                  <h4 class="up-page-title d-flex align-items-center">
+                    <i class="ion ion-ios-qr-scanner mr-2"></i> Activities
+                  </h4>
+                  <div class="up-page-sub">Create activities, open the scanner, or print a poster QR for self check-in.</div>
+                  <hr class="up-divider" />
+                </div>
+                <div class="pl-actions">
+                  <a href="<?= base_url(); ?>Page/admin" class="up-btn up-btn-ghost">
+                    <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                  </a>
+                  <a href="<?= site_url('activities/create'); ?>" class="up-btn up-btn-primary">
+                    <i class="ion ion-md-add-circle-outline"></i> Create Activity
+                  </a>
+                </div>
               </div>
-            </div>
-          </div>
-
-          <div class="row mb-2">
-            <div class="col-12 col-md-auto ml-md-auto">
-              <a href="<?= site_url('activities/create'); ?>" class="up-btn up-btn-primary">
-                <i class="ion ion-md-add-circle-outline"></i> Create Activity
-              </a>
             </div>
           </div>
 
