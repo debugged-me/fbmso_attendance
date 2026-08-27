@@ -9,6 +9,7 @@
 
         var POLL_MS = 30000;
         var INCLUDE_PROCESSING = false;
+        var pollDisabled = false;   // set true if endpoints return 404
 
         function fmtDate(s) {
           if (!s) return "";
@@ -33,16 +34,20 @@
         }
 
         function refreshCount($b) {
+          if (pollDisabled) return;
           var url = $b.data("count-url");
           if (!url) return;
           $.getJSON(url, { include_processing: INCLUDE_PROCESSING ? 1 : 0 }).done(function (resp) {
             var n = Number((resp && resp.count) || 0);
             var $badge = $b.find(".req-badge");
             if (n > 0) { $badge.text(n).show(); } else { $badge.hide().text("0"); }
+          }).fail(function (jqXHR) {
+            if (jqXHR.status === 404) { pollDisabled = true; }
           });
         }
 
         function refreshList($b) {
+          if (pollDisabled) return;
           var url = $b.data("list-url");
           if (!url) return;
 
@@ -54,6 +59,8 @@
             $empty.hide();
             var baseHref = $b.data("index-url") || "#";
             $list.html(rows.map(function (r) { return renderItem(baseHref, r); }).join(""));
+          }).fail(function (jqXHR) {
+            if (jqXHR.status === 404) { pollDisabled = true; }
           });
         }
 

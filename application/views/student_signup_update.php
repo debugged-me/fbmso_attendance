@@ -28,6 +28,7 @@
     <meta name="theme-color" content="#1a2942">
     <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="<?= base_url('assets/images/icons/attendance-192.png'); ?>">
     <script src="<?= base_url('assets/js/mobile-shell-early.js?v=5'); ?>"></script>
@@ -668,7 +669,7 @@
     <script src="<?= base_url(); ?>assets/libs/jquery-sparkline/jquery.sparkline.min.js"></script>
 
     <!-- Dashboard init JS -->
-    <script src="<?= base_url(); ?>assets/js/pages/dashboard.init.js"></script>
+    <script src="<?= base_url(); ?>assets/js/pages/dashboard.init.js?v=2"></script>
 
     <!-- App js -->
     <script src="<?= base_url(); ?>assets/js/app.min.js"></script>

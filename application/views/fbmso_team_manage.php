@@ -4,7 +4,7 @@
 
 <link rel="stylesheet" href="<?= base_url('assets/css/request-bell.css'); ?>">
 <link rel="stylesheet" href="<?= base_url('assets/css/manage.css'); ?>">
-<script src="<?= base_url('assets/js/req-bell.js'); ?>"></script>
+<script src="<?= base_url('assets/js/req-bell.js?v=2'); ?>"></script>
 
 
 <body>

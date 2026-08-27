@@ -29,7 +29,7 @@
                     </div>
 
                     <div class="mb-2">
-                        <img src="assets/images/layouts/rtl.png" class="img-fluid img-thumbnail" alt="">
+                        <img src="<?= base_url(); ?>assets/images/layouts/rtl.png" class="img-fluid img-thumbnail" alt="">
                     </div>
                     <div class="custom-control custom-switch mb-5">
                         <input type="checkbox" class="custom-control-input theme-choice" id="rtl-mode-switch" data-appStyle="<?= base_url(); ?>assets/css/app-rtl.min.css" />

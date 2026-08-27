@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="<?= base_url('assets/css/masterlist-responsive.css'); ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=6'); ?>">
     <meta name="theme-color" content="#1a2942">
-    <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
+    <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=4'); ?>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

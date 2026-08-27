@@ -199,7 +199,7 @@
     <script src="<?= base_url(); ?>assets/libs/morris-js/morris.min.js"></script>
     <script src="<?= base_url(); ?>assets/libs/raphael/raphael.min.js"></script>
     <script src="<?= base_url(); ?>assets/libs/jquery-sparkline/jquery.sparkline.min.js"></script>
-    <script src="<?= base_url(); ?>assets/js/pages/dashboard.init.js"></script>
+    <script src="<?= base_url(); ?>assets/js/pages/dashboard.init.js?v=2"></script>
     <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
     <!-- DataTables + Buttons (required for Excel export) -->

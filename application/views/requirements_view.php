@@ -187,7 +187,7 @@
     <script src="<?= base_url(); ?>assets/libs/jquery-sparkline/jquery.sparkline.min.js"></script>
 
     <!-- Dashboard init JS -->
-    <script src="<?= base_url(); ?>assets/js/pages/dashboard.init.js"></script>
+    <script src="<?= base_url(); ?>assets/js/pages/dashboard.init.js?v=2"></script>
 
     <!-- App js -->
     <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
