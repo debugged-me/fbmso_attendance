@@ -40,6 +40,22 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
         box-shadow:0 8px 20px rgba(153,27,27,.35);
     }
     .sidebar-logout-btn i { font-size:18px; }
+    .sidebar-logout-btn .logout-label { display:inline; }
+
+    /* Collapsed sidebar (body.enlarged) — icon only */
+    body.enlarged .sidebar-logout { padding:10px; }
+    body.enlarged .sidebar-logout-btn {
+        padding:11px; gap:0; border-radius:10px;
+    }
+    body.enlarged .sidebar-logout-btn .logout-label { display:none; }
+    body.enlarged .sidebar-logout-btn i { font-size:20px; margin:0; }
+
+    /* Mobile (sidebar slides in as overlay) */
+    @media (max-width: 767.98px) {
+        .sidebar-logout { padding:14px 18px; }
+        .sidebar-logout-btn .logout-label { display:inline; }
+        .sidebar-logout-btn { padding:11px 16px; gap:8px; }
+    }
 </style>
 
 <div class="left-side-menu">
@@ -1292,7 +1308,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
     <!-- Sticky logout -->
     <div class="sidebar-logout">
         <a href="<?= base_url('Login/logout'); ?>" class="sidebar-logout-btn logout-confirm">
-            <i class="ion bi bi-box-arrow-right"></i> Logout
+            <i class="ion bi bi-box-arrow-right"></i> <span class="logout-label">Logout</span>
         </a>
     </div>
 
