@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="<?= base_url('assets/css/custom-sidebar-icons.css?v=3'); ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/masterlist-responsive.css'); ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=5'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=6'); ?>">
     <meta name="theme-color" content="#1a2942">
     <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
     <meta name="apple-mobile-web-app-capable" content="yes">

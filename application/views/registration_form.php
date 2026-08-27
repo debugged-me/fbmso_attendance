@@ -15,7 +15,7 @@
 
   <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
   <link href="<?= base_url(); ?>assets/css/registration_form.css?v=30260827" rel="stylesheet" type="text/css" />
-  <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=5'); ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=6'); ?>">
   <meta name="theme-color" content="#1a2942">
   <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
   <meta name="apple-mobile-web-app-capable" content="yes">

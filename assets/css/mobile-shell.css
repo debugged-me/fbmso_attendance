@@ -297,6 +297,33 @@ body.ms-drawer-locked {
   }
 
   /* ------------------------------------------------------------------------
+     Top-nav dropdowns (profile, birthday, request bell)
+     app.css sets .dropdown{position:static} and .dropdown-menu{left:10px!important;right:10px!important}
+     below 600px, expecting the menu to span the full navbar width. But #ms-top-actions
+     is position:absolute in the top-right corner, so the menu positions relative to that
+     narrow box instead of the full-width navbar — pushing it off-screen / unreachable.
+     Fix: make these dropdowns position:fixed relative to the viewport, full-width below
+     the appbar, so they are always visible and tappable.
+     ------------------------------------------------------------------------ */
+  .navbar-custom.ms-appbar .dropdown .dropdown-menu {
+    position: fixed !important;
+    top: calc(var(--ms-appbar-h) + var(--ms-safe-top)) !important;
+    left: 6px !important;
+    right: 6px !important;
+    width: auto !important;
+    max-width: calc(100vw - 12px) !important;
+    margin-top: 4px;
+    border: 0;
+    border-radius: 14px;
+    box-shadow: 0 16px 42px rgba(15, 23, 42, .18);
+  }
+
+  .navbar-custom.ms-appbar .dropdown .dropdown-menu .dropdown-item {
+    min-height: var(--ms-touch);
+    padding: 10px 16px;
+  }
+
+  /* ------------------------------------------------------------------------
      Drawer and scrim
      ------------------------------------------------------------------------ */
 
