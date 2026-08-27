@@ -32,6 +32,37 @@
       .page-sub{color:var(--muted);font-size:.92rem}
       .divider{border:0;height:2px;background:linear-gradient(90deg,#3b82f6,#f59e0b 60%,#22c55e);border-radius:1px;margin:10px 0 16px}
 
+      /* Header buttons */
+      .qr-header-btn{
+        display:inline-flex; align-items:center; gap:6px;
+        padding:8px 16px; border-radius:12px; font-weight:700; font-size:.82rem;
+        letter-spacing:.02em; border:none; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease;
+      }
+      .qr-header-btn-primary{
+        background:linear-gradient(135deg,#2a4090,#4266d4); color:#fff;
+        box-shadow:0 6px 16px rgba(42,64,144,.22);
+      }
+      .qr-header-btn-primary:hover{transform:translateY(-1px); box-shadow:0 10px 22px rgba(42,64,144,.28); color:#fff;}
+      .qr-header-btn-ghost{
+        background:var(--ar-soft,#f5f7fc); color:#0d1b4b; border:1px solid var(--line,#e6ebf5);
+      }
+      .qr-header-btn-ghost:hover{background:#eef2fb; color:#2a4090; transform:translateY(-1px);}
+
+      /* Attendance filter modal */
+      .att-filter-list{display:flex; flex-direction:column; gap:8px;}
+      .att-filter-option{
+        display:flex; align-items:center; gap:12px; width:100%;
+        padding:14px 18px; border-radius:12px; border:1px solid var(--line,#e6ebf5);
+        background:var(--card,#fff); color:#0d1b4b; font-weight:700; font-size:.9rem;
+        cursor:pointer; transition:all .15s ease; text-align:left;
+      }
+      .att-filter-option i{font-size:20px; color:var(--muted,#6b7a99);}
+      .att-filter-option:hover{background:#f5f7fc; border-color:#c7d2fe; transform:translateX(2px);}
+      .att-filter-option.active{
+        background:linear-gradient(135deg,#2a4090,#4266d4); color:#fff; border-color:#2a4090;
+      }
+      .att-filter-option.active i{color:#fff;}
+
       /* ===== Card ===== */
       .card-clean{background:var(--card);border:1px solid var(--line)}
       .card-clean .card-header{background:color-mix(in srgb,var(--card) 92%,#fff 8%);border-bottom:1px solid var(--line);padding:.75rem 1rem;font-weight:700}
@@ -43,37 +74,114 @@
       .qr-actions .btn{min-width:150px}
       @media (min-width: 992px){ .qr-sticky{position:sticky; top:84px} }
 
+      /* ===== Bank-card style QR ===== */
+      .qr-card-wrap{perspective:1600px; max-width:520px; margin:0 auto;}
+      .qr-card{
+        position:relative; width:100%; aspect-ratio:1.586/1; border-radius:22px; padding:22px 24px;
+        background:
+          radial-gradient(120% 120% at 0% 0%, rgba(255,255,255,.18) 0%, transparent 45%),
+          radial-gradient(120% 120% at 100% 100%, rgba(66,102,212,.45) 0%, transparent 55%),
+          linear-gradient(135deg, #1a2a6c 0%, #2a4090 45%, #3b5fd4 100%);
+        color:#fff; overflow:hidden;
+        box-shadow:0 24px 50px rgba(13,27,75,.32), 0 6px 14px rgba(13,27,75,.18);
+        display:flex; flex-direction:column; justify-content:space-between;
+        transition:transform .25s ease, box-shadow .25s ease;
+      }
+      .qr-card:hover{transform:translateY(-4px) rotateX(2deg); box-shadow:0 32px 60px rgba(13,27,75,.38), 0 8px 18px rgba(13,27,75,.22);}
+      .qr-card::before{
+        content:''; position:absolute; inset:0; border-radius:22px; pointer-events:none;
+        background:linear-gradient(120deg, transparent 30%, rgba(255,255,255,.12) 50%, transparent 70%);
+        background-size:200% 100%; background-position:200% 0; transition:background-position .8s ease;
+      }
+      .qr-card:hover::before{background-position:-50% 0;}
+      .qr-card-top{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+      .qr-card-brand{display:flex; align-items:center; gap:10px;}
+      .qr-card-brand .qc-chip{
+        width:34px; height:26px; border-radius:7px;
+        background:linear-gradient(135deg,#f6d365,#fda085); position:relative;
+        box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);
+      }
+      .qr-card-brand .qc-chip::after{
+        content:''; position:absolute; inset:5px 6px; border-radius:3px;
+        border:1px solid rgba(0,0,0,.18); border-top:none; border-bottom:none;
+      }
+      .qr-card-brand .qc-name{font-weight:800; font-size:.92rem; letter-spacing:.06em; line-height:1.1;}
+      .qr-card-brand .qc-sub{font-size:.66rem; opacity:.78; letter-spacing:.12em; text-transform:uppercase;}
+      .qr-card-status{
+        font-size:.66rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+        background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.28);
+        padding:4px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:5px;
+      }
+      .qr-card-status .qc-dot{width:6px; height:6px; border-radius:50%; background:#7CFFB2; box-shadow:0 0 6px #7CFFB2;}
+
+      .qr-card-mid{display:flex; align-items:center; gap:18px;}
+      .qr-card-qr{
+        flex:0 0 auto; width:140px; height:140px; border-radius:14px; background:#fff;
+        padding:8px; display:flex; align-items:center; justify-content:center;
+        box-shadow:0 6px 14px rgba(0,0,0,.22);
+      }
+      .qr-card-qr #qrcode{width:100% !important; height:100% !important; aspect-ratio:1/1 !important; border:none !important; max-width:none !important;}
+      .qr-card-qr #qrcode img, .qr-card-qr #qrcode canvas{width:100% !important; height:100% !important;}
+      .qr-card-info{flex:1; min-width:0;}
+      .qr-card-info .qc-label{font-size:.62rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; opacity:.72;}
+      .qr-card-info .qc-value{font-size:1.05rem; font-weight:800; letter-spacing:.04em; font-family:ui-monospace,Menlo,Consolas,monospace; margin-top:2px;}
+      .qr-card-info .qc-name-display{font-family:'Sora',sans-serif; letter-spacing:.02em; text-transform:uppercase; line-height:1.25; word-break:break-word; margin-top:2px;}
+      .qr-card-info .qc-name-line1{font-size:1.15rem; font-weight:800;}
+      .qr-card-info .qc-name-line2{font-size:.92rem; font-weight:600; opacity:.88;}
+      .qr-card-info .qc-hint{font-size:.7rem; opacity:.78; margin-top:8px; line-height:1.35;}
+
+      .qr-card-bottom{display:flex; align-items:flex-end; justify-content:space-between; gap:12px;}
+      .qr-card-bottom .qc-student{font-size:.78rem; font-weight:700; letter-spacing:.04em;}
+      .qr-card-bottom .qc-student small{display:block; font-weight:400; font-size:.64rem; opacity:.7; letter-spacing:.1em; text-transform:uppercase; margin-bottom:2px;}
+      .qr-card-bottom .qc-logo{font-size:.66rem; font-weight:800; letter-spacing:.18em; opacity:.85; text-align:right;}
+      .qr-card-bottom .qc-logo b{font-size:.9rem; letter-spacing:.04em;}
+
+      .qr-card-glow{
+        position:absolute; width:200px; height:200px; border-radius:50%;
+        background:radial-gradient(circle, rgba(124,255,178,.35) 0%, transparent 70%);
+        top:-60px; right:-40px; pointer-events:none; filter:blur(10px);
+      }
+
+      /* Card back / actions row */
+      .qr-card-actions{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:18px;}
+      .qr-card-actions .btn{border-radius:12px; font-weight:700; font-size:.84rem; padding:10px 18px; min-width:140px;}
+
+      @media (max-width: 575.98px){
+        .qr-card{aspect-ratio:1.4/1; padding:18px 18px;}
+        .qr-card-qr{width:96px; height:96px;}
+        .qr-card-info .qc-value{font-size:.92rem;}
+        .qr-card-actions .btn{min-width:auto; flex:1;}
+      }
+
       /* ===== Attendance ===== */
-      .section-h{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem}
+      .section-h{display:flex;align-items:center;justify-content:space-between;gap:1rem}
       .section-h h5{margin:0;font-weight:800;color:#0f172a}
       @media (prefers-color-scheme: dark){ .section-h h5{color:#e2e8f0} }
-      .range-group .btn{border-radius:999px!important;padding:.4rem .8rem;font-weight:800}
+      .range-group .btn{border-radius:999px!important;padding:.35rem .9rem;font-weight:700;font-size:.78rem}
       .range-group .btn.active{background:var(--brand-600);color:#fff;border-color:var(--brand-600)}
 
-      .table-wrap{border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+      /* Minimal attendance table */
+      .att-minimal-wrap{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
       #myAttTable{margin:0}
-      #myAttTable thead th{white-space:nowrap;background:color-mix(in srgb,var(--card) 95%,#fff 5%);border-bottom:1px solid var(--line)}
-      #myAttTable td,#myAttTable th{vertical-align:middle}
-      #myAttTable tbody tr:hover{background:color-mix(in srgb,var(--card) 92%,#3b82f6 8%)}
-.pill{display:inline-block;border-radius:999px;padding:.18rem .55rem;font-size:.75rem;font-weight:800}
-.pill-ses{background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe}
-.badge-soft{background:#eef2ff;color:#1e3a8a}
-.muted-hint{color:var(--muted);font-size:.85rem;margin-top:.6rem}
+      #myAttTable thead th{white-space:nowrap;background:var(--card);border-bottom:1px solid var(--line);font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:12px 16px}
+      #myAttTable tbody td{vertical-align:middle;padding:14px 16px;font-size:.88rem;border-bottom:1px solid var(--line)}
+      #myAttTable tbody tr:last-child td{border-bottom:none}
+      #myAttTable tbody tr:hover{background:color-mix(in srgb,var(--card) 92%,#3b82f6 6%)}
+      .att-empty-row{padding:40px 16px !important;color:var(--muted);font-size:.9rem}
+      .att-empty-mobile{padding:40px 16px;text-align:center;color:var(--muted);font-size:.9rem}
+      .att-activity-name{font-weight:700;color:#0f172a}
+      .att-activity-date{font-size:.76rem;color:var(--muted);margin-top:2px}
+      .att-time{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;color:#334155}
+      .pill{display:inline-block;border-radius:999px;padding:.18rem .55rem;font-size:.72rem;font-weight:800}
+      .badge-soft{background:#eef2ff;color:#1e3a8a}
 
-.att-card{border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:0 4px 14px rgba(15,23,42,.08);margin-bottom:12px;overflow:hidden}
-.att-card-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:color-mix(in srgb,var(--card) 92%,#fff 8%);border-bottom:1px solid var(--line);color:#0f172a;font-weight:700;font-size:14px}
-.att-card-toggle{border:none;background:none;padding:0;margin:0;color:inherit;display:flex;flex-direction:column;align-items:flex-start;text-align:left;width:100%}
-.att-card-title{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
-.att-card-date{font-size:12px;color:var(--muted);font-weight:400}
-.att-card-session{margin-left:auto}
-.att-card-toggle .toggle-icon{margin-left:8px;font-size:16px;transition:transform .2s ease}
-.att-card-body{padding:12px 16px;background:var(--card)}
-.att-detail-row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;color:var(--ink);gap:1rem}
-.att-detail-label{color:var(--muted);font-weight:600}
-.att-detail-value{text-align:right;flex:1}
-.status-badge{display:inline-block;padding:.25rem .6rem;border-radius:999px;font-size:.75rem;font-weight:700}
-.status-open{background:#fef3c7;color:#b45309;border:1px solid #fcd34d}
-.status-complete{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
+      /* Mobile attendance cards (minimal) */
+      .att-min-card{padding:14px 16px;border-bottom:1px solid var(--line)}
+      .att-min-card:last-child{border-bottom:none}
+      .att-min-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+      .att-min-card-name{font-weight:700;color:#0f172a;font-size:.9rem}
+      .att-min-card-date{font-size:.74rem;color:var(--muted);margin-top:2px}
+      .att-min-card-time{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;color:#334155;margin-top:6px}
 
 /* ===== Mobile-first responsive table ===== */
 @media (max-width: 575.98px){
@@ -86,10 +194,78 @@
       }
 
       /* ===== Modal scanner ===== */
-      .scan-wrap{position:relative;width:100%;max-width:720px;margin:0 auto}
-      #reader{width:100%;min-height:320px;background:#000;border-radius:12px;overflow:hidden}
-      #scanStatus{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(17,24,39,.7);color:#fff;border:1px solid rgba(255,255,255,.15);padding:6px 12px;border-radius:999px;font-size:.85rem;backdrop-filter:blur(4px)}
-      #reader button,#reader input[type=range]{margin:6px}
+      #studentScanModal .modal-content{border:none; border-radius:20px; overflow:hidden; box-shadow:0 24px 60px rgba(13,27,75,.3);}
+      #studentScanModal .modal-header{
+        background:linear-gradient(135deg,#1a2a6c,#2a4090); color:#fff; border:none; padding:18px 24px;
+        display:flex; align-items:center; justify-content:space-between;
+      }
+      #studentScanModal .modal-header .modal-title{font-weight:800; font-size:1.05rem; display:flex; align-items:center; gap:8px;}
+      #studentScanModal .modal-header .close{color:#fff; opacity:.8; font-size:1.6rem; text-shadow:none;}
+      #studentScanModal .modal-header .close:hover{opacity:1;}
+      #studentScanModal .modal-body{padding:20px 24px; background:#f8fafc;}
+      #studentScanModal .modal-footer{border:none; padding:14px 24px; background:#f8fafc;}
+
+      .scan-toolbar{
+        display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:16px;
+        padding:14px 16px; background:#fff; border:1px solid #e6ebf5; border-radius:14px;
+      }
+      .scan-toolbar label{font-size:.78rem; font-weight:700; color:#6b7a99; letter-spacing:.02em; margin:0;}
+      .scan-toolbar select{
+        border-radius:10px; border:1px solid #e6ebf5; padding:7px 12px; font-size:.84rem;
+        color:#0d1b4b; background:#fff; min-width:180px;
+      }
+      .scan-toolbar select:focus{outline:none; border-color:#4266d4; box-shadow:0 0 0 3px rgba(66,102,212,.12);}
+      .scan-btn{
+        display:inline-flex; align-items:center; gap:5px; padding:7px 14px; border-radius:10px;
+        font-size:.8rem; font-weight:700; border:none; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease;
+      }
+      .scan-btn:hover{transform:translateY(-1px);}
+      .scan-btn-start{background:#16a34a; color:#fff; box-shadow:0 4px 12px rgba(22,163,74,.25);}
+      .scan-btn-stop{background:#fff; color:#6b7a99; border:1px solid #e6ebf5;}
+      .scan-btn-upload{background:#eef2ff; color:#2a4090; border:1px solid #c7d2fe;}
+
+      .scan-toggle-fix{
+        display:inline-flex; align-items:center; gap:6px; font-size:.78rem; font-weight:600;
+        color:#6b7a99; cursor:pointer; margin-left:4px;
+      }
+      .scan-toggle-fix input{margin:0; cursor:pointer;}
+
+      .scan-mode-group{margin-left:auto; display:flex; align-items:center; gap:8px;}
+      .scan-mode-group .scan-mode-label{font-size:.76rem; font-weight:700; color:#6b7a99;}
+      .scan-mode-btns{display:flex; gap:4px; background:#f0f4ff; padding:3px; border-radius:10px;}
+      .scan-mode-btn{
+        padding:5px 16px; border-radius:8px; font-size:.78rem; font-weight:800; border:none; cursor:pointer;
+        background:transparent; color:#6b7a99; transition:all .15s ease; letter-spacing:.04em;
+      }
+      .scan-mode-btn.active-in{background:#16a34a; color:#fff; box-shadow:0 3px 8px rgba(22,163,74,.3);}
+      .scan-mode-btn.active-out{background:#2a4090; color:#fff; box-shadow:0 3px 8px rgba(42,64,144,.3);}
+
+      .scan-wrap{position:relative; width:100%; max-width:720px; margin:0 auto; border-radius:16px; overflow:hidden; box-shadow:0 8px 24px rgba(13,27,75,.12);}
+      #reader{width:100%; min-height:340px; background:#0d1b4b; overflow:hidden;}
+      #reader video{border-radius:16px;}
+      #reader button, #reader input[type=range]{margin:6px}
+      #scanStatus{
+        position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
+        background:rgba(13,27,75,.82); color:#fff; border:1px solid rgba(255,255,255,.18);
+        padding:7px 18px; border-radius:999px; font-size:.82rem; font-weight:600;
+        backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); white-space:nowrap;
+      }
+      #scanStatus.text-success{background:rgba(22,163,74,.85);}
+      #scanStatus.text-danger{background:rgba(239,68,68,.85);}
+      #scanStatus.text-warning{background:rgba(245,158,11,.85); color:#1a1a1a;}
+
+      .scan-tip{
+        display:flex; align-items:center; gap:8px; margin-top:14px; padding:10px 16px;
+        background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px;
+        font-size:.78rem; color:#2a4090;
+      }
+      .scan-tip i{font-size:18px; flex-shrink:0;}
+
+      .scan-close-btn{
+        padding:9px 24px; border-radius:12px; font-weight:700; font-size:.86rem;
+        background:#fff; color:#6b7a99; border:1px solid #e6ebf5; cursor:pointer; transition:all .15s ease;
+      }
+      .scan-close-btn:hover{background:#f5f7fc; color:#0d1b4b;}
 
       /* ===== Motion preference ===== */
       @media (prefers-reduced-motion: reduce){
@@ -158,21 +334,13 @@
           <div class="row">
             <div class="col-12">
            <div class="page-title-box d-flex align-items-end justify-content-between flex-wrap gap-2">
-  <div>
-    <h4 class="page-title d-flex align-items-center">
-      <i class="ion ion-ios-qr-scanner mr-2" aria-hidden="true"></i>
-      My Permanent QR
-      <span class="badge badge-info ml-2">For All Activities</span>
-    </h4>
-    <div class="page-sub">Use this code for all activities.</div>
-  </div>
+  
 
-  <!-- NEW wrapper -->
   <div class="header-actions">
-    <button id="btnOpenScanner" class="btn btn-primary btn-sm" aria-haspopup="dialog">
+    <button id="btnOpenScanner" class="qr-header-btn qr-header-btn-primary" aria-haspopup="dialog">
       <i class="mdi mdi-qrcode-scan" aria-hidden="true"></i> <span>Scan QR</span>
     </button>
-    <button id="btnToggleQR" class="btn btn-light btn-sm">
+    <button id="btnToggleQR" class="qr-header-btn qr-header-btn-ghost">
       <i class="mdi mdi-eye-off-outline" aria-hidden="true"></i>
       <span class="d-none d-sm-inline">Hide QR</span>
     </button>
@@ -184,100 +352,132 @@
           </div>
 
           <!-- Content -->
-          <div class="row" id="gridRow">
-            <!-- LEFT: QR & actions -->
-            <div id="colQR" class="col-lg-5 collapsible">
-              <div class="qr-sticky">
-                <div class="card-clean shadow-soft rounded-2xl">
-                  <div class="card-header">
-                    <div class="d-flex align-items-center flex-wrap gap-3">
-                      <div>
-                        <div class="small text-uppercase text-muted mb-1 font-weight-600">Student No.</div>
-                        <span class="chip" aria-label="Student Number"><span class="text-mono"><?= htmlspecialchars($student_number) ?></span></span>
+          <div id="gridRow">
+
+            <!-- TOP: QR card (full width, centered) -->
+            <div id="colQR" class="collapsible mb-4">
+              <div class="card-clean shadow-soft rounded-2xl">
+                <div class="content-pad">
+                  <!-- Bank-card style QR -->
+                  <div class="qr-card-wrap">
+                    <div class="qr-card" id="qrBankCard">
+                      <div class="qr-card-glow"></div>
+
+                      <div class="qr-card-top">
+                        <div class="qr-card-brand">
+                          <div class="qc-chip"></div>
+                          <div>
+                            <div class="qc-name">FBMSO</div>
+                            <div class="qc-sub">Attendance ID</div>
+                          </div>
+                        </div>
+                        <div class="qr-card-status">
+                          <span class="qc-dot"></span> <?= htmlspecialchars(($status ?? 'active')); ?>
+                        </div>
                       </div>
-                      <div>
-                        <div class="small text-uppercase text-muted mb-1 font-weight-600">Status</div>
-                        <span class="chip" style="border-color:#bbf7d0;background:#ecfdf5;color:#166534">
-                          <i class="ion ion-md-checkmark-circle-outline" aria-hidden="true"></i><?= htmlspecialchars(($status ?? 'active')); ?>
-                        </span>
+
+                      <div class="qr-card-mid">
+                        <div class="qr-card-qr">
+                          <div id="qrcode" role="img" aria-label="Your permanent QR code"></div>
+                        </div>
+                        <div class="qr-card-info">
+                          <div class="qc-label">Cardholder</div>
+                          <div class="qc-name-display">
+                            <?php if (!empty($last_name) || !empty($first_name)): ?>
+                              <div class="qc-name-line1"><?= htmlspecialchars(strtoupper($last_name), ENT_QUOTES, 'UTF-8'); ?>,</div>
+                              <div class="qc-name-line2"><?= htmlspecialchars(strtoupper($first_name), ENT_QUOTES, 'UTF-8'); ?></div>
+                            <?php else: ?>
+                              <div class="qc-name-line1"><?= htmlspecialchars(strtoupper($student_number), ENT_QUOTES, 'UTF-8'); ?></div>
+                            <?php endif; ?>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="qr-card-bottom">
+                        <div class="qc-student">
+                          <small>Student No.</small>
+                          <?= htmlspecialchars($student_number); ?>
+                        </div>
+                        <div class="qc-logo">
+                          Attendance Portal<br><b>FBMSO</b>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div class="content-pad text-center">
-                    <div id="qrcode" class="mx-auto mb-3" role="img" aria-label="Your permanent QR code"></div>
-
-                    <div class="qr-actions d-flex justify-content-center flex-wrap gap-2 mb-3">
-                      <button id="btnDownload" class="btn btn-primary">
-                        <i class="mdi mdi-download" aria-hidden="true"></i> Download PNG
-                      </button>
-                      <button id="btnPrint" class="btn btn-outline-secondary">
-                        <i class="mdi mdi-printer" aria-hidden="true"></i> Print
-                      </button>
-                    </div>
-
-                    <hr class="my-3" />
-                    <ul class="soft-note list-unstyled mb-0 text-left mx-auto" style="max-width:520px;color:var(--muted)">
-                      <li class="mb-2">Show this QR to the <b>Heads</b> for scanning.</li>
-                      <li class="mb-2">Or use <b>Scan QR</b> to scan poster codes for self check-in.</li>
-                      <li>Having trouble? Ask the registrar or event staff.</li>
-                    </ul>
+                  <div class="qr-card-actions">
+                    <button id="btnDownload" class="btn btn-primary">
+                      <i class="mdi mdi-download" aria-hidden="true"></i> Download PNG
+                    </button>
+                    <button id="btnPrint" class="btn btn-outline-secondary">
+                      <i class="mdi mdi-printer" aria-hidden="true"></i> Print
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- RIGHT: Attendance -->
-            <div id="colAtt" class="col-lg-7">
-              <div class="alert alert-info d-flex align-items-center" role="status">
-                <i class="mdi mdi-information-outline mr-2" aria-hidden="true"></i>
-                This QR is permanent and works for all co-curricular activities.
+            <!-- BOTTOM: Attendance (minimal) -->
+            <div id="colAtt">
+              <div class="section-h mb-3">
+                <h5 class="mb-0">My Attendance</h5>
+                <button id="btnAttFilter" class="qr-header-btn qr-header-btn-ghost" type="button">
+                  <i class="mdi mdi-filter-variant" aria-hidden="true"></i>
+                  <span id="attFilterLabel">All</span>
+                </button>
               </div>
 
-              <div class="section-h mb-2">
-                <div>
-                  <h5>My Attendance</h5>
-                  <div class="text-muted">Filter by recency to find a specific session quickly.</div>
-                </div>
-                <div class="btn-group btn-group-sm range-group" role="group" aria-label="Filter by date range">
-                  <button class="btn btn-light active" data-range="all">All</button>
-                  <button class="btn btn-light" data-range="today">Today</button>
-                  <button class="btn btn-light" data-range="7">Last 7 days</button>
-                  <button class="btn btn-light" data-range="30">Last 30 days</button>
-                </div>
-              </div>
-
-              <div class="table-wrap shadow-soft rounded-2xl">
+              <div class="att-minimal-wrap">
                 <div class="table-responsive d-none d-md-block" style="-webkit-overflow-scrolling:touch">
-                  <table class="table table-sm table-hover mb-0" id="myAttTable">
+                  <table class="table table-hover mb-0" id="myAttTable">
                     <thead>
                       <tr>
-                        <th style="width:56px;" class="col-sm-hide">#</th>
                         <th>Activity</th>
-                        <th style="width:120px;" class="col-sm-hide">Session</th>
-                        <th style="width:160px;">In</th>
-                        <th style="width:160px;" class="col-sm-hide">Out</th>
+                        <th style="width:140px;">Check-In</th>
                         <th style="width:110px;">Status</th>
-                        <th style="width:90px;" class="col-sm-hide">Duration</th>
-                        <th style="width:100px;" class="col-sm-hide">Source</th>
-                        <th class="col-sm-hide">Remarks</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td colspan="9" class="text-center text-muted">Loading‚Ä¶</td></tr>
+                      <tr><td colspan="3" class="text-center text-muted att-empty-row">No attendance yet.</td></tr>
                     </tbody>
                   </table>
                 </div>
-                <div id="mobileAttList" class="d-md-none px-2 py-3">
-                  <div class="text-center text-muted py-3">Loading‚Ä¶</div>
+                <div id="mobileAttList" class="d-md-none">
+                  <div class="att-empty-mobile">No attendance yet.</div>
                 </div>
               </div>
-
-              <div class="muted-hint">Status: ‚ÄúOpen‚Äù means you‚Äôve checked-in but not yet checked-out for that session.</div>
             </div>
           </div>
           <!-- /Content -->
 
+        </div>
+      </div>
+
+      <!-- Attendance Filter Modal -->
+      <div class="modal fade" id="attFilterModal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="attFilterTitle">
+        <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+          <div class="modal-content rounded-2xl overflow-hidden">
+            <div class="modal-header">
+              <h5 class="modal-title" id="attFilterTitle"><i class="mdi mdi-filter-variant mr-1" aria-hidden="true"></i> Filter Attendance</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+              <div class="att-filter-list">
+                <button type="button" class="att-filter-option active" data-range="all">
+                  <i class="mdi mdi-infinity"></i> All records
+                </button>
+                <button type="button" class="att-filter-option" data-range="today">
+                  <i class="mdi mdi-calendar-today"></i> Today
+                </button>
+                <button type="button" class="att-filter-option" data-range="7">
+                  <i class="mdi mdi-calendar-week"></i> Last 7 days
+                </button>
+                <button type="button" class="att-filter-option" data-range="30">
+                  <i class="mdi mdi-calendar-month"></i> Last 30 days
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -289,6 +489,8 @@
 
   <!-- QRCode -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- html2canvas for card capture -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <!-- html5-qrcode for camera scanning -->
   <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -342,58 +544,88 @@
       });
       ro.observe(qrEl);
 
+      /* ===== Download / Print the whole card ===== */
+      const qrCardEl = document.getElementById('qrBankCard');
+
+      function captureCard() {
+        return html2canvas(qrCardEl, {
+          scale: 3,
+          backgroundColor: null,
+          useCORS: true,
+          logging: false
+        }).then(canvas => canvas.toDataURL('image/png'));
+      }
+
       document.getElementById('btnDownload').addEventListener('click', function () {
-        const img = qrEl.querySelector('img') || qrEl.querySelector('canvas');
-        if (!img) return;
-        const dataUrl = img.tagName.toLowerCase()==='img' ? img.src : img.toDataURL('image/png');
-        const a = document.createElement('a'); a.href = dataUrl; a.download = 'my-qr.png';
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        captureCard().then(dataUrl => {
+          const a = document.createElement('a');
+          a.href = dataUrl; a.download = 'fbmso-attendance-card.png';
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }).catch(() => {
+          // Fallback: just the QR
+          const img = qrEl.querySelector('img') || qrEl.querySelector('canvas');
+          if (!img) return;
+          const dataUrl = img.tagName.toLowerCase()==='img' ? img.src : img.toDataURL('image/png');
+          const a = document.createElement('a'); a.href = dataUrl; a.download = 'my-qr.png';
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        });
       });
 
       document.getElementById('btnPrint').addEventListener('click', function () {
-        const img = qrEl.querySelector('img') || qrEl.querySelector('canvas');
-        if (!img) return;
-        const dataUrl = img.tagName.toLowerCase()==='img' ? img.src : img.toDataURL('image/png');
-        const win = window.open('', 'printwin');
-        win.document.write(`
-          <html><head><title>My QR</title>
-          <style>@media print{body{margin:0}}body{display:flex;align-items:center;justify-content:center;height:100vh;background:#fff}img{width:480px;height:480px}</style>
-          </head><body><img src="${dataUrl}" alt="QR">
-          <script>window.onload=function(){window.print();setTimeout(()=>window.close(),100)}<\/script>
-          </body></html>`);
-        win.document.close();
+        captureCard().then(dataUrl => {
+          const win = window.open('', 'printwin');
+          win.document.write(`
+            <html><head><title>FBMSO Attendance Card</title>
+            <style>
+              @media print{body{margin:0}}
+              body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff;margin:0}
+              img{max-width:90vw;max-height:90vh;border-radius:22px}
+            </style>
+            </head><body><img src="${dataUrl}" alt="FBMSO Attendance Card">
+            <script>window.onload=function(){window.print();setTimeout(()=>window.close(),100)}<\/script>
+            </body></html>`);
+          win.document.close();
+        }).catch(() => {
+          // Fallback: just the QR
+          const img = qrEl.querySelector('img') || qrEl.querySelector('canvas');
+          if (!img) return;
+          const dataUrl = img.tagName.toLowerCase()==='img' ? img.src : img.toDataURL('image/png');
+          const win = window.open('', 'printwin');
+          win.document.write(`
+            <html><head><title>My QR</title>
+            <style>@media print{body{margin:0}}body{display:flex;align-items:center;justify-content:center;height:100vh;background:#fff}img{width:480px;height:480px}</style>
+            </head><body><img src="${dataUrl}" alt="QR">
+            <script>window.onload=function(){window.print();setTimeout(()=>window.close(),100)}<\/script>
+            </body></html>`);
+          win.document.close();
+        });
       });
 
       /* ===== Show/Hide QR logic ===== */
       const colQR  = document.getElementById('colQR');
-      const colAtt = document.getElementById('colAtt');
       const btnTgl = document.getElementById('btnToggleQR');
 
       function setQrHidden(hidden){
         if (hidden){
           colQR.classList.add('d-none');
-          colAtt.classList.remove('col-lg-7');
-          colAtt.classList.add('col-lg-12');
           btnTgl.innerHTML = '<i class="mdi mdi-eye-outline" aria-hidden="true"></i> <span class="d-none d-sm-inline">Show QR</span>';
           localStorage.setItem('qrHidden','1');
         } else {
           colQR.classList.remove('d-none');
-          colAtt.classList.remove('col-lg-12');
-          colAtt.classList.add('col-lg-7');
           btnTgl.innerHTML = '<i class="mdi mdi-eye-off-outline" aria-hidden="true"></i> <span class="d-none d-sm-inline">Hide QR</span>';
           localStorage.setItem('qrHidden','0');
         }
       }
-      // Default hidden the first time (if no preference saved)
+      // Default VISIBLE the first time (if no preference saved)
       (function(){
         const stored = localStorage.getItem('qrHidden');
-        setQrHidden(stored ? (stored === '1') : true);
+        setQrHidden(stored ? (stored === '1') : false);
       })();
       btnTgl.addEventListener('click', ()=> setQrHidden(colQR.classList.contains('d-none') ? false : true));
 
       /* ===== Attendance table ===== */
       const tbody = document.querySelector('#myAttTable tbody');
-      const rangeBtns = document.querySelectorAll('[data-range]');
+      const rangeBtns = document.querySelectorAll('.att-filter-option');
       let allRows = [];
       const mobileList = document.getElementById('mobileAttList');
       const escapeHtml = function (str) {
@@ -435,8 +667,8 @@
         tbody.innerHTML = '';
         if (mobileList) mobileList.innerHTML = '';
         if (!rows.length){
-          tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No attendance yet.</td></tr>';
-          if (mobileList) mobileList.innerHTML = '<div class="text-center text-muted py-3">No attendance yet.</div>';
+          tbody.innerHTML = '<tr><td colspan="3" class="att-empty-row">No attendance yet.</td></tr>';
+          if (mobileList) mobileList.innerHTML = '<div class="att-empty-mobile">No attendance yet.</div>';
           return;
         }
         let mobileHtml = '';
@@ -444,53 +676,31 @@
           const titleRaw = (r.title && r.title.trim()) ? r.title : (r.activity_id ? ('Activity #' + r.activity_id) : 'Activity');
           const title = escapeHtml(titleRaw);
           const dateStr = r.activity_date ? moment(r.activity_date).format('MMM D, YYYY') : '';
-          const sessionLabel = sesLbl(r.session);
-          const checkIn = r.checked_in_at ? fmt(r.checked_in_at) : 'ó';
-          const checkOut = r.checked_out_at ? fmt(r.checked_out_at) : 'ó';
-          const durationText = r.checked_out_at ? dur(r.checked_in_at, r.checked_out_at) : 'ó';
+          const checkIn = r.checked_in_at ? fmt(r.checked_in_at) : 'ÔøΩ';
+          const checkOut = r.checked_out_at ? fmt(r.checked_out_at) : 'ÔøΩ';
+          const durationText = r.checked_out_at ? dur(r.checked_in_at, r.checked_out_at) : 'ÔøΩ';
           const statusHtml = statusBadge(r);
-          const sourceHtml = srcBadge(r.source);
-          const remarksText = (r.remarks && r.remarks.trim()) ? escapeHtml(r.remarks) : (String(r.source).toLowerCase()==='qr' ? 'Scanned via QR' : 'ó');
           const tr = document.createElement('tr');
           tr.innerHTML =
-            '<td class="col-sm-hide">'+(i+1)+'</td>'+
             '<td>'+
-              '<div class="activity-title">'+title+'</div>'+
-              (dateStr?'<small class="text-muted activity-date"><i class="ion ion-md-calendar mr-1" aria-hidden="true"></i>'+escapeHtml(dateStr)+'</small>':'')+
+              '<div class="att-activity-name">'+title+'</div>'+
+              (dateStr?'<div class="att-activity-date">'+escapeHtml(dateStr)+'</div>':'')+
             '</td>'+
-            '<td class="col-sm-hide"><span class="pill pill-ses">'+escapeHtml(sessionLabel)+'</span></td>'+
-            '<td>'+ checkIn +'</td>'+
-            '<td class="col-sm-hide">'+ checkOut +'</td>'+
-            '<td>'+ statusHtml +'</td>'+
-            '<td class="col-sm-hide">'+ (r.checked_out_at?durationText:'') +'</td>'+
-            '<td class="col-sm-hide">'+ sourceHtml +'</td>'+
-            '<td class="col-sm-hide">'+ remarksText +'</td>';
+            '<td class="att-time">'+ checkIn +'</td>'+
+            '<td>'+ statusHtml +'</td>';
           tbody.appendChild(tr);
 
           if (mobileList) {
-            const collapseId = 'att-card-' + i;
             mobileHtml += `
-              <div class="att-card">
-                <div class="att-card-header">
-                  <button type="button" class="att-card-toggle collapsed" data-toggle="collapse" data-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}">
-                    <div class="d-flex flex-column text-left">
-                      <span class="att-card-title">${title}</span>
-                      ${dateStr ? `<span class="att-card-date">${escapeHtml(dateStr)}</span>` : ''}
-                    </div>
-                    <span class="toggle-icon">+</span>
-                  </button>
-                  <span class="pill-inline">${escapeHtml(sessionLabel)}</span>
-                </div>
-                <div id="${collapseId}" class="collapse" data-parent="#mobileAttList">
-                  <div class="att-card-body">
-                    <div class="att-detail-row"><span class="att-detail-label">Check-In</span><span class="att-detail-value">${escapeHtml(checkIn)}</span></div>
-                    <div class="att-detail-row"><span class="att-detail-label">Check-Out</span><span class="att-detail-value">${escapeHtml(checkOut)}</span></div>
-                    <div class="att-detail-row"><span class="att-detail-label">Duration</span><span class="att-detail-value">${escapeHtml(durationText)}</span></div>
-                    <div class="att-detail-row"><span class="att-detail-label">Status</span><span class="att-detail-value">${statusHtml}</span></div>
-                    <div class="att-detail-row"><span class="att-detail-label">Source</span><span class="att-detail-value">${sourceHtml}</span></div>
-                    <div class="att-detail-row"><span class="att-detail-label">Remarks</span><span class="att-detail-value">${remarksText}</span></div>
+              <div class="att-min-card">
+                <div class="att-min-card-top">
+                  <div>
+                    <div class="att-min-card-name">${title}</div>
+                    ${dateStr ? `<div class="att-min-card-date">${escapeHtml(dateStr)}</div>` : ''}
                   </div>
+                  ${statusHtml}
                 </div>
+                <div class="att-min-card-time">In: ${escapeHtml(checkIn)}</div>
               </div>`;
           }
         });
@@ -500,6 +710,9 @@
         const filtered=allRows.filter(r=>withinRange(r,range));
         render(filtered);
         rangeBtns.forEach(b=>b.classList.toggle('active', b.getAttribute('data-range')===range));
+        const labels = {all:'All', today:'Today', '7':'7d', '30':'30d'};
+        const lbl = document.getElementById('attFilterLabel');
+        if (lbl) lbl.textContent = labels[range] || 'All';
       }
 
       fetch('<?= site_url('attendance/my_logs') ?>')
@@ -509,38 +722,46 @@
           allRows.sort((a,b)=> (a.checked_in_at<b.checked_in_at)?1:-1);
           applyRange('all');
         })
-        .catch(()=>{ tbody.innerHTML='<tr><td colspan="9" class="text-center text-danger">Failed to load.</td></tr>'; });
+        .catch(()=>{ tbody.innerHTML='<tr><td colspan="3" class="att-empty-row text-danger">Failed to load.</td></tr>'; });
 
-      rangeBtns.forEach(btn=>{ btn.addEventListener('click',()=>applyRange(btn.getAttribute('data-range'))); });
+      // Filter modal: open + select
+      const btnAttFilter = document.getElementById('btnAttFilter');
+      if (btnAttFilter) {
+        btnAttFilter.addEventListener('click', ()=> $('#attFilterModal').modal('show'));
+      }
+      rangeBtns.forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          applyRange(btn.getAttribute('data-range'));
+          $('#attFilterModal').modal('hide');
+        });
+      });
 
       /* ===== Modal scanner (hidden by default) ===== */
       // Modal markup injected once (keeps your view clean)
       const modalHtml = `
 <div class="modal fade" id="studentScanModal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="scanTitle">
   <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-    <div class="modal-content rounded-2xl overflow-hidden">
+    <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="scanTitle"><i class="mdi mdi-qrcode-scan mr-1" aria-hidden="true"></i> Scan Poster QR</h5>
+        <h5 class="modal-title" id="scanTitle"><i class="mdi mdi-qrcode-scan" aria-hidden="true"></i> Scan Poster QR</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
       </div>
       <div class="modal-body">
-        <div class="d-flex flex-wrap align-items-center mb-2 gap-2">
-          <label for="cameraSelect" class="mb-0 mr-1">Camera:</label>
-          <select id="cameraSelect" class="form-control form-control-sm" style="min-width:220px"></select>
-          <button id="btnStart" class="btn btn-sm btn-success"><i class="mdi mdi-play" aria-hidden="true"></i> Start</button>
-          <button id="btnStop"  class="btn btn-sm btn-outline-secondary"><i class="mdi mdi-stop" aria-hidden="true"></i> Stop</button>
-          <button id="btnUpload" class="btn btn-sm btn-info"><i class="mdi mdi-upload" aria-hidden="true"></i> Upload</button>
+        <div class="scan-toolbar">
+          <label for="cameraSelect">Camera</label>
+          <select id="cameraSelect"></select>
+          <button id="btnStart" class="scan-btn scan-btn-start"><i class="mdi mdi-play" aria-hidden="true"></i> Start</button>
+          <button id="btnStop" class="scan-btn scan-btn-stop"><i class="mdi mdi-stop" aria-hidden="true"></i> Stop</button>
+          <button id="btnUpload" class="scan-btn scan-btn-upload"><i class="mdi mdi-upload" aria-hidden="true"></i> Upload</button>
           <input type="file" id="qrFileInput" accept="image/*" class="d-none" aria-label="Upload QR image">
-          <label class="ml-2 mb-0 align-items-center d-inline-flex" title="Fix mirrored front cams">
-            <input id="toggleDisableFlip" type="checkbox" class="mr-1" /> Front-cam fix
+          <label class="scan-toggle-fix" title="Fix mirrored front cams">
+            <input id="toggleDisableFlip" type="checkbox" /> Front-cam fix
           </label>
-
-          <!-- IN/OUT mode -->
-          <div class="ml-auto d-flex align-items-center" style="gap:.5rem">
-            <span class="text-muted small">Mode:</span>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Scan mode">
-              <button id="sModeIn"  type="button" class="btn btn-success active">IN</button>
-              <button id="sModeOut" type="button" class="btn btn-outline-primary">OUT</button>
+          <div class="scan-mode-group">
+            <span class="scan-mode-label">Mode</span>
+            <div class="scan-mode-btns">
+              <button id="sModeIn"  type="button" class="scan-mode-btn active-in">IN</button>
+              <button id="sModeOut" type="button" class="scan-mode-btn">OUT</button>
             </div>
           </div>
         </div>
@@ -548,12 +769,13 @@
           <div id="reader"></div>
           <div id="scanStatus" aria-live="polite">Starting camera‚Ä¶</div>
         </div>
-        <small class="text-muted d-block mt-2">
-          Tip: Fill the square with the poster QR. On laptops, try the <b>Front-cam fix</b> if the camera is mirrored.
-        </small>
+        <div class="scan-tip">
+          <i class="mdi mdi-lightbulb-on-outline"></i>
+          Fill the square with the poster QR. On laptops, try <b>Front-cam fix</b> if the camera is mirrored.
+        </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="scan-close-btn" data-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -574,15 +796,11 @@
         const outBtn = document.getElementById('sModeOut');
         if (!inBtn || !outBtn) return;
         if (scanMode === 'in'){
-          inBtn.classList.add('btn-success','active');
-          inBtn.classList.remove('btn-outline-success');
-          outBtn.classList.add('btn-outline-primary');
-          outBtn.classList.remove('btn-primary','active');
+          inBtn.classList.add('active-in');
+          outBtn.classList.remove('active-out');
         } else {
-          outBtn.classList.add('btn-primary','active');
-          outBtn.classList.remove('btn-outline-primary');
-          inBtn.classList.add('btn-outline-success');
-          inBtn.classList.remove('btn-success','active');
+          outBtn.classList.add('active-out');
+          inBtn.classList.remove('active-in');
         }
       }
       function setScanMode(m){
@@ -755,8 +973,11 @@ readerEl.style.height = Math.round(w / ar) + 'px';
         const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
         if ((isIOS || isSafari) && location.protocol !== 'https:' && location.hostname !== 'localhost') {
           const warn = document.createElement('div');
-          warn.className = 'alert alert-warning my-2';
-          warn.innerHTML = '<b>iOS camera requires HTTPS or localhost.</b> Please open this page over https://';
+          warn.className = 'scan-tip';
+          warn.style.background = '#fef3c7';
+          warn.style.borderColor = '#fcd34d';
+          warn.style.color = '#92400e';
+          warn.innerHTML = '<i class="mdi mdi-alert-outline"></i> <b>iOS camera requires HTTPS or localhost.</b> Please open this page over https://';
           document.getElementById('studentScanModal')?.querySelector('.modal-body')?.prepend(warn);
         }
       })();

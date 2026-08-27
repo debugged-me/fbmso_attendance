@@ -1642,8 +1642,29 @@ public function my_qr()
     $this->load->model('Student_qr_model');
     $qr = $this->Student_qr_model->get_or_issue($student_number);
 
+    $profile = $this->db->select('FirstName, MiddleName, LastName')
+        ->where('StudentNumber', $student_number)
+        ->limit(1)
+        ->get('studeprofile')
+        ->row();
+
+    $student_name = '';
+    $first_name = '';
+    $last_name = '';
+    if ($profile) {
+        $first_name = trim((string)$profile->FirstName);
+        $last_name  = trim((string)$profile->LastName);
+        $student_name = trim($first_name . ' ' . $last_name);
+    }
+    if ($student_name === '') {
+        $student_name = $student_number;
+    }
+
     $data = [
         'student_number' => $student_number,
+        'student_name'   => $student_name,
+        'first_name'     => $first_name,
+        'last_name'      => $last_name,
         'token'          => $qr->token ?? null,
         'status'         => $qr->status ?? null,
     ];

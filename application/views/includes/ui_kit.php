@@ -68,6 +68,20 @@ if (is_array($ui_guard_notice) && !empty($ui_guard_notice['message'])) {
 }
 ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/ui-kit.css'); ?>">
+<link href="<?= base_url('assets/fonts/sora/sora.css?v=20260827'); ?>" rel="stylesheet">
+<style>
+  /* Sora is the default font for every page.
+     NOTE: <i> and <span> are excluded — they are almost always icons
+     (.fa, .mdi, .bi, .ion, .menu-arrow …) that carry their own font-family.
+     Text inside them inherits Sora from the parent (body, div, p, etc.). */
+  body,
+  h1, h2, h3, h4, h5, h6,
+  .h1, .h2, .h3, .h4, .h5, .h6,
+  p, a, button, input, select, textarea, label,
+  table, th, td, li, small, div {
+    font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  }
+</style>
 
 <?php /*
    Loaded WITHOUT defer on purpose. Views carry inline <script> blocks that run

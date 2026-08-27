@@ -405,7 +405,6 @@
       padding: 14px;
       border: none;
       border-radius: 18px;
-      clip-path: polygon(6% 0%, 94% 0%, 100% 6%, 100% 94%, 94% 100%, 6% 100%, 0% 94%, 0% 6%);
       font-family: 'Sora', sans-serif;
       font-size: .88rem;
       font-weight: 700;
