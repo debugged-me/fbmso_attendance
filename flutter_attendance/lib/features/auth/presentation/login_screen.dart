@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../domain/mobile_config.dart';
 import 'auth_controller.dart';
 import 'forgot_password_screen.dart';
+import 'legal_dialogs.dart';
 import 'register_screen.dart';
 
 /// Credential entry. The base URL was already chosen on the welcome screen.
@@ -98,6 +99,21 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _showDataPrivacy() =>
+      LegalDialogs.showDataPrivacy(context, schoolName: _schoolName);
+  void _showTermsOfUse() =>
+      LegalDialogs.showTermsOfUse(context, schoolName: _schoolName);
+  void _showAbout() =>
+      LegalDialogs.showAbout(context, schoolName: _schoolName);
+
+  /// Dynamic school name from the connected server's `/config` response.
+  /// Falls back to [AppBrand.name] when the probe failed (offline cold
+  /// start) so the login surface never shows a blank brand.
+  String get _schoolName {
+    final name = (widget.controller.config?.schoolName ?? '').trim();
+    return name.isEmpty ? AppBrand.name : name;
+  }
+
   @override
   Widget build(BuildContext context) {
     final config = widget.controller.config;
@@ -122,12 +138,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     Center(child: _Logo(config: config)),
                     const SizedBox(height: 20),
 
-                    // ── Brand name (generic, multi-tenant) ───────────
-                    const Center(
+                    // ── Brand name (dynamic from /config) ────────────
+                    Center(
                       child: Text(
-                        AppBrand.name,
+                        _schoolName,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
                           color: AppInk.heading,
@@ -136,10 +152,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Center(
+                    Center(
                       child: Text(
                         AppBrand.tagline,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 13,
                           color: AppInk.muted,
                           fontWeight: FontWeight.w500,
@@ -275,6 +291,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 24),
+
+                    // ── Legal footer (mirrors home_page.php legal-footer) ──
+                    _LegalFooter(
+                      onPrivacy: _showDataPrivacy,
+                      onTerms: _showTermsOfUse,
+                      onAbout: _showAbout,
+                      copyrightName: _schoolName,
+                    ),
                   ],
                 ),
               ),
@@ -282,6 +307,81 @@ class _LoginScreenState extends State<LoginScreen> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Three-link legal footer + copyright line, mirroring the
+/// `legal-footer` block in `application/views/home_page.php`.
+class _LegalFooter extends StatelessWidget {
+  const _LegalFooter({
+    required this.onPrivacy,
+    required this.onTerms,
+    required this.onAbout,
+    required this.copyrightName,
+  });
+
+  final VoidCallback onPrivacy;
+  final VoidCallback onTerms;
+  final VoidCallback onAbout;
+  final String copyrightName;
+
+  @override
+  Widget build(BuildContext context) {
+    const linkStyle = TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+      color: AppInk.muted,
+    );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 4,
+          children: [
+            TextButton(
+              onPressed: onPrivacy,
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('Data Privacy', style: linkStyle),
+            ),
+            const Text('·', style: TextStyle(color: AppInk.rule, fontSize: 12)),
+            TextButton(
+              onPressed: onTerms,
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('Terms of Use', style: linkStyle),
+            ),
+            const Text('·', style: TextStyle(color: AppInk.rule, fontSize: 12)),
+            TextButton(
+              onPressed: onAbout,
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('About', style: linkStyle),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '© ${DateTime.now().year} $copyrightName. All rights reserved.',
+          style: const TextStyle(
+            fontSize: 11,
+            color: AppInk.muted,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }

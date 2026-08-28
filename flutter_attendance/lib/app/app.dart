@@ -41,7 +41,8 @@ class _FlutterAttendanceAppState extends State<FlutterAttendanceApp> {
     // the app behind biometrics before showing any data.
     bool biometricOk = true;
     if (controller.isAuthenticated) {
-      biometricOk = await BiometricService.gate();
+      final schoolName = (controller.config?.schoolName ?? '').trim();
+      biometricOk = await BiometricService.gate(schoolName: schoolName);
       if (!biometricOk) {
         // User cancelled — sign them out so they see the login screen.
         await controller.logout();
@@ -72,7 +73,14 @@ class _FlutterAttendanceAppState extends State<FlutterAttendanceApp> {
           if (!snapshot.hasData) {
             return const _SplashScreen();
           }
-          return _AuthFlow(controller: snapshot.data!.controller);
+          final controller = snapshot.data!.controller;
+          // Use the connected school's name once /config resolves; before
+          // that the generic [AppBrand.name] fallback is shown.
+          final schoolName = (controller.config?.schoolName ?? '').trim();
+          return _AuthFlow(
+            controller: controller,
+            schoolName: schoolName,
+          );
         },
       ),
     );
@@ -80,8 +88,9 @@ class _FlutterAttendanceAppState extends State<FlutterAttendanceApp> {
 }
 
 class _AuthFlow extends StatelessWidget {
-  const _AuthFlow({required this.controller});
+  const _AuthFlow({required this.controller, this.schoolName = ''});
   final AuthController controller;
+  final String schoolName;
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +99,7 @@ class _AuthFlow extends StatelessWidget {
       builder: (context, _) {
         // Still bootstrapping → splash.
         if (controller.bootstrapping) {
-          return const _SplashScreen();
+          return _SplashScreen(schoolName: schoolName);
         }
 
         // Authenticated → role-based shell.
@@ -173,10 +182,12 @@ class _RoleShellState extends State<_RoleShell> {
 }
 
 class _SplashScreen extends StatelessWidget {
-  const _SplashScreen();
+  const _SplashScreen({this.schoolName = ''});
+  final String schoolName;
 
   @override
   Widget build(BuildContext context) {
+    final name = schoolName.trim().isEmpty ? AppBrand.name : schoolName;
     return Scaffold(
       body: Center(
         child: Column(
@@ -189,9 +200,10 @@ class _SplashScreen extends StatelessWidget {
               fit: BoxFit.contain,
             ),
             const SizedBox(height: 24),
-            const Text(
-              AppBrand.name,
-              style: TextStyle(
+            Text(
+              name,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: AppTheme.textDark,

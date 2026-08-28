@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../auth/presentation/legal_dialogs.dart';
 
 /// Temporary post-login landing. Phase 4+ replaces this with the real
 /// per-role bottom-nav shells (StudentShell, InstructorShell, AdminShell...).
@@ -16,14 +17,41 @@ class HomeShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final schoolName =
+        session.schoolName.trim().isEmpty ? AppBrand.name : session.schoolName;
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppBrand.name),
+        title: Text(schoolName),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign out',
             onPressed: () => _confirmLogout(context),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'More',
+            onSelected: (value) {
+              switch (value) {
+                case 'privacy':
+                  LegalDialogs.showDataPrivacy(context,
+                      schoolName: session.schoolName);
+                  break;
+                case 'terms':
+                  LegalDialogs.showTermsOfUse(context,
+                      schoolName: session.schoolName);
+                  break;
+                case 'about':
+                  LegalDialogs.showAbout(context,
+                      schoolName: session.schoolName);
+                  break;
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'privacy', child: Text('Data Privacy')),
+              PopupMenuItem(value: 'terms', child: Text('Terms of Use')),
+              PopupMenuItem(value: 'about', child: Text('About')),
+            ],
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../tokens/app_tokens.dart';
 import '../../theme/app_theme.dart';
@@ -30,6 +31,8 @@ class AppInput extends StatelessWidget {
     this.autofocus = false,
     this.readOnly = false,
     this.onTap,
+    this.inputFormatters,
+    this.maxLength,
   });
 
   final TextEditingController? controller;
@@ -49,6 +52,8 @@ class AppInput extends StatelessWidget {
   final bool autofocus;
   final bool readOnly;
   final VoidCallback? onTap;
+  final List<TextInputFormatter>? inputFormatters;
+  final int? maxLength;
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +97,8 @@ class AppInput extends StatelessWidget {
           maxLines: maxLines,
           autofillHints: autofillHints,
           autofocus: autofocus,
+          inputFormatters: inputFormatters,
+          maxLength: maxLength,
           style: TextStyle(
             fontFamily: AppTheme.fontFamily,
             fontSize: 15,

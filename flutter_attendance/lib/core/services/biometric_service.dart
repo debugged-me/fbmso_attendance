@@ -50,15 +50,19 @@ class BiometricService {
   /// Gate the app behind biometrics. Returns true if the user is allowed
   /// to proceed (either biometric is disabled, not available, or the user
   /// authenticated successfully). Returns false if the user cancelled.
-  static Future<bool> gate() async {
+  ///
+  /// [schoolName] is the connected school's dynamic name (from
+  /// `/api/mobile/config`); it falls back to [AppBrand.name] when empty.
+  static Future<bool> gate({String schoolName = ''}) async {
     final enabled = await isEnabled;
     if (!enabled) return true;
 
     final available = await isAvailable;
     if (!available) return true; // device has no biometrics — don't block
 
+    final name = schoolName.trim().isEmpty ? AppBrand.name : schoolName;
     return await authenticate(
-      reason: 'Authenticate to open ${AppBrand.name}.',
+      reason: 'Authenticate to open $name.',
     );
   }
 

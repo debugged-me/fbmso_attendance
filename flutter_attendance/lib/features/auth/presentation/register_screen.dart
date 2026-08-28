@@ -348,7 +348,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: const Color(0xFFF0F4FF),
       body: SafeArea(
         child: Column(
@@ -370,7 +372,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             // ── Scrollable form ──
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 32 + bottomInset),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -510,6 +512,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 14),
                           DropdownButtonFormField<String>(
                             initialValue: _sex.isEmpty ? null : _sex,
+                            isExpanded: true,
                             decoration: _dropdownDecoration('Sex *', Icons.wc_rounded),
                             items: ['Female', 'Male', 'Others']
                                 .map((s) => DropdownMenuItem(value: s, child: Text(s)))
@@ -559,6 +562,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             prefixIcon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
                             textInputAction: TextInputAction.next,
+                            maxLength: 11,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                           ),
                           const SizedBox(height: 28),
 
@@ -581,6 +588,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   children: [
                                     DropdownButtonFormField<String>(
                                       initialValue: _course.isEmpty ? null : _course,
+                                      isExpanded: true,
                                       decoration: _dropdownDecoration(
                                           'Course / Program *', Icons.school_outlined),
                                       items: _courses
@@ -596,6 +604,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     DropdownButtonFormField<String>(
                                       initialValue:
                                           _yearLevel.isEmpty ? null : _yearLevel,
+                                      isExpanded: true,
                                       decoration: _dropdownDecoration(
                                           'Year Level *', Icons.stairs_outlined),
                                       items: _yearLevels
@@ -624,6 +633,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         : DropdownButtonFormField<String>(
                                             initialValue:
                                                 _section.isEmpty ? null : _section,
+                                            isExpanded: true,
                                             decoration: _dropdownDecoration(
                                                 'Section *', Icons.group_outlined),
                                             items: _sections

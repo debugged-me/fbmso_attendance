@@ -12,4 +12,8 @@ class AppBrand {
 
   /// Subtitle shown under the brand name on the login screen.
   static const String tagline = 'Sign in with your portal account';
+
+  /// Year portion used in the About dialog and copyright line, mirroring the
+  /// web's `Version <?= date('Y'); ?>.1` string in `home_page.php`.
+  static const String aboutVersion = '2026';
 }

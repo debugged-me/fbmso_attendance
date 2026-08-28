@@ -9,6 +9,7 @@ import '../../attendance/domain/attendance_models.dart';
 import '../../attendance/presentation/activity_state_style.dart';
 import '../../attendance/presentation/poster_scan_screen.dart';
 import '../../attendance/presentation/scan_screen.dart';
+import '../../student/presentation/my_qr_screen.dart';
 
 /// Shows the activity detail bottom sheet with role-based actions.
 /// - Students: "Scan Poster QR" + "Show My QR"
@@ -186,16 +187,55 @@ class ActivityDetailSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 AppButton(
-                  label: 'Show My QR',
-                  icon: Icons.qr_code_2_rounded,
+                  label: isOpen ? 'Show My QR' : 'Check-in Closed',
+                  icon: isOpen
+                      ? Icons.qr_code_2_rounded
+                      : Icons.lock_outline_rounded,
                   fullWidth: true,
                   size: AppButtonSize.lg,
                   style: AppButtonStyle.outline,
+                  disabled: !isOpen,
                   onTap: () {
                     Navigator.of(context).pop();
-                    Navigator.of(context).popUntil((route) => route.isFirst);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MyQrScreen(session: session),
+                      ),
+                    );
                   },
                 ),
+                if (!isOpen) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppInk.caution.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: AppInk.caution.withValues(alpha: 0.25)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded,
+                            size: 18, color: AppInk.caution),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'This activity has ended. Check-in is no longer '
+                            'available.',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppInk.caution,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ] else ...[
                 AppButton(
                   label: isOpen ? 'Scan Students' : 'Check-in Closed',

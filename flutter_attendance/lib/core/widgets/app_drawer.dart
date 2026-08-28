@@ -193,8 +193,8 @@ class DrawerItem {
   const DrawerItem({
     required this.icon,
     required this.title,
-    required this.subtitle,
     required this.onTap,
+    this.subtitle = '',
     this.iconColor = AppInk.accent,
   });
 
@@ -231,28 +231,13 @@ class _DrawerTile extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppInk.heading,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.subtitle,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppInk.muted,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                child: Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppInk.heading,
+                  ),
                 ),
               ),
               const Icon(Icons.chevron_right_rounded,
