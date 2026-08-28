@@ -332,8 +332,7 @@ class Page extends CI_Controller
 	{
 		if ($this->session->userdata('level') === 'Super Admin') {
 			$result['data'] = $this->SettingsModel->getSchoolInformation();
-			$result['online_settings'] = $this->OnlineSettingsModel->get_setting(); // 👈 pass to view
-			$this->load->view('dashboard_SuperAdmin', $result);                     // your view includes the sidebar
+			$this->load->view('dashboard_SuperAdmin', $result);
 		} else {
 			echo "Access Denied";
 		}
@@ -1244,16 +1243,6 @@ class Page extends CI_Controller
 		$this->load->view('student_grades');
 	}
 
-	public function bdayToday()
-	{
-		date_default_timezone_set('Asia/Manila');
-
-		$this->load->model('SignupModel'); // <— new model below
-		$result['students'] = $this->SignupModel->birthdays_today();
-
-		$this->load->view('bday_today', $result);
-	}
-
 	//Masterlist by Sex
 	function listBySex()
 	{
@@ -1262,15 +1251,6 @@ class Page extends CI_Controller
 		$sex = $this->input->get('sex');
 		$result['data'] = $this->StudentModel->sexList($sem, $sy, $sex);
 		$this->load->view('masterlist_by_sex', $result);
-	}
-	public function bdayMonth()
-	{
-		date_default_timezone_set('Asia/Manila');
-
-		$this->load->model('SignupModel');
-		$result['students'] = $this->SignupModel->birthdays_this_month();
-
-		$this->load->view('bday_month', $result);
 	}
 	//online enrollment
 	function enrollment()

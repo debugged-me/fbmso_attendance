@@ -20,10 +20,19 @@
           }
         }
 
+        function escapeHtml(value) {
+          return String(value == null ? "" : value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+        }
+
         function renderItem(baseHref, row) {
-          var title = row.document_type || "Document";
-          var meta = "By " + (row.student || "—") + " · " + fmtDate(row.request_date || "");
-          var href = baseHref || "#";
+          var title = escapeHtml(row.document_type || "Document request");
+          var meta = escapeHtml("By " + (row.student || "—") + " · " + fmtDate(row.request_date || ""));
+          var href = escapeHtml(row.url || baseHref || "#");
 
           return [
             '<a class="req-item" href="', href, '">',

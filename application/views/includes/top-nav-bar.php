@@ -8,50 +8,7 @@
 
            <div class="navbar-custom ms-appbar" id="ms-appbar">
                <ul class="list-unstyled topnav-menu float-right mb-0" id="ms-top-actions">
-                   <?php if ($this->session->userdata('level') === 'Student'): ?>
-
-                   <?php else: ?>
-                       <li class="dropdown notification-list ms-overflow-source" id="bday-li">
-                           <a id="bdayDropdown"
-                               class="nav-link dropdown-toggle waves-effect"
-                               data-toggle="dropdown" href="#" role="button"
-                               aria-haspopup="false" aria-expanded="false">
-                               <i class="mdi mdi-cake-variant"></i>
-                               <span id="bday-badge" class="badge badge-danger noti-icon-badge" style="display:none;">0</span>
-                           </a>
-
-                           <div class="dropdown-menu dropdown-menu-right dropdown-lg">
-                               <!-- item-->
-                               <div class="dropdown-item noti-title">
-                                   <h5 class="font-16 m-0">Birthday Celebrants</h5>
-                               </div>
-
-                               <div class="slimscroll noti-scroll">
-                                   <div class="inbox-widget">
-                                       <a href="<?= base_url(); ?>Page/bdayToday" class="bday-link">
-                                           <div class="inbox-item">
-                                               <div class="inbox-item-img">
-                                                   <img src="<?= base_url(); ?>assets/images/cake.png" class="rounded-circle" alt="">
-                                               </div>
-                                               <p class="inbox-item-author">Today's</p>
-                                               <p class="inbox-item-text text-truncate">Birthday Celebrants</p>
-                                           </div>
-                                       </a>
-
-                                       <a href="<?= base_url(); ?>Page/bdayMonth" class="bday-link">
-                                           <div class="inbox-item">
-                                               <div class="inbox-item-img">
-                                                   <img src="<?= base_url(); ?>assets/images/cake.png" class="rounded-circle" alt="">
-                                               </div>
-                                               <p class="inbox-item-author">This Month's</p>
-                                               <p class="inbox-item-text text-truncate">Birthday Celebrants</p>
-                                           </div>
-                                       </a>
-                                   </div> <!-- end inbox-widget -->
-                               </div>
-                           </div>
-                       </li>
-
+                   <?php if ($this->session->userdata('level') !== 'Student'): ?>
                        <?php include(APPPATH . 'views/includes/req_bell.php'); ?>
                    <?php endif; ?>
                    <li class="dropdown notification-list ms-profile-action">
