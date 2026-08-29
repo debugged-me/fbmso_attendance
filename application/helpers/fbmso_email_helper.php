@@ -40,34 +40,51 @@ if (!function_exists('fbmso_mailqueue_ensure_table'))
 }
 
 if (!function_exists('fbmso_mailqueue_push'))
-{
-function fbmso_mailqueue_check_
-    function fbmso_mailqueue_push($ci, $toEmail, $subject, $htmlBody, $schoolName = '')
     {
-        if ($ci === null) {
-            $ci =& get_instance();
+        function fbmso_mailqueue_push(
+            $ci,
+            $toEmail,
+            $subject,
+            $htmlBody,
+            $schoolName = ''
+        )
+        {
+            if ($ci === null) {
+                $ci =& get_instance();
+            }
+    
+            $toEmail = trim((string)$toEmail);
+    
+            if (
+                $toEmail === '' ||
+                !filter_var($toEmail, FILTER_VALIDATE_EMAIL)
+            ) {
+                return false;
+            }
+    
+            if (!fbmso_mailqueue_ensure_table($ci)) {
+                return false;
+            }
+    
+            return (bool)$ci->db->insert(
+                'fbmso_email_queue',
+                [
+                    'to_email'    => $toEmail,
+                    'subject'     => mb_substr((string)$subject, 0, 255),
+                    'body'        => (string)$htmlBody,
+                    'school_name' => mb_substr(
+                        trim((string)$schoolName),
+                        0,
+                        255
+                    ),
+                    'status'      => 'pending',
+                    'attempts'    => 0,
+                    'last_error'  => '',
+                    'created_at'  => date('Y-m-d H:i:s'),
+                ]
+            );
         }
-
-        $toEmail = trim((string) $toEmail);
-        if ($toEmail === '' || !filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
-            return false;
-        }
-        if (!fbmso_mailqueue_ensure_table($ci)) {
-            return false;
-        }
-
-        return (bool) $ci->db->insert('fbmso_email_queue', [
-            'to_email'    => $toEmail,
-            'subject'     => mb_substr((string) $subject, 0, 255),
-            'body'        => (string) $htmlBody,
-            'school_name' => mb_substr(trim((string) $schoolName), 0, 255),
-            'status'      => 'pending',
-            'attempts'    => 0,
-            'last_error'  => '',
-            'created_at'  => date('Y-m-d H:i:s'),
-        ]);
     }
-}
 
 if (!function_exists('fbmso_mailqueue_token'))
 {
