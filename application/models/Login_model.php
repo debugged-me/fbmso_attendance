@@ -36,7 +36,6 @@ class Login_model extends CI_Model
         FROM o_users
         WHERE TRIM(username) = TRIM(?)
           AND password = ?
-          AND LOWER(TRIM(acctStat)) = 'active'
         LIMIT 1
       ",
       [$username, $password]
@@ -60,7 +59,6 @@ class Login_model extends CI_Model
           OR REPLACE(REPLACE(TRIM(username), '-', ''), ' ', '') = ?
         )
           AND password = ?
-          AND LOWER(TRIM(acctStat)) = 'active'
         ORDER BY
           CASE WHEN TRIM(username) = TRIM(?) THEN 0 ELSE 1 END,
           CASE WHEN REPLACE(REPLACE(TRIM(username), '-', ''), ' ', '') = ? THEN 1 ELSE 2 END,
@@ -108,80 +106,9 @@ class Login_model extends CI_Model
     return $query->row_array();
   }
 
-  public function findUserForReset($email, $identifier)
-  {
-    $email = strtolower(trim((string)$email));
-    $identifier = trim((string)$identifier);
-    $normalizedIdentifier = strtolower(preg_replace('/[\s-]+/', '', $identifier));
-
-    if ($email === '' || $identifier === '') {
-      return null;
-    }
-
-    $query = $this->db->query(
-      "
-        SELECT username, IDNumber, email, fName, mName, lName, acctStat
-        FROM o_users
-        WHERE email = ?
-          AND (
-            username = ?
-            OR IDNumber = ?
-            OR REPLACE(REPLACE(username, '-', ''), ' ', '') = ?
-            OR REPLACE(REPLACE(IDNumber, '-', ''), ' ', '') = ?
-          )
-        ORDER BY
-          CASE WHEN username = ? THEN 0 ELSE 1 END,
-          CASE WHEN IDNumber = ? THEN 0 ELSE 1 END,
-          dateCreated DESC
-        LIMIT 1
-      ",
-      [$email, $identifier, $identifier, $normalizedIdentifier, $normalizedIdentifier, $identifier, $identifier]
-    );
-
-    if ($query->num_rows() > 0) {
-      return $query->row_array();
-    }
-
-    $query = $this->db->query(
-      "
-        SELECT username, IDNumber, email, fName, mName, lName, acctStat
-        FROM o_users
-        WHERE LOWER(TRIM(email)) = ?
-          AND (
-            LOWER(TRIM(username)) = LOWER(TRIM(?))
-            OR LOWER(TRIM(IDNumber)) = LOWER(TRIM(?))
-            OR LOWER(REPLACE(REPLACE(TRIM(username), '-', ''), ' ', '')) = ?
-            OR LOWER(REPLACE(REPLACE(TRIM(IDNumber), '-', ''), ' ', '')) = ?
-          )
-        ORDER BY
-          CASE WHEN LOWER(TRIM(username)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END,
-          CASE WHEN LOWER(TRIM(IDNumber)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END,
-          dateCreated DESC
-        LIMIT 1
-      ",
-      [$email, $identifier, $identifier, $normalizedIdentifier, $normalizedIdentifier, $identifier, $identifier]
-    );
-
-    return $query->row_array();
-  }
-
   public function forgotPassword($email)
   {
     return $this->findUserByEmail($email);
-  }
-
-  public function updatePasswordByUsername($username, $passwordHash)
-  {
-    $username = trim((string)$username);
-    $passwordHash = trim((string)$passwordHash);
-
-    if ($username === '' || $passwordHash === '') {
-      return false;
-    }
-
-    return $this->db
-      ->where('username', $username)
-      ->update('o_users', ['password' => $passwordHash]);
   }
 
   public function sendTemporaryPasswordForUser($username)
@@ -205,6 +132,13 @@ class Login_model extends CI_Model
       return [
         'ok' => false,
         'message' => 'No account/email found for this user.'
+      ];
+    }
+
+    if (strtolower(trim((string)($user['acctStat'] ?? ''))) !== 'active') {
+      return [
+        'ok' => false,
+        'message' => 'This account is not active. Verify your email or contact support.'
       ];
     }
 
@@ -260,7 +194,7 @@ class Login_model extends CI_Model
 
       return [
         'ok' => false,
-        'message' => 'Unable to send the temporary password email. You can use the manual password option instead.'
+        'message' => 'Unable to send the temporary password email. Please try again later.'
       ];
     }
 

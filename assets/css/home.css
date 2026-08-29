@@ -461,7 +461,9 @@
     }
 
     .forgot-row {
-      text-align: right;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
       margin: 10px 0 24px;
     }
 

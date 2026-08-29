@@ -140,32 +140,6 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<String?> forgotPasswordManual({
-    required String email,
-    required String identifier,
-    required String newPassword,
-    required String confirmPassword,
-  }) async {
-    _error = null;
-    if (_baseUrl.isEmpty) {
-      return 'No school URL set. Go back and enter your school URL.';
-    }
-    try {
-      await _api.forgotPasswordManual(
-        baseUrl: _baseUrl,
-        email: email.trim(),
-        identifier: identifier.trim(),
-        newPassword: newPassword,
-        confirmPassword: confirmPassword,
-      );
-      return null;
-    } on ApiException catch (e) {
-      return e.message;
-    } catch (e) {
-      return e.toString();
-    }
-  }
-
   /// Fetch registration form options (courses, year levels, sections).
   ({List<String> courses, List<String> yearLevels, List<String> sections})?
       _regOptionsCache;

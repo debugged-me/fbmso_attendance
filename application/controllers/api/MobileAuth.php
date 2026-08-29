@@ -31,6 +31,7 @@ class MobileAuth extends MobileApi
         parent::__construct();
         $this->load->helper('url');
         $this->load->model('Login_model');
+        $this->load->model('EmailVerificationModel');
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -254,6 +255,9 @@ class MobileAuth extends MobileApi
 
         if (!$this->user_is_active($userRow)) {
             $this->Login_model->log_login_attempt($username, $passwordRaw, 'failed');
+            if ($this->user_needs_email_verification($userRow)) {
+                return $this->json(['ok' => false, 'message' => 'Verify your email before signing in. Check your inbox for the verification link.'], 403);
+            }
             return $this->json(['ok' => false, 'message' => 'Your account is not active. Please contact support.'], 403);
         }
 
@@ -473,6 +477,13 @@ class MobileAuth extends MobileApi
             return $this->json(['ok' => true, 'message' => 'If that email exists, a temporary password has been sent.']);
         }
 
+        if (!$this->user_is_active($account)) {
+            $message = $this->user_needs_email_verification($account)
+                ? 'Verify your email before resetting your password.'
+                : 'Your account is not active. Please contact support.';
+            return $this->json(['ok' => false, 'message' => $message], 403);
+        }
+
         // Returns ['ok' => bool, 'message' => string] — a bare truthiness check
         // on the array would always pass and report success on a failed reset.
         $sent = $this->Login_model->sendTemporaryPasswordForUser((string)($account['username'] ?? ''));
@@ -502,7 +513,7 @@ class MobileAuth extends MobileApi
         $nameExtn      = strtoupper(trim((string)($p['nameExtn'] ?? '')));
         $sex           = trim((string)($p['Sex'] ?? ''));
         $birthDate     = trim((string)($p['birthDate'] ?? ''));
-        $email         = trim((string)($p['email'] ?? ''));
+        $email         = strtolower(trim((string)($p['email'] ?? '')));
         $contactNo     = trim((string)($p['contactNo'] ?? ''));
         $course1       = trim((string)($p['Course1'] ?? ''));
         $major1        = trim((string)($p['Major1'] ?? ''));
@@ -616,7 +627,7 @@ class MobileAuth extends MobileApi
             'password'    => $passwordHash,
             'position'    => 'Student',
             'email'       => $email,
-            'acctStat'    => 'active',
+            'acctStat'    => EmailVerificationModel::ACCOUNT_STATUS,
             'dateCreated' => date('Y-m-d'),
         ]);
         $this->db->trans_complete();
@@ -654,59 +665,16 @@ class MobileAuth extends MobileApi
             $this->db->insert('semesterstude', $profiling);
         }
 
+        $verification = $this->EmailVerificationModel->queueForUser($studentNumber);
+        $message = !empty($verification['ok'])
+            ? 'Registration successful. Check your email and tap Verify Email & Login before signing in.'
+            : 'Registration successful, but the verification email could not be sent. Use Resend verification email on the web login page.';
+
         return $this->json([
             'ok' => true,
-            'message' => 'Registration successful. You can now sign in with your Student ID and password.',
+            'email_queued' => !empty($verification['ok']),
+            'message' => $message,
         ]);
-    }
-
-    // ──────────────────────────────────────────────────────────────────────
-    //  Forgot password — manual mode (set password without email)
-    // ──────────────────────────────────────────────────────────────────────
-
-    public function forgot_password_manual()
-    {
-        if ($this->input->method(true) !== 'POST') {
-            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
-        }
-
-        $p = $this->read_payload();
-        $email      = trim((string)($p['email'] ?? ''));
-        $identifier = trim((string)($p['identifier'] ?? ''));
-        $newPassword = (string)($p['new_password'] ?? '');
-        $confirmPassword = (string)($p['confirm_password'] ?? '');
-
-        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return $this->json(['ok' => false, 'message' => 'A valid email is required.'], 422);
-        }
-        if ($identifier === '') {
-            return $this->json(['ok' => false, 'message' => 'Username or Student ID is required.'], 422);
-        }
-        if ($newPassword === '') {
-            return $this->json(['ok' => false, 'message' => 'New password is required.'], 422);
-        }
-        if (strlen($newPassword) < 8) {
-            return $this->json(['ok' => false, 'message' => 'Password must be at least 8 characters.'], 422);
-        }
-        if ($newPassword !== $confirmPassword) {
-            return $this->json(['ok' => false, 'message' => 'Passwords do not match.'], 422);
-        }
-
-        $user = $this->Login_model->findUserForReset($email, $identifier);
-        if (!$user) {
-            return $this->json(['ok' => false, 'message' => 'No account matched that email and username/student ID.'], 404);
-        }
-
-        if (strtolower(trim((string)($user['acctStat'] ?? ''))) !== 'active') {
-            return $this->json(['ok' => false, 'message' => 'Your account is not active. Please contact support.'], 403);
-        }
-
-        $updated = $this->Login_model->updatePasswordByUsername($user['username'], sha1($newPassword));
-        if (!$updated) {
-            return $this->json(['ok' => false, 'message' => 'Unable to reset password right now. Please try again.'], 500);
-        }
-
-        return $this->json(['ok' => true, 'message' => 'Password updated. You can sign in now.']);
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -716,6 +684,11 @@ class MobileAuth extends MobileApi
     private function user_is_active(array $userRow): bool
     {
         return strtolower(trim((string)($userRow['acctStat'] ?? ''))) === 'active';
+    }
+
+    private function user_needs_email_verification(array $userRow): bool
+    {
+        return strtolower(trim((string)($userRow['acctStat'] ?? ''))) === strtolower(EmailVerificationModel::ACCOUNT_STATUS);
     }
 
     private function current_settings()

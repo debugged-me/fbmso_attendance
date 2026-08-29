@@ -4,7 +4,6 @@ defined('BASEPATH') or exit('No direct script access allowed');
 $route['default_controller'] = 'login';
 $route['login']              = 'login';
 $route['login/auth']         = 'login/auth';
-$route['login/check_reset_email'] = 'login/check_reset_email';
 
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
@@ -86,7 +85,6 @@ $route['api/mobile/auth/change-password']         = 'api/MobileAuth/change_passw
 $route['api/mobile/auth/change-avatar']           = 'api/MobileAuth/change_avatar';
 $route['api/mobile/auth/avatar']                  = 'api/MobileAuth/avatar';
 $route['api/mobile/auth/forgot-password']         = 'api/MobileAuth/forgot_password';
-$route['api/mobile/auth/forgot-password/manual']  = 'api/MobileAuth/forgot_password_manual';
 $route['api/mobile/auth/register']                = 'api/MobileAuth/register';
 
 // Mobile attendance + activities

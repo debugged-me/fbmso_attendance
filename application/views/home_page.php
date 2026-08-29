@@ -128,9 +128,6 @@
       $forgotInfoText  = is_string($forgotInfo) ? trim(strip_tags($forgotInfo)) : '';
       $forgotModalOpen = (bool)$this->session->flashdata('forgot_modal_open');
       $forgotEmail = (string)($this->session->flashdata('forgot_email') ?: '');
-      $forgotIdentifier = (string)($this->session->flashdata('forgot_identifier') ?: '');
-      $forgotAccountVerified = (bool)$this->session->flashdata('forgot_account_verified');
-      $forgotManualMode = (bool)$this->session->flashdata('forgot_manual_mode');
       ?>
       <?php if (!empty($loginErrorText)): ?>
         <div class="flash" id="login-error-message"><?= htmlspecialchars($loginErrorText, ENT_QUOTES, 'UTF-8'); ?></div>
@@ -161,6 +158,7 @@
 
         <div class="forgot-row">
           <a class="forgot-link" href="#" data-toggle="modal" data-target="#forgotModal">Forgot password?</a>
+          <a class="forgot-link" href="<?= site_url('verify-email'); ?>">Resend verification email</a>
         </div>
 
         <button class="btn-main" type="submit" id="loginBtn"><span class="btn-label">Sign in</span><span class="btn-spinner"></span></button>
@@ -331,11 +329,10 @@
           <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color:#8fa0c8"><span>&times;</span></button>
         </div>
         <div class="modal-body px-4 pb-4">
-          <form id="resetPassword" method="post" action="<?= site_url('login/forgot_pass'); ?>" data-check-url="<?= site_url('login/check_reset_email'); ?>">
-            <input type="hidden" name="reset_mode" id="reset-mode" value="<?= $forgotManualMode ? 'manual' : 'email'; ?>">
+          <form id="resetPassword" method="post" action="<?= site_url('login/forgot_pass'); ?>">
             <div class="field-group">
               <label class="field-label" for="reset-email">Email address</label>
-              <small class="reset-hint">Enter your registered email to receive a temporary password you can use to sign in. If you prefer, you can open the manual password option below.</small>
+              <small class="reset-hint">Enter your registered email to receive a temporary password you can use to sign in.</small>
               <input type="email" id="reset-email" name="email" class="field" placeholder="Enter Email" value="<?= html_escape($forgotEmail); ?>" required>
             </div>
             <div
@@ -343,36 +340,7 @@
               class="reset-status<?= !empty($forgotErrorText) ? ' is-error' : (!empty($forgotInfoText) ? ' is-success' : ''); ?>"
               <?= empty($forgotErrorText) && empty($forgotInfoText) ? 'hidden' : ''; ?>
             ><?= html_escape($forgotErrorText ?: $forgotInfoText); ?></div>
-
-            <div id="manual-reset-section" class="reset-password-fields" <?= $forgotManualMode ? '' : 'hidden'; ?>>
-              <div class="field-group" style="margin-top:14px">
-                <label class="field-label" for="reset-identifier">Username / Student ID</label>
-                <input type="text" id="reset-identifier" name="identifier" class="field" placeholder="Enter Username or Student ID" value="<?= html_escape($forgotIdentifier); ?>" <?= $forgotManualMode ? 'required' : ''; ?>>
-              </div>
-
-              <div id="reset-password-fields">
-              
-              <div class="field-group" style="margin-top:14px">
-                <label class="field-label" for="reset-new-password">New password</label>
-                <div class="field-wrap">
-                  <input class="field" id="reset-new-password" name="new_password" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters" <?= $forgotManualMode ? 'required' : ''; ?> style="padding-right:42px">
-                  <button class="toggle-pass" type="button" data-target="#reset-new-password" title="Toggle"><i class="fa fa-eye"></i></button>
-                </div>
-              </div>
-
-              <div class="field-group">
-                <label class="field-label" for="reset-confirm-password">Confirm password</label>
-                <div class="field-wrap">
-                  <input class="field" id="reset-confirm-password" name="confirm_password" type="password" minlength="8" autocomplete="new-password" placeholder="Repeat your new password" <?= $forgotManualMode ? 'required' : ''; ?> style="padding-right:42px">
-                  <button class="toggle-pass" type="button" data-target="#reset-confirm-password" title="Toggle"><i class="fa fa-eye"></i></button>
-                </div>
-              </div>
-              </div>
-            </div>
-
-            <a href="#" class="reset-alt-link" id="toggleManualReset"><?= $forgotManualMode ? 'Send temporary password instead' : 'Set password manually instead'; ?></a>
-
-            <button class="btn-main" id="resetSubmit" type="submit" style="margin-top:12px" <?= ($forgotManualMode && !$forgotAccountVerified) ? 'disabled' : ''; ?>><span><?= $forgotManualMode ? 'Update password' : 'Send temporary password'; ?></span></button>
+            <button class="btn-main" id="resetSubmit" type="submit" style="margin-top:12px"><span>Send temporary password</span></button>
           </form>
         </div>
       </div>
@@ -390,14 +358,10 @@
       forgotError: <?= json_encode($forgotErrorText ?? ''); ?>,
       forgotInfo: <?= json_encode($forgotInfoText ?? ''); ?>,
       forgotModalOpen: <?= $forgotModalOpen ? 'true' : 'false'; ?>,
-      forgotEmail: <?= json_encode($forgotEmail ?? ''); ?>,
-      forgotIdentifier: <?= json_encode($forgotIdentifier ?? ''); ?>,
-      forgotAccountVerified: <?= $forgotAccountVerified ? 'true' : 'false'; ?>,
-      forgotManualMode: <?= $forgotManualMode ? 'true' : 'false'; ?>,
-      checkResetEmailUrl: <?= json_encode(site_url('login/check_reset_email')); ?>
+      forgotEmail: <?= json_encode($forgotEmail ?? ''); ?>
     };
   </script>
-  <script src="<?= base_url(); ?>assets/js/home.js?v=30260829"></script>
+  <script src="<?= base_url(); ?>assets/js/home.js?v=30260830"></script>
   <script src="<?= base_url('assets/js/mobile-shell.js?v=5'); ?>"></script>
 
 </body>

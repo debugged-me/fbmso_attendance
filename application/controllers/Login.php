@@ -283,7 +283,11 @@ class Login extends CI_Controller
                     'Login failed',
                     ['attempted_username' => $username]
                 );
-                $this->session->set_flashdata('auth_error', 'Your account is not active. Please contact support.');
+                $status = strtolower(trim((string)$acctStat));
+                $message = $status === 'pending verification'
+                    ? 'Verify your email before signing in. Check your inbox or resend the verification email.'
+                    : 'Your account is not active. Please contact support.';
+                $this->session->set_flashdata('auth_error', $message);
                 redirect('login' . ($next ? ('?next=' . urlencode($next)) : ''));
 
 
@@ -373,91 +377,28 @@ class Login extends CI_Controller
     public function forgot_pass()
     {
         $email = $this->normalize_reset_email($this->input->post('email', TRUE));
-        $identifier = $this->normalize_reset_identifier($this->input->post('identifier', TRUE));
-        $resetMode = strtolower(trim((string)$this->input->post('reset_mode', TRUE)));
-        $isManualMode = ($resetMode === 'manual');
-        $newPassword = $this->normalize_reset_password($this->input->post('new_password'));
-        $confirmPassword = $this->normalize_reset_password($this->input->post('confirm_password'));
 
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->redirect_forgot_password('Please enter a valid email address.', $email, $identifier, FALSE, $isManualMode);
+            $this->redirect_forgot_password('Please enter a valid email address.', $email);
             return;
         }
 
-        if (!$isManualMode) {
-            $user = $this->Login_model->findUserByEmail($email);
-            if (!$user) {
-                $this->redirect_forgot_password('Email not found!', $email, '', FALSE, FALSE);
-                return;
-            }
-
-            if (strtolower(trim((string)($user['acctStat'] ?? ''))) !== 'active') {
-                $this->redirect_forgot_password('Your account is not active. Please contact support.', $email, '', FALSE, FALSE);
-                return;
-            }
-
-            $sendResult = $this->Login_model->sendTemporaryPasswordForUser((string)$user['username']);
-
-            $this->AuditLogModel->write(
-                'password_reset',
-                'Login',
-                'o_users',
-                $user['username'],
-                null,
-                ['password_reset' => !empty($sendResult['ok']), 'mode' => 'temporary_password_email'],
-                !empty($sendResult['ok']) ? 1 : 0,
-                !empty($sendResult['ok']) ? 'Temporary password queued from forgot-password form' : 'Temporary password could not be queued from forgot-password form',
-                ['target_email' => $email]
-            );
-
-            if (empty($sendResult['ok'])) {
-                $this->redirect_forgot_password(
-                    (string)($sendResult['message'] ?? 'Unable to send the temporary password email.'),
-                    $email,
-                    '',
-                    FALSE,
-                    FALSE
-                );
-                return;
-            }
-
-            $this->session->set_flashdata('forgot_info', (string)$sendResult['message']);
-            redirect(base_url('login'), 'refresh');
-            return;
-        }
-
-        if ($identifier === '') {
-            $this->redirect_forgot_password('Please enter your username or student ID.', $email, $identifier, FALSE, TRUE);
-            return;
-        }
-
-        $user = $this->Login_model->findUserForReset($email, $identifier);
+        $user = $this->Login_model->findUserByEmail($email);
         if (!$user) {
-            $this->redirect_forgot_password('No account matched that email and username/student ID.', $email, $identifier, FALSE, TRUE);
+            $this->redirect_forgot_password('Email not found!', $email);
             return;
         }
 
-        if (strtolower(trim((string)($user['acctStat'] ?? ''))) !== 'active') {
-            $this->redirect_forgot_password('Your account is not active. Please contact support.', $email, $identifier, FALSE, TRUE);
+        $status = strtolower(trim((string)($user['acctStat'] ?? '')));
+        if ($status !== 'active') {
+            $message = $status === 'pending verification'
+                ? 'Verify your email before resetting your password.'
+                : 'Your account is not active. Please contact support.';
+            $this->redirect_forgot_password($message, $email);
             return;
         }
 
-        if ($newPassword === '') {
-            $this->redirect_forgot_password('Please enter a new password.', $email, $identifier, TRUE, TRUE);
-            return;
-        }
-
-        if (strlen($newPassword) < 8) {
-            $this->redirect_forgot_password('Password must be at least 8 characters.', $email, $identifier, TRUE, TRUE);
-            return;
-        }
-
-        if ($newPassword !== $confirmPassword) {
-            $this->redirect_forgot_password('Passwords do not match.', $email, $identifier, TRUE, TRUE);
-            return;
-        }
-
-        $updated = $this->Login_model->updatePasswordByUsername($user['username'], sha1($newPassword));
+        $sendResult = $this->Login_model->sendTemporaryPasswordForUser((string)$user['username']);
 
         $this->AuditLogModel->write(
             'password_reset',
@@ -465,88 +406,23 @@ class Login extends CI_Controller
             'o_users',
             $user['username'],
             null,
-            ['password_reset' => (bool)$updated, 'mode' => 'manual_password_update'],
-            $updated ? 1 : 0,
-            $updated ? 'Password reset from forgot-password form' : 'Password reset from forgot-password form failed',
-            ['target_email' => $email, 'target_identifier' => $identifier]
+            ['password_reset' => !empty($sendResult['ok']), 'mode' => 'temporary_password_email'],
+            !empty($sendResult['ok']) ? 1 : 0,
+            !empty($sendResult['ok']) ? 'Temporary password queued from forgot-password form' : 'Temporary password could not be queued from forgot-password form',
+            ['target_email' => $email]
         );
 
-        if (!$updated) {
-            $this->redirect_forgot_password('Unable to reset password right now. Please try again.', $email, $identifier, TRUE, TRUE);
+        if (empty($sendResult['ok'])) {
+            $this->redirect_forgot_password(
+                (string)($sendResult['message'] ?? 'Unable to send the temporary password email.'),
+                $email
+            );
             return;
         }
 
-        $this->session->set_flashdata('forgot_info', 'Password updated. You can sign in now.');
+        $this->session->set_flashdata('forgot_info', (string)$sendResult['message']);
         redirect(base_url('login'), 'refresh');
-    }
-
-    public function check_reset_email()
-    {
-        $email = $this->normalize_reset_email($this->input->post('email', TRUE));
-        $identifier = $this->normalize_reset_identifier($this->input->post('identifier', TRUE));
-        $resetMode = strtolower(trim((string)$this->input->post('mode', TRUE)));
-        $isManualMode = ($resetMode === 'manual');
-        $response = [
-            'success' => false,
-            'stage' => 'email',
-            'email_exists' => false,
-            'account_active' => false,
-            'message' => 'Email does not exist.'
-        ];
-
-        if ($email === '') {
-            $response['message'] = 'Please enter your registered email.';
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $response['message'] = 'Please enter a valid email address.';
-        } else {
-            $emailUser = $this->Login_model->findUserByEmail($email);
-
-            if (!$emailUser) {
-                $response['message'] = 'Email does not exist.';
-            } elseif (strtolower(trim((string)($emailUser['acctStat'] ?? ''))) !== 'active') {
-                $response['email_exists'] = true;
-                $response['account_active'] = false;
-                $response['message'] = 'Email exists, but the account is not active. Please contact support.';
-            } elseif ($identifier === '') {
-                $response['email_exists'] = true;
-                $response['account_active'] = true;
-                $response['message'] = $isManualMode
-                    ? 'Email exists. Enter your username or student ID.'
-                    : 'Email exists. You can send a temporary password to this email now.';
-            } else {
-                $user = $this->Login_model->findUserForReset($email, $identifier);
-
-                if (!$user) {
-                    $response = [
-                        'success' => false,
-                        'stage' => 'account',
-                        'email_exists' => true,
-                        'account_active' => true,
-                        'message' => 'Email exists, but it does not match that username or student ID.'
-                    ];
-                } elseif (strtolower(trim((string)($user['acctStat'] ?? ''))) !== 'active') {
-                    $response = [
-                        'success' => false,
-                        'stage' => 'account',
-                        'email_exists' => true,
-                        'account_active' => false,
-                        'message' => 'Your account is not active. Please contact support.'
-                    ];
-                } else {
-                    $response = [
-                        'success' => true,
-                        'stage' => 'account',
-                        'email_exists' => true,
-                        'account_active' => true,
-                        'message' => 'Account verified.'
-                    ];
-                }
-            }
-        }
-
-        $this->output
-            ->set_content_type('application/json')
-            ->set_output(json_encode($response, JSON_UNESCAPED_UNICODE));
+        return;
     }
 
     private function normalize_reset_email($email)
@@ -559,38 +435,11 @@ class Login extends CI_Controller
         return strtolower(trim($email));
     }
 
-    private function normalize_reset_password($password)
-    {
-        $password = (string)$password;
-        $password = str_replace(["\xc2\xa0", "\xe2\x80\x8b"], ' ', $password);
-        $password = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\x{00AD}]/u', '', $password);
-
-        return preg_replace('/^\s+|\s+$/u', '', $password);
-    }
-
-    private function normalize_reset_identifier($identifier)
-    {
-        $identifier = (string)$identifier;
-        $identifier = str_replace(["\xc2\xa0", "\xe2\x80\x8b"], ' ', $identifier);
-        $identifier = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\x{00AD}]/u', '', $identifier);
-
-        return trim(preg_replace('/\s+/u', ' ', $identifier));
-    }
-
-    private function redirect_forgot_password($message, $email = '', $identifier = '', $accountVerified = FALSE, $manualMode = FALSE)
+    private function redirect_forgot_password($message, $email = '')
     {
         $this->session->set_flashdata('forgot_error', $message);
         $this->session->set_flashdata('forgot_modal_open', 1);
         $this->session->set_flashdata('forgot_email', $email);
-        $this->session->set_flashdata('forgot_identifier', $identifier);
-
-        if ($accountVerified) {
-            $this->session->set_flashdata('forgot_account_verified', 1);
-        }
-
-        if ($manualMode) {
-            $this->session->set_flashdata('forgot_manual_mode', 1);
-        }
 
         redirect(base_url('login'), 'refresh');
     }

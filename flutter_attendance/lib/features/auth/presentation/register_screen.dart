@@ -312,7 +312,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() {
         _busy = false;
         _success =
-            'Registration successful! You can now sign in with your Student ID and password.';
+            'Registration successful! Check your email and verify your account before signing in.';
       });
       // This screen was pushed on top of the login screen, so pop back to it.
       // Replacing the whole stack would discard the root route that listens to

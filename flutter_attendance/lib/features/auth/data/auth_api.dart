@@ -166,35 +166,6 @@ class AuthApi {
     }
   }
 
-  /// Manual password reset — email + username/ID + new password.
-  Future<void> forgotPasswordManual({
-    required String baseUrl,
-    required String email,
-    required String identifier,
-    required String newPassword,
-    required String confirmPassword,
-  }) async {
-    final response = await _safeRequest(
-      () => _client.post(
-        _uri(baseUrl, '/api/mobile/auth/forgot-password/manual'),
-        headers: _jsonHeaders,
-        body: jsonEncode({
-          'email': email,
-          'identifier': identifier,
-          'new_password': newPassword,
-          'confirm_password': confirmPassword,
-        }),
-      ),
-    );
-
-    final data = _decode(response);
-    if (data['ok'] != true) {
-      throw ApiException(
-          (data['message'] ?? 'Unable to reset password').toString(),
-          statusCode: response.statusCode);
-    }
-  }
-
   /// Fetch registration form options (courses, year levels, sections).
   Future<({List<String> courses, List<String> yearLevels, List<String> sections})>
       registrationOptions({required String baseUrl}) async {

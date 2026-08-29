@@ -9,6 +9,7 @@ class Registration extends CI_Controller
         $this->load->model('RegistrationModel');
         $this->load->model('SettingsModel'); // for reCAPTCHA keys + school name
         $this->load->model('StudentModel');  // for dropdowns
+        $this->load->model('EmailVerificationModel');
         $this->load->helper(['url', 'security']);
         $this->load->database();
     }
@@ -159,7 +160,8 @@ class Registration extends CI_Controller
 
             // identifiers
             $studentNumber = $studentData['StudentNumber'] ?: (string) random_int(1000000000, 1999999999);
-            $email         = (string)$studentData['email'];
+            $email         = strtolower(trim((string)$studentData['email']));
+            $studentData['email'] = $email;
             $firstName     = (string)$studentData['FirstName'];
             $middleName    = (string)$studentData['MiddleName'];
             $lastName      = (string)$studentData['LastName'];
@@ -184,6 +186,12 @@ class Registration extends CI_Controller
             }
             if ($passwordRaw !== $confirmPass) {
                 $this->flashRegistrationError('<div class="alert alert-danger text-center"><b>Passwords do not match.</b></div>');
+                redirect($registrationRedirect);
+                return;
+            }
+
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $this->flashRegistrationError('<div class="alert alert-danger text-center"><b>Please enter a valid email address.</b></div>');
                 redirect($registrationRedirect);
                 return;
             }
@@ -229,7 +237,9 @@ class Registration extends CI_Controller
                 'password'   => $passwordHash,
                 'position'   => 'Student',
                 'email'      => $email,
-                'acctStat'   => 'active',
+                // Public/admin-created student accounts cannot sign in until
+                // the verification link sent to this address is opened.
+                'acctStat'   => EmailVerificationModel::ACCOUNT_STATUS,
                 'dateCreated' => date('Y-m-d'),
             ]);
 
@@ -319,62 +329,32 @@ class Registration extends CI_Controller
             $this->db->where('studentNumber', $studentNumber)
                 ->update('profiles', ['yearLevel' => $yearLevelNormalized]);
 
-            // 4) Send email with login details
-            $schoolName = $this->SettingsModel->getSchoolName();
-
-            $htmlMessage = '
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-                <h2 style="color: #2b6cb0;">Welcome to Faculty of Business and Management <br>
-                Student Organization Attendance Portal</h2>
-                <p>Dear <strong>' . htmlspecialchars($firstName) . '</strong>,</p>
-                <p>Thank you for signing up! Your Attendance Portal account has been created successfully.</p>
-                <table style="width: 100%; max-width: 420px; margin: 20px 0; border-collapse: collapse;">
-                    <tr>
-                        <td style="padding: 10px; background-color: #f0f0f0; border: 1px solid #ddd;"><strong>Username:</strong></td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">' . htmlspecialchars($studentNumber) . '</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px; background-color: #f0f0f0; border: 1px solid #ddd;"><strong>Password:</strong></td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">' . htmlspecialchars($passwordRaw) . '</td>
-                    </tr>
-                </table>
-                <p>You may now log in to the system using the credentials above.</p>
-                <p style="margin-top: 30px;">Best regards,<br><strong>' . htmlspecialchars($schoolName) . '</strong></p>
-                <hr style="margin-top: 40px;">
-                <p style="font-size: 12px; color: #888;">This is an automated message. Please do not reply to this email.</p>
-            </div>';
-            $sent = fbmso_mailqueue_push($this, $email, 'Attendance Monitoring System', $htmlMessage, $schoolName);
-            if (!$sent) {
+            // 4) Send a one-time verification link. The password is never
+            // included in email, and the account stays pending until clicked.
+            $verification = $this->EmailVerificationModel->queueForUser($studentNumber);
+            if (empty($verification['ok'])) {
                 log_message('error', 'EMAIL QUEUE FAILED for new account ' . $studentNumber . ' <' . $email . '>');
 
                 if ($isAdminFlow) {
-                    // The account WAS created — only the email failed. Go to the
-                    // list either way: staying on the form reads as "it didn't
-                    // work" and invites a duplicate submission.
                     $this->session->set_flashdata(
                         'warning',
-                        'Account created for ' . $studentNumber . ', but the credentials email could not be sent. '
-                            . 'Use Reset Password on the list to send it again.'
+                        'Account created for ' . $studentNumber . ', but the verification email could not be queued. '
+                            . 'Ask the user to use Resend verification email on the login page.'
                     );
                     return redirect('Page/profileList');
                 } else {
-                    // Public signup → go to login with an INFO SweetAlert
-                    $this->session->set_flashdata(
-                        'info_message',
-                        'Registration saved, but email could not be sent. You can log in using your Student ID and password.'
-                    );
-                    return redirect('login');
+                    $this->session->set_flashdata('verification_error', (string)$verification['message']);
+                    $this->session->set_flashdata('verification_email', $email);
+                    return redirect('verify-email');
                 }
             }
             if ($isAdminFlow) {
-                // ✅ Admin created the account → stay in admin area with GREEN SweetAlert
-                $this->session->set_flashdata('success', 'Account created. Login credentials are queued and will reach the user in a couple of minutes.');
+                $this->session->set_flashdata('success', 'Account created. A verification email is queued; the user cannot sign in until it is verified.');
                 return redirect('Page/profileList'); // or your admin list page
             } else {
-                // 🌐 Public self-signup → go to login with an INFO SweetAlert
                 $this->session->set_flashdata(
                     'info_message',
-                    'Registration successful. Your login credentials are on the way to your email.'
+                    'Registration successful. Check your email and click Verify Email & Login before signing in.'
                 );
                 return redirect('login');
             }
