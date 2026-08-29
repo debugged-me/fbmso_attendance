@@ -1,19 +1,6 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
-/**
- * EmailQueue — throttled background sender for the email_queue table.
- *
- * Web requests only ever INSERT into email_queue (see fbmso_email_helper);
- * this controller is the single process that talks to SMTP, run by cron:
- *
- *   URL cron :  *\/2 * * * *  curl -s "https://<domain>/EmailQueue/process?key=<token>"
- *   CLI cron :  *\/2 * * * *  php /path/to/fbmso_attendance/index.php EmailQueue process
- *
- * Visit /EmailQueue/key while logged in (any non-student staff account) for
- * queue counts; add ?show_cron=1 as Admin / IT / Super Admin to reveal the
- * exact cron URL + token.
- */
 class EmailQueue extends CI_Controller
 {
 	public function process()
@@ -28,8 +15,6 @@ class EmailQueue extends CI_Controller
 
 		ignore_user_abort(true);
 		@set_time_limit(300);
-
-		// 5 emails / run, 2s apart; cron every 2 min => up to ~150/hour.
 		$summary = fbmso_mailqueue_process($this, 5, 2);
 
 		if ($this->input->is_cli_request()) {
@@ -61,12 +46,7 @@ class EmailQueue extends CI_Controller
 
 		$isAdmin = in_array($level, ['Admin', 'IT', 'Super Admin'], true);
 		$suspended = fbmso_mailqueue_suspended();
-
-		// Flash message from a redirect after retry/resume.
 		$flash = (string) $this->input->get('msg', true);
-
-		// Token/cron command intentionally hidden unless explicitly requested
-		// by an account that would be setting the cron job up.
 		$showCron = '';
 		if ((string) $this->input->get('show_cron') === '1' && $isAdmin) {
 			$showCron = "*/2 * * * * curl -s \""
@@ -78,12 +58,6 @@ class EmailQueue extends CI_Controller
 			$this->_render_page($counts, $level, $isAdmin, $suspended, $flash, $showCron)
 		);
 	}
-
-	/**
-	 * Clears the cooldown flag so the next cron run tries again immediately.
-	 * Useful after fixing the SMTP settings that caused it — otherwise you wait
-	 * out the full window for no reason.
-	 */
 	public function resume()
 	{
 		$level = trim((string) $this->session->userdata('level'));
@@ -99,14 +73,6 @@ class EmailQueue extends CI_Controller
 		redirect('EmailQueue/key?msg=' . $msg);
 	}
 
-	/**
-	 * Re-queue failed messages back to pending so the next cron run retries
-	 * them. Without this the only way to revive a stuck row is raw SQL, since
-	 * fbmso_mailqueue_process() skips rows whose attempts >= maxAttempts.
-	 *
-	 * Optional ?id=N retries a single row; otherwise every failed row is
-	 * reset. Admin / IT / Super Admin only.
-	 */
 	public function retry()
 	{
 		$level = trim((string) $this->session->userdata('level'));
@@ -140,14 +106,7 @@ class EmailQueue extends CI_Controller
 		redirect('EmailQueue/key?msg=' . $msg);
 	}
 
-	// --------------------------------------------------------------------
-	//  HTML rendering
-	// --------------------------------------------------------------------
 
-	/**
-	 * Builds the full HTML page. Kept inline so the controller stays
-	 * self-contained — this is a diagnostics page, not a themed view.
-	 */
 	private function _render_page(array $counts, $level, $isAdmin, $suspended, $flash, $showCron)
 	{
 		$esc = function ($s) {
@@ -326,14 +285,7 @@ class EmailQueue extends CI_Controller
 </html>';
 	}
 
-	/**
-	 * The last error recorded against each stuck message. Without this the only
-	 * way to find out why the queue stalled is a direct database query.
-	 *
-	 * Returns an HTML <table> wrapped in a section card. When the viewer is an
-	 * admin, each row gets a per-row "retry" link so a single bad address can
-	 * be revived without re-queuing every failure.
-	 */
+	
 	private function _render_recent_errors($esc)
 	{
 		$rows = $this->db->select('id, to_email, status, attempts, last_error')

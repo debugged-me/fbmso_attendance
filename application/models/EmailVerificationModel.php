@@ -349,102 +349,32 @@ class EmailVerificationModel extends CI_Model
             </div>
         ';
     
-        /*
-         * ==============================================================
-         * SEND DIRECTLY THROUGH SMTP
-         * ==============================================================
-         * Do NOT use fbmso_mailqueue_push() here because verification
-         * emails need to be delivered immediately.
-         */
-        // Load email configuration first
-        $this->config->load('email');
-        $this->load->library('email');
-        
-        $this->email->clear(true);
-        
-        // Get sender email from application/config/email.php
-        $fromEmail = trim((string)$this->config->item('from_email'));
-        
-        // Fallback to SMTP username
-        if ($fromEmail === '') {
-            $fromEmail = trim((string)$this->config->item('smtp_user'));
-        }
-        
-        // Validate sender email
-        if (!filter_var($fromEmail, FILTER_VALIDATE_EMAIL)) {
-        
-            log_message(
-                'error',
-                'EMAIL VERIFICATION FAILED: No valid sender email configured.'
-            );
-        
-            // Delete token so user can try again
-            $this->db
-                ->where('id', $verificationId)
-                ->delete(self::TABLE);
-        
-            return $this->failure(
-                'The verification email could not be sent. Email configuration is invalid.'
-            );
-        }
-        
-        
-        // Prepare email
-        $this->email->from(
-            $fromEmail,
+        $queued = fbmso_mailqueue_push(
+            $this,
+            $email,
+            'Verify your email - ' . $schoolName,
+            $htmlMessage,
             $schoolName
         );
         
-        $this->email->to($email);
-        
-        $this->email->subject(
-            'Verify your email - ' . $schoolName
-        );
-        
-        $this->email->set_mailtype('html');
-        
-        $this->email->message($htmlMessage);
-        
-        
-        // Actually attempt SMTP delivery
-        $sent = $this->email->send();
-        
-        if (!$sent) {
-        
-            $debug = $this->email->print_debugger([
-                'headers'
-            ]);
-        
-            log_message(
-                'error',
-                'EMAIL VERIFICATION SEND FAILED for ' .
-                $email .
-                ' | ' .
-                $debug
-            );
-        
-            /*
-             * Remove token because the verification
-             * email was not successfully sent.
-             */
+        if (!$queued) {
             $this->db
                 ->where('id', $verificationId)
                 ->delete(self::TABLE);
         
             return $this->failure(
-                'The verification email could not be sent. Please try again.'
+                'The verification email could not be queued. Please try again.'
             );
         }
         
-        
-        // Email successfully handed to SMTP
         return [
             'ok' => true,
             'already_verified' => false,
-            'message' =>
-                'A verification link has been sent to your email. Please check your inbox and verify your account before signing in.',
-        ];}
-        
+            'message' => 'A verification email has been queued. Please check your inbox shortly and verify your account before signing in.',
+        ];
+        }
+
+    
     public function queueForEmail($email)
     {
         $email = strtolower(trim((string)$email));

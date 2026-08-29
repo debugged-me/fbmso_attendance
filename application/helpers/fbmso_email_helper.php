@@ -1,24 +1,5 @@
 <?php defined('BASEPATH') OR exit('No direct script access allowed');
 
-/*
-|--------------------------------------------------------------------------
-| FBMSO Mail Queue
-|--------------------------------------------------------------------------
-| Web requests never talk to SMTP directly: they INSERT into `fbmso_email_queue`
-| (auto-created on first use) and redirect instantly. The EmailQueue
-| controller, run by cron every 2 minutes, delivers a small throttled batch
-| so the host's outbound rate limit is never hammered and a tarpitted SMTP
-| session can never hang a PHP worker. Rate-limited emails stay pending and
-| are retried on a later run.
-|
-| Delivery order per message:
-|   1. primary  - application/config/email.php SMTP account
-|   2. fallback - Brevo relay from mass_announcement_email settings (DB row
-|                 first, then application/config/mass_announcement_email.php)
-|
-| The sender address always comes from the resolved profile, so the various
-| hardcoded no-reply@ addresses that used to fail SPF are no longer used.
-*/
 
 if (!function_exists('fbmso_mailqueue_ensure_table'))
 {
@@ -27,8 +8,7 @@ if (!function_exists('fbmso_mailqueue_ensure_table'))
         if ($ci === null) {
             $ci =& get_instance();
         }
-        // NOTE: isset() on $ci->db is unreliable — CI_Model implements __get()
-        // but no __isset(), so isset() is always FALSE when a model calls in.
+       
         if (!is_object($ci->db)) {
             return false;
         }
@@ -53,7 +33,6 @@ if (!function_exists('fbmso_mailqueue_ensure_table'))
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
 
-        // table_exists() caches SHOW TABLES; reset so the fresh table is seen.
         $ci->db->data_cache = [];
 
         return $ci->db->table_exists('fbmso_email_queue');
@@ -62,10 +41,7 @@ if (!function_exists('fbmso_mailqueue_ensure_table'))
 
 if (!function_exists('fbmso_mailqueue_push'))
 {
-    /**
-     * Queue one HTML email. Returns TRUE once the row is committed — that is
-     * the caller's signal that the message is durably owned by the queue.
-     */
+function fbmso_mailqueue_check_
     function fbmso_mailqueue_push($ci, $toEmail, $subject, $htmlBody, $schoolName = '')
     {
         if ($ci === null) {
@@ -140,14 +116,11 @@ if (!function_exists('fbmso_mailqueue_suspend'))
 
 if (!function_exists('fbmso_mailqueue_is_rate_limited'))
 {
-    // Transient provider-side failures (rate limit / tarpit / timeout):
-    // these must NOT count against the email's retry attempts.
+    
     function fbmso_mailqueue_is_rate_limited($result)
     {
         $r = strtolower((string) $result);
 
-        // 421 / 451 must look like an SMTP reply code, not a fragment of a
-        // version string or a size advertised in the EHLO banner.
         if (preg_match('/(?<![\d.-])4(?:21|51)(?![\d.])/', $r)) {
             return true;
         }
@@ -215,11 +188,7 @@ if (!function_exists('fbmso_mailqueue_primary_profile'))
 
 if (!function_exists('fbmso_mailqueue_fallback_profile'))
 {
-    /**
-     * Brevo relay used by the mass-announcement feature, reused here as the
-     * second delivery attempt. Returns NULL when it is unconfigured or is the
-     * same account as the primary profile.
-     */
+   
     function fbmso_mailqueue_fallback_profile($ci, $schoolName = '')
     {
         $primaryProfile = fbmso_mailqueue_primary_profile($ci, $schoolName);
