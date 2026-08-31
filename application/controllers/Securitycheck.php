@@ -145,6 +145,29 @@ class Securitycheck extends CI_Controller
     {
         $this->gate(true);
 
+        // Refuse to run more often than MIN_REPORT_INTERVAL.
+        //
+        // A cron line with '*' in the minute field fires 1440 times a day, and
+        // this endpoint queues an email every time. That floods the mailbox,
+        // backs up the mail queue behind it so real messages (verification,
+        // password resets) stop going out, and buries the one report that
+        // actually said something. The schedule should be fixed, but the
+        // endpoint should not depend on the schedule being right.
+        //
+        // Pass 'force' as the second segment to override:
+        //   php index.php securitycheck daily_report 24 force
+        if (!$this->force_requested() && ($wait = $this->too_soon()) !== null) {
+            $mins = (int)ceil($wait / 60);
+            if (!is_cli() && !$this->input->is_cli_request()) {
+                $this->output->set_content_type('text/plain')->set_output("skipped\n");
+                return;
+            }
+            echo "Skipped: a report was generated less than " . (self::MIN_REPORT_INTERVAL / 3600)
+               . "h ago. Next due in about {$mins} minute(s).\n";
+            echo "If your cron has '*' in the minute field, change it to '0 6 * * *'.\n";
+            return;
+        }
+
         $hours = max(1, (int)$hours);
         $since = date('Y-m-d H:i:s', time() - ($hours * 3600));
 
@@ -210,6 +233,41 @@ class Securitycheck extends CI_Controller
             echo "  ! MAIL: {$w}\n";
         }
         echo "  checkpoint also written to: " . $this->anchor_path() . "\n";
+    }
+
+    /** Minimum gap between reports, whatever the cron says. */
+    const MIN_REPORT_INTERVAL = 21600; // 6 hours
+
+    /**
+     * Seconds still to wait, or NULL when a report is due.
+     * Uses the anchor table, which is written on every real run.
+     */
+    private function too_soon()
+    {
+        if (!$this->db->table_exists('security_audit_anchors')) {
+            return null;
+        }
+
+        $last = $this->db->select('checked_at')->order_by('id', 'DESC')
+            ->limit(1)->get('security_audit_anchors')->row();
+
+        if (!$last || empty($last->checked_at)) {
+            return null;
+        }
+
+        $elapsed = time() - strtotime($last->checked_at);
+
+        return $elapsed < self::MIN_REPORT_INTERVAL ? (self::MIN_REPORT_INTERVAL - $elapsed) : null;
+    }
+
+    private function force_requested()
+    {
+        foreach ((array)$this->uri->rsegments as $seg) {
+            if ($seg === 'force') return true;
+        }
+        if ((string)$this->input->get('force') === '1') return true;
+
+        return in_array('force', (array)($_SERVER['argv'] ?? array()), true);
     }
 
     /** Current end-of-chain figures. */
