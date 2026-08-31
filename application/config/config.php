@@ -364,6 +364,24 @@ $config['security_report_recipients'] = 'clarksteven.edong@softtechservices.net'
 
 /*
 |--------------------------------------------------------------------------
+| Security report cron token
+|--------------------------------------------------------------------------
+|
+| Authenticates the Securitycheck/daily_report cron URL.
+|
+| Set explicitly so the token is identical in every environment. It used to
+| be derived from the encryption key plus the database name, which meant it
+| silently changed between local and production -- and production's database
+| name is the one thing that differs there.
+|
+| Rotating this value invalidates the old cron URL: update the cron entry at
+| the same time.
+|
+*/
+$config['security_report_token'] = '480047a923102887ebd64b33ef6b74abb03fe9bc';
+
+/*
+|--------------------------------------------------------------------------
 | Session Variables
 |--------------------------------------------------------------------------
 |

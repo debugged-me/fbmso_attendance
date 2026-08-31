@@ -20,6 +20,29 @@ defined('BASEPATH') or exit('No direct script access allowed');
  */
 class Securitycheck extends CI_Controller
 {
+    /** The only method reachable over HTTP, and only with a valid token. */
+    const HTTP_METHOD = 'daily_report';
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        // Deliberately in the constructor: this runs BEFORE AuthGuard's
+        // post_controller_constructor hook, so a CLI-only method answers a
+        // plain 404 whether or not the visitor is signed in.
+        //
+        // Letting AuthGuard handle it instead sent anonymous visitors to
+        // /login?next=securitycheck%2Fkey, which echoed the path back into
+        // the address bar, pushed it into browser history, and confirmed to
+        // anyone probing that the route exists and is merely gated. A route
+        // that does not serve browsers should look like it isn't there.
+        if (!is_cli() && !$this->input->is_cli_request()) {
+            if (strtolower((string)$this->router->fetch_method()) !== self::HTTP_METHOD) {
+                show_404();
+            }
+        }
+    }
+
     /**
      * Shared token for the cron URL. Derived from the encryption key and the
      * database name, so it is stable across deploys and never stored anywhere
@@ -28,6 +51,15 @@ class Securitycheck extends CI_Controller
      */
     public static function token($ci = null)
     {
+        // Prefer the explicit config value: it is the same in every
+        // environment, and it is readable without shell access.
+        $configured = trim((string)config_item('security_report_token'));
+        if ($configured !== '') {
+            return $configured;
+        }
+
+        // Fallback for installs that have not set one yet. Folds in the
+        // database name, so it differs between local and production.
         if ($ci === null) {
             $ci = &get_instance();
         }
