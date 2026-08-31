@@ -274,6 +274,105 @@ class Containment extends CI_Controller
         echo "whoever it was simply signs back in.\n\n";
     }
 
+    /**
+     * Devices that have signed into an account.
+     *   php index.php containment devices 2025-0116
+     */
+    public function devices($username = null)
+    {
+        $username = trim((string)$username);
+        if ($username === '') {
+            echo "\nUsage: php index.php containment devices <username>\n\n";
+            return;
+        }
+
+        $this->load->library('devicetokens');
+        $rows = $this->devicetokens->forUser($username);
+
+        if (!$rows) {
+            echo "\nNo devices recorded for '{$username}' yet.\n";
+            echo "Devices are recorded from the next sign-in onward.\n\n";
+            return;
+        }
+
+        echo "\nDEVICES -- {$username}\n" . str_repeat('=', 88) . "\n";
+        printf("  %-26s %-8s %-19s %-9s %s\n", 'DEVICE', 'LOGINS', 'LAST SEEN', 'STATUS', 'TOKEN');
+        echo '  ' . str_repeat('-', 84) . "\n";
+        foreach ($rows as $r) {
+            $name = trim((string)($r['device_marketing_name'] ?: $r['device_model_code'] ?: $r['operating_system'] ?: 'Unknown'));
+            if ($r['browser']) $name .= ' / ' . $r['browser'];
+            $status = $r['is_revoked'] ? 'REVOKED' : ($r['is_trusted'] ? 'trusted' : 'seen');
+            printf("  %-26s %-8s %-19s %-9s %s\n",
+                substr($name, 0, 26), $r['login_count'],
+                substr((string)$r['last_seen_at'], 0, 19), $status,
+                substr((string)$r['device_token_hash'], 0, 12) . '...');
+        }
+        echo "\n  Revoke one: php index.php containment revoke_device {$username} <token-prefix>\n\n";
+    }
+
+    /**
+     * Devices used on several accounts -- the credential-spraying shape.
+     *   php index.php containment shared_devices [minAccounts]
+     */
+    public function shared_devices($min = 3)
+    {
+        $this->load->library('devicetokens');
+        $rows = $this->devicetokens->sharedDevices((int)$min);
+
+        if (!$rows) {
+            echo "\nNo device has signed into {$min} or more accounts.\n\n";
+            return;
+        }
+
+        echo "\nDEVICES USED ON {$min}+ ACCOUNTS\n" . str_repeat('=', 78) . "\n";
+        foreach ($rows as $r) {
+            $name = $r['device'] ?: ($r['model'] ?: 'Unknown device');
+            printf("  %-26s %2d accounts   %s -> %s\n", substr($name, 0, 26), $r['accounts'],
+                substr((string)$r['first_seen'], 0, 10), substr((string)$r['last_seen'], 0, 10));
+            foreach ($this->devicetokens->accountsForDevice($r['device_token_hash']) as $a) {
+                printf("        - %-18s %d login(s), last %s\n",
+                    $a['username'], $a['login_count'], substr((string)$a['last_seen_at'], 0, 19));
+            }
+        }
+        echo "\n  A shared family device looks like this too. Judge it on the timing:\n";
+        echo "  many accounts within minutes is spraying; over months it is a shared phone.\n\n";
+    }
+
+    /**
+     * Revoke a device for an account.
+     *   php index.php containment revoke_device 2025-0116 c2264ba373
+     */
+    public function revoke_device($username = null, $prefix = null)
+    {
+        $username = trim((string)$username);
+        $prefix   = trim((string)$prefix);
+
+        if ($username === '' || $prefix === '') {
+            echo "\nUsage: php index.php containment revoke_device <username> <token-prefix>\n\n";
+            return;
+        }
+
+        $row = $this->db->like('device_token_hash', $prefix, 'after')
+            ->where('username', $username)->limit(1)->get('user_devices')->row_array();
+
+        if (!$row) {
+            echo "\nNo device for '{$username}' with a token starting '{$prefix}'.\n\n";
+            return;
+        }
+
+        $this->load->library('devicetokens');
+        $this->devicetokens->revoke($username, $row['device_token_hash']);
+
+        $this->securityaudit->event('SECURITY_SETTING_CHANGED', array(
+            'module' => 'Containment', 'status' => 'success', 'target' => $username,
+            'description' => 'Device revoked by administrator',
+            'extra' => array('device_token_prefix' => substr($row['device_token_hash'], 0, 12)),
+        ));
+
+        echo "\nRevoked. Its next sign-in is flagged as a revoked device.\n";
+        echo "That does not block the sign-in on its own -- the risk engine will.\n\n";
+    }
+
     /** Put back the hashes from a batch. */
     public function restore($batch = null)
     {

@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v8.done';
+    const MARKER = 'schema_migrations_v9.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -308,6 +308,62 @@ class Schema_migrator
                           UNIQUE KEY `uq_session_reference` (`session_reference`),
                           KEY `idx_username_activity` (`username`,`last_activity_at`),
                           KEY `idx_revoked` (`revoked_at`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
+                },
+            ),
+
+            // Trusted-device recognition.
+            //
+            // Keyed on (username, device_token_hash) rather than the token
+            // alone. One browser holds one token; if it signs into several
+            // accounts it produces several rows sharing that token, which
+            // makes "this device has been used on 17 accounts" a single
+            // query. That is the 2026-08-28 pattern, and a schema keyed only
+            // on the token would have hidden it.
+            //
+            // Only the SHA-256 of the token is stored. The raw value lives in
+            // the browser cookie and nowhere else, so the table cannot be
+            // used to impersonate a device.
+            '2026_08_31_create_user_devices' => array(
+                'check' => function () {
+                    return !$this->tableExists('user_devices');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "CREATE TABLE `user_devices` (
+                          `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                          `username` VARCHAR(100) NOT NULL,
+                          `device_token_hash` CHAR(64) NOT NULL,
+
+                          `device_brand` VARCHAR(100) DEFAULT NULL,
+                          `device_marketing_name` VARCHAR(150) DEFAULT NULL,
+                          `device_model_code` VARCHAR(100) DEFAULT NULL,
+                          `device_type` VARCHAR(50) DEFAULT NULL,
+                          `operating_system` VARCHAR(100) DEFAULT NULL,
+                          `os_version` VARCHAR(50) DEFAULT NULL,
+                          `browser` VARCHAR(100) DEFAULT NULL,
+                          `browser_version` VARCHAR(50) DEFAULT NULL,
+                          `raw_user_agent` TEXT DEFAULT NULL,
+
+                          `first_ip` VARCHAR(45) DEFAULT NULL,
+                          `last_ip` VARCHAR(45) DEFAULT NULL,
+                          `login_count` INT UNSIGNED NOT NULL DEFAULT 0,
+
+                          `first_seen_at` DATETIME NOT NULL,
+                          `last_seen_at` DATETIME NOT NULL,
+
+                          `is_trusted` TINYINT(1) NOT NULL DEFAULT 0,
+                          `is_revoked` TINYINT(1) NOT NULL DEFAULT 0,
+                          `trusted_at` DATETIME DEFAULT NULL,
+                          `revoked_at` DATETIME DEFAULT NULL,
+                          `revoked_by` VARCHAR(100) DEFAULT NULL,
+
+                          PRIMARY KEY (`id`),
+                          UNIQUE KEY `uq_user_device` (`username`,`device_token_hash`),
+                          KEY `idx_token` (`device_token_hash`),
+                          KEY `idx_user_seen` (`username`,`last_seen_at`),
+                          KEY `idx_model` (`device_model_code`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
                     );
                 },

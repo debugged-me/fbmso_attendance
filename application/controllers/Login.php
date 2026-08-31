@@ -11,6 +11,7 @@ class Login extends CI_Controller
         $this->load->library('securityaudit');
         $this->load->library('loginthrottle');
         $this->load->library('sessionregistry');
+        $this->load->library('devicetokens');
     }
 
     function index()
@@ -175,6 +176,30 @@ class Login extends CI_Controller
                 // the user will actually carry, not the pre-login one.
                 $this->sessionregistry->open($username);
                 $this->sessionregistry->prune();
+
+                // Device recognition. Records the visit and tells us whether
+                // this browser has been here before on this account.
+                $device = $this->devicetokens->recognise($username);
+
+                $this->securityaudit->event(
+                    $device['new_device'] ? 'LOGIN_NEW_DEVICE' : 'LOGIN_RECOGNIZED_DEVICE',
+                    [
+                        'module' => 'Login',
+                        'status' => $device['revoked'] ? 'revoked-device' : 'success',
+                        'target' => $username,
+                        'description' => $device['new_device']
+                            ? 'Signed in from a device not seen on this account before'
+                            : 'Signed in from a recognised device',
+                        'extra' => [
+                            'trusted'        => $device['trusted'],
+                            'revoked'        => $device['revoked'],
+                            'login_count'    => $device['device']['login_count'] ?? 1,
+                            // Same browser seen on other accounts. Several in a
+                            // short window is the credential-spraying shape.
+                            'other_accounts' => $device['other_accounts'],
+                        ],
+                    ]
+                );
 
                 $user_data = array(
                     'username'  => $username,
