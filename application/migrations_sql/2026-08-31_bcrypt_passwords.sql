@@ -1,5 +1,9 @@
 -- FBMSO: bcrypt password migration
--- Run once, before deploying the bcrypt code.
+--
+-- YOU DO NOT NEED TO RUN THIS BY HAND.
+-- application/libraries/Schema_migrator.php applies it automatically on the
+-- first request after deploy. This file is kept as documentation, and for
+-- anyone who prefers to apply it ahead of the deploy.
 --
 -- o_users.password was varchar(65), sized for sha1 (40 chars). bcrypt needs 60
 -- and future algorithms need more, so widen it. Widening is non-destructive:

@@ -26,3 +26,6 @@ vendor/
 # System temp files
 Thumbs.db
 ehthumbs.db
+
+# Schema migration markers (per-server, must not be deployed)
+application/cache/*.schema_migrations_*.done

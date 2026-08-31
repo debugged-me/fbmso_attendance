@@ -28,6 +28,15 @@ $hook['pre_controller'] = array(
 */
 $hook['post_controller_constructor'] = array(
 
+    // Must come first: the schema has to be current before any controller
+    // (including Login) reads or writes the tables.
+    array(
+        'class'    => 'SchemaMigrationHook',
+        'function' => 'migrate',
+        'filename' => 'SchemaMigrationHook.php',
+        'filepath' => 'hooks',
+    ),
+
     array(
         'class'    => 'AuthGuardHook',
         'function' => 'guard',
