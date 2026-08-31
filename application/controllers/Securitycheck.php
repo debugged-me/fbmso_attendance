@@ -169,11 +169,18 @@ class Securitycheck extends CI_Controller
             'notes'            => $alerts ? implode('; ', $alerts) : null,
         ));
 
+        // Second anchor, on disk. The emailed checkpoint is the one that
+        // matters -- it lives off the server -- but email is exactly what
+        // breaks first, and a checkpoint that only ever existed in the
+        // database is no anchor at all once someone wipes the database.
+        $this->write_file_anchor($state, $ok, $alerts);
+
+        $mail = $this->queue_health();
         $activity = $this->activity_summary($since);
         $subject  = ($ok ? '[FBMSO Security] Daily report - OK' : '[FBMSO Security] ALERT - audit trail integrity')
                   . ' - ' . date('Y-m-d');
 
-        $body = $this->render_report($ok, $chain, $state, $prev, $alerts, $activity, $since, $hours);
+        $body = $this->render_report($ok, $chain, $state, $prev, $alerts, $activity, $since, $hours, $mail);
 
         $sent = 0;
         foreach ($this->recipients() as $to) {
@@ -196,6 +203,13 @@ class Securitycheck extends CI_Controller
         if ($sent === 0) {
             echo "  ! No email queued. Check security_report_recipients in config.php.\n";
         }
+
+        // Queueing is not delivering. Say so loudly: a report nobody receives
+        // looks exactly like a report with nothing to say.
+        foreach ($mail['warnings'] as $w) {
+            echo "  ! MAIL: {$w}\n";
+        }
+        echo "  checkpoint also written to: " . $this->anchor_path() . "\n";
     }
 
     /** Current end-of-chain figures. */
@@ -289,6 +303,83 @@ class Securitycheck extends CI_Controller
         return compact('byType', 'failedIps', 'changes');
     }
 
+    /**
+     * Is the mail queue actually delivering?
+     *
+     * Yesterday's report sitting in the queue unsent means the checkpoint
+     * never left the building, and every later report is equally invisible.
+     */
+    private function queue_health()
+    {
+        $out = array('pending' => 0, 'failed' => 0, 'oldest' => null, 'stuck_reports' => 0, 'warnings' => array());
+
+        if (!$this->db->table_exists('fbmso_email_queue')) {
+            return $out;
+        }
+
+        $row = $this->db->query(
+            "SELECT SUM(status='pending') pending, SUM(status='failed') failed,
+                    MIN(CASE WHEN status='pending' THEN created_at END) oldest
+               FROM fbmso_email_queue"
+        )->row();
+
+        $out['pending'] = (int)($row->pending ?? 0);
+        $out['failed']  = (int)($row->failed ?? 0);
+        $out['oldest']  = $row->oldest ?? null;
+
+        $out['stuck_reports'] = (int)$this->db->query(
+            "SELECT COUNT(*) c FROM fbmso_email_queue
+              WHERE status IN ('pending','failed') AND subject LIKE '[FBMSO Security]%'"
+        )->row()->c;
+
+        if ($out['stuck_reports'] > 0) {
+            $out['warnings'][] = $out['stuck_reports'] . ' earlier security report(s) never sent. '
+                               . 'The emailed checkpoint is not reaching you.';
+        }
+        if ($out['failed'] > 0) {
+            $out['warnings'][] = $out['failed'] . ' message(s) marked failed in the mail queue.';
+        }
+        if ($out['pending'] > 50) {
+            $out['warnings'][] = $out['pending'] . ' messages pending -- the queue is backing up.';
+        }
+        if ($out['oldest'] !== null && strtotime($out['oldest']) < strtotime('-1 day')) {
+            $out['warnings'][] = 'Oldest pending message is from ' . $out['oldest'] . ' -- delivery is stalled.';
+        }
+
+        return $out;
+    }
+
+    /** Where the on-disk checkpoint lives. */
+    private function anchor_path()
+    {
+        $dir = rtrim(APPPATH, '/') . '/cache';
+
+        return $dir . '/security_anchor.log';
+    }
+
+    /**
+     * Append the checkpoint to a local file.
+     *
+     * Append-only text, one line per run. It does not survive an attacker with
+     * filesystem access -- nothing on the server does -- but it does survive
+     * the far more common case of the database being wiped while the files
+     * are left alone, and it works when email does not.
+     */
+    private function write_file_anchor(array $state, $ok, array $alerts)
+    {
+        $line = sprintf(
+            "%s  total=%d  last_id=%s  hash=%s  status=%s%s\n",
+            date('c'),
+            $state['total'],
+            $state['last_id'] === null ? '-' : $state['last_id'],
+            $state['last_hash'] === null ? '-' : $state['last_hash'],
+            $ok ? 'OK' : 'ALERT',
+            $alerts ? '  (' . implode('; ', $alerts) . ')' : ''
+        );
+
+        @file_put_contents($this->anchor_path(), $line, FILE_APPEND | LOCK_EX);
+    }
+
     private function recipients()
     {
         $raw = (string)$this->config->item('security_report_recipients');
@@ -304,7 +395,7 @@ class Securitycheck extends CI_Controller
         return $out;
     }
 
-    private function render_report($ok, array $chain, array $state, $prev, array $alerts, array $activity, $since, $hours)
+    private function render_report($ok, array $chain, array $state, $prev, array $alerts, array $activity, $since, $hours, array $mail = array())
     {
         $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
         $banner = $ok ? '#1a7f37' : '#b42318';
@@ -343,6 +434,15 @@ class Securitycheck extends CI_Controller
         $h .= '</table>';
         $h .= '<p style="font-size:12px;color:#666;margin:10px 0 20px">Keep this email. If a later report shows fewer records '
             . 'or a lower last id than this one, the trail was cut -- regardless of what the server reports.</p>';
+
+        // Mail health -- if this report reached you, the queue is at least
+        // partly working, but a backlog still means earlier ones did not.
+        if (!empty($mail['warnings'])) {
+            $h .= '<div style="background:#fffbe6;border-left:4px solid #d4a017;padding:12px 14px;margin-bottom:18px">';
+            $h .= '<strong>Mail delivery problems</strong><ul style="margin:8px 0 0 18px;padding:0">';
+            foreach ($mail['warnings'] as $w) { $h .= '<li>' . $e($w) . '</li>'; }
+            $h .= '</ul></div>';
+        }
 
         // Events
         $h .= '<h3 style="font-size:15px;margin:0 0 8px">Events</h3>';
