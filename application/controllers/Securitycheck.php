@@ -456,115 +456,186 @@ class Securitycheck extends CI_Controller
     private function render_report($ok, array $chain, array $state, $prev, array $alerts, array $activity, $since, $hours, array $mail = array())
     {
         $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
-        $banner = $ok ? '#1a7f37' : '#b42318';
 
-        $h  = '<div style="font-family:Arial,Helvetica,sans-serif;color:#222;max-width:760px;margin:auto">';
-        $h .= '<div style="background:' . $banner . ';color:#fff;padding:16px 20px;border-radius:6px 6px 0 0">';
-        $h .= '<h2 style="margin:0;font-size:18px">' . ($ok ? 'Audit trail intact' : 'AUDIT TRAIL ALERT') . '</h2>';
-        $h .= '<div style="opacity:.9;font-size:13px;margin-top:4px">' . $e(date('D, d M Y H:i')) . ' &middot; last ' . (int)$hours . 'h</div>';
-        $h .= '</div><div style="border:1px solid #ddd;border-top:none;padding:20px;border-radius:0 0 6px 6px">';
-
-        if (!$ok) {
-            $h .= '<div style="background:#fff4f4;border-left:4px solid #b42318;padding:12px 14px;margin-bottom:18px">';
-            $h .= '<strong>Someone may have altered the security log.</strong><ul style="margin:8px 0 0 18px;padding:0">';
-            foreach ($alerts as $a) { $h .= '<li>' . $e($a) . '</li>'; }
-            $h .= '</ul></div>';
-        }
-
-        // Checkpoint block -- the part worth keeping.
-        $h .= '<h3 style="font-size:15px;margin:0 0 8px">Checkpoint</h3>';
-        $h .= '<table style="border-collapse:collapse;font-size:13px;width:100%">';
-        $rows = array(
-            'Records verified' => $chain['checked'],
-            'Total records'    => $state['total'],
-            'Last record id'   => $state['last_id'] === null ? '(none)' : $state['last_id'],
-            'Last record hash' => $state['last_hash'] === null ? '(none)' : $state['last_hash'],
-        );
-        if ($prev) {
-            $rows['Previous check']     = $prev['checked_at'];
-            $rows['Previous total']     = $prev['total_records'];
-            $rows['Previous last id']   = $prev['last_record_id'];
-        }
-        foreach ($rows as $k => $v) {
-            $h .= '<tr><td style="padding:5px 10px 5px 0;color:#666;white-space:nowrap">' . $e($k)
-                . '</td><td style="padding:5px 0;font-family:monospace;word-break:break-all">' . $e($v) . '</td></tr>';
-        }
-        $h .= '</table>';
-        $h .= '<p style="font-size:12px;color:#666;margin:10px 0 20px">Keep this email. If a later report shows fewer records '
-            . 'or a lower last id than this one, the trail was cut -- regardless of what the server reports.</p>';
-
-        // Mail health -- if this report reached you, the queue is at least
-        // partly working, but a backlog still means earlier ones did not.
-        if (!empty($mail['warnings'])) {
-            $h .= '<div style="background:#fffbe6;border-left:4px solid #d4a017;padding:12px 14px;margin-bottom:18px">';
-            $h .= '<strong>Mail delivery problems</strong><ul style="margin:8px 0 0 18px;padding:0">';
-            foreach ($mail['warnings'] as $w) { $h .= '<li>' . $e($w) . '</li>'; }
-            $h .= '</ul></div>';
-        }
-
-        // Events
-        $h .= '<h3 style="font-size:15px;margin:0 0 8px">Events</h3>';
-        if (empty($activity['byType'])) {
-            $h .= '<p style="font-size:13px;color:#666">No security events recorded.</p>';
-        } else {
-            $h .= '<table style="border-collapse:collapse;font-size:13px">';
-            foreach ($activity['byType'] as $r) {
-                $h .= '<tr><td style="padding:4px 16px 4px 0">' . $e($r['event_type'])
-                    . '</td><td style="padding:4px 0;text-align:right"><strong>' . $e($r['c']) . '</strong></td></tr>';
-            }
-            $h .= '</table>';
-        }
-
-        // Repeated failures
-        if (!empty($activity['failedIps'])) {
-            $h .= '<h3 style="font-size:15px;margin:20px 0 8px">Repeated failed logins</h3>';
-            $h .= '<table style="border-collapse:collapse;font-size:13px;width:100%">';
-            $h .= '<tr style="background:#f5f5f5"><th align="left" style="padding:6px">IP</th>'
-                . '<th align="right" style="padding:6px">Failures</th><th align="right" style="padding:6px">Accounts</th></tr>';
-            foreach ($activity['failedIps'] as $r) {
-                $flag = ((int)$r['accounts'] > 1) ? ' style="background:#fff4f4"' : '';
-                $h .= '<tr' . $flag . '><td style="padding:6px;font-family:monospace">' . $e($r['ip_address'])
-                    . '</td><td align="right" style="padding:6px">' . $e($r['c'])
-                    . '</td><td align="right" style="padding:6px">' . $e($r['accounts']) . '</td></tr>';
-            }
-            $h .= '</table>';
-            $h .= '<p style="font-size:12px;color:#666;margin-top:6px">One IP failing against several accounts is credential spraying '
-                . '-- the pattern behind the 28 Aug 2026 incident.</p>';
-        }
-
-        // Account changes
-        $h .= '<h3 style="font-size:15px;margin:20px 0 8px">Account changes</h3>';
-        if (empty($activity['changes'])) {
-            $h .= '<p style="font-size:13px;color:#666">No account or password changes.</p>';
-        } else {
-            $h .= '<table style="border-collapse:collapse;font-size:12px;width:100%">';
-            $h .= '<tr style="background:#f5f5f5"><th align="left" style="padding:6px">When</th>'
-                . '<th align="left" style="padding:6px">Actor &rarr; Target</th>'
-                . '<th align="left" style="padding:6px">Field</th>'
-                . '<th align="left" style="padding:6px">Old &rarr; New</th>'
-                . '<th align="left" style="padding:6px">Device</th></tr>';
-            foreach ($activity['changes'] as $r) {
-                $who = $e($r['actor_username']);
-                if ((string)$r['actor_username'] !== (string)$r['target_username']) {
-                    $who .= ' &rarr; <strong>' . $e($r['target_username']) . '</strong>';
+        // Written as prose rather than tables. A wall of counters gets skimmed
+        // and then ignored; the point of a daily report is that somebody
+        // actually reads it and notices when a number is wrong.
+        $mono = 'font-family:ui-monospace,SFMono-Regular,Menlo,monospace';
+        $flow = function (array $steps) use ($e, $mono) {
+            $h = '<div style="' . $mono . ';font-size:13px;line-height:1.7;background:#f7f8fa;'
+               . 'border-left:3px solid #c9ced6;padding:14px 16px;margin:12px 0">';
+            $last = count($steps) - 1;
+            foreach ($steps as $i => $step) {
+                $h .= '<div>' . $e($step) . '</div>';
+                if ($i !== $last) {
+                    $h .= '<div style="color:#9aa3ad;padding-left:2px">&darr;</div>';
                 }
-                $dev = trim((string)($r['device_marketing_name'] ?: $r['device_model_code']));
-                $val = ($r['changed_field'] === null)
-                    ? '<em style="color:#666">-</em>'
-                    : $e($r['old_value']) . ' &rarr; <strong>' . $e($r['new_value']) . '</strong>';
-
-                $h .= '<tr><td style="padding:6px;white-space:nowrap">' . $e($r['event_time'])
-                    . '</td><td style="padding:6px">' . $who
-                    . '</td><td style="padding:6px;font-family:monospace">' . $e($r['changed_field'])
-                    . '</td><td style="padding:6px">' . $val
-                    . '</td><td style="padding:6px">' . $e($dev ?: '-') . '<br><span style="color:#888">' . $e($r['ip_address']) . '</span>'
-                    . '</td></tr>';
             }
-            $h .= '</table>';
+            return $h . '</div>';
+        };
+
+        $banner = $ok ? '#1a7f37' : '#b42318';
+        $h  = '<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1f2328;'
+            . 'max-width:680px;margin:auto;line-height:1.6">';
+        $h .= '<div style="background:' . $banner . ';color:#fff;padding:18px 22px;border-radius:6px 6px 0 0">';
+        $h .= '<div style="font-size:19px;font-weight:600">'
+            . ($ok ? 'Nothing looks wrong' : 'Something looks wrong with the security log')
+            . '</div>';
+        $h .= '<div style="opacity:.9;font-size:13px;margin-top:3px">'
+            . $e(date('l, j F Y \a\t H:i')) . ' &middot; covering the last ' . (int)$hours . ' hours</div>';
+        $h .= '</div><div style="border:1px solid #d8dde3;border-top:none;padding:22px;border-radius:0 0 6px 6px">';
+
+        // ---- the alarming part, told as a sequence -----------------------
+        if (!$ok) {
+            $h .= '<p style="margin-top:0"><strong>The security log is smaller than it was.</strong> '
+                . 'Nothing in the application ever deletes from it, so this should not happen on its own.</p>';
+
+            if ($prev) {
+                $h .= $flow(array(
+                    'At ' . substr((string)$prev['checked_at'], 0, 16) . '  the log held '
+                        . (int)$prev['total_records'] . ' records, ending at #' . (int)$prev['last_record_id'],
+                    'Between then and now, records went missing',
+                    'At ' . date('Y-m-d H:i') . '  it holds ' . $state['total']
+                        . ' records, ending at #' . ($state['last_id'] === null ? '-' : $state['last_id']),
+                ));
+            }
+
+            $h .= '<p>Specifically:</p><ul style="margin:6px 0 14px 18px;padding:0">';
+            foreach ($alerts as $a) { $h .= '<li>' . $e($a) . '</li>'; }
+            $h .= '</ul>';
+
+            $h .= '<p style="background:#fff8f0;border-left:3px solid #d4a017;padding:12px 14px;margin:14px 0">'
+                . '<strong>Before assuming the worst.</strong> Restoring a database backup, re-importing a copy, '
+                . 'or clearing test data all look exactly like this. Check whether anyone did one of those first. '
+                . 'On the server, <span style="' . $mono . '">SELECT AUTO_INCREMENT FROM information_schema.TABLES '
+                . 'WHERE TABLE_NAME=\'security_audit_logs\'</span> tells you which: a low number means the table was '
+                . 'emptied and started again; a number above the old maximum means individual rows were removed, '
+                . 'which is far harder to explain innocently.</p>';
+        } else {
+            $h .= '<p style="margin-top:0">The audit trail is intact. Every record still matches its hash, '
+                . 'and the log has only grown since the last check.</p>';
         }
 
-        $h .= '<p style="font-size:11px;color:#888;margin-top:24px;border-top:1px solid #eee;padding-top:12px">'
-            . 'Automated report from FBMSO. No passwords, hashes or session tokens are included.</p>';
+        // ---- mail health -------------------------------------------------
+        if (!empty($mail['warnings'])) {
+            $h .= '<p style="background:#fffbe6;border-left:3px solid #d4a017;padding:12px 14px">'
+                . '<strong>Email is not getting through properly.</strong></p><ul style="margin:6px 0 14px 18px">';
+            foreach ($mail['warnings'] as $w) { $h .= '<li>' . $e($w) . '</li>'; }
+            $h .= '</ul>';
+        }
+
+        // ---- what happened, in words -------------------------------------
+        $c = array();
+        foreach ($activity['byType'] as $r) { $c[$r['event_type']] = (int)$r['c']; }
+        $n = function ($k) use ($c) { return isset($c[$k]) ? $c[$k] : 0; };
+
+        $h .= '<h3 style="font-size:15px;margin:22px 0 6px">What happened</h3>';
+
+        if (!array_sum($c)) {
+            $h .= '<p>Nobody signed in and nothing changed. Quiet day.</p>';
+        } else {
+            $parts = array();
+            if ($n('LOGIN_SUCCESS')) {
+                $parts[] = '<strong>' . $n('LOGIN_SUCCESS') . '</strong> successful sign-in'
+                         . ($n('LOGIN_SUCCESS') === 1 ? '' : 's');
+            }
+            if ($n('LOGIN_FAILED')) {
+                $parts[] = '<strong>' . $n('LOGIN_FAILED') . '</strong> failed attempt'
+                         . ($n('LOGIN_FAILED') === 1 ? '' : 's');
+            }
+            if ($n('LOGIN_NEW_DEVICE')) {
+                $parts[] = '<strong>' . $n('LOGIN_NEW_DEVICE') . '</strong> sign-in'
+                         . ($n('LOGIN_NEW_DEVICE') === 1 ? '' : 's') . ' from a device not seen before';
+            }
+            // "a, b and c" rather than "a, b, c", and the verb agrees with
+            // the FIRST item, not the number of items -- otherwise one
+            // sign-in and five failures reads "There were 1 successful
+            // sign-in".
+            $join = function (array $items) {
+                if (count($items) === 1) return $items[0];
+                $last = array_pop($items);
+                return implode(', ', $items) . ' and ' . $last;
+            };
+            $firstCount = $n('LOGIN_SUCCESS') ?: ($n('LOGIN_FAILED') ?: $n('LOGIN_NEW_DEVICE'));
+
+            $h .= '<p>There ' . ($firstCount === 1 ? 'was ' : 'were ') . $join($parts) . '.';
+
+            $extra = array();
+            if ($n('PASSWORD_CHANGED')) $extra[] = $n('PASSWORD_CHANGED') . ' password change' . ($n('PASSWORD_CHANGED') === 1 ? '' : 's');
+            if ($n('PASSWORD_RESET'))   $extra[] = $n('PASSWORD_RESET') . ' password reset' . ($n('PASSWORD_RESET') === 1 ? '' : 's');
+            if ($n('RATE_LIMIT_TRIGGERED')) $extra[] = $n('RATE_LIMIT_TRIGGERED') . ' sign-in' . ($n('RATE_LIMIT_TRIGGERED') === 1 ? '' : 's') . ' blocked for too many attempts';
+            if ($extra) $h .= ' Also ' . $join($extra) . '.';
+            $h .= '</p>';
+        }
+
+        // ---- suspicious IPs, explained ------------------------------------
+        if (!empty($activity['failedIps'])) {
+            $h .= '<h3 style="font-size:15px;margin:22px 0 6px">Worth a look</h3>';
+            foreach ($activity['failedIps'] as $r) {
+                $many = (int)$r['accounts'] > 1;
+                $h .= '<p style="margin:8px 0">'
+                    . '<span style="' . $mono . '">' . $e($r['ip_address']) . '</span> failed '
+                    . '<strong>' . $e($r['c']) . '</strong> times';
+                if ($many) {
+                    $h .= ' against <strong>' . $e($r['accounts']) . ' different accounts</strong>. '
+                        . 'One address trying several accounts is what credential spraying looks like &mdash; '
+                        . 'the same shape as 28 August. A shared campus or household connection can look '
+                        . 'identical, so check whether those accounts have anything to do with each other '
+                        . 'before treating it as an attack.';
+                } else {
+                    $h .= ' against one account. Most likely somebody who has forgotten their password.';
+                }
+                $h .= '</p>';
+            }
+        }
+
+        // ---- account changes, as small sequences --------------------------
+        $h .= '<h3 style="font-size:15px;margin:22px 0 6px">Account changes</h3>';
+        if (empty($activity['changes'])) {
+            $h .= '<p>No profile fields, passwords or names were changed.</p>';
+        } else {
+            foreach ($activity['changes'] as $r) {
+                $actor  = (string)$r['actor_username'];
+                $target = (string)$r['target_username'];
+                $device = trim((string)($r['device_marketing_name'] ?: $r['device_model_code'] ?: 'an unrecognised device'));
+
+                $who = ($actor !== '' && $target !== '' && $actor !== $target)
+                    ? $actor . ' changed ' . $target . "'s record"
+                    : (($actor ?: $target ?: 'someone') . ' changed their own record');
+
+                $steps = array(
+                    substr((string)$r['event_time'], 0, 19),
+                    $who,
+                    'using ' . $device . ' at ' . (string)$r['ip_address'],
+                );
+
+                if ($r['changed_field'] !== null && $r['changed_field'] !== '') {
+                    $steps[] = $r['changed_field'] . ':  '
+                             . ($r['old_value'] === null || $r['old_value'] === '' ? '(empty)' : $r['old_value'])
+                             . '   ->   '
+                             . ($r['new_value'] === null || $r['new_value'] === '' ? '(empty)' : $r['new_value']);
+                } elseif ($r['description']) {
+                    $steps[] = (string)$r['description'];
+                }
+
+                $h .= $flow($steps);
+            }
+        }
+
+        // ---- checkpoint, with the reason it matters -----------------------
+        $h .= '<h3 style="font-size:15px;margin:24px 0 6px">Keep this email</h3>';
+        $h .= '<p>These numbers are the only copy of the audit trail\'s size that lives outside the server. '
+            . 'If a future report shows <em>fewer</em> records or a <em>lower</em> last id than this one, '
+            . 'the log was cut &mdash; no matter what the server claims.</p>';
+        $h .= '<div style="' . $mono . ';font-size:13px;background:#f7f8fa;border:1px solid #e3e7ec;'
+            . 'padding:12px 14px;border-radius:4px;word-break:break-all">'
+            . 'records&nbsp;&nbsp;&nbsp;' . $e($state['total']) . '<br>'
+            . 'last&nbsp;id&nbsp;&nbsp;&nbsp;#' . $e($state['last_id'] === null ? '-' : $state['last_id']) . '<br>'
+            . 'hash&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' . $e($state['last_hash'] === null ? '-' : $state['last_hash'])
+            . '</div>';
+
+        $h .= '<p style="font-size:12px;color:#6b7280;margin-top:22px;border-top:1px solid #eceff2;padding-top:12px">'
+            . 'Sent automatically by FBMSO. No passwords, hashes or session tokens appear in this email.</p>';
         $h .= '</div></div>';
 
         return $h;
