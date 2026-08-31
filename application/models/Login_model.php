@@ -19,37 +19,74 @@ class Login_model extends CI_Model
     return $this->db->get('o_srms_settings', 1)->row();
   }
 
+  /**
+   * Authenticate a username/ID + raw password.
+   *
+   * Passwords are bcrypt, so the hash can no longer be matched inside SQL.
+   * Candidate rows are selected by identifier only, then verified in PHP with
+   * fbmso_password_verify(), which also accepts the legacy sha1 hashes. A
+   * legacy hash is upgraded to bcrypt in place on the first successful login.
+   *
+   * @param string $username Username or ID number as typed.
+   * @param string $password RAW password (NOT a hash).
+   * @return CI_DB_result Matching row, or an empty result set.
+   */
   function validate($username, $password)
   {
     $username = trim((string)$username);
     $password = (string)$password;
 
-    // Empty credentials: return empty result set.
     if ($username === '' || $password === '') {
-      return $this->db->query("SELECT * FROM o_users WHERE 1=0");
+      return $this->noMatch();
     }
 
-    // 1) Strict username-first lookup (deterministic and avoids IDNumber collisions).
+    foreach ($this->findLoginCandidates($username) as $candidate) {
+      $stored = (string)($candidate['password'] ?? '');
+
+      if (!fbmso_password_verify($password, $stored)) {
+        continue;
+      }
+
+      // Transparent upgrade: sha1 -> bcrypt on first successful sign-in.
+      fbmso_password_upgrade($candidate['username'], $password, $stored);
+
+      return $this->db->query(
+        "SELECT * FROM o_users WHERE username = ? LIMIT 1",
+        [$candidate['username']]
+      );
+    }
+
+    return $this->noMatch();
+  }
+
+  /** Empty result set, used for every failure path. */
+  private function noMatch()
+  {
+    return $this->db->query("SELECT * FROM o_users WHERE 1=0");
+  }
+
+  /**
+   * Rows that could correspond to the typed identifier, most-specific first.
+   * Deliberately excludes the password from the WHERE clause.
+   */
+  private function findLoginCandidates($username)
+  {
+    // 1) Strict username match (username is the primary key).
     $byUsername = $this->db->query(
       "
         SELECT *
         FROM o_users
         WHERE TRIM(username) = TRIM(?)
-          AND password = ?
         LIMIT 1
       ",
-      [$username, $password]
-    );
+      [$username]
+    )->result_array();
 
-    if ($byUsername->num_rows() > 0) {
-      return $byUsername;
-    }
-
-    // 2) Fallback lookup for ID/student-number input.
-    //    Accept both dashed and non-dashed forms (e.g., 2024-0194 / 20240194).
+    // 2) Fallback for ID/student-number input, accepting dashed and
+    //    non-dashed forms (e.g. 2024-0194 / 20240194).
     $normalizedInput = preg_replace('/[\s-]+/', '', $username);
 
-    return $this->db->query(
+    $byIdNumber = $this->db->query(
       "
         SELECT *
         FROM o_users
@@ -58,15 +95,21 @@ class Login_model extends CI_Model
           OR REPLACE(REPLACE(TRIM(IDNumber), '-', ''), ' ', '') = ?
           OR REPLACE(REPLACE(TRIM(username), '-', ''), ' ', '') = ?
         )
-          AND password = ?
         ORDER BY
           CASE WHEN TRIM(username) = TRIM(?) THEN 0 ELSE 1 END,
           CASE WHEN REPLACE(REPLACE(TRIM(username), '-', ''), ' ', '') = ? THEN 1 ELSE 2 END,
           dateCreated DESC
-        LIMIT 1
+        LIMIT 10
       ",
-      [$username, $normalizedInput, $normalizedInput, $password, $username, $normalizedInput]
-    );
+      [$username, $normalizedInput, $normalizedInput, $username, $normalizedInput]
+    )->result_array();
+
+    $candidates = [];
+    foreach (array_merge($byUsername, $byIdNumber) as $row) {
+      $candidates[(string)$row['username']] = $row;
+    }
+
+    return array_values($candidates);
   }
 
   public function findUserByEmail($email)
@@ -200,7 +243,7 @@ class Login_model extends CI_Model
 
     $updated = $this->db
       ->where('username', $user['username'])
-      ->update('o_users', ['password' => sha1($tempPassword)]);
+      ->update('o_users', ['password' => fbmso_password_hash($tempPassword)]);
 
     if (!$updated) {
       // The queued email now advertises a password that was never applied.
@@ -221,55 +264,31 @@ class Login_model extends CI_Model
     ];
   }
 
-  private $encryption_method = 'AES-256-CBC';
-
-  private function get_key()
-  {
-    return config_item('encryption_key'); // should be defined in config.php
-  }
-
-  private function get_iv()
-  {
-    return substr(hash('sha256', 'initvector'), 0, 16); // static IV, same for encrypt/decrypt
-  }
-
-  public function encrypt_password($password)
-  {
-    return openssl_encrypt($password, $this->encryption_method, $this->get_key(), 0, $this->get_iv());
-  }
-
+  /**
+   * Record a login attempt.
+   *
+   * The raw password is NEVER stored. What goes into password_attempt is a
+   * peppered HMAC fingerprint: identical passwords still produce identical
+   * fingerprints (so one credential sprayed across many accounts is still
+   * detectable), but the value cannot be reversed into a password.
+   *
+   * The previous implementation stored AES-256-CBC ciphertext under a static
+   * IV together with a decrypt_password() helper, i.e. recoverable plaintext
+   * passwords for every account that ever logged in. Both are gone.
+   */
   public function log_login_attempt($username, $password_attempt, $status)
   {
     date_default_timezone_set('Asia/Manila');
 
-    $encrypted_password = $this->encrypt_password($password_attempt);
-
     $data = [
-      'username'        => $username,
-      'password_attempt'=> $encrypted_password,
-      'status'          => $status,
-      'ip_address'      => $this->input->ip_address(),
-      'login_time'      => date('Y-m-d H:i:s')
+      'username'         => $username,
+      'password_attempt' => fbmso_password_fingerprint($password_attempt),
+      'status'           => $status,
+      'ip_address'       => $this->input->ip_address(),
+      'login_time'       => date('Y-m-d H:i:s')
     ];
 
     return $this->db->insert('login_logs', $data);
-  }
-
-  public function decrypt_password($encrypted)
-  {
-    if (empty($encrypted) || $encrypted === '-') {
-      return 'N/A';
-    }
-
-    $decrypted = openssl_decrypt(
-      $encrypted,
-      'AES-256-CBC',
-      config_item('encryption_key'),
-      0,
-      substr(hash('sha256', 'initvector'), 0, 16)
-    );
-
-    return $decrypted !== false ? $decrypted : 'N/A';
   }
 
   public function sendpassword($data)

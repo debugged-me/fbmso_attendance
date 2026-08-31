@@ -24,15 +24,11 @@ class Settings extends CI_Controller
 		$this->load->model('Login_model');
 		$data['logs'] = $this->db->order_by('login_time', 'DESC')->get('login_logs')->result();
 
-		// Add decrypted password only for Super Admin
-		if ($this->session->userdata('level') === 'Super Admin') {
-			foreach ($data['logs'] as &$log) {
-				if ($log->status !== 'logout' && $log->password_attempt !== '-') {
-					$log->decrypted_password = $this->Login_model->decrypt_password($log->password_attempt);
-				} else {
-					$log->decrypted_password = '-';
-				}
-			}
+		// Passwords are never recoverable from login_logs. password_attempt now
+		// holds a non-reversible peppered HMAC fingerprint, useful only for
+		// spotting the same credential reused across accounts.
+		foreach ($data['logs'] as $log) {
+			$log->decrypted_password = '-';
 		}
 
 		$this->load->view('login_logs_view', $data); // make sure this line exists

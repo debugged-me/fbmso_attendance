@@ -224,8 +224,12 @@ class Registration extends CI_Controller
             $studentData['StudentNumber'] = $studentNumber;
             $this->db->insert('studentsignup', $studentData);
 
-            // Login flow expects SHA-1 hash in o_users.password.
-            $passwordHash = sha1($passwordRaw);
+            $passwordHash = fbmso_password_hash($passwordRaw);
+            if ($passwordHash === '') {
+                $this->flashRegistrationError('<div class="alert alert-danger text-center"><b>That password cannot be used. Please choose a different one.</b></div>');
+                redirect($registrationRedirect);
+                return;
+            }
 
             $this->db->insert('o_users', [
                 'username'   => $studentNumber,

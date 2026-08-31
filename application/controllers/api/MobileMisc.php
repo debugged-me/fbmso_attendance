@@ -1014,7 +1014,7 @@ class MobileMisc extends MobileApi
 
         $ok = $this->db->insert('o_users', [
             'username'    => $username,
-            'password'    => sha1($password),
+            'password'    => fbmso_password_hash($password),
             'position'    => $acctLevel,
             'fName'       => $fName,
             'mName'       => $mName,

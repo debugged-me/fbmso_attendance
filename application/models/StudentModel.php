@@ -3073,20 +3073,24 @@ class StudentModel extends CI_Model
 	}
 
 	//PASSWORD ---------------------------------------------------------------------------------
+	/**
+	 * Verify a RAW current password. Hashes are bcrypt, so the comparison
+	 * happens in PHP rather than in the WHERE clause.
+	 */
 	function is_current_password($username, $currentpass)
 	{
-		$this->db->select();
-		$this->db->from('o_users');
-		$this->db->where('username', $username);
-		$this->db->where('password', $currentpass);
-		$this->db->where('acctStat', 'active');
-		$query = $this->db->get();
-		$row = $query->row();
-		if ($row) {
-			return TRUE;
-		} else {
+		$row = $this->db
+			->where('username', $username)
+			->where('acctStat', 'active')
+			->limit(1)
+			->get('o_users')
+			->row();
+
+		if (!$row) {
 			return FALSE;
 		}
+
+		return fbmso_password_verify($currentpass, (string)$row->password);
 	}
 
 	function reset_userpassword($username, $newpass)
@@ -4693,7 +4697,7 @@ class StudentModel extends CI_Model
 
 		// Build the SELECT of would-be inserts from staff
 		$this->db->select('IDNumber AS username', false);
-		$this->db->select('SHA1(DATE_FORMAT(birthDate, "%Y-%m-%d")) AS password', false); // use correct column name
+		$this->db->select('CONCAT("!locked:", SHA2(CONCAT(COALESCE(IDNumber,""), RAND(), NOW(6)), 256)) AS password', false); // no usable password: holder must use forgot-password
 		$this->db->select("'Teacher' AS position", false);
 		$this->db->select('FirstName AS fName');
 		$this->db->select('MiddleName AS mName');
@@ -4741,7 +4745,7 @@ class StudentModel extends CI_Model
 
 		// Build SELECT of new accounts from studeprofile
 		$this->db->select('StudentNumber AS username', false);
-		$this->db->select('SHA1(DATE_FORMAT(birthDate, "%Y-%m-%d")) AS password', false); // adjust to BirthDate if that’s your column
+		$this->db->select('CONCAT("!locked:", SHA2(CONCAT(COALESCE(StudentNumber,""), RAND(), NOW(6)), 256)) AS password', false); // no usable password: holder must use forgot-password
 		$this->db->select("'Student' AS position", false);
 		$this->db->select('FirstName AS fName');
 		$this->db->select('MiddleName AS mName');

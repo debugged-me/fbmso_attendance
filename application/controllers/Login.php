@@ -115,7 +115,6 @@ class Login extends CI_Controller
         $raw_password = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\x{00AD}]/u', '', $raw_password);
         // Trim only leading/trailing whitespace so accidental copy spaces won't break login.
         $raw_password = preg_replace('/^\s+|\s+$/u', '', $raw_password);
-        $password     = sha1($raw_password);              // <-- hash the raw input
 
         $sy       = $this->input->post('sy', TRUE);
         $semester = $this->input->post('semester', TRUE);
@@ -123,7 +122,9 @@ class Login extends CI_Controller
         // NEW: capture next from POST first (form), then GET
         $next = $this->input->post('next', TRUE) ?: $this->input->get('next', TRUE);
 
-        $validate = $this->Login_model->validate($username, $password);
+        // validate() takes the RAW password; it verifies bcrypt (and legacy
+        // sha1) in PHP and upgrades old hashes on success.
+        $validate = $this->Login_model->validate($username, $raw_password);
 
         if ($validate->num_rows() > 0) {
             $data     = $validate->row_array();
@@ -141,6 +142,10 @@ class Login extends CI_Controller
             // 🔧 Be tolerant to case (active/Active/ACTIVE)
             if (strtolower((string)$acctStat) === 'active') {
                 $this->Login_model->log_login_attempt($username, $raw_password, 'success');
+
+                // New session ID on privilege change, so a session ID captured
+                // before authentication cannot be replayed afterwards.
+                $this->session->sess_regenerate(TRUE);
 
                 $user_data = array(
                     'username'  => $username,

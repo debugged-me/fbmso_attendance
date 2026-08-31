@@ -3152,8 +3152,8 @@ class Page extends CI_Controller
 		if ($this->form_validation->run()) {
 
 			$username = $this->session->userdata('username');
-			$newpass = sha1($this->input->post('newpassword'));
-			if ($this->StudentModel->reset_userpassword($username, $newpass)) {
+			$newpass = fbmso_password_hash($this->input->post('newpassword'));
+			if ($newpass !== '' && $this->StudentModel->reset_userpassword($username, $newpass)) {
 				$this->session->set_flashdata('msg', '<div class="alert alert-success text-center">Succesfully changed password</div>');
 				$this->load->view('change_pass');
 			} else {
@@ -3168,7 +3168,7 @@ class Page extends CI_Controller
 	function _validate_currentpassword()
 	{
 		$username = $this->session->userdata('username');
-		$currentpass = sha1($this->input->post('currentpassword'));
+		$currentpass = (string)$this->input->post('currentpassword');
 		if ($this->StudentModel->is_current_password($username, $currentpass)) {
 			return TRUE;
 		} else {
@@ -3501,7 +3501,9 @@ class Page extends CI_Controller
 
 			$AdmissionDate = date("Y-m-d");
 			$GraduationDate = date("Y-m-d");
-			$Password = sha1($this->input->post('BirthDate'));
+			// Random initial password. Deriving it from the birth date made
+			// every seeded account guessable by anyone who knew the student.
+			$Password = fbmso_password_hash(bin2hex(random_bytes(12)));
 			$Encoder = $this->session->userdata('username');
 
 			//check if record exist
@@ -3643,7 +3645,7 @@ class Page extends CI_Controller
 			// Insert to o_users
 			$this->db->insert('o_users', [
 				'username'   => $IDNumber,
-				'password'   => sha1($BirthDate),
+				'password'   => fbmso_password_hash(bin2hex(random_bytes(12))),
 				'position'   => 'Instructor',
 				'fName'      => $FirstName,
 				'mName'      => $MiddleName,
@@ -4001,7 +4003,7 @@ class Page extends CI_Controller
 			// Create user account
 			$userData = [
 				'username'    => $studentNumber,
-				'password'    => sha1($profileData['birthDate']),
+				'password'    => fbmso_password_hash(bin2hex(random_bytes(12))),
 				'fname'       => $profileData['FirstName'],
 				'mname'       => $profileData['MiddleName'],
 				'lname'       => $profileData['LastName'],
@@ -4694,7 +4696,7 @@ class Page extends CI_Controller
 			$username  = trim((string)$this->input->post('username', true)); // XSS filter ok for username
 			$IDNumber  = trim((string)$this->input->post('IDNumber', true));
 			$rawPass   = (string)$this->input->post('password');             // raw, don't log
-			$password  = sha1($rawPass); // consider stronger hashing but keeping your code
+			$password  = fbmso_password_hash($rawPass);
 			$acctLevel = trim((string)$this->input->post('acctLevel', true));
 			$fName     = trim((string)$this->input->post('fName', true));
 			$mName     = trim((string)$this->input->post('mName', true));
@@ -4917,7 +4919,7 @@ class Page extends CI_Controller
 
 		// Generate new password (12 chars hex) + hash
 		$password       = bin2hex(random_bytes(6));
-		$hashedPassword = sha1($password); // keep your hashing scheme
+		$hashedPassword = fbmso_password_hash($password);
 
 		date_default_timezone_set('Asia/Manila');
 

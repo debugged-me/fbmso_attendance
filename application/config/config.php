@@ -338,6 +338,21 @@ $config['encryption_key'] = '9f4a7b62e1a6c390f54bb3a4d72b9e11';
 
 /*
 |--------------------------------------------------------------------------
+| Login attempt fingerprint pepper
+|--------------------------------------------------------------------------
+|
+| Secret used to HMAC login-attempt passwords in login_logs. It makes the
+| stored value comparable (same password -> same fingerprint, which is how
+| credential spraying is detected) while keeping it non-reversible.
+|
+| Rotating this value makes existing fingerprints incomparable with new ones.
+| Keep it out of source control on production.
+|
+*/
+$config['login_attempt_pepper'] = '79ae1483f919f346d7aefc9bc9ab3443550d27827ea3f84aa03c8a2bbdad73ff';
+
+/*
+|--------------------------------------------------------------------------
 | Session Variables
 |--------------------------------------------------------------------------
 |
@@ -415,7 +430,7 @@ $config['cookie_domain']    = '';
 $config['cookie_path']        = '/';
 // Only flag cookies as secure when the request actually arrived over HTTPS.
 $config['cookie_secure']    = (strpos($config['base_url'], 'https://') === 0);
-$config['cookie_httponly']     = FALSE;
+$config['cookie_httponly']     = TRUE;
 
 /*
 |--------------------------------------------------------------------------

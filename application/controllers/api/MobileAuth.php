@@ -240,10 +240,9 @@ class MobileAuth extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Username and password are required.'], 422);
         }
 
-        // Same hashing path as Login::auth(): web hashes raw input with sha1
-        // before comparing against o_users.password.
-        $passwordHash = sha1($passwordRaw);
-        $result = $this->Login_model->validate($username, $passwordHash);
+        // Same path as Login::auth(): validate() takes the RAW password and
+        // verifies bcrypt (or legacy sha1) in PHP.
+        $result = $this->Login_model->validate($username, $passwordRaw);
 
         if (!$result || $result->num_rows() === 0) {
             $this->Login_model->log_login_attempt($username, $passwordRaw, 'failed');
@@ -360,11 +359,16 @@ class MobileAuth extends MobileApi
             return $this->json(['ok' => false, 'message' => 'User not found.'], 404);
         }
 
-        if (sha1($currentPassword) !== (string)($userRow['password'] ?? '')) {
+        if (!fbmso_password_verify($currentPassword, (string)($userRow['password'] ?? ''))) {
             return $this->json(['ok' => false, 'message' => 'Current password is incorrect.'], 401);
         }
 
-        $this->db->where('username', $username)->update('o_users', ['password' => sha1($newPassword)]);
+        $newHash = fbmso_password_hash($newPassword);
+        if ($newHash === '') {
+            return $this->json(['ok' => false, 'message' => 'That password cannot be used. Please choose a different one.'], 422);
+        }
+
+        $this->db->where('username', $username)->update('o_users', ['password' => $newHash]);
         $this->MobileTokenModel->revokeAllForUser($username);
 
         return $this->json(['ok' => true, 'message' => 'Password changed successfully. Please log in again.']);
@@ -613,7 +617,10 @@ class MobileAuth extends MobileApi
         ];
 
         $fullName = trim($firstName . ' ' . $middleName . ' ' . $lastName);
-        $passwordHash = sha1($passwordRaw);
+        $passwordHash = fbmso_password_hash($passwordRaw);
+        if ($passwordHash === '') {
+            return $this->json(['ok' => false, 'message' => 'That password cannot be used. Please choose a different one.'], 422);
+        }
 
         $this->db->trans_start();
         $this->db->insert('studentsignup', $studentData);

@@ -101,7 +101,11 @@ class Ren_model extends CI_Model
         $now = date('H:i:s A');
 
         $AdmissionDate = date("Y-m-d");
-        $Password = sha1($this->input->post('BirthDate'));
+        // Never derive a password from the birth date: it is knowable by
+        // classmates and was the credential class behind the 2026-08-28
+        // account takeover. Issue a random one instead; the account holder
+        // sets a real password through the forgot-password flow.
+        $Password = fbmso_password_hash(bin2hex(random_bytes(12)));
         $Encoder = $this->session->userdata('username');
 
         $data = array(
@@ -128,7 +132,6 @@ class Ren_model extends CI_Model
         $now = date('H:i:s A');
 
         $AdmissionDate = date("Y-m-d");
-        $Password = sha1($this->input->post('BirthDate'));
         $Encoder = $this->session->userdata('username');
 
         $data = array(
