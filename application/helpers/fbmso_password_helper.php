@@ -146,3 +146,27 @@ if (!function_exists('fbmso_password_fingerprint')) {
         return hash_hmac('sha256', $raw, $pepper);
     }
 }
+
+if (!function_exists('fbmso_session_reference')) {
+    /**
+     * Stable, non-reversible reference to a session.
+     *
+     * Used by both the audit trail and the session registry so events and
+     * sessions can be correlated without either ever storing a real session
+     * id -- a stored session id is a stored credential.
+     *
+     * @param string|null $sessionId Defaults to the current session.
+     */
+    function fbmso_session_reference($sessionId = null)
+    {
+        $id = $sessionId !== null ? (string)$sessionId : (string)session_id();
+
+        if ($id === '') {
+            return null;
+        }
+
+        $pepper = (string)config_item('login_attempt_pepper');
+
+        return hash_hmac('sha256', $id, $pepper !== '' ? $pepper : 'fbmso');
+    }
+}

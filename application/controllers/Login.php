@@ -10,6 +10,7 @@ class Login extends CI_Controller
         $this->load->model('AuditLogModel');
         $this->load->library('securityaudit');
         $this->load->library('loginthrottle');
+        $this->load->library('sessionregistry');
     }
 
     function index()
@@ -169,6 +170,11 @@ class Login extends CI_Controller
                 // New session ID on privilege change, so a session ID captured
                 // before authentication cannot be replayed afterwards.
                 $this->session->sess_regenerate(TRUE);
+
+                // After regeneration: the reference must match the session id
+                // the user will actually carry, not the pre-login one.
+                $this->sessionregistry->open($username);
+                $this->sessionregistry->prune();
 
                 $user_data = array(
                     'username'  => $username,
@@ -424,6 +430,7 @@ class Login extends CI_Controller
             'module' => 'Login',
             'status' => 'success',
         ]);
+        $this->sessionregistry->close('signed out');
 
         $this->session->sess_destroy();
         redirect('login');

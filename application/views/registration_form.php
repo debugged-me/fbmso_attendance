@@ -304,7 +304,7 @@
   <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
   <script src="<?= base_url(); ?>assets/js/registration_form.js?v=30260830"></script>
-  <script src="<?= base_url('assets/js/mobile-shell.js?v=5'); ?>"></script>
+  <script src="<?= base_url('assets/js/mobile-shell.js?v=6'); ?>"></script>
   <script>
   // Lazy-load reCAPTCHA only when the user interacts with the form,
   // instead of blocking page load with the external Google script.

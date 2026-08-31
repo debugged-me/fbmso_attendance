@@ -56,3 +56,15 @@ $hook['post_controller_constructor'] = array(
         'filepath' => 'hooks',
     ),
 );
+
+/*
+| Injects the CSRF token into every rendered POST form. Inert while
+| $config['csrf_protection'] is FALSE, so it can be deployed ahead of the
+| switch and verified before anything is enforced.
+*/
+$hook['display_override'] = array(
+    'class'    => 'CsrfInjectHook',
+    'function' => 'inject',
+    'filename' => 'CsrfInjectHook.php',
+    'filepath' => 'hooks',
+);

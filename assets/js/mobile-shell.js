@@ -696,8 +696,14 @@
       } else if (/amount|payment|price|balance|fee|cost|total/.test(key)) {
         input.setAttribute('inputmode', 'decimal');
       } else if (/student.?number|student.?no|id.?number|id.?no|school.?id|lrn/.test(key)) {
+        // inputmode alone raises the numeric keypad on iOS 12.2+ and Android.
+        //
+        // This used to also set pattern="[0-9]*" -- the old iOS trick for the
+        // same thing. But pattern is real validation, not just a keyboard
+        // hint, and student IDs here look like "2025-0116". The hyphen failed
+        // the digits-only pattern, so the browser refused to submit the form
+        // with "Please match the requested format" and no way to fix it.
         input.setAttribute('inputmode', 'numeric');
-        if (!input.getAttribute('pattern')) input.setAttribute('pattern', '[0-9]*');
       }
     });
 

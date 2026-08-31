@@ -3215,6 +3215,14 @@ class Page extends CI_Controller
 					'record_pk'   => $username,
 					'description' => 'User changed their own password',
 				]);
+
+				// Changing the password after a suspected compromise has to
+				// end the intruder's session too, or they simply stay signed
+				// in with the credential already in their hand. The session
+				// doing the changing is kept, so the user is not logged out
+				// of the page they are standing on.
+				$this->load->library('sessionregistry');
+				$this->sessionregistry->revokeAllForUser($username, 'password changed', true);
 				$this->session->set_flashdata('msg', '<div class="alert alert-success text-center">Succesfully changed password</div>');
 				$this->load->view('change_pass');
 			} else {

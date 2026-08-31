@@ -249,14 +249,9 @@ class Securityaudit
      */
     protected function sessionReference()
     {
-        $id = session_id();
-        if (!is_string($id) || $id === '') {
-            return null;
-        }
-
-        $pepper = (string)config_item('login_attempt_pepper');
-
-        return hash_hmac('sha256', $id, $pepper !== '' ? $pepper : 'fbmso');
+        // Shared with the session registry so an audit row can be tied to the
+        // session it came from.
+        return fbmso_session_reference();
     }
 
     protected function isSensitive($field)

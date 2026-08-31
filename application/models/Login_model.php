@@ -258,6 +258,12 @@ class Login_model extends CI_Model
       ];
     }
 
+    // A reset is how a locked-out or compromised account is recovered, so
+    // every existing session for it must end. None of them are kept: the
+    // person requesting the reset is, by definition, not signed in.
+    $this->load->library('sessionregistry');
+    $this->sessionregistry->revokeAllForUser((string)$user['username'], 'password reset');
+
     return [
       'ok' => true,
       'message' => 'A temporary password is on its way to your email. It usually arrives within a couple of minutes.'

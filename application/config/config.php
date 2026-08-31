@@ -503,12 +503,21 @@ $config['global_xss_filtering'] = FALSE;
 | 'csrf_regenerate' = Regenerate token on every submission
 | 'csrf_exclude_uris' = Array of URIs which ignore CSRF checks
 */
-$config['csrf_protection'] = FALSE;
+$config['csrf_protection'] = TRUE;
 $config['csrf_token_name'] = 'csrf_test_name';
 $config['csrf_cookie_name'] = 'csrf_cookie_name';
 $config['csrf_expire'] = 7200;
-$config['csrf_regenerate'] = TRUE;
-$config['csrf_exclude_uris'] = array();
+// Rotating the token on every submission breaks this app: pages fire several
+// AJAX POSTs at once, and whichever lands second would carry a token the
+// server has already retired. The token stays fixed for the session instead,
+// which still blocks cross-site submission.
+$config['csrf_regenerate'] = FALSE;
+$config['csrf_exclude_uris'] = array(
+    // The Flutter app authenticates with a bearer token and holds no CI
+    // session or cookie, so there is no cross-site request to forge and no
+    // token it could send. 80 endpoints across four controllers.
+    'api/.*',
+);
 
 /*
 |--------------------------------------------------------------------------

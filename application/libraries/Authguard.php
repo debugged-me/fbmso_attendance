@@ -88,6 +88,16 @@ class Authguard
             return;
         }
 
+        // A revoked session must stop working immediately, not whenever it
+        // happens to expire. Sessions live in files, so this is the only
+        // place the check can happen.
+        $this->CI->load->library('sessionregistry');
+        if ($this->CI->sessionregistry->isCurrentRevoked()) {
+            $this->CI->session->sess_destroy();
+            $this->reject_unauthenticated('Your session was ended. Please sign in again.');
+            return;
+        }
+
         // Only touch the session when the timeout is actually in use — an
         // unconditional write here would cost a session file lock + write on
         // every single request for no benefit.

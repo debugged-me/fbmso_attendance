@@ -80,7 +80,7 @@
         <!-- App js -->
         <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
         <?php include(APPPATH . 'views/includes/mobile-tabbar.php'); ?>
-        <script src="<?= base_url('assets/js/mobile-shell.js?v=5'); ?>"></script>
+        <script src="<?= base_url('assets/js/mobile-shell.js?v=6'); ?>"></script>
 
     </body>
 

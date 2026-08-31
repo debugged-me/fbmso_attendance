@@ -2,7 +2,7 @@
 <script src="<?= base_url('assets/js/req-bell.js?v=2'); ?>"></script>
 <script src="<?= base_url('assets/js/masterlist-mobile.js'); ?>"></script>
 <?php include(APPPATH . 'views/includes/mobile-tabbar.php'); ?>
-<script src="<?= base_url('assets/js/mobile-shell.js?v=5'); ?>"></script>
+<script src="<?= base_url('assets/js/mobile-shell.js?v=6'); ?>"></script>
 
 <footer class="footer">
     <div class="container-fluid">

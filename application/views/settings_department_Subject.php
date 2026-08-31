@@ -60,6 +60,6 @@
             <button type="submit">Filter</button>
         </form>
     </div>
-    <script src="<?= base_url('assets/js/mobile-shell.js?v=5'); ?>"></script>
+    <script src="<?= base_url('assets/js/mobile-shell.js?v=6'); ?>"></script>
 </body>
 </html>

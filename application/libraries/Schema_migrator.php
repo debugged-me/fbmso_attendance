@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v6.done';
+    const MARKER = 'schema_migrations_v8.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -241,6 +241,73 @@ class Schema_migrator
                           UNIQUE KEY `uq_scope` (`scope`,`scope_key`),
                           KEY `idx_blocked_until` (`blocked_until`),
                           KEY `idx_last_failure` (`last_failure_at`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
+                },
+            ),
+
+            // Pre-containment snapshot of password hashes. Two reasons:
+            // the change is reversible if something goes wrong, and the old
+            // hashes are evidence -- they are how we identified which
+            // accounts shared the compromised credential. Once every account
+            // is bcrypt that comparison becomes impossible, so capture it
+            // before rotating anything.
+            '2026_08_31_create_password_rotation_backup' => array(
+                'check' => function () {
+                    return !$this->tableExists('password_rotation_backup');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "CREATE TABLE `password_rotation_backup` (
+                          `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                          `username` VARCHAR(100) NOT NULL,
+                          `old_password` VARCHAR(255) NOT NULL,
+                          `position` VARCHAR(60) DEFAULT NULL,
+                          `reason` VARCHAR(120) NOT NULL,
+                          `batch` VARCHAR(64) NOT NULL,
+                          `rotated_at` DATETIME NOT NULL,
+                          `restored_at` DATETIME DEFAULT NULL,
+                          PRIMARY KEY (`id`),
+                          KEY `idx_username` (`username`),
+                          KEY `idx_batch` (`batch`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
+                },
+            ),
+
+            // Active session inventory. Sessions are stored as files, so there
+            // is no table to delete a row from to end one. Revocation is
+            // enforced in the application instead: every request checks
+            // whether its own session has been revoked.
+            '2026_08_31_create_user_security_sessions' => array(
+                'check' => function () {
+                    return !$this->tableExists('user_security_sessions');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "CREATE TABLE `user_security_sessions` (
+                          `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                          `username` VARCHAR(100) NOT NULL,
+                          `session_reference` CHAR(64) NOT NULL,
+
+                          `ip_address` VARCHAR(45) DEFAULT NULL,
+                          `device_type` VARCHAR(50) DEFAULT NULL,
+                          `device_marketing_name` VARCHAR(150) DEFAULT NULL,
+                          `device_model_code` VARCHAR(100) DEFAULT NULL,
+                          `operating_system` VARCHAR(100) DEFAULT NULL,
+                          `browser` VARCHAR(100) DEFAULT NULL,
+                          `raw_user_agent` TEXT DEFAULT NULL,
+
+                          `created_at` DATETIME NOT NULL,
+                          `last_activity_at` DATETIME DEFAULT NULL,
+                          `revoked_at` DATETIME DEFAULT NULL,
+                          `revoke_reason` VARCHAR(255) DEFAULT NULL,
+                          `revoked_by` VARCHAR(100) DEFAULT NULL,
+
+                          PRIMARY KEY (`id`),
+                          UNIQUE KEY `uq_session_reference` (`session_reference`),
+                          KEY `idx_username_activity` (`username`,`last_activity_at`),
+                          KEY `idx_revoked` (`revoked_at`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
                     );
                 },
