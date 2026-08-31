@@ -12,6 +12,7 @@ class Login extends CI_Controller
         $this->load->library('loginthrottle');
         $this->load->library('sessionregistry');
         $this->load->library('devicetokens');
+        $this->load->library('riskengine');
     }
 
     function index()
@@ -181,6 +182,9 @@ class Login extends CI_Controller
                 // this browser has been here before on this account.
                 $device = $this->devicetokens->recognise($username);
 
+                // Score the sign-in from everything we now know about it.
+                $risk = $this->riskengine->assess($username, $device, (string)$level);
+
                 $this->securityaudit->event(
                     $device['new_device'] ? 'LOGIN_NEW_DEVICE' : 'LOGIN_RECOGNIZED_DEVICE',
                     [
@@ -190,6 +194,9 @@ class Login extends CI_Controller
                         'description' => $device['new_device']
                             ? 'Signed in from a device not seen on this account before'
                             : 'Signed in from a recognised device',
+                        'risk_score'  => $risk['score'],
+                        'risk_level'  => $risk['level'],
+                        'risk_reason' => implode('; ', $risk['reasons']),
                         'extra' => [
                             'trusted'        => $device['trusted'],
                             'revoked'        => $device['revoked'],
@@ -200,6 +207,14 @@ class Login extends CI_Controller
                         ],
                     ]
                 );
+
+                // Tell the account holder. They are the only person who knows
+                // whether a sign-in was theirs, and on 2026-08-28 this email
+                // would have arrived while the attacker was still on the
+                // profile page.
+                if (!empty($risk['actions']['notify_user'])) {
+                    $this->notify_risky_login($username, $email, $risk, $device);
+                }
 
                 $user_data = array(
                     'username'  => $username,
@@ -518,6 +533,78 @@ class Login extends CI_Controller
         $this->session->set_flashdata('forgot_info', (string)$sendResult['message']);
         redirect(base_url('login'), 'refresh');
         return;
+    }
+
+    /**
+     * Email the account holder about a high-risk sign-in.
+     *
+     * Says what happened and when, and never why it was judged risky. Telling
+     * a suspicious visitor "your risk score is 85 because the device is
+     * unknown" hands them the list of signals to defeat next time; the plan
+     * documents make the same point. The detail belongs in the security
+     * report, which only staff receive.
+     */
+    private function notify_risky_login($username, $email, array $risk, array $device)
+    {
+        $email = trim((string)$email);
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        // Do not bury someone on a flaky connection under forty emails.
+        $cooldown = (int)$this->config->item('risk_notify_cooldown') ?: 3600;
+        $recent = $this->db->query(
+            "SELECT 1 FROM fbmso_email_queue
+              WHERE to_email = ? AND subject LIKE ? AND created_at >= ? LIMIT 1",
+            array($email, 'New sign-in to your%', date('Y-m-d H:i:s', time() - $cooldown))
+        )->row();
+
+        if ($recent) {
+            return;
+        }
+
+        $d = $device['device'] ?? array();
+        $parts = array();
+        $name  = trim((string)($d['device_marketing_name'] ?? ''));
+        $model = trim((string)($d['device_model_code'] ?? ''));
+        if ($name !== '' && $model !== '') { $parts[] = $name . ' (' . $model . ')'; }
+        elseif ($name !== '')              { $parts[] = $name; }
+        elseif ($model !== '')             { $parts[] = $model; }
+        if (!empty($d['operating_system'])) {
+            $parts[] = trim($d['operating_system'] . ' ' . (string)($d['os_version'] ?? ''));
+        }
+        if (!empty($d['browser'])) { $parts[] = (string)$d['browser']; }
+
+        $deviceText = $parts ? implode(' · ', $parts) : 'a device we could not identify';
+        $school = fbmso_mailqueue_school_name($this);
+        $esc = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
+
+        $body = '<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:560px;'
+              . 'margin:auto;color:#1f2328;line-height:1.6">'
+              . '<h2 style="font-size:18px;margin:0 0 12px">A new device signed in to your account</h2>'
+              . '<p>Someone signed in to <strong>' . $esc($username) . '</strong> just now using a device '
+              . 'that has not been used on this account before.</p>'
+              . '<div style="background:#f7f8fa;border-left:3px solid #c9ced6;padding:12px 14px;margin:14px 0;'
+              . 'font-family:ui-monospace,Menlo,monospace;font-size:13px">'
+              . $esc(date('l, j F Y \a\t H:i')) . '<br>'
+              . $esc($deviceText) . '<br>'
+              . 'from ' . $esc($this->input->ip_address())
+              . '</div>'
+              . '<p><strong>If this was you</strong>, nothing to do.</p>'
+              . '<p><strong>If it was not</strong>, change your password now. That signs out every other '
+              . 'device immediately. If you cannot get in, use Forgot Password on the sign-in page, '
+              . 'or contact the FBMSO office.</p>'
+              . '<p style="font-size:12px;color:#6b7280;margin-top:22px;border-top:1px solid #eceff2;'
+              . 'padding-top:12px">Automatic message from ' . $esc($school) . '. We will never ask you '
+              . 'for your password by email.</p></div>';
+
+        fbmso_mailqueue_push($this, $email, 'New sign-in to your ' . $school . ' account', $body, $school);
+
+        $this->securityaudit->event('SECURITY_ALERT_SENT', [
+            'module' => 'Login', 'status' => 'success', 'target' => $username,
+            'description' => 'Account holder notified of a high-risk sign-in',
+            'risk_score' => $risk['score'], 'risk_level' => $risk['level'],
+        ]);
     }
 
     private function normalize_reset_email($email)

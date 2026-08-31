@@ -5489,8 +5489,14 @@ class Page extends CI_Controller
 			}
 
 			$config['upload_path'] = './upload/reqDocs/';
-			$config['allowed_types'] = '*';
+			// Was '*', which accepted .php and .phtml. Execution is currently
+			// blocked by upload/.htaccess, but that leaves one file standing
+			// between a signed-in student and a webshell -- and it stops
+			// working the day this moves to nginx. Whitelist the document
+			// types a request attachment could legitimately be.
+			$config['allowed_types'] = 'pdf|doc|docx|jpg|jpeg|png|gif|webp';
 			$config['max_size'] = 5120;
+			$config['encrypt_name'] = TRUE;
 			//$config['max_width'] = 1500;
 			//$config['max_height'] = 1500;
 
@@ -5511,8 +5517,14 @@ class Page extends CI_Controller
 			date_default_timezone_set('Asia/Manila'); # add your city to set local time zone
 			$now = date('H:i:s A');
 
-			//check if record exist
-			$que = $this->db->query("select * from stude_request where trackingNo='" . $trackingNo . "'");
+			// Bound parameters throughout this block. Every value below comes
+			// straight from $this->input->post(), so building the SQL by
+			// string concatenation let any signed-in student end a quoted
+			// value early and append their own SQL.
+			$que = $this->db->query(
+				"select * from stude_request where trackingNo = ?",
+				array($trackingNo)
+			);
 			$row = $que->num_rows();
 			if ($row) {
 				//redirect('Page/notification_error');
@@ -5520,9 +5532,18 @@ class Page extends CI_Controller
 				redirect('Page/profileList');
 			} else {
 
-				$que = $this->db->query("insert into stude_request values('$trackingNo','$docName','$purpose','$dateReq','$now','$StudentNumber','Open','$pReference','$filename')");
-				$que = $this->db->query("insert into stude_request_stat values('','$StudentNumber','request submitted','$StudentNumber','$dateReq','$now','$trackingNo','Open','$filename','On Process')");
-				$que = $this->db->query("insert into atrail values('','Requested a Document','$dateReq','$now','$id','$id')");
+				$this->db->query(
+					"insert into stude_request values(?,?,?,?,?,?,'Open',?,?)",
+					array($trackingNo, $docName, $purpose, $dateReq, $now, $StudentNumber, $pReference, $filename)
+				);
+				$this->db->query(
+					"insert into stude_request_stat values('',?,'request submitted',?,?,?,?,'Open',?,'On Process')",
+					array($StudentNumber, $StudentNumber, $dateReq, $now, $trackingNo, $filename)
+				);
+				$this->db->query(
+					"insert into atrail values('','Requested a Document',?,?,?,?)",
+					array($dateReq, $now, $id, $id)
+				);
 				$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Your request has been submitted.</b></div>');
 
 				//Email Notification (queued)
@@ -5551,10 +5572,11 @@ class Page extends CI_Controller
 
 		if ($this->input->post('submit')) {
 			$config['upload_path'] = './upload/reqDocs/';
-			$config['allowed_types'] = '*';
+			// See submitRequest(): '*' accepted .php and relied entirely on
+			// upload/.htaccess to stop it being executed.
+			$config['allowed_types'] = 'pdf|doc|docx|jpg|jpeg|png|gif|webp';
 			$config['max_size'] = 5120;
-			//$config['max_width'] = 1500;
-			//$config['max_height'] = 1500;
+			$config['encrypt_name'] = TRUE;
 
 			$this->load->library('upload', $config);
 
@@ -5572,8 +5594,17 @@ class Page extends CI_Controller
 			date_default_timezone_set('Asia/Manila'); # add your city to set local time zone
 			$now = date('H:i:s A');
 
-			$que = $this->db->query("update stude_request set reqStat='$reqStat' where trackingNo='$trackingNo'");
-			$que = $this->db->query("insert into stude_request_stat values('','$StudentNumber','$reqStatus','$id','$dateReq','$now','$trackingNo','$reqStat','$filename','$reqStat')");
+			// $trackingNo reached a WHERE clause unescaped, so a crafted value
+			// could widen the match and rewrite the status of every request in
+			// the table, not just this one.
+			$this->db->query(
+				"update stude_request set reqStat = ? where trackingNo = ?",
+				array($reqStat, $trackingNo)
+			);
+			$this->db->query(
+				"insert into stude_request_stat values('',?,?,?,?,?,?,?,?,?)",
+				array($StudentNumber, $reqStatus, $id, $dateReq, $now, $trackingNo, $reqStat, $filename, $reqStat)
+			);
 			$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>New request status has been posted.</b></div>');
 		}
 	}

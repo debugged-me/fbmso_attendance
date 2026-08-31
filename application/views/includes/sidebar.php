@@ -115,6 +115,30 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         </a>
                     </li>
 
+                    <!-- Security. Super Admin only: these pages list which
+                         accounts are on weak credentials and can end anyone's
+                         session, so they stay with the security owner. -->
+                    <li class="<?= $isActive('Security'); ?>">
+                        <a href="<?= base_url('Security'); ?>" class="waves-effect">
+                            <i class="mdi mdi-shield-lock-outline"></i>
+                            <span> Security </span>
+                        </a>
+                    </li>
+
+                    <li class="<?= $isActive('Security/sessions'); ?>">
+                        <a href="<?= base_url('Security/sessions'); ?>" class="waves-effect">
+                            <i class="mdi mdi-account-clock-outline"></i>
+                            <span> Active Sessions </span>
+                        </a>
+                    </li>
+
+                    <li class="<?= $isActive('Security/devices'); ?>">
+                        <a href="<?= base_url('Security/devices'); ?>" class="waves-effect">
+                            <i class="mdi mdi-cellphone-link"></i>
+                            <span> Devices </span>
+                        </a>
+                    </li>
+
                 </ul>
             </div>
 

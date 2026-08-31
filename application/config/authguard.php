@@ -94,6 +94,12 @@ $config['authguard_roles'] = array(
     'fbmsopersonnels/save'   => array('Super Admin', 'Admin', 'IT', 'HR Admin', 'Human Resource'),
     'fbmsopersonnels/delete' => array('Super Admin', 'Admin', 'IT', 'HR Admin', 'Human Resource'),
     'fbmsopersonnels/toggle' => array('Super Admin', 'Admin', 'IT', 'HR Admin', 'Human Resource'),
+
+    // Security dashboard. Super Admin only, and deliberately not Admin: it
+    // lists which accounts are on weak credentials, which devices have
+    // touched several accounts, and can end anyone's session. The controller
+    // checks this for itself too.
+    'security/*' => array('Super Admin'),
 );
 
 /*
