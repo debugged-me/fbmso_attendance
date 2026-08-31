@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v5.done';
+    const MARKER = 'schema_migrations_v6.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -215,6 +215,32 @@ class Schema_migrator
                           `notes` TEXT DEFAULT NULL,
                           PRIMARY KEY (`id`),
                           KEY `idx_checked_at` (`checked_at`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
+                },
+            ),
+
+            // Failed-login counters. A dedicated table rather than querying
+            // login_logs: ip_address there is unindexed, so counting recent
+            // failures would full-scan a table that grows forever.
+            '2026_08_31_create_login_throttle' => array(
+                'check' => function () {
+                    return !$this->tableExists('login_throttle');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "CREATE TABLE `login_throttle` (
+                          `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                          `scope` VARCHAR(20) NOT NULL,
+                          `scope_key` VARCHAR(160) NOT NULL,
+                          `failures` INT UNSIGNED NOT NULL DEFAULT 0,
+                          `first_failure_at` DATETIME NOT NULL,
+                          `last_failure_at` DATETIME NOT NULL,
+                          `blocked_until` DATETIME DEFAULT NULL,
+                          PRIMARY KEY (`id`),
+                          UNIQUE KEY `uq_scope` (`scope`,`scope_key`),
+                          KEY `idx_blocked_until` (`blocked_until`),
+                          KEY `idx_last_failure` (`last_failure_at`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
                     );
                 },

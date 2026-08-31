@@ -4169,10 +4169,32 @@ class Page extends CI_Controller
 		$result['scholar'] = $this->StudentModel->get_Scholar();
 		$result['prevschool'] = $this->StudentModel->get_prevSchool();
 
-		// Get the student ID
-		if ($this->session->userdata('level') === 'Student') {
+		// Get the student ID.
+		//
+		// Students are pinned to their own record: the ?id= parameter is
+		// ignored for them, so /Page/updateStudeProfile?id=<someone-else>
+		// cannot reach another student's data.
+		//
+		// Staff may pass ?id=, but not every staff account should be able to
+		// edit any student -- an Instructor or Librarian has no business in
+		// the registrar's edit form. Restrict that to the roles that own
+		// student records.
+		$level = (string)$this->session->userdata('level');
+
+		if (in_array($level, ['Student', 'Stude Applicant'], true)) {
 			$id = $this->session->userdata('username');
 		} else {
+			$mayEditOthers = [
+				'Super Admin', 'Admin', 'School Admin', 'IT',
+				'Registrar', 'Head Registrar', 'Encoder',
+				'Academic Officer', 'Principal',
+			];
+
+			if (!in_array($level, $mayEditOthers, true)) {
+				show_error('Access Denied', 403);
+				return;
+			}
+
 			$id = $this->input->get('id');
 		}
 

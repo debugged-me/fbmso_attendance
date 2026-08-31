@@ -29,3 +29,7 @@ ehthumbs.db
 
 # Schema migration markers (per-server, must not be deployed)
 application/cache/*.schema_migrations_*.done
+
+# Raw server logs copied in for forensics -- never commit (214MB, contains user IPs)
+application/config/*ssl_log*
+*-ssl_log-*

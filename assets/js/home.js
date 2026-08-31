@@ -98,8 +98,11 @@
 
   if (!loginError && !infoMsg) return;
 
-  var isErr = /invalid|incorrect|not active|failed|unauthorized|email not found|verify your email/i.test(loginError || '');
-  var opts = isErr ? {
+  // Which flash the server set decides the tone. This used to keyword-match
+  // the message text, so any wording the regex did not anticipate -- a rate
+  // limit notice, for one -- rendered as a green "Done" with an empty body.
+  // auth_error is an error whatever it happens to say.
+  var opts = loginError ? {
     icon: 'error',
     title: 'Sign-in failed',
     text: loginError,
@@ -110,6 +113,9 @@
     text: infoMsg,
     confirmButtonColor: '#3b5fd4'
   };
+
+  // Never show an empty dialog: with no text there is nothing to tell the user.
+  if (!opts.text) return;
 
   if (window.UI) {
     UI.fire(opts);

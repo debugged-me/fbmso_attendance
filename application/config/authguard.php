@@ -87,6 +87,13 @@ $config['authguard_public'] = array(
 */
 $config['authguard_roles'] = array(
     'admin/*' => array('Super Admin', 'Admin', 'IT'),
+
+    // Personnel administration. The controller checks this for itself too;
+    // both layers are deliberate, so removing one does not silently reopen it.
+    'fbmsopersonnels/manage' => array('Super Admin', 'Admin', 'IT', 'HR Admin', 'Human Resource'),
+    'fbmsopersonnels/save'   => array('Super Admin', 'Admin', 'IT', 'HR Admin', 'Human Resource'),
+    'fbmsopersonnels/delete' => array('Super Admin', 'Admin', 'IT', 'HR Admin', 'Human Resource'),
+    'fbmsopersonnels/toggle' => array('Super Admin', 'Admin', 'IT', 'HR Admin', 'Human Resource'),
 );
 
 /*
@@ -180,8 +187,12 @@ $config['authguard_student_routes'] = array(
 
     // --- shared, harmless ----------------------------------------------
     'page/announcement',
+
+    // The public team page only. NOT 'fbmsopersonnels/*': that wildcard also
+    // granted manage/save/delete/toggle, and a student was able to delete a
+    // personnel record with a plain GET to /FbmsoPersonnels/delete/<id>.
     'fbmsopersonnels',
-    'fbmsopersonnels/*',
+    'fbmsopersonnels/index',
     'registration/getmajorsbycourse',
     'registration/getcitiesbyprovince',
     'registration/getbarangaysbycity',

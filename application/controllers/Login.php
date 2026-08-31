@@ -9,6 +9,7 @@ class Login extends CI_Controller
         $this->load->model('StudentModel');
         $this->load->model('AuditLogModel');
         $this->load->library('securityaudit');
+        $this->load->library('loginthrottle');
     }
 
     function index()
@@ -123,6 +124,24 @@ class Login extends CI_Controller
         // NEW: capture next from POST first (form), then GET
         $next = $this->input->post('next', TRUE) ?: $this->input->get('next', TRUE);
 
+        // Throttle BEFORE verifying anything. bcrypt is deliberately slow, so
+        // letting a blocked attempt reach it would turn the login form into a
+        // CPU amplifier.
+        $blocked = $this->loginthrottle->check($username);
+        if ($blocked) {
+            $this->Login_model->log_login_attempt($username, $raw_password, 'failed');
+            $this->securityaudit->event('RATE_LIMIT_TRIGGERED', [
+                'module'      => 'Login',
+                'status'      => 'blocked',
+                'target'      => $username,
+                'description' => 'Sign-in refused: too many recent failures',
+                'extra'       => ['scope' => $blocked['scope'], 'retry_after' => $blocked['retry_after']],
+            ]);
+            $this->session->set_flashdata('auth_error', $this->loginthrottle->retryMessage($blocked['retry_after']));
+            redirect('login' . ($next ? ('?next=' . urlencode($next)) : ''));
+            return;
+        }
+
         // validate() takes the RAW password; it verifies bcrypt (and legacy
         // sha1) in PHP and upgrades old hashes on success.
         $validate = $this->Login_model->validate($username, $raw_password);
@@ -143,6 +162,9 @@ class Login extends CI_Controller
             // 🔧 Be tolerant to case (active/Active/ACTIVE)
             if (strtolower((string)$acctStat) === 'active') {
                 $this->Login_model->log_login_attempt($username, $raw_password, 'success');
+
+                $this->loginthrottle->succeed($username);
+                $this->loginthrottle->prune();
 
                 // New session ID on privilege change, so a session ID captured
                 // before authentication cannot be replayed afterwards.
@@ -296,6 +318,7 @@ class Login extends CI_Controller
                     'Login failed',
                     ['attempted_username' => $username]
                 );
+                $this->loginthrottle->fail($username);
                 $this->securityaudit->event('LOGIN_FAILED', [
                     'module'      => 'Login',
                     'status'      => 'failed',
@@ -328,11 +351,13 @@ class Login extends CI_Controller
                 'Login failed',
                 ['attempted_username' => $username]
             );
+            $triggered = $this->loginthrottle->fail($username);
             $this->securityaudit->event('LOGIN_FAILED', [
                 'module'      => 'Login',
                 'status'      => 'failed',
                 'target'      => $username,
                 'description' => 'Invalid credentials',
+                'extra'       => $triggered ? ['throttle_triggered' => $triggered] : null,
             ]);
             $this->session->set_flashdata('auth_error', 'The username or password is incorrect!');
             redirect('login' . ($next ? ('?next=' . urlencode($next)) : ''));

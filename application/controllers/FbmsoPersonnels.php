@@ -10,8 +10,32 @@ class FbmsoPersonnels extends CI_Controller
         $this->load->model('SettingsModel'); // <-- add
         $this->load->helper(['form', 'url']);
         $this->load->library('upload');
-        // Gatekeep if needed:
-        // if ($this->session->userdata('level')!=='Administrator') show_404();
+    }
+
+    /**
+     * Roles allowed to administer personnel records.
+     * AuthGuard enforces this too; keeping it here as well means neither
+     * layer silently becomes the only one.
+     */
+    private function require_manager()
+    {
+        $level = trim((string)$this->session->userdata('level'));
+
+        if (!in_array($level, array('Super Admin', 'Admin', 'IT', 'HR Admin', 'Human Resource'), true)) {
+            show_error('Access Denied', 403);
+        }
+    }
+
+    /**
+     * Destructive actions must not be reachable by GET: a link or image tag
+     * would otherwise be enough to fire them from any page a signed-in user
+     * happens to visit.
+     */
+    private function require_post()
+    {
+        if (strtoupper((string)$this->input->method()) !== 'POST') {
+            show_error('Method Not Allowed', 405);
+        }
     }
 
     // DELETE this if you added it earlier:
@@ -51,6 +75,8 @@ class FbmsoPersonnels extends CI_Controller
     /** Admin manage page */
     public function manage()
     {
+        $this->require_manager();
+
         $data = $this->school_info_block();
         $data['people'] = $this->Team->all();
         $this->load->view('fbmso_team_manage', $data);
@@ -58,6 +84,9 @@ class FbmsoPersonnels extends CI_Controller
 
     public function save()
     {
+        $this->require_manager();
+        $this->require_post();
+
         $id = $this->input->post('id');
         $payload = [
             'full_name'  => $this->input->post('full_name', true),
@@ -93,6 +122,9 @@ class FbmsoPersonnels extends CI_Controller
 
     public function delete($id)
     {
+        $this->require_manager();
+        $this->require_post();
+
         $this->Team->delete((int)$id);
         $this->session->set_flashdata('success', 'Removed.');
         redirect('FbmsoPersonnels/manage');
@@ -100,6 +132,9 @@ class FbmsoPersonnels extends CI_Controller
 
     public function toggle($id)
     {
+        $this->require_manager();
+        $this->require_post();
+
         $active = (int)$this->input->get('v', 1);
         $this->Team->toggle((int)$id, $active);
         redirect('FbmsoPersonnels/manage');

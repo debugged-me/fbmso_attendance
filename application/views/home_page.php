@@ -361,7 +361,7 @@
       forgotEmail: <?= json_encode($forgotEmail ?? ''); ?>
     };
   </script>
-  <script src="<?= base_url(); ?>assets/js/home.js?v=30260830"></script>
+  <script src="<?= base_url(); ?>assets/js/home.js?v=30260831"></script>
   <script src="<?= base_url('assets/js/mobile-shell.js?v=5'); ?>"></script>
 
 </body>
