@@ -341,7 +341,11 @@ class Securitycheck extends CI_Controller
         )->result_array();
 
         $failedIps = $this->db->query(
-            "SELECT ip_address, COUNT(*) c, COUNT(DISTINCT target_username) accounts
+            "SELECT ip_address, COUNT(*) c, COUNT(DISTINCT target_username) accounts,
+                    TRIM(BOTH ' ' FROM CONCAT_WS(' ',
+                        MAX(COALESCE(device_marketing_name, device_model_code, '')),
+                        MAX(COALESCE(browser, ''))
+                    )) AS device_desc
                FROM security_audit_logs
               WHERE event_time >= ? AND event_type = 'LOGIN_FAILED'
               GROUP BY ip_address HAVING c >= 5 ORDER BY c DESC LIMIT 10",
@@ -350,7 +354,9 @@ class Securitycheck extends CI_Controller
 
         $changes = $this->db->query(
             "SELECT event_time, actor_username, target_username, changed_field,
-                    old_value, new_value, ip_address, device_marketing_name, device_model_code
+                    old_value, new_value, description, ip_address,
+                    device_marketing_name, device_model_code, device_type,
+                    operating_system, os_version, browser, browser_version
                FROM security_audit_logs
               WHERE event_time >= ?
                 AND event_type IN ('PROFILE_CHANGED','PASSWORD_CHANGED','PASSWORD_RESET')
@@ -474,6 +480,51 @@ class Securitycheck extends CI_Controller
             return $h . '</div>';
         };
 
+        // One readable line per device instead of a field dump. Only the
+        // parts the browser actually told us are printed -- a line reading
+        // "Unknown - Unknown - Unknown" is worse than a short one, and
+        // inventing a phone name from a model code we do not have is worse
+        // still.
+        $deviceLine = function ($r) {
+            $bits = array();
+
+            $name  = trim((string)($r['device_marketing_name'] ?? ''));
+            $model = trim((string)($r['device_model_code'] ?? ''));
+
+            if ($name !== '' && $model !== '') {
+                $bits[] = $name . ' (' . $model . ')';
+            } elseif ($name !== '') {
+                $bits[] = $name;
+            } elseif ($model !== '') {
+                $bits[] = $model;
+            }
+
+            $os = trim((string)($r['operating_system'] ?? ''));
+            $ov = trim((string)($r['os_version'] ?? ''));
+            if ($os !== '') {
+                $bits[] = $ov !== '' ? $os . ' ' . $ov : $os;
+            }
+
+            $br = trim((string)($r['browser'] ?? ''));
+            if ($br !== '') {
+                $bits[] = $br;
+            }
+
+            // Only worth saying when nothing more specific is known.
+            $type = trim((string)($r['device_type'] ?? ''));
+            if (!$bits && $type !== '') {
+                $bits[] = $type . ' device';
+            }
+
+            $where = trim((string)($r['ip_address'] ?? ''));
+
+            if (!$bits) {
+                return $where !== '' ? 'from ' . $where : 'device not identified';
+            }
+
+            return implode(' · ', $bits) . ($where !== '' ? '  ·  from ' . $where : '');
+        };
+
         $banner = $ok ? '#1a7f37' : '#b42318';
         $h  = '<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1f2328;'
             . 'max-width:680px;margin:auto;line-height:1.6">';
@@ -573,8 +624,10 @@ class Securitycheck extends CI_Controller
             $h .= '<h3 style="font-size:15px;margin:22px 0 6px">Worth a look</h3>';
             foreach ($activity['failedIps'] as $r) {
                 $many = (int)$r['accounts'] > 1;
+                $desc = trim((string)($r['device_desc'] ?? ''));
                 $h .= '<p style="margin:8px 0">'
-                    . '<span style="' . $mono . '">' . $e($r['ip_address']) . '</span> failed '
+                    . '<span style="' . $mono . '">' . $e($r['ip_address']) . '</span>'
+                    . ($desc !== '' ? ' (' . $e($desc) . ')' : '') . ' failed '
                     . '<strong>' . $e($r['c']) . '</strong> times';
                 if ($many) {
                     $h .= ' against <strong>' . $e($r['accounts']) . ' different accounts</strong>. '
@@ -594,26 +647,55 @@ class Securitycheck extends CI_Controller
         if (empty($activity['changes'])) {
             $h .= '<p>No profile fields, passwords or names were changed.</p>';
         } else {
+            // One profile save writes a row per changed field, so an edit
+            // touching seven fields would otherwise print seven near-identical
+            // blocks. Collapse anything by the same actor, on the same record,
+            // in the same moment into a single event with its fields listed.
+            $groups = array();
             foreach ($activity['changes'] as $r) {
+                $key = implode('|', array(
+                    substr((string)$r['event_time'], 0, 19),
+                    (string)$r['actor_username'],
+                    (string)$r['target_username'],
+                    (string)$r['ip_address'],
+                ));
+
+                if (!isset($groups[$key])) {
+                    $groups[$key] = array('row' => $r, 'fields' => array());
+                }
+
+                if ($r['changed_field'] !== null && $r['changed_field'] !== '') {
+                    $groups[$key]['fields'][] = $r['changed_field'] . ':  '
+                        . ($r['old_value'] === null || $r['old_value'] === '' ? '(empty)' : $r['old_value'])
+                        . '   ->   '
+                        . ($r['new_value'] === null || $r['new_value'] === '' ? '(empty)' : $r['new_value']);
+                }
+            }
+
+            foreach ($groups as $g) {
+                $r      = $g['row'];
                 $actor  = (string)$r['actor_username'];
                 $target = (string)$r['target_username'];
-                $device = trim((string)($r['device_marketing_name'] ?: $r['device_model_code'] ?: 'an unrecognised device'));
 
                 $who = ($actor !== '' && $target !== '' && $actor !== $target)
                     ? $actor . ' changed ' . $target . "'s record"
                     : (($actor ?: $target ?: 'someone') . ' changed their own record');
 
+                $count = count($g['fields']);
+                if ($count > 1) {
+                    $who .= ' (' . $count . ' fields)';
+                }
+
                 $steps = array(
                     substr((string)$r['event_time'], 0, 19),
                     $who,
-                    'using ' . $device . ' at ' . (string)$r['ip_address'],
+                    $deviceLine($r),
                 );
 
-                if ($r['changed_field'] !== null && $r['changed_field'] !== '') {
-                    $steps[] = $r['changed_field'] . ':  '
-                             . ($r['old_value'] === null || $r['old_value'] === '' ? '(empty)' : $r['old_value'])
-                             . '   ->   '
-                             . ($r['new_value'] === null || $r['new_value'] === '' ? '(empty)' : $r['new_value']);
+                if ($count) {
+                    foreach ($g['fields'] as $f) {
+                        $steps[] = $f;
+                    }
                 } elseif ($r['description']) {
                     $steps[] = (string)$r['description'];
                 }
