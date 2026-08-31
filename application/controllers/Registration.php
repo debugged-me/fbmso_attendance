@@ -421,6 +421,29 @@ class Registration extends CI_Controller
 
     public function checkAvailability()
     {
+        // This endpoint answers "does this student ID exist?" to anyone, with
+        // no login and no CAPTCHA. On 2026-08-28 the attacker called it ten
+        // times in two minutes before registering and then signing in to
+        // someone else's account -- it is a reconnaissance tool as much as a
+        // form helper.
+        //
+        // The limit is deliberately loose: a student filling in the form
+        // honestly triggers a handful of checks, while enumerating a cohort
+        // takes hundreds. Busiest real IP in a month of production logs was
+        // 168 requests, so 40 per 15 minutes leaves ordinary use untouched.
+        $this->load->library('loginthrottle');
+        if ($this->loginthrottle->probe('availability_ip', 40, 600) !== null) {
+            $this->output
+                ->set_status_header(429)
+                ->set_content_type('application/json')
+                ->set_output(json_encode([
+                    'ok'      => false,
+                    'exists'  => false,
+                    'message' => 'Too many checks. Please wait a few minutes.',
+                ]));
+            return;
+        }
+
         $field = strtolower(trim((string)$this->input->post('field', true)));
         $value = trim((string)$this->input->post('value', true));
 

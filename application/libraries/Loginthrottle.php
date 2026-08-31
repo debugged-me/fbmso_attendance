@@ -157,6 +157,55 @@ class Loginthrottle
             : 'Too many sign-in attempts. Please try again in about ' . $minutes . ' minutes.';
     }
 
+    /**
+     * Generic counter for non-login endpoints that leak information when
+     * called in bulk -- account-existence checks, chiefly.
+     *
+     * Returns seconds remaining when the caller is blocked, else NULL.
+     * Call once per request; it counts and checks in one go.
+     */
+    public function probe($scope, $threshold, $blockSeconds, $key = null)
+    {
+        $key = $key !== null ? $key : $this->CI->input->ip_address();
+        $now = date('Y-m-d H:i:s');
+        $row = $this->row($scope, $key);
+
+        if ($row && !empty($row['blocked_until'])) {
+            $remaining = strtotime($row['blocked_until']) - time();
+            if ($remaining > 0) {
+                return $remaining;
+            }
+        }
+
+        if (!$row) {
+            $this->CI->db->insert('login_throttle', array(
+                'scope' => $scope, 'scope_key' => $key, 'failures' => 1,
+                'first_failure_at' => $now, 'last_failure_at' => $now,
+            ));
+            return null;
+        }
+
+        $stale    = (strtotime($now) - strtotime($row['last_failure_at'])) > self::WINDOW;
+        $failures = $stale ? 1 : ((int)$row['failures'] + 1);
+
+        $update = array(
+            'failures'         => $failures,
+            'last_failure_at'  => $now,
+            'first_failure_at' => $stale ? $now : $row['first_failure_at'],
+            'blocked_until'    => null,
+        );
+
+        $blocked = null;
+        if ($failures >= $threshold) {
+            $update['blocked_until'] = date('Y-m-d H:i:s', time() + $blockSeconds);
+            $blocked = $blockSeconds;
+        }
+
+        $this->CI->db->where('id', $row['id'])->update('login_throttle', $update);
+
+        return $blocked;
+    }
+
     // ------------------------------------------------------------------
 
     protected function scopeKeys($username, $ip)
