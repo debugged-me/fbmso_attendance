@@ -8,6 +8,7 @@ class Login extends CI_Controller
         $this->load->model('SettingsModel');
         $this->load->model('StudentModel');
         $this->load->model('AuditLogModel');
+        $this->load->library('securityaudit');
     }
 
     function index()
@@ -174,6 +175,13 @@ class Login extends CI_Controller
                     'User logged in successfully',
                     ['posted_sy' => $sy, 'posted_semester' => $semester]
                 );
+                $this->securityaudit->event('LOGIN_SUCCESS', [
+                    'module'      => 'Login',
+                    'status'      => 'success',
+                    'target'      => $username,
+                    'description' => 'Password accepted',
+                    'extra'       => ['level' => $level],
+                ]);
 
                 if ($next) {
                     $host  = parse_url($next, PHP_URL_HOST);
@@ -288,6 +296,13 @@ class Login extends CI_Controller
                     'Login failed',
                     ['attempted_username' => $username]
                 );
+                $this->securityaudit->event('LOGIN_FAILED', [
+                    'module'      => 'Login',
+                    'status'      => 'failed',
+                    'target'      => $username,
+                    'description' => 'Correct password but account not active',
+                    'extra'       => ['acctStat' => (string)$acctStat],
+                ]);
                 $status = strtolower(trim((string)$acctStat));
                 $message = $status === 'pending verification'
                     ? 'Verify your email before signing in. Check your inbox or resend the verification email.'
@@ -313,6 +328,12 @@ class Login extends CI_Controller
                 'Login failed',
                 ['attempted_username' => $username]
             );
+            $this->securityaudit->event('LOGIN_FAILED', [
+                'module'      => 'Login',
+                'status'      => 'failed',
+                'target'      => $username,
+                'description' => 'Invalid credentials',
+            ]);
             $this->session->set_flashdata('auth_error', 'The username or password is incorrect!');
             redirect('login' . ($next ? ('?next=' . urlencode($next)) : ''));
 
@@ -374,6 +395,10 @@ class Login extends CI_Controller
             1,
             'User logged out'
         );
+        $this->securityaudit->event('LOGOUT', [
+            'module' => 'Login',
+            'status' => 'success',
+        ]);
 
         $this->session->sess_destroy();
         redirect('login');
@@ -416,6 +441,14 @@ class Login extends CI_Controller
             !empty($sendResult['ok']) ? 'Temporary password queued from forgot-password form' : 'Temporary password could not be queued from forgot-password form',
             ['target_email' => $email]
         );
+        $this->securityaudit->event('PASSWORD_RESET', [
+            'module'      => 'Login',
+            'status'      => !empty($sendResult['ok']) ? 'success' : 'failed',
+            'target'      => (string)$user['username'],
+            'table'       => 'o_users',
+            'record_pk'   => (string)$user['username'],
+            'description' => 'Temporary password requested via forgot-password form',
+        ]);
 
         if (empty($sendResult['ok'])) {
             $this->redirect_forgot_password(

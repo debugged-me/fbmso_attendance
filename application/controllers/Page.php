@@ -1557,6 +1557,34 @@ class Page extends CI_Controller
 		$this->load->view('profile_page', $result);
 	}
 
+	/**
+	 * Identity-relevant fields of a student record, for before/after auditing.
+	 * Flat array so Securityaudit::changes() can diff it field by field.
+	 */
+	private function student_audit_snapshot($username)
+	{
+		$username = trim((string)$username);
+		$snap = [];
+
+		$acct = $this->db->select('username, IDNumber, fName, mName, lName, name, email, position, acctStat')
+			->where('username', $username)->limit(1)->get('o_users')->row_array();
+		if ($acct) {
+			foreach ($acct as $k => $v) {
+				$snap['o_users.' . $k] = $v;
+			}
+		}
+
+		$prof = $this->db->select('StudentNumber, FirstName, MiddleName, LastName, nameExtn, Sex, birthDate, contactNo, email')
+			->where('StudentNumber', $username)->limit(1)->get('studeprofile')->row_array();
+		if ($prof) {
+			foreach ($prof as $k => $v) {
+				$snap['studeprofile.' . $k] = $v;
+			}
+		}
+
+		return $snap;
+	}
+
 	public function myProfile()
 	{
 		$level = (string)$this->session->userdata('level');
@@ -1602,6 +1630,12 @@ class Page extends CI_Controller
 
 		if ($this->input->method() === 'post') {
 			$form = $this->input->post(null, true);
+
+			// Snapshot before ANY write, including the StudentNumber rename
+			// below. The 2026-08-28 takeover renamed an account through this
+			// endpoint and nothing recorded the old value.
+			$auditBefore   = $this->student_audit_snapshot($studentNumber);
+			$auditOriginal = $studentNumber;
 
 			$firstName  = strtoupper(trim((string)($form['FirstName'] ?? '')));
 			$middleName = strtoupper(trim((string)($form['MiddleName'] ?? '')));
@@ -1735,6 +1769,23 @@ class Page extends CI_Controller
 			);
 
 			if (!empty($save['success'])) {
+				// Field-level audit: one row per field that actually changed,
+				// with the old and new value and the acting device.
+				$this->load->library('securityaudit');
+				$auditAfter = $this->student_audit_snapshot($studentNumber);
+				$this->securityaudit->changes(
+					'PROFILE_CHANGED',
+					$auditBefore,
+					$auditAfter,
+					[
+						'module'    => 'Student Self-Service',
+						'table'     => 'o_users',
+						'record_pk' => $auditOriginal,
+						'target'    => $auditOriginal,
+						'status'    => 'success',
+					]
+				);
+
 				$this->session->set_userdata('fName', $firstName);
 				$this->session->set_userdata('mName', $middleName);
 				$this->session->set_userdata('lName', $lastName);
@@ -3154,6 +3205,16 @@ class Page extends CI_Controller
 			$username = $this->session->userdata('username');
 			$newpass = fbmso_password_hash($this->input->post('newpassword'));
 			if ($newpass !== '' && $this->StudentModel->reset_userpassword($username, $newpass)) {
+				// Record that it changed. Never the value, old or new.
+				$this->load->library('securityaudit');
+				$this->securityaudit->event('PASSWORD_CHANGED', [
+					'module'      => 'Account',
+					'status'      => 'success',
+					'target'      => $username,
+					'table'       => 'o_users',
+					'record_pk'   => $username,
+					'description' => 'User changed their own password',
+				]);
 				$this->session->set_flashdata('msg', '<div class="alert alert-success text-center">Succesfully changed password</div>');
 				$this->load->view('change_pass');
 			} else {
@@ -3923,6 +3984,19 @@ class Page extends CI_Controller
 		if ($this->db->affected_rows() === 0) {
 			$this->db->where('username', $username)->update('o_users', ['avatar' => $filename]);
 		}
+
+		$this->load->library('securityaudit');
+		$this->securityaudit->event('PROFILE_CHANGED', [
+			'module'      => 'Account',
+			'status'      => 'success',
+			'target'      => $username,
+			'table'       => 'o_users',
+			'record_pk'   => $username,
+			'field'       => 'avatar',
+			'old'         => $row->avatar ?? null,
+			'new'         => $filename,
+			'description' => 'Profile picture replaced',
+		]);
 
 		// refresh session so UI shows the new image immediately
 		$this->session->set_userdata('avatar', $filename);

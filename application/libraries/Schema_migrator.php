@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v3.done';
+    const MARKER = 'schema_migrations_v4.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -60,7 +60,168 @@ class Schema_migrator
                     $this->CI->db->query("ALTER TABLE `o_users` MODIFY `password` VARCHAR(255) NOT NULL");
                 },
             ),
+
+            // audit_logs.action is an ENUM that never included the actions the
+            // code actually writes. Every forgot-password event since
+            // 2026-03-23 landed as '' (985 rows) because stricton is off, so
+            // password resets are invisible to any action-based query.
+            // Widening an ENUM preserves existing values.
+            '2026_08_31_extend_audit_action_enum' => array(
+                'check' => function () {
+                    $type = $this->columnType('audit_logs', 'action');
+                    return $type !== null && strpos($type, 'password_reset') === false;
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "ALTER TABLE `audit_logs` MODIFY `action` ENUM(
+                            'login','logout','create','update','delete',
+                            'password_reset','password_change','profile_change',
+                            'access_denied','security'
+                         ) NOT NULL"
+                    );
+                },
+            ),
+
+            // Tamper-evident security event trail. Separate from audit_logs so
+            // security events are not diluted by 37k routine login rows, and so
+            // actor/target and device context have real columns.
+            '2026_08_31_create_security_audit_logs' => array(
+                'check' => function () {
+                    return !$this->tableExists('security_audit_logs');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "CREATE TABLE `security_audit_logs` (
+                          `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                          `event_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                          `event_type` VARCHAR(80) NOT NULL,
+                          `event_status` VARCHAR(30) DEFAULT NULL,
+                          `module` VARCHAR(100) DEFAULT NULL,
+
+                          -- Who did it vs whose record it was. Kept separate so
+                          -- 'user edited themselves' is distinguishable from
+                          -- 'an admin edited someone else'.
+                          `actor_username` VARCHAR(100) DEFAULT NULL,
+                          `actor_full_name` VARCHAR(200) DEFAULT NULL,
+                          `actor_level` VARCHAR(60) DEFAULT NULL,
+                          `target_username` VARCHAR(100) DEFAULT NULL,
+
+                          `table_name` VARCHAR(100) DEFAULT NULL,
+                          `record_pk` VARCHAR(100) DEFAULT NULL,
+                          `changed_field` VARCHAR(150) DEFAULT NULL,
+                          `old_value` TEXT DEFAULT NULL,
+                          `new_value` TEXT DEFAULT NULL,
+
+                          `ip_address` VARCHAR(45) DEFAULT NULL,
+                          `request_uri` VARCHAR(500) DEFAULT NULL,
+                          `request_method` VARCHAR(10) DEFAULT NULL,
+                          `session_reference` CHAR(64) DEFAULT NULL,
+
+                          -- Interpreted device labels, kept separate from the
+                          -- raw user-agent so a parser change never destroys
+                          -- the original forensic value.
+                          `device_type` VARCHAR(50) DEFAULT NULL,
+                          `device_brand` VARCHAR(100) DEFAULT NULL,
+                          `device_model_code` VARCHAR(100) DEFAULT NULL,
+                          `device_marketing_name` VARCHAR(150) DEFAULT NULL,
+                          `operating_system` VARCHAR(100) DEFAULT NULL,
+                          `os_version` VARCHAR(50) DEFAULT NULL,
+                          `browser` VARCHAR(100) DEFAULT NULL,
+                          `browser_version` VARCHAR(50) DEFAULT NULL,
+                          `raw_user_agent` TEXT DEFAULT NULL,
+
+                          `risk_score` INT NOT NULL DEFAULT 0,
+                          `risk_level` VARCHAR(20) DEFAULT NULL,
+                          `risk_reason` TEXT DEFAULT NULL,
+
+                          `description` TEXT DEFAULT NULL,
+                          `extra` LONGTEXT DEFAULT NULL,
+
+                          -- Hash chain: record_hash = SHA256(payload + prev_hash).
+                          -- Editing or removing a historic row breaks the chain.
+                          `prev_hash` CHAR(64) DEFAULT NULL,
+                          `record_hash` CHAR(64) DEFAULT NULL,
+
+                          PRIMARY KEY (`id`),
+                          KEY `idx_event_type_time` (`event_type`,`event_time`),
+                          KEY `idx_actor_time` (`actor_username`,`event_time`),
+                          KEY `idx_target_time` (`target_username`,`event_time`),
+                          KEY `idx_ip_time` (`ip_address`,`event_time`),
+                          KEY `idx_model_code` (`device_model_code`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
+                },
+            ),
+
+            // Model code -> marketing name. Codes are ambiguous across markets,
+            // so this is a display aid only; the raw code is always preserved.
+            '2026_08_31_create_device_model_catalog' => array(
+                'check' => function () {
+                    return !$this->tableExists('device_model_catalog');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "CREATE TABLE `device_model_catalog` (
+                          `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                          `manufacturer` VARCHAR(100) DEFAULT NULL,
+                          `model_code` VARCHAR(100) NOT NULL,
+                          `marketing_name` VARCHAR(150) DEFAULT NULL,
+                          `source_reference` VARCHAR(255) DEFAULT NULL,
+                          `updated_at` DATETIME DEFAULT NULL,
+                          PRIMARY KEY (`id`),
+                          UNIQUE KEY `uq_model_code` (`model_code`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
+
+                    $seed = array(
+                        array('realme', 'RMX3834', 'realme Note 50'),
+                        array('realme', 'RMX3630', 'realme C53'),
+                        array('Samsung', 'SM-A556E', 'Galaxy A55 5G'),
+                        array('Samsung', 'SM-A146P', 'Galaxy A14 5G'),
+                        array('OPPO',    'CPH2603', 'OPPO A38'),
+                        array('Xiaomi',  '23028RN4DG', 'Redmi 12C'),
+                        array('vivo',    'V2247', 'vivo Y17s'),
+                    );
+                    foreach ($seed as $row) {
+                        $this->CI->db->query(
+                            "INSERT IGNORE INTO `device_model_catalog`
+                               (manufacturer, model_code, marketing_name, source_reference, updated_at)
+                             VALUES (?, ?, ?, 'initial seed', NOW())",
+                            $row
+                        );
+                    }
+                },
+            ),
         );
+    }
+
+    /** Full COLUMN_TYPE for a column, or NULL if it does not exist. */
+    protected function columnType($table, $column)
+    {
+        $row = $this->CI->db->query(
+            "SELECT COLUMN_TYPE AS t
+               FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = ?
+                AND COLUMN_NAME = ?",
+            array($table, $column)
+        )->row();
+
+        return $row ? (string)$row->t : null;
+    }
+
+    protected function tableExists($table)
+    {
+        $row = $this->CI->db->query(
+            "SELECT 1 AS ok
+               FROM information_schema.TABLES
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+              LIMIT 1",
+            array($table)
+        )->row();
+
+        return (bool)$row;
     }
 
     // ------------------------------------------------------------------
