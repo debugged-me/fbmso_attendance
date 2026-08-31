@@ -57,6 +57,13 @@ $config['authguard_public'] = array(
     // the session gate so the token is only visible to signed-in staff.
     'emailqueue/process',
 
+    // --- Security report cron -------------------------------------------
+    // Securitycheck/daily_report authenticates with its own shared token
+    // (hash_equals against Securitycheck::token) and is called by cron with
+    // no session. ONLY this method is public: verify_chain and
+    // weak_passwords remain CLI-only and 404 over HTTP.
+    'securitycheck/daily_report',
+
     // --- Mobile API (native Flutter app) --------------------------------
     // The entire /api/mobile/* namespace is bearer-token authenticated
     // inside each controller (MobileAuth, MobileAttendance, ...). It does

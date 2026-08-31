@@ -353,6 +353,17 @@ $config['login_attempt_pepper'] = '79ae1483f919f346d7aefc9bc9ab3443550d27827ea3f
 
 /*
 |--------------------------------------------------------------------------
+| Security report recipients
+|--------------------------------------------------------------------------
+|
+| Where the daily audit-chain digest is sent. Comma-separated for several.
+| These emails are the off-server anchor for the audit trail: keep them.
+|
+*/
+$config['security_report_recipients'] = 'clarksteven.edong@softtechservices.net';
+
+/*
+|--------------------------------------------------------------------------
 | Session Variables
 |--------------------------------------------------------------------------
 |

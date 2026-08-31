@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v4.done';
+    const MARKER = 'schema_migrations_v5.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -191,6 +191,32 @@ class Schema_migrator
                             $row
                         );
                     }
+                },
+            ),
+
+            // Checkpoints for the audit chain. A hash chain cannot detect its
+            // own tail being truncated, so each run records where the chain
+            // ended. The same figures go out by email, which is the copy that
+            // actually matters: it lives off the server, where someone with
+            // database access cannot reach it.
+            '2026_08_31_create_security_audit_anchors' => array(
+                'check' => function () {
+                    return !$this->tableExists('security_audit_anchors');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "CREATE TABLE `security_audit_anchors` (
+                          `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                          `checked_at` DATETIME NOT NULL,
+                          `last_record_id` BIGINT UNSIGNED DEFAULT NULL,
+                          `last_record_hash` CHAR(64) DEFAULT NULL,
+                          `total_records` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+                          `chain_ok` TINYINT(1) NOT NULL DEFAULT 1,
+                          `notes` TEXT DEFAULT NULL,
+                          PRIMARY KEY (`id`),
+                          KEY `idx_checked_at` (`checked_at`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
                 },
             ),
         );

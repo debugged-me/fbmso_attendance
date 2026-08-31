@@ -2,29 +2,84 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
- * CLI-only security maintenance tools.
+ * Security maintenance tools.
  *
- * Usage:
- *   php index.php securitycheck verify_chain
- *   php index.php securitycheck weak_passwords
+ *   php index.php securitycheck daily_report     (also callable over HTTP with a token)
+ *   php index.php securitycheck verify_chain     (CLI only)
+ *   php index.php securitycheck weak_passwords   (CLI only)
+ *   php index.php securitycheck key              (CLI only - prints the cron URL)
  *
- * CLI-only on purpose: these answer questions an attacker would also like
- * answered, so they must not be reachable over HTTP.
+ * Only daily_report is reachable over HTTP, and only with the shared token,
+ * because shared hosting often makes a cron URL easier to set up than a CLI
+ * path. Its HTTP response is deliberately bare -- every finding goes to email,
+ * never into the response body, so the endpoint cannot be used to probe the
+ * system's security state.
+ *
+ * verify_chain and weak_passwords stay CLI-only: their output answers
+ * questions an attacker would also like answered.
  */
 class Securitycheck extends CI_Controller
 {
-    public function __construct()
+    /**
+     * Shared token for the cron URL. Derived from the encryption key and the
+     * database name, so it is stable across deploys and never stored anywhere
+     * extra. Same construction as the mail-queue token, different namespace,
+     * so one token can never be replayed against the other endpoint.
+     */
+    public static function token($ci = null)
     {
-        parent::__construct();
-
-        if (!is_cli()) {
-            show_404();
+        if ($ci === null) {
+            $ci = &get_instance();
         }
+        $dbName = is_object($ci->db) ? (string)$ci->db->database : '';
+
+        return substr(hash('sha256', 'fbmso-security-report|' . (string)config_item('encryption_key') . '|' . $dbName), 0, 40);
+    }
+
+    /** Allow HTTP only for the named method, and only with a valid token. */
+    private function gate($httpAllowed = false)
+    {
+        if (is_cli() || $this->input->is_cli_request()) {
+            return;
+        }
+
+        if (!$httpAllowed) {
+            show_404();
+            return;
+        }
+
+        $key = (string)$this->input->get('key', true);
+        if ($key === '' || !hash_equals(self::token($this), $key)) {
+            show_error('Forbidden', 403);
+        }
+    }
+
+    /**
+     * Print the ready-to-paste cron line. CLI only.
+     *
+     * This was briefly browsable by Super Admin/Admin/IT for convenience while
+     * setting the cron up. That page is gone: a URL that displays a working
+     * security token is worth more to an attacker than it is to us, and the
+     * token only needs reading once. Retrieve it over SSH instead:
+     *
+     *   php index.php securitycheck key
+     */
+    public function key()
+    {
+        $this->gate(false);
+
+        $cron = '0 6 * * * curl -s "' . site_url('securitycheck/daily_report')
+              . '?key=' . self::token($this) . '" > /dev/null 2>&1';
+
+        echo "Security report cron line:\n\n  {$cron}\n\n";
+        echo "Keep it secret; the token authenticates the request.\n";
     }
 
     /** Verify the security_audit_logs hash chain end to end. */
     public function verify_chain()
     {
+        $this->gate(false);
+
         $this->load->library('securityaudit');
         $result = $this->securityaudit->verify();
 
@@ -40,11 +95,299 @@ class Securitycheck extends CI_Controller
     }
 
     /**
+     * Daily security digest: verify the chain, compare against the last
+     * checkpoint, summarise activity, then queue an email.
+     *
+     * The email is the point. A hash chain cannot detect its own tail being
+     * cut off, and an attacker with database access can delete the checkpoint
+     * table too. What they cannot reach is a message already sitting in your
+     * inbox, so each digest carries the record count and last hash. If
+     * tomorrow's figures go backwards against yesterday's email, records were
+     * destroyed -- even if every table on the server agrees they were not.
+     *
+     * Delivery rides the existing mail queue, so the EmailQueue cron sends it.
+     *
+     *   php index.php securitycheck daily_report
+     */
+    public function daily_report($hours = 24)
+    {
+        $this->gate(true);
+
+        $hours = max(1, (int)$hours);
+        $since = date('Y-m-d H:i:s', time() - ($hours * 3600));
+
+        $this->load->library('securityaudit');
+
+        $chain = $this->securityaudit->verify();
+        $state = $this->chain_state();
+        $prev  = $this->db->order_by('id', 'DESC')->limit(1)
+            ->get('security_audit_anchors')->row_array();
+
+        $alerts = $this->anchor_alerts($prev, $state, $chain);
+        $ok     = $chain['ok'] && empty($alerts);
+
+        // Persist the new checkpoint before mailing, so the figures in the
+        // email and the figures on disk always describe the same moment.
+        $this->db->insert('security_audit_anchors', array(
+            'checked_at'       => date('Y-m-d H:i:s'),
+            'last_record_id'   => $state['last_id'],
+            'last_record_hash' => $state['last_hash'],
+            'total_records'    => $state['total'],
+            'chain_ok'         => $ok ? 1 : 0,
+            'notes'            => $alerts ? implode('; ', $alerts) : null,
+        ));
+
+        $activity = $this->activity_summary($since);
+        $subject  = ($ok ? '[FBMSO Security] Daily report - OK' : '[FBMSO Security] ALERT - audit trail integrity')
+                  . ' - ' . date('Y-m-d');
+
+        $body = $this->render_report($ok, $chain, $state, $prev, $alerts, $activity, $since, $hours);
+
+        $sent = 0;
+        foreach ($this->recipients() as $to) {
+            if (fbmso_mailqueue_push($this, $to, $subject, $body, fbmso_mailqueue_school_name($this))) {
+                $sent++;
+            }
+        }
+
+        // Over HTTP say nothing useful: the findings are in the email, and a
+        // detailed response would let anyone holding the URL probe the system.
+        if (!is_cli() && !$this->input->is_cli_request()) {
+            $this->output->set_content_type('text/plain')->set_output("done\n");
+            return;
+        }
+
+        echo ($ok ? "OK" : "ALERT") . ": chain checked ({$chain['checked']} records), queued to {$sent} recipient(s).\n";
+        foreach ($alerts as $a) {
+            echo "  ! {$a}\n";
+        }
+        if ($sent === 0) {
+            echo "  ! No email queued. Check security_report_recipients in config.php.\n";
+        }
+    }
+
+    /** Current end-of-chain figures. */
+    private function chain_state()
+    {
+        $last = $this->db->select('id, record_hash')->order_by('id', 'DESC')
+            ->limit(1)->get('security_audit_logs')->row();
+
+        return array(
+            'last_id'   => $last ? (int)$last->id : null,
+            'last_hash' => $last ? (string)$last->record_hash : null,
+            'total'     => (int)$this->db->count_all('security_audit_logs'),
+        );
+    }
+
+    /**
+     * Compare against the previous checkpoint. This is what catches the
+     * deletions the hash chain alone cannot see.
+     */
+    private function anchor_alerts($prev, array $state, array $chain)
+    {
+        $alerts = array();
+
+        if (!$chain['ok']) {
+            $alerts[] = 'Hash chain broken at record id ' . $chain['broken_at']
+                      . ' - a record was modified or removed.';
+        }
+
+        if (!$prev) {
+            return $alerts;
+        }
+
+        if ($state['total'] < (int)$prev['total_records']) {
+            $alerts[] = 'Record count fell from ' . (int)$prev['total_records']
+                      . ' to ' . $state['total'] . ' - records were deleted.';
+        }
+
+        if ($prev['last_record_id'] !== null && $state['last_id'] !== null
+            && $state['last_id'] < (int)$prev['last_record_id']) {
+            $alerts[] = 'Last record id went backwards, from ' . (int)$prev['last_record_id']
+                      . ' to ' . $state['last_id'] . ' - the end of the trail was truncated.';
+        }
+
+        // The record the last checkpoint pointed at must still be there,
+        // unchanged. This catches a tail deletion followed by fresh writes.
+        if ($prev['last_record_id'] !== null) {
+            $row = $this->db->select('record_hash')
+                ->where('id', (int)$prev['last_record_id'])
+                ->limit(1)->get('security_audit_logs')->row();
+
+            if (!$row) {
+                $alerts[] = 'Previously checkpointed record id ' . (int)$prev['last_record_id']
+                          . ' no longer exists.';
+            } elseif ((string)$row->record_hash !== (string)$prev['last_record_hash']) {
+                $alerts[] = 'Previously checkpointed record id ' . (int)$prev['last_record_id']
+                          . ' now has a different hash - it was rewritten.';
+            }
+        }
+
+        return $alerts;
+    }
+
+    /** Counts worth eyeballing each morning. */
+    private function activity_summary($since)
+    {
+        $byType = $this->db->query(
+            "SELECT event_type, COUNT(*) c
+               FROM security_audit_logs WHERE event_time >= ?
+              GROUP BY event_type ORDER BY c DESC",
+            array($since)
+        )->result_array();
+
+        $failedIps = $this->db->query(
+            "SELECT ip_address, COUNT(*) c, COUNT(DISTINCT target_username) accounts
+               FROM security_audit_logs
+              WHERE event_time >= ? AND event_type = 'LOGIN_FAILED'
+              GROUP BY ip_address HAVING c >= 5 ORDER BY c DESC LIMIT 10",
+            array($since)
+        )->result_array();
+
+        $changes = $this->db->query(
+            "SELECT event_time, actor_username, target_username, changed_field,
+                    old_value, new_value, ip_address, device_marketing_name, device_model_code
+               FROM security_audit_logs
+              WHERE event_time >= ?
+                AND event_type IN ('PROFILE_CHANGED','PASSWORD_CHANGED','PASSWORD_RESET')
+              ORDER BY event_time DESC LIMIT 25",
+            array($since)
+        )->result_array();
+
+        return compact('byType', 'failedIps', 'changes');
+    }
+
+    private function recipients()
+    {
+        $raw = (string)$this->config->item('security_report_recipients');
+        $out = array();
+
+        foreach (explode(',', $raw) as $addr) {
+            $addr = trim($addr);
+            if ($addr !== '' && filter_var($addr, FILTER_VALIDATE_EMAIL)) {
+                $out[] = $addr;
+            }
+        }
+
+        return $out;
+    }
+
+    private function render_report($ok, array $chain, array $state, $prev, array $alerts, array $activity, $since, $hours)
+    {
+        $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
+        $banner = $ok ? '#1a7f37' : '#b42318';
+
+        $h  = '<div style="font-family:Arial,Helvetica,sans-serif;color:#222;max-width:760px;margin:auto">';
+        $h .= '<div style="background:' . $banner . ';color:#fff;padding:16px 20px;border-radius:6px 6px 0 0">';
+        $h .= '<h2 style="margin:0;font-size:18px">' . ($ok ? 'Audit trail intact' : 'AUDIT TRAIL ALERT') . '</h2>';
+        $h .= '<div style="opacity:.9;font-size:13px;margin-top:4px">' . $e(date('D, d M Y H:i')) . ' &middot; last ' . (int)$hours . 'h</div>';
+        $h .= '</div><div style="border:1px solid #ddd;border-top:none;padding:20px;border-radius:0 0 6px 6px">';
+
+        if (!$ok) {
+            $h .= '<div style="background:#fff4f4;border-left:4px solid #b42318;padding:12px 14px;margin-bottom:18px">';
+            $h .= '<strong>Someone may have altered the security log.</strong><ul style="margin:8px 0 0 18px;padding:0">';
+            foreach ($alerts as $a) { $h .= '<li>' . $e($a) . '</li>'; }
+            $h .= '</ul></div>';
+        }
+
+        // Checkpoint block -- the part worth keeping.
+        $h .= '<h3 style="font-size:15px;margin:0 0 8px">Checkpoint</h3>';
+        $h .= '<table style="border-collapse:collapse;font-size:13px;width:100%">';
+        $rows = array(
+            'Records verified' => $chain['checked'],
+            'Total records'    => $state['total'],
+            'Last record id'   => $state['last_id'] === null ? '(none)' : $state['last_id'],
+            'Last record hash' => $state['last_hash'] === null ? '(none)' : $state['last_hash'],
+        );
+        if ($prev) {
+            $rows['Previous check']     = $prev['checked_at'];
+            $rows['Previous total']     = $prev['total_records'];
+            $rows['Previous last id']   = $prev['last_record_id'];
+        }
+        foreach ($rows as $k => $v) {
+            $h .= '<tr><td style="padding:5px 10px 5px 0;color:#666;white-space:nowrap">' . $e($k)
+                . '</td><td style="padding:5px 0;font-family:monospace;word-break:break-all">' . $e($v) . '</td></tr>';
+        }
+        $h .= '</table>';
+        $h .= '<p style="font-size:12px;color:#666;margin:10px 0 20px">Keep this email. If a later report shows fewer records '
+            . 'or a lower last id than this one, the trail was cut -- regardless of what the server reports.</p>';
+
+        // Events
+        $h .= '<h3 style="font-size:15px;margin:0 0 8px">Events</h3>';
+        if (empty($activity['byType'])) {
+            $h .= '<p style="font-size:13px;color:#666">No security events recorded.</p>';
+        } else {
+            $h .= '<table style="border-collapse:collapse;font-size:13px">';
+            foreach ($activity['byType'] as $r) {
+                $h .= '<tr><td style="padding:4px 16px 4px 0">' . $e($r['event_type'])
+                    . '</td><td style="padding:4px 0;text-align:right"><strong>' . $e($r['c']) . '</strong></td></tr>';
+            }
+            $h .= '</table>';
+        }
+
+        // Repeated failures
+        if (!empty($activity['failedIps'])) {
+            $h .= '<h3 style="font-size:15px;margin:20px 0 8px">Repeated failed logins</h3>';
+            $h .= '<table style="border-collapse:collapse;font-size:13px;width:100%">';
+            $h .= '<tr style="background:#f5f5f5"><th align="left" style="padding:6px">IP</th>'
+                . '<th align="right" style="padding:6px">Failures</th><th align="right" style="padding:6px">Accounts</th></tr>';
+            foreach ($activity['failedIps'] as $r) {
+                $flag = ((int)$r['accounts'] > 1) ? ' style="background:#fff4f4"' : '';
+                $h .= '<tr' . $flag . '><td style="padding:6px;font-family:monospace">' . $e($r['ip_address'])
+                    . '</td><td align="right" style="padding:6px">' . $e($r['c'])
+                    . '</td><td align="right" style="padding:6px">' . $e($r['accounts']) . '</td></tr>';
+            }
+            $h .= '</table>';
+            $h .= '<p style="font-size:12px;color:#666;margin-top:6px">One IP failing against several accounts is credential spraying '
+                . '-- the pattern behind the 28 Aug 2026 incident.</p>';
+        }
+
+        // Account changes
+        $h .= '<h3 style="font-size:15px;margin:20px 0 8px">Account changes</h3>';
+        if (empty($activity['changes'])) {
+            $h .= '<p style="font-size:13px;color:#666">No account or password changes.</p>';
+        } else {
+            $h .= '<table style="border-collapse:collapse;font-size:12px;width:100%">';
+            $h .= '<tr style="background:#f5f5f5"><th align="left" style="padding:6px">When</th>'
+                . '<th align="left" style="padding:6px">Actor &rarr; Target</th>'
+                . '<th align="left" style="padding:6px">Field</th>'
+                . '<th align="left" style="padding:6px">Old &rarr; New</th>'
+                . '<th align="left" style="padding:6px">Device</th></tr>';
+            foreach ($activity['changes'] as $r) {
+                $who = $e($r['actor_username']);
+                if ((string)$r['actor_username'] !== (string)$r['target_username']) {
+                    $who .= ' &rarr; <strong>' . $e($r['target_username']) . '</strong>';
+                }
+                $dev = trim((string)($r['device_marketing_name'] ?: $r['device_model_code']));
+                $val = ($r['changed_field'] === null)
+                    ? '<em style="color:#666">-</em>'
+                    : $e($r['old_value']) . ' &rarr; <strong>' . $e($r['new_value']) . '</strong>';
+
+                $h .= '<tr><td style="padding:6px;white-space:nowrap">' . $e($r['event_time'])
+                    . '</td><td style="padding:6px">' . $who
+                    . '</td><td style="padding:6px;font-family:monospace">' . $e($r['changed_field'])
+                    . '</td><td style="padding:6px">' . $val
+                    . '</td><td style="padding:6px">' . $e($dev ?: '-') . '<br><span style="color:#888">' . $e($r['ip_address']) . '</span>'
+                    . '</td></tr>';
+            }
+            $h .= '</table>';
+        }
+
+        $h .= '<p style="font-size:11px;color:#888;margin-top:24px;border-top:1px solid #eee;padding-top:12px">'
+            . 'Automated report from FBMSO. No passwords, hashes or session tokens are included.</p>';
+        $h .= '</div></div>';
+
+        return $h;
+    }
+
+    /**
      * Report accounts still on guessable credentials.
      * Counts only; never prints a hash or a password.
      */
     public function weak_passwords()
     {
+        $this->gate(false);
+
         $compromised = $this->db->query(
             "SELECT COUNT(*) c FROM o_users WHERE password = ?",
             array('2fbd3e72682117dfad3ce0089afa803b021bf80b')
