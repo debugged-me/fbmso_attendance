@@ -1396,7 +1396,7 @@ class Page extends CI_Controller
 				'YearLevelStat' => $this->input->post('YearLevelStat'),
 				'Major'         => $this->input->post('Major'),
 				'EnroledDate'   => date('Y-m-d'),
-				'settingsID'    => $settings->settingsID, // ✅ Set from DB
+				'settingsID'    => $settings->settingsID, // . Set from DB
 			];
 
 			$email = $this->input->post('email');
@@ -2844,7 +2844,7 @@ class Page extends CI_Controller
 	// Profile List
 	public function profileList()
 	{
-		// ✅ Use studentsignup instead of studeprofile
+		// . Use studentsignup instead of studeprofile
 		$result['data'] = $this->StudentModel->getsignProfile();  // <— swap this line
 		// (Optional) if your view's transfer modal needs a list:
 		$result['prof'] = $result['data'];
@@ -3072,7 +3072,7 @@ class Page extends CI_Controller
 			$aff_users_by_email = $this->db->affected_rows();
 		}
 
-		// (4) ✅ NEW: student_qr — remove any QR tokens for this student
+		// (4) . NEW: student_qr — remove any QR tokens for this student
 		$this->db->delete('student_qr', ['student_number' => $studno]);
 		$aff_student_qr = $this->db->affected_rows();
 
@@ -3907,7 +3907,7 @@ class Page extends CI_Controller
 			// Update user table (update both username and IDNumber)
 			$this->db->where('username', $OldIDNumber);
 			$this->db->update('o_users', [
-				'username' => $IDNumber,   // ✅ also update the username
+				'username' => $IDNumber,   // . also update the username
 				'fName'    => $FirstName,
 				'mName'    => $MiddleName,
 				'lName'    => $LastName,
@@ -4034,7 +4034,7 @@ class Page extends CI_Controller
 		}
 
 		if ($this->input->post('submit')) {
-			// ✅ Generate Student Number only on submit
+			// . Generate Student Number only on submit
 			$studentNumber = $this->StudentModel->generate_student_number();
 
 			// Handle checkbox copying
@@ -4101,7 +4101,7 @@ class Page extends CI_Controller
 			$this->StudentModel->insert_user_account($userData);
 			$this->StudentModel->insert_profile($profileData);
 
-			// ✅ Flash success message
+			// . Flash success message
 			$this->session->set_flashdata('success', 'Student profile created successfully. <br>Student Number: <strong>' . $studentNumber . '</strong>');
 
 			// Redirect to list
@@ -6342,7 +6342,7 @@ class Page extends CI_Controller
 	{
 		$course = $this->input->post('course');
 		$yearLevel = $this->input->post('yearLevel');
-		$major = $this->input->post('major'); // ✅ get major
+		$major = $this->input->post('major'); // . get major
 
 		$sections = $this->StudentModel->getSectionsByCourseYearLevel($course, $yearLevel, $major);
 		echo json_encode($sections);
@@ -6460,7 +6460,7 @@ class Page extends CI_Controller
 				// Insert into studeprofile table
 				$this->StudentModel->insertStudeProfile($data);
 
-				// ✅ Update Status in studentsignup to "Verified"
+				// . Update Status in studentsignup to "Verified"
 				$this->StudentModel->updateSignupStatus($studentNumber, 'Verified');
 
 				$auditData = [

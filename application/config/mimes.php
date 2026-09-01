@@ -37,7 +37,7 @@ return array(
 	'bmp'   => array('image/bmp', 'image/x-bmp', 'image/x-bitmap', 'image/x-xbitmap', 'image/x-win-bitmap', 'image/x-windows-bmp', 'image/ms-bmp', 'image/x-ms-bmp', 'application/bmp', 'application/x-bmp', 'application/x-win-bitmap'),
 	'gif'   => 'image/gif',
 
-	// ✅ JPEG / JPG (expanded with image/jpg)
+	// . JPEG / JPG (expanded with image/jpg)
 	'jpeg'  => array('image/jpeg', 'image/pjpeg', 'image/jpg'),
 	'jpg'   => array('image/jpeg', 'image/pjpeg', 'image/jpg'),
 	'jpe'   => array('image/jpeg', 'image/pjpeg', 'image/jpg'),

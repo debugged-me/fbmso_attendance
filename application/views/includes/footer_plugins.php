@@ -1,14 +1,14 @@
-<!-- ✅ vendor.min.js includes jQuery 3.4.1 + Bootstrap 4 + Popper — no need for separate CDN loads -->
+<!-- . vendor.min.js includes jQuery 3.4.1 + Bootstrap 4 + Popper — no need for separate CDN loads -->
 <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
 <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
-<!-- ✅ Other Libraries -->
+<!-- . Other Libraries -->
 <script src="<?= base_url(); ?>assets/libs/moment/moment.min.js"></script>
 <script src="<?= base_url(); ?>assets/libs/jquery-scrollto/jquery.scrollTo.min.js"></script>
 <script src="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.js"></script>
 <script src="<?= base_url(); ?>assets/js/sweetalert.min.js"></script>
 
-<!-- ✅ DataTables -->
+<!-- . DataTables -->
 <script src="<?= base_url(); ?>assets/libs/datatables/jquery.dataTables.min.js"></script>
 <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.bootstrap4.min.js"></script>
 <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.buttons.min.js"></script>
@@ -26,7 +26,7 @@
 <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.select.min.js"></script>
 <script src="<?= base_url(); ?>assets/js/pages/datatables.init.js"></script>
 
-<!-- ✅ Plugins -->
+<!-- . Plugins -->
 <script src="<?= base_url(); ?>assets/libs/bootstrap-tagsinput/bootstrap-tagsinput.min.js"></script>
 <script src="<?= base_url(); ?>assets/libs/switchery/switchery.min.js"></script>
 <script src="<?= base_url(); ?>assets/libs/select2/select2.min.js"></script>
@@ -44,7 +44,7 @@
 </script>
 
 
-<!-- ✅ Bootstrap Dropdown Activation -->
+<!-- . Bootstrap Dropdown Activation -->
 <script>
   $(document).ready(function() {
     $('.dropdown-toggle').dropdown(); // Make sure dropdowns work

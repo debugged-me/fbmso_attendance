@@ -425,7 +425,7 @@ class Student extends CI_Controller
     $semester = $this->session->userdata('semester');
     $sy = $this->session->userdata('sy');
 
-    // ✅ Fetch enrolled subjects with instructor name from staff
+    // . Fetch enrolled subjects with instructor name from staff
     $this->db->select('r.*, CONCAT(s.FirstName, " ", s.MiddleName, " ", s.LastName) AS Instructor');
     $this->db->from('registration r');
     $this->db->join('staff s', 'r.IDNumber = s.IDNumber', 'left');
@@ -434,7 +434,7 @@ class Student extends CI_Controller
     $this->db->where('r.SY', $sy);
     $enrolled = $this->db->get()->result();
 
-    // ✅ Fetch student details
+    // . Fetch student details
     $this->db->select('sp.StudentNumber, sp.FirstName, sp.MiddleName, sp.LastName, r.Course, r.YearLevel');
     $this->db->from('studeprofile sp');
     $this->db->join('registration r', 'sp.StudentNumber = r.StudentNumber');
@@ -457,7 +457,7 @@ class Student extends CI_Controller
     $semester = $this->session->userdata('semester');
     $sy = $this->session->userdata('sy');
 
-    // ✅ Fetch enrolled subjects with instructor name from staff
+    // . Fetch enrolled subjects with instructor name from staff
     $this->db->select('r.*, CONCAT(s.FirstName, " ", s.MiddleName, " ", s.LastName) AS Instructor');
     $this->db->from('registration r');
     $this->db->join('staff s', 'r.IDNumber = s.IDNumber', 'left');
@@ -466,7 +466,7 @@ class Student extends CI_Controller
     $this->db->where('r.SY', $sy);
     $enrolled = $this->db->get()->result();
 
-    // ✅ Fetch student details
+    // . Fetch student details
     $this->db->select('sp.StudentNumber, sp.FirstName, sp.MiddleName, sp.LastName, r.Course, r.YearLevel');
     $this->db->from('studeprofile sp');
     $this->db->join('registration r', 'sp.StudentNumber = r.StudentNumber');
@@ -503,7 +503,7 @@ class Student extends CI_Controller
     $this->db->where('r.SY', $sy);
     $enrolled = $this->db->get()->result();
 
-    // ✅ Use the model method to get student info safely
+    // . Use the model method to get student info safely
     $student = $this->StudentEnrollment->getStudentInfoWithRegistration($studentNumber, $sy, $semester);
 
     // Letterhead
@@ -1035,7 +1035,7 @@ class Student extends CI_Controller
     $data['phCourses']    = $this->StudentModel->getCoursesByProgramHead($username, $idnumber);
     $data['defaultCourse'] = !empty($data['phCourses']) ? $data['phCourses'][0]->CourseDescription : '';
 
-    // ✅ filtered by Program Head
+    // . filtered by Program Head
     $data['allStudents']  = $this->StudentModel->getAllStudentsBasic($username, $idnumber);
 
     $data['majors'] = $data['defaultCourse'] ? $this->StudentModel->getMajorsByCourse($data['defaultCourse']) : [];
@@ -1169,12 +1169,12 @@ class Student extends CI_Controller
       }
     }
 
-    // ✅ Update studeprofile in one batch
+    // . Update studeprofile in one batch
     if (!empty($profile_updates)) {
       $this->db->update_batch('studeprofile', $profile_updates, 'StudentNumber');
     }
 
-    // ✅ Check existing studentsignup records using chunks to avoid regex error
+    // . Check existing studentsignup records using chunks to avoid regex error
     if (!empty($signup_updates)) {
       $existing_ids = [];
       $student_numbers = array_column($signup_updates, 'StudentNumber');
@@ -1195,13 +1195,13 @@ class Student extends CI_Controller
         return in_array($item['StudentNumber'], $existing_ids);
       });
 
-      // ✅ Batch update studentsignup
+      // . Batch update studentsignup
       if (!empty($signup_updates_filtered)) {
         $this->db->update_batch('studentsignup', $signup_updates_filtered, 'StudentNumber');
       }
     }
 
-    // ✅ Flash message and redirect
+    // . Flash message and redirect
     $this->session->set_flashdata('success', "$updated_count student age(s) updated successfully.");
     $this->load->view('landing_page');
   }

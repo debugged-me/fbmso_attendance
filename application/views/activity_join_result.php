@@ -36,7 +36,7 @@
         <div class="card"><div class="card-body">
           <?php if ($ok && in_array($mode, $successModes, true)): ?>
             <div class="alert alert-success">
-              ✅ Attendance <?=
+              . Attendance <?=
                 $mode === 'checked_out' ? 'check-out recorded' :
                 ($mode === 'checked_in' ? 'recorded' : 'recorded')
               ?> for <strong><?= htmlspecialchars($student_number ?? '') ?></strong>

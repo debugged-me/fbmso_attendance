@@ -766,7 +766,7 @@
       body {
         padding: 14px;
         align-items: stretch;
-        /* ✅ allow full height layout */
+        /* . allow full height layout */
         justify-content: center;
       }
 

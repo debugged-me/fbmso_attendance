@@ -309,7 +309,7 @@ class StudentModel extends CI_Model
 		$this->db->select('*');
 		$this->db->from('o_srms_settings');
 		$query = $this->db->get();
-		return $query->row(); // ✅ returns a single object
+		return $query->row(); // . returns a single object
 	}
 
 
@@ -3289,7 +3289,7 @@ class StudentModel extends CI_Model
 		$this->db->where('Course', $course);
 		$this->db->where('YearLevel', $yearLevel);
 
-		if (!empty($major)) { // ✅ only filter if major is provided
+		if (!empty($major)) { // . only filter if major is provided
 			$this->db->where('Major', $major);
 		}
 
@@ -3807,7 +3807,7 @@ class StudentModel extends CI_Model
 
 	// 	$students = $this->db->get()->result();
 
-	// 	// ✅ Totals for unique StudentNumbers only
+	// 	// . Totals for unique StudentNumbers only
 	// 	$subQuery = $this->db->select("
 	// 		StudentNumber,
 	// 		MAX(AcctTotal) as AcctTotal,
@@ -3871,7 +3871,7 @@ class StudentModel extends CI_Model
 
 		$students = $this->db->get()->result();
 
-		// ✅ Totals for unique StudentNumbers only — raw values only!
+		// . Totals for unique StudentNumbers only — raw values only!
 		$subQuery = $this->db->select("
         StudentNumber,
         MAX(AcctTotal) as AcctTotal,
@@ -3942,7 +3942,7 @@ class StudentModel extends CI_Model
 		$this->db->order_by("StudentName", "ASC");
 		$students = $this->db->get()->result();
 
-		// ✅ Totals only for unique StudentNumbers
+		// . Totals only for unique StudentNumbers
 		$subQuery = $this->db->select("
 			StudentNumber,
 			MAX(AcctTotal) as AcctTotal,

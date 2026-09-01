@@ -1602,7 +1602,7 @@ class Settings extends CI_Controller
 	{
 		$yearLevel = $this->input->post('yearLevel');
 		$course = $this->input->post('course');
-		$major = $this->input->post('major'); // ✅ Added
+		$major = $this->input->post('major'); // . Added
 
 		$sections = $this->SettingsModel->get_sections_by_course_and_yearlevel($yearLevel, $course, $major);
 

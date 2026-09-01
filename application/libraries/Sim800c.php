@@ -5,7 +5,7 @@ class Sim800c
     /** @var CI_Controller */
     protected $CI;
 
-    // ✅ Update this to your actual port
+    // . Update this to your actual port
     protected $port = '/dev/cu.usbserial-110';
     protected $baud = 115200;
 

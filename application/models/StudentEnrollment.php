@@ -11,8 +11,8 @@ class StudentEnrollment extends CI_Model
     // Model: StudentEnrollment.php
 public function getStudentDetails($studentNumber)
 {
-    $sy       = $this->session->userdata('sy');        // ✅ logged-in SY
-    $semester = $this->session->userdata('semester'); // ✅ logged-in Semester
+    $sy       = $this->session->userdata('sy');        // . logged-in SY
+    $semester = $this->session->userdata('semester'); // . logged-in Semester
 
     return $this->db->get_where('semesterstude', [
         'StudentNumber' => $studentNumber,
@@ -182,7 +182,7 @@ public function getRegisteredSubjects($studentNumber, $course, $major = null, $s
         $this->db->where('registration.Major', $major);
     }
 
-    // ✅ Ensure filtering by current School Year and Semester
+    // . Ensure filtering by current School Year and Semester
     if (!empty($sy)) {
         $this->db->where('registration.SY', $sy);
     }
@@ -191,7 +191,7 @@ public function getRegisteredSubjects($studentNumber, $course, $major = null, $s
         $this->db->where('registration.Sem', $sem);
     }
 
-    // ✅ Exclude dropped subjects using NOT EXISTS
+    // . Exclude dropped subjects using NOT EXISTS
     $this->db->where("NOT EXISTS (
         SELECT 1 FROM dropadd 
         WHERE dropadd.StudentNumber = registration.StudentNumber 
@@ -241,7 +241,7 @@ public function getDroppedSubjects($studentNumber, $course, $major = null, $sy =
     $semester = $this->session->userdata('semester');
     $sy = $this->session->userdata('sy');
 
-    // ✅ Fetch enrolled subjects with instructor name from staff
+    // . Fetch enrolled subjects with instructor name from staff
     $this->db->select('r.*, CONCAT(s.FirstName, " ", s.MiddleName, " ", s.LastName) AS Instructor');
     $this->db->from('registration r');
     $this->db->join('staff s', 'r.IDNumber = s.IDNumber', 'left');
@@ -250,7 +250,7 @@ public function getDroppedSubjects($studentNumber, $course, $major = null, $sy =
     $this->db->where('r.SY', $sy);
     $enrolled = $this->db->get()->result();
 
-    // ✅ Fetch student details
+    // . Fetch student details
     $this->db->select('sp.StudentNumber, sp.FirstName, sp.MiddleName, sp.LastName, r.Course, r.YearLevel');
     $this->db->from('studeprofile sp');
     $this->db->join('registration r', 'sp.StudentNumber = r.StudentNumber');

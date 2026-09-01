@@ -1578,7 +1578,7 @@ function GetSection1()
         $this->db->where('Course', $course);
 
         if (!empty($major)) {
-            $this->db->where('Major', $major); // ✅ Only apply if major is given
+            $this->db->where('Major', $major); // . Only apply if major is given
         }
 
         $this->db->order_by('Section', 'ASC');
