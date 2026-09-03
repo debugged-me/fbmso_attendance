@@ -24,7 +24,7 @@
 	<link href="<?= base_url(); ?>assets/libs/datatables/buttons.bootstrap4.min.css" rel="stylesheet" type="text/css" />
 	<link href="<?= base_url(); ?>assets/libs/datatables/responsive.bootstrap4.min.css" rel="stylesheet" type="text/css" />
 	<link href="<?= base_url(); ?>assets/libs/datatables/select.bootstrap4.min.css" rel="stylesheet" type="text/css" />
-	<link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=6'); ?>">
+	<link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=7'); ?>">
 	<meta name="theme-color" content="#1a2942">
 	<link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
 	<meta name="apple-mobile-web-app-capable" content="yes">

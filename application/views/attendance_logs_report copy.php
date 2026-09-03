@@ -251,6 +251,7 @@ if (!function_exists('h')) {
   </div><!-- /wrapper -->
 
   <?php include('includes/themecustomizer.php'); ?>
+  <?php include('includes/footer.php'); ?>
 
   <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
   <script src="<?= base_url(); ?>assets/js/app.min.js"></script>

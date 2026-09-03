@@ -531,6 +531,7 @@ $flashDanger  = $this->session->flashdata('danger');
   </div>
 
   <?php include('includes/themecustomizer.php'); ?>
+  <?php include('includes/footer.php'); ?>
 
   <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
   <script src="<?= base_url(); ?>assets/libs/moment/moment.min.js"></script>

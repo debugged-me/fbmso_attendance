@@ -593,7 +593,7 @@
           const win = window.open('', 'printwin');
           win.document.write(`
             <html><head><title>My QR</title>
-            <style>@media print{body{margin:0}}body{display:flex;align-items:center;justify-content:center;height:100vh;height:100dvh;background:#fff}img{width:480px;height:480px}</style>
+            <style>@media print{body{margin:0}}body{display:flex;align-items:center;justify-content:center;height:100vh;height:100dvh;background:#fff}img{width:480px;height:480px;max-width:90vw;max-height:90vh;border-radius:22px}</style>
             </head><body><img src="${dataUrl}" alt="QR">
             <script>window.onload=function(){window.print();setTimeout(()=>window.close(),100)}<\/script>
             </body></html>`);

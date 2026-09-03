@@ -1051,4 +1051,102 @@ body.ms-drawer-locked {
   body.ms-scan-page .btn-group {
     flex-wrap: wrap;
   }
+
+  /* ------------------------------------------------------------------------
+     Standalone auth / registration pages
+     These pages (home_page, registration_form, lock-screen,
+     settings_department_Subject) do not use the shared .content-page wrapper,
+     so the blanket inline-width neutralizer above never reaches them. Extend
+     the same sanctioned !important guards to their root containers so legacy
+     inline width/min-width values cannot force a horizontal scrollbar.
+     ------------------------------------------------------------------------ */
+
+  body.authentication-page,
+  body[data-layout='horizontal'] {
+    overflow-x: hidden;
+  }
+
+  /* A lock screen is an auth gate — the role-aware tab bar has no business
+     being visible there (its links point at dashboards the user cannot reach
+     until they unlock). Hide it and clear the space it would have reserved. */
+  body.authentication-page .ms-tabbar {
+    display: none !important;
+  }
+
+  body.authentication-page,
+  body[data-layout='horizontal'] {
+    padding-bottom: var(--ms-safe-bottom);
+  }
+
+  .authentication-page [style*='width'],
+  .authentication-page [style*='min-width'],
+  .reg-card [style*='width'],
+  .reg-card [style*='min-width'],
+  .account-pages [style*='width'],
+  .account-pages [style*='min-width'] {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* The bare settings_department_Subject page ships without Bootstrap table
+     styling; give its raw <table> the same card treatment the shell gives
+     themed tables, and let its container breathe. */
+  body > .container > table {
+    width: 100% !important;
+    margin-bottom: 1rem;
+  }
+
+  /* ------------------------------------------------------------------------
+     Select2 dropdowns position themselves with inline left/top values that
+     routinely push the results panel past the right edge of a 360px viewport.
+     Clamp the dropdown to the viewport so it never creates horizontal scroll.
+     ------------------------------------------------------------------------ */
+
+  .select2-container--open .select2-dropdown {
+    max-width: calc(100vw - 16px) !important;
+  }
+
+  .select2-container--default .select2-results > .select2-results__options {
+    max-height: 50vh;
+    max-height: 50dvh;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ------------------------------------------------------------------------
+     Card-table cells: a single wide button (e.g. a long "View" label) in the
+     right-aligned value column can overflow its row card. Let cell content
+     wrap and cap it to the cell width.
+     ------------------------------------------------------------------------ */
+
+  .ms-rt tbody td > .btn,
+  .ms-rt tbody td > a,
+  .ms-rt tbody td > button {
+    max-width: 100%;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .ms-rt tbody td .btn-group {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* ------------------------------------------------------------------------
+     Floating chat widget (includes/chat_modal.php)
+     Desktop pins it to width:320px / height:480px anchored 20px from the
+     right edge — on a 320px phone that combination overflows the viewport and
+     spawns a horizontal scrollbar. Make it span the safe-area width and sit
+     above the bottom tab bar instead.
+     ------------------------------------------------------------------------ */
+
+  #floatingChatBox {
+    right: 8px !important;
+    left: 8px !important;
+    bottom: calc(var(--ms-tabbar-h) + var(--ms-safe-bottom) + 8px) !important;
+    width: auto !important;
+    max-width: calc(100vw - 16px) !important;
+    height: 72vh !important;
+    height: 72dvh !important;
+    max-height: 72dvh !important;
+  }
 }

@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/css/home.css?v=30260835">
   <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=30260820" rel="stylesheet">
-  <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=6'); ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=7'); ?>">
   <meta name="theme-color" content="#1a2942">
   <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
   <meta name="apple-mobile-web-app-capable" content="yes">
