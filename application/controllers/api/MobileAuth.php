@@ -32,6 +32,7 @@ class MobileAuth extends MobileApi
         $this->load->helper('url');
         $this->load->model('Login_model');
         $this->load->model('EmailVerificationModel');
+        $this->load->library('Loginthrottle');
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -240,12 +241,26 @@ class MobileAuth extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Username and password are required.'], 422);
         }
 
+        // Throttle BEFORE verifying — same as Login::auth(). bcrypt is slow,
+        // so letting a blocked attempt reach it turns the endpoint into a
+        // CPU amplifier.
+        $blocked = $this->loginthrottle->check($username);
+        if ($blocked) {
+            $this->Login_model->log_login_attempt($username, $passwordRaw, 'failed');
+            return $this->json([
+                'ok'          => false,
+                'message'     => 'Too many failed attempts. Try again in ' . $blocked['retry_after'] . ' seconds.',
+                'retry_after' => (int)$blocked['retry_after'],
+            ], 429);
+        }
+
         // Same path as Login::auth(): validate() takes the RAW password and
         // verifies bcrypt (or legacy sha1) in PHP.
         $result = $this->Login_model->validate($username, $passwordRaw);
 
         if (!$result || $result->num_rows() === 0) {
             $this->Login_model->log_login_attempt($username, $passwordRaw, 'failed');
+            $this->loginthrottle->fail($username);
             return $this->json(['ok' => false, 'message' => 'The username or password is incorrect.'], 401);
         }
 
@@ -254,6 +269,7 @@ class MobileAuth extends MobileApi
 
         if (!$this->user_is_active($userRow)) {
             $this->Login_model->log_login_attempt($username, $passwordRaw, 'failed');
+            $this->loginthrottle->fail($username);
             if ($this->user_needs_email_verification($userRow)) {
                 return $this->json(['ok' => false, 'message' => 'Verify your email before signing in. Check your inbox for the verification link.'], 403);
             }
@@ -261,6 +277,8 @@ class MobileAuth extends MobileApi
         }
 
         $this->Login_model->log_login_attempt($username, $passwordRaw, 'success');
+        $this->loginthrottle->succeed($username);
+        $this->loginthrottle->prune();
 
         $token = $this->MobileTokenModel->issue($username, [
             'device_id'   => trim((string)($payload['device_id'] ?? ''))   ?: null,
@@ -475,26 +493,42 @@ class MobileAuth extends MobileApi
             return $this->json(['ok' => false, 'message' => 'A valid email is required.'], 422);
         }
 
+        // Throttle by email to prevent enumeration/DoS via repeated reset
+        // requests (each one rotates the account password).
+        $blocked = $this->loginthrottle->check($email);
+        if ($blocked) {
+            return $this->json([
+                'ok'          => false,
+                'message'     => 'Too many reset attempts. Try again in ' . $blocked['retry_after'] . ' seconds.',
+                'retry_after' => (int)$blocked['retry_after'],
+            ], 429);
+        }
+
         $account = $this->Login_model->findUserByEmail($email);
         if (!$account) {
-            // Do not leak whether the email exists.
+            // Do not leak whether the email exists. Still count the attempt
+            // toward the throttle so an attacker can't distinguish hits from
+            // misses by response timing.
+            $this->loginthrottle->fail($email);
             return $this->json(['ok' => true, 'message' => 'If that email exists, a temporary password has been sent.']);
         }
 
         if (!$this->user_is_active($account)) {
-            $message = $this->user_needs_email_verification($account)
-                ? 'Verify your email before resetting your password.'
-                : 'Your account is not active. Please contact support.';
-            return $this->json(['ok' => false, 'message' => $message], 403);
+            $this->loginthrottle->fail($email);
+            // Return the same generic message to avoid leaking account status.
+            return $this->json(['ok' => true, 'message' => 'If that email exists, a temporary password has been sent.']);
         }
 
         // Returns ['ok' => bool, 'message' => string] — a bare truthiness check
         // on the array would always pass and report success on a failed reset.
         $sent = $this->Login_model->sendTemporaryPasswordForUser((string)($account['username'] ?? ''));
         if (empty($sent['ok'])) {
+            $this->loginthrottle->fail($email);
             return $this->json(['ok' => false, 'message' => 'Unable to send a reset email right now. Please try again later.'], 500);
         }
 
+        $this->loginthrottle->succeed($email);
+        $this->loginthrottle->prune();
         return $this->json(['ok' => true, 'message' => 'If that email exists, a temporary password has been sent.']);
     }
 

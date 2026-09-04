@@ -21,6 +21,19 @@ class Settings extends CI_Controller
 
 	public function view_logs()
 	{
+		// Login logs contain usernames, IPs, and user agents — restrict to
+		// senior staff only (Super Admin, Admin, IT).
+		$level = (string)$this->session->userdata('level');
+		$allowed = array('Super Admin', 'Admin', 'IT');
+		$ok = false;
+		foreach ($allowed as $a) {
+			if (strcasecmp($level, $a) === 0) { $ok = true; break; }
+		}
+		if (!$ok) {
+			show_error('Forbidden — senior staff only.', 403);
+			return;
+		}
+
 		$this->load->model('Login_model');
 		$data['logs'] = $this->db->order_by('login_time', 'DESC')->get('login_logs')->result();
 
@@ -38,9 +51,10 @@ class Settings extends CI_Controller
 	{
 		$config['upload_path'] = './upload/banners/';
 		$config['allowed_types'] = 'jpg|gif|png';
-		$config['max_size'] = 15000;
-		//$config['max_width'] = 1500;
-		//$config['max_height'] = 1500;
+		$config['max_size'] = 4096;
+		$config['max_width']  = 2000;
+		$config['max_height'] = 2000;
+		$config['encrypt_name'] = TRUE;
 
 		$this->load->library('upload', $config);
 
@@ -55,7 +69,7 @@ class Settings extends CI_Controller
 			//$filename=$this->input->post('nonoy');
 			$filename = $this->upload->data('file_name');
 
-			$que = $this->db->query("update o_srms_settings set letterhead_web='$filename'");
+			$que = $this->db->query("UPDATE o_srms_settings SET letterhead_web = ?", array($filename));
 			$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Uploaded Succesfully!</b></div>');
 			//$this->load->view('loginFormImage');
 			redirect('Settings/loginFormBanner');
@@ -97,20 +111,20 @@ class Settings extends CI_Controller
 	//delete Section
 	public function deleteSection()
 	{
-		$id = $this->input->get('id');
+		$id = $this->input->post('id');
 		$username = $this->session->userdata('username');
 		date_default_timezone_set('Asia/Manila'); # add your city to set local time zone
 		$now = date('H:i:s A');
 		$date = date("Y-m-d");
-		$query = $this->db->query("delete from sections where sectionID='" . $id . "'");
-		$query = $this->db->query("insert into atrail values('','Deleted a Section','$date','$now','$username','$id')");
+		$this->db->where('sectionID', $id)->delete('sections');
+		$this->db->query("INSERT INTO atrail VALUES('', 'Deleted a Section', ?, ?, ?, ?)", array($date, $now, $username, $id));
 		$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Section deleted successfully.</b></div>');
 		redirect('Settings/Sections');
 	}
 	public function deleteCourse()
 	{
-		// Get the course ID from GET parameters
-		$id = $this->input->get('id');
+		// Get the course ID from POST parameters
+		$id = $this->input->post('id');
 		$username = $this->session->userdata('username');
 
 		// Snapshot BEFORE delete
@@ -124,8 +138,8 @@ class Settings extends CI_Controller
 		// Delete the course record (use query builder to avoid injections)
 		$ok = $this->db->delete('course_table', ['courseid' => $id]);
 
-		// Keep your legacy trail (unchanged)
-		$this->db->query("INSERT INTO atrail VALUES('', 'Deleted a Course', '$date', '$now', '$username', '$id')");
+		// Keep your legacy trail (use bound parameters to prevent SQL injection)
+		$this->db->query("INSERT INTO atrail VALUES('', 'Deleted a Course', ?, ?, ?, ?)", array($date, $now, $username, $id));
 
 		// AUDIT: delete course (unified audit_logs)
 		$this->AuditLogModel->write(
@@ -416,9 +430,10 @@ class Settings extends CI_Controller
 	{
 		$config['upload_path'] = './upload/banners/';
 		$config['allowed_types'] = 'jpg|gif|png';
-		$config['max_size'] = 15000;
-		//$config['max_width'] = 1500;
-		//$config['max_height'] = 1500;
+		$config['max_size'] = 4096;
+		$config['max_width']  = 2000;
+		$config['max_height'] = 2000;
+		$config['encrypt_name'] = TRUE;
 
 		$this->load->library('upload', $config);
 
@@ -433,7 +448,7 @@ class Settings extends CI_Controller
 			//$filename=$this->input->post('nonoy');
 			$filename = $this->upload->data('file_name');
 
-			$que = $this->db->query("update o_srms_settings set loginFormImage='$filename'");
+			$que = $this->db->query("UPDATE o_srms_settings SET loginFormImage = ?", array($filename));
 			$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Uploaded Succesfully!</b></div>');
 			//$this->load->view('loginFormImage');
 			redirect('Settings/loginFormBanner');
@@ -445,9 +460,10 @@ class Settings extends CI_Controller
 	{
 		$config['upload_path'] = './upload/banners/';
 		$config['allowed_types'] = 'jpg|gif|png';
-		$config['max_size'] = 15000;
-		//$config['max_width'] = 1500;
-		//$config['max_height'] = 1500;
+		$config['max_size'] = 4096;
+		$config['max_width']  = 2000;
+		$config['max_height'] = 2000;
+		$config['encrypt_name'] = TRUE;
 
 		$this->load->library('upload', $config);
 
@@ -462,7 +478,7 @@ class Settings extends CI_Controller
 			//$filename=$this->input->post('nonoy');
 			$filename = $this->upload->data('file_name');
 
-			$que = $this->db->query("update o_srms_settings set login_form_image='$filename'");
+			$que = $this->db->query("UPDATE o_srms_settings SET login_form_image = ?", array($filename));
 			$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Uploaded Succesfully!</b></div>');
 			//$this->load->view('loginFormImage');
 			redirect('Settings/loginFormBanner');

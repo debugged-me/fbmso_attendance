@@ -23,10 +23,15 @@ class EmailTest extends CI_Controller
 
 		// Staff only: this page sends from the school mailbox, so it must never
 		// be reachable by a student account (spam vector + burns the SMTP
-		// limit). AuthGuard already requires a session to get here.
+		// limit). Restrict to senior staff who are allowed to see SMTP debug.
 		$username = trim((string) $this->session->userdata('username'));
 		$level    = trim((string) $this->session->userdata('level'));
-		if ($username === '' || $level === '' || strcasecmp($level, 'Student') === 0) {
+		$senior   = array('Super Admin', 'Admin', 'IT');
+		$isSenior = false;
+		foreach ($senior as $s) {
+			if (strcasecmp($level, $s) === 0) { $isSenior = true; break; }
+		}
+		if ($username === '' || !$isSenior) {
 			show_error('Forbidden', 403);
 		}
 	}

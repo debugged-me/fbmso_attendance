@@ -1007,6 +1007,39 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Missing required fields.'], 422);
         }
 
+        // Validate acctLevel against the allowed role list — prevents a
+        // staff member from creating an account with an arbitrary/custom
+        // position string.
+        $allowedLevels = array(
+            'Student', 'Stude Applicant', 'Admin', 'Super Admin', 'School Admin',
+            'Registrar', 'Head Registrar', 'IT', 'Instructor', 'Encoder',
+            'Accounting', 'HR Admin', 'Human Resource', 'Academic Officer',
+            'Property Custodian',
+        );
+        $levelOk = false;
+        foreach ($allowedLevels as $al) {
+            if (strcasecmp($acctLevel, $al) === 0) { $levelOk = true; break; }
+        }
+        if (!$levelOk) {
+            return $this->json(['ok' => false, 'message' => 'Invalid account level.'], 422);
+        }
+
+        // Only Super Admin / Admin / IT may create other staff/admin accounts.
+        $seniorLevels = array('Super Admin', 'Admin', 'IT');
+        $isSenior = false;
+        $creatorLevel = (string)($tokenRow['position'] ?? '');
+        foreach ($seniorLevels as $sl) {
+            if (strcasecmp($creatorLevel, $sl) === 0) { $isSenior = true; break; }
+        }
+        $seniorTargetLevels = array('Super Admin', 'Admin', 'IT', 'School Admin', 'Registrar', 'Head Registrar');
+        $isTargetSenior = false;
+        foreach ($seniorTargetLevels as $st) {
+            if (strcasecmp($acctLevel, $st) === 0) { $isTargetSenior = true; break; }
+        }
+        if ($isTargetSenior && !$isSenior) {
+            return $this->json(['ok' => false, 'message' => 'Only senior staff may create staff/admin accounts.'], 403);
+        }
+
         $exists = $this->db->where('username', $username)->count_all_results('o_users') > 0;
         if ($exists) {
             return $this->json(['ok' => false, 'message' => 'The username is already taken.'], 409);

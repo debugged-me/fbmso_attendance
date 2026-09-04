@@ -83,6 +83,12 @@
           $flashSuccess  = $this->session->flashdata('success');
           $flashDanger   = $this->session->flashdata('danger');
 
+          // Students may not edit identity fields (name, student number).
+          // Staff editing through this view is not the normal flow — they
+          // use updateStudeProfile — so lock these for everyone here.
+          $isStudent = in_array((string)$this->session->userdata('level'), ['Student', 'Stude Applicant'], true);
+          $identityReadonly = $isStudent ? 'readonly' : '';
+
           $firstName  = trim((string)($account->fName ?? $profile->FirstName ?? ''));
           $middleName = trim((string)($account->mName ?? $profile->MiddleName ?? ''));
           $lastName   = trim((string)($account->lName ?? $profile->LastName ?? ''));
@@ -156,6 +162,12 @@
                     data-exclude-student-number="<?= htmlspecialchars($studentNumber, ENT_QUOTES, 'UTF-8'); ?>">
                     <div class="profile-section">
                       <h4>Personal Information</h4>
+                      <?php if ($isStudent): ?>
+                      <div class="alert alert-info" style="font-size:.82rem;padding:.5rem .75rem;border-radius:8px;">
+                        <i class="mdi mdi-lock-outline"></i>
+                        Your <b>Student ID</b> and <b>Name</b> are locked. Contact the admin to request changes.
+                      </div>
+                      <?php endif; ?>
                       <div class="profile-grid">
                         <div class="form-group">
                           <label for="StudentNumber">Student ID / Number <span class="text-danger">*</span></label>
@@ -169,6 +181,7 @@
                             maxlength="20"
                             pattern="[A-Za-z0-9\-]+"
                             title="Use letters, numbers, and hyphen only."
+                            <?= $identityReadonly ?>
                             required>
                           <input type="hidden" name="oldStudentNo" value="<?= htmlspecialchars($studentNumber, ENT_QUOTES, 'UTF-8'); ?>">
                           <span class="availability-msg" id="student-number-status" aria-live="polite" style="display:block;min-height:18px;margin-top:6px;font-size:.72rem;font-weight:600;line-height:1.3;color:#7288b7;"></span>
@@ -185,24 +198,24 @@
                           <label for="FirstName">First Name <span class="text-danger">*</span></label>
                           <input type="text" id="FirstName" class="form-control" name="FirstName" style="text-transform: uppercase;"
                             placeholder="First Name"
-                            value="<?= htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'); ?>" required>
+                            value="<?= htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'); ?>" <?= $identityReadonly ?> required>
                         </div>
                         <div class="form-group">
                           <label for="MiddleName">Middle Name</label>
                           <input type="text" id="MiddleName" class="form-control" name="MiddleName" style="text-transform: uppercase;"
                             placeholder="Middle Name"
-                            value="<?= htmlspecialchars($middleName, ENT_QUOTES, 'UTF-8'); ?>">
+                            value="<?= htmlspecialchars($middleName, ENT_QUOTES, 'UTF-8'); ?>" <?= $identityReadonly ?>>
                         </div>
                         <div class="form-group">
                           <label for="LastName">Last Name <span class="text-danger">*</span></label>
                           <input type="text" id="LastName" class="form-control" name="LastName" style="text-transform: uppercase;"
                             placeholder="Last Name"
-                            value="<?= htmlspecialchars($lastName, ENT_QUOTES, 'UTF-8'); ?>" required>
+                            value="<?= htmlspecialchars($lastName, ENT_QUOTES, 'UTF-8'); ?>" <?= $identityReadonly ?> required>
                         </div>
                         <div class="form-group">
                           <label for="nameExtn">Name Extn.</label>
                           <input type="text" id="nameExtn" class="form-control" name="nameExtn" style="text-transform: uppercase;"
-                            value="<?= htmlspecialchars($nameExtn, ENT_QUOTES, 'UTF-8'); ?>" placeholder="e.g. Jr., Sr.">
+                            value="<?= htmlspecialchars($nameExtn, ENT_QUOTES, 'UTF-8'); ?>" placeholder="e.g. Jr., Sr." <?= $identityReadonly ?>>
                         </div>
                       </div>
 

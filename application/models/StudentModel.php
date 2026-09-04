@@ -520,12 +520,12 @@ class StudentModel extends CI_Model
 
 	function deleteUserAccount($id)
 	{
-		$this->db->query("delete  from users_online where username='" . $id . "'");
+		$this->db->where('username', $id)->delete('users_online');
 	}
 
 	function deleteRequirement($id)
 	{
-		$this->db->query("delete  from online_requirements where reqID='" . $id . "'");
+		$this->db->where('reqID', $id)->delete('online_requirements');
 	}
 
 	public function gradesSummary($sy, $sem)
@@ -569,7 +569,7 @@ class StudentModel extends CI_Model
 
 	function medInfoInd($id)
 	{
-		$query = $this->db->query("SELECT * FROM medical_info m join studeprofile p on m.StudentNumber=p.StudentNumber where medID='" . $id . "'");
+		$query = $this->db->query("SELECT * FROM medical_info m join studeprofile p on m.StudentNumber=p.StudentNumber where medID = ?", array($id));
 		return $query->result();
 	}
 
@@ -581,7 +581,7 @@ class StudentModel extends CI_Model
 
 	function incidentsInd($id)
 	{
-		$query = $this->db->query("SELECT * FROM guidance_incidents m join studeprofile p on m.StudentNumber=p.StudentNumber where incID='" . $id . "'");
+		$query = $this->db->query("SELECT * FROM guidance_incidents m join studeprofile p on m.StudentNumber=p.StudentNumber where incID = ?", array($id));
 		return $query->result();
 	}
 
@@ -593,7 +593,7 @@ class StudentModel extends CI_Model
 
 	function counsellingInd($id)
 	{
-		$query = $this->db->query("SELECT * FROM guidance_counselling m join studeprofile p on m.StudentNumber=p.StudentNumber where id='" . $id . "'");
+		$query = $this->db->query("SELECT * FROM guidance_counselling m join studeprofile p on m.StudentNumber=p.StudentNumber where id = ?", array($id));
 		return $query->result();
 	}
 
@@ -605,7 +605,7 @@ class StudentModel extends CI_Model
 
 	function medRecordsInd($id)
 	{
-		$query = $this->db->query("SELECT * FROM medical_records m join studeprofile p on m.StudentNumber=p.StudentNumber where mrID='" . $id . "'");
+		$query = $this->db->query("SELECT * FROM medical_records m join studeprofile p on m.StudentNumber=p.StudentNumber where mrID = ?", array($id));
 		return $query->result();
 	}
 
@@ -613,7 +613,7 @@ class StudentModel extends CI_Model
 	//VIEW DENIED ENROLLEES ---------------------------------------------------------------------------------
 	function deniedEnrollees($sem, $sy)
 	{
-		$query = $this->db->query("Select * from online_enrollment_deny where sem='" . $sem . "' and sy='" . $sy . "'");
+		$query = $this->db->query("Select * from online_enrollment_deny where sem = ? and sy = ?", array($sem, $sy));
 		return $query->result();
 	}
 
@@ -660,14 +660,14 @@ class StudentModel extends CI_Model
 
 	function viewAccountsID($id)
 	{
-		$query = $this->db->query("SELECT * FROM users_online where username='" . $id . "'");
+		$query = $this->db->query("SELECT * FROM users_online where username = ?", array($id));
 		return $query->result();
 	}
 
 	//STUDENTS REQUEST ---------------------------------------------------------------------------------
 	function studerequest($id)
 	{
-		$query = $this->db->query("SELECT * FROM stude_request where StudentNumber='" . $id . "' order by dateReq desc");
+		$query = $this->db->query("SELECT * FROM stude_request where StudentNumber = ? order by dateReq desc", array($id));
 		return $query->result();
 	}
 
@@ -1277,7 +1277,7 @@ class StudentModel extends CI_Model
 
 	function UploadedPayments($id, $sem, $sy)
 	{
-		$query = $this->db->query("select * from online_payments where StudentNumber='" . $id . "' and sy='" . $sy . "' and sem='" . $sem . "'");
+		$query = $this->db->query("select * from online_payments where StudentNumber = ? and sy = ? and sem = ?", array($id, $sy, $sem));
 		return $query->result();
 	}
 
@@ -1573,19 +1573,19 @@ class StudentModel extends CI_Model
 	//Payment Summary Per Semester
 	function paymentSummary($sem, $sy)
 	{
-		$query = $this->db->query("SELECT CollectionSource, sum(Amount) as Amount FROM paymentsaccounts where ORStatus='Valid' and Sem='" . $sem . "' and SY='" . $sy . "' group by CollectionSource");
+		$query = $this->db->query("SELECT CollectionSource, sum(Amount) as Amount FROM paymentsaccounts where ORStatus='Valid' and Sem = ? and SY = ? group by CollectionSource", array($sem, $sy));
 		return $query->result();
 	}
 	//Birthday Celebrants
 	function birthdayCelebs($sem, $sy)
 	{
-		$query = $this->db->query("SELECT concat(p.LastName,', ',p.FirstName,' ',p.MiddleName) as StudeName, p.BirthDate FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where DAY(p.BirthDate)=DAY(NOW()) and MONTH(p.BirthDate)=MONTH(NOW()) and ss.Semester='" . $sem . "' and ss.SY='" . $sy . "'");
+		$query = $this->db->query("SELECT concat(p.LastName,', ',p.FirstName,' ',p.MiddleName) as StudeName, p.BirthDate FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where DAY(p.BirthDate)=DAY(NOW()) and MONTH(p.BirthDate)=MONTH(NOW()) and ss.Semester = ? and ss.SY = ?", array($sem, $sy));
 		return $query->result();
 	}
 	//Birthday Celebrants
 	function birthdayMonths($sem, $sy)
 	{
-		$query = $this->db->query("SELECT concat(p.LastName,', ',p.FirstName,' ',p.MiddleName) as StudeName, Day(p.BirthDate) as Day, MONTH(p.BirthDate) as Month FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where MONTH(p.BirthDate)=MONTH(NOW()) and ss.Semester='" . $sem . "' and ss.SY='" . $sy . "' order by Day");
+		$query = $this->db->query("SELECT concat(p.LastName,', ',p.FirstName,' ',p.MiddleName) as StudeName, Day(p.BirthDate) as Day, MONTH(p.BirthDate) as Month FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where MONTH(p.BirthDate)=MONTH(NOW()) and ss.Semester = ? and ss.SY = ? order by Day", array($sem, $sy));
 		return $query->result();
 	}
 
@@ -1653,46 +1653,46 @@ class StudentModel extends CI_Model
 	//Sex Summary
 	function sexList($sem, $sy, $sex)
 	{
-		$query = $this->db->query("SELECT p.StudentNumber, p.FirstName, p.MiddleName, p.LastName, ss.Course, ss.YearLevel, p.Sex FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY='" . $sy . "' and ss.Semester='" . $sem . "' and p.Sex='" . $sex . "'");
+		$query = $this->db->query("SELECT p.StudentNumber, p.FirstName, p.MiddleName, p.LastName, ss.Course, ss.YearLevel, p.Sex FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY = ? and ss.Semester = ? and p.Sex = ?", array($sy, $sem, $sex));
 		return $query->result();
 	}
 
 	//City List Summary
 	function cityList($sem, $sy, $city)
 	{
-		$query = $this->db->query("SELECT p.StudentNumber, p.FirstName, p.MiddleName, p.LastName, ss.Course, ss.YearLevel, p.city FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY='" . $sy . "' and ss.Semester='" . $sem . "' and p.city='" . $city . "' order by p.LastName");
+		$query = $this->db->query("SELECT p.StudentNumber, p.FirstName, p.MiddleName, p.LastName, ss.Course, ss.YearLevel, p.city FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY = ? and ss.Semester = ? and p.city = ? order by p.LastName", array($sy, $sem, $city));
 		return $query->result();
 	}
 
 	//Ethnicity List Summary
 	function ethnicityList($sem, $sy, $ethnicity)
 	{
-		$query = $this->db->query("SELECT p.StudentNumber, p.FirstName, p.MiddleName, p.LastName, ss.Course, ss.YearLevel, p.ethnicity FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY='" . $sy . "' and ss.Semester='" . $sem . "' and p.ethnicity='" . $ethnicity . "' order by p.LastName");
+		$query = $this->db->query("SELECT p.StudentNumber, p.FirstName, p.MiddleName, p.LastName, ss.Course, ss.YearLevel, p.ethnicity FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY = ? and ss.Semester = ? and p.ethnicity = ? order by p.LastName", array($sy, $sem, $ethnicity));
 		return $query->result();
 	}
 
 	//Religion List Summary
 	function religionList($sem, $sy, $religion)
 	{
-		$query = $this->db->query("SELECT p.StudentNumber, p.FirstName, p.MiddleName, p.LastName, ss.Course, ss.YearLevel, p.Religion FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY='" . $sy . "' and ss.Semester='" . $sem . "' and p.Religion='" . $religion . "' order by p.LastName");
+		$query = $this->db->query("SELECT p.StudentNumber, p.FirstName, p.MiddleName, p.LastName, ss.Course, ss.YearLevel, p.Religion FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY = ? and ss.Semester = ? and p.Religion = ? order by p.LastName", array($sy, $sem, $religion));
 		return $query->result();
 	}
 	//Count by Religion
 	function religionCount($sem, $sy)
 	{
-		$query = $this->db->query("SELECT p.Religion, count(p.Religion) as Counts FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY='" . $sy . "' and ss.Semester='" . $sem . "' group by p.Religion");
+		$query = $this->db->query("SELECT p.Religion, count(p.Religion) as Counts FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY = ? and ss.Semester = ? group by p.Religion", array($sy, $sem));
 		return $query->result();
 	}
 	//Count by Ethnicity
 	function ethnicityCount($sem, $sy)
 	{
-		$query = $this->db->query("SELECT p.Ethnicity, count(p.Ethnicity) as Counts FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY='" . $sy . "' and ss.Semester='" . $sem . "' group by p.Ethnicity");
+		$query = $this->db->query("SELECT p.Ethnicity, count(p.Ethnicity) as Counts FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY = ? and ss.Semester = ? group by p.Ethnicity", array($sy, $sem));
 		return $query->result();
 	}
 	//Count by City
 	function cityCount($sem, $sy)
 	{
-		$query = $this->db->query("SELECT p.city, count(p.city) as Counts FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY='" . $sy . "' and ss.Semester='" . $sem . "' group by p.city");
+		$query = $this->db->query("SELECT p.city, count(p.city) as Counts FROM studeprofile p join semesterstude ss on p.StudentNumber=ss.StudentNumber where ss.SY = ? and ss.Semester = ? group by p.city", array($sy, $sem));
 		return $query->result();
 	}
 	//Student's List
@@ -1981,7 +1981,7 @@ class StudentModel extends CI_Model
 
 	function honor_dis($StudeNo)
 	{
-		$query = $this->db->query("select p.StudentNumber, p.Title, p.Pronoun, p.Pronoun2, p.Pronoun3, concat(p.FirstName,' ',p.MiddleName,' ',p.LastName) as StudeName, s.Course, s.YearLevel, s.Semester, s.SY, s.YearLevel from studeprofile p join semesterstude s on p.StudentNumber=s.StudentNumber where s.StudentNumber='" . $StudeNo . "' order by s.semstudentid desc limit 1");
+		$query = $this->db->query("select p.StudentNumber, p.Title, p.Pronoun, p.Pronoun2, p.Pronoun3, concat(p.FirstName,' ',p.MiddleName,' ',p.LastName) as StudeName, s.Course, s.YearLevel, s.Semester, s.SY, s.YearLevel from studeprofile p join semesterstude s on p.StudentNumber=s.StudentNumber where s.StudentNumber = ? order by s.semstudentid desc limit 1", array($StudeNo));
 		return $query->result();
 	}
 
@@ -1999,27 +1999,27 @@ class StudentModel extends CI_Model
 
 	function report_coe($StudeNo, $sy, $sem)
 	{
-		$query = $this->db->query("Select p.StudentNumber, concat(p.FirstName,' ',p.MiddleName,' ',p.LastName) as studeName, r.Sem, r.SY, r.YearLevel, r.Course, Major, SubjectCode, Description, LecUnit, LabUnit from studeprofile p join registration r on p.StudentNumber=r.StudentNumber where p.StudentNumber='" . $StudeNo . "' and r.Sem='" . $sem . "' and r.SY='" . $sy . "' order by r.SubjectCode");
+		$query = $this->db->query("Select p.StudentNumber, concat(p.FirstName,' ',p.MiddleName,' ',p.LastName) as studeName, r.Sem, r.SY, r.YearLevel, r.Course, Major, SubjectCode, Description, LecUnit, LabUnit from studeprofile p join registration r on p.StudentNumber=r.StudentNumber where p.StudentNumber = ? and r.Sem = ? and r.SY = ? order by r.SubjectCode", array($StudeNo, $sem, $sy));
 		return $query->result();
 	}
 
 
 	function report_coR($StudeNo, $sy, $sem)
 	{
-		$query = $this->db->query("Select p.StudentNumber, p.birthDate, p.Sex, concat(p.FirstName,' ',p.MiddleName,' ',p.LastName) as studeName, r.Sem, r.SY, r.Room, r.Instructor, r.Section, r.schedType, r.SchedTime, r.totalUnits, r.YearLevel, r.Course, Major, SubjectCode, Description, LecUnit, LabUnit from studeprofile p join registration r on p.StudentNumber=r.StudentNumber where p.StudentNumber='" . $StudeNo . "' and r.Sem='" . $sem . "' and r.SY='" . $sy . "' order by r.SubjectCode");
+		$query = $this->db->query("Select p.StudentNumber, p.birthDate, p.Sex, concat(p.FirstName,' ',p.MiddleName,' ',p.LastName) as studeName, r.Sem, r.SY, r.Room, r.Instructor, r.Section, r.schedType, r.SchedTime, r.totalUnits, r.YearLevel, r.Course, Major, SubjectCode, Description, LecUnit, LabUnit from studeprofile p join registration r on p.StudentNumber=r.StudentNumber where p.StudentNumber = ? and r.Sem = ? and r.SY = ? order by r.SubjectCode", array($StudeNo, $sem, $sy));
 		return $query->result();
 	}
 
 	function report_cogmc($StudeNo)
 	{
-		$query = $this->db->query("Select p.StudentNumber, p.Title, p.birthDate, p.Sex, p.LastName, concat(p.FirstName,' ',p.MiddleName,' ',p.LastName) as studeName, r.Sem, r.SY, r.Room, r.Instructor, r.Section, r.schedType, r.SchedTime, r.totalUnits, r.YearLevel, r.Course, Major, SubjectCode, Description, LecUnit, LabUnit from studeprofile p join registration r on p.StudentNumber=r.StudentNumber where p.StudentNumber='" . $StudeNo . "' order by p.StudentNumber");
+		$query = $this->db->query("Select p.StudentNumber, p.Title, p.birthDate, p.Sex, p.LastName, concat(p.FirstName,' ',p.MiddleName,' ',p.LastName) as studeName, r.Sem, r.SY, r.Room, r.Instructor, r.Section, r.schedType, r.SchedTime, r.totalUnits, r.YearLevel, r.Course, Major, SubjectCode, Description, LecUnit, LabUnit from studeprofile p join registration r on p.StudentNumber=r.StudentNumber where p.StudentNumber = ? order by p.StudentNumber", array($StudeNo));
 		return $query->result();
 	}
 
 
 	function report_rog($StudeNo, $sy, $sem)
 	{
-		$query = $this->db->query("Select p.StudentNumber, p.YearLevel, p.Title, p.birthDate, p.Sex, concat(p.FirstName,' ',p.MiddleName,' ',p.LastName) as studeName, g.Semester, g.SY, g.Instructor, g.Section, g.Course, Major, SubjectCode, Description, LecUnit, LabUnit, g.Final from studeprofile p join grades g on p.StudentNumber=g.StudentNumber where p.StudentNumber='" . $StudeNo . "' and g.Semester='" . $sem . "' and g.SY='" . $sy . "' order by g.SubjectCode");
+		$query = $this->db->query("Select p.StudentNumber, p.YearLevel, p.Title, p.birthDate, p.Sex, concat(p.FirstName,' ',p.MiddleName,' ',p.LastName) as studeName, g.Semester, g.SY, g.Instructor, g.Section, g.Course, Major, SubjectCode, Description, LecUnit, LabUnit, g.Final from studeprofile p join grades g on p.StudentNumber=g.StudentNumber where p.StudentNumber = ? and g.Semester = ? and g.SY = ? order by g.SubjectCode", array($StudeNo, $sem, $sy));
 		return $query->result();
 	}
 
@@ -2031,14 +2031,14 @@ class StudentModel extends CI_Model
 	//For Enrollment
 	function forValidation($Semester, $SY)
 	{
-		$query = $this->db->query("select * from studeprofile p join online_enrollment oe on p.StudentNumber=oe.StudentNumber where oe.Semester='" . $Semester . "' and oe.SY='" . $SY . "' and oe.enrolStatus='For Validation'");
+		$query = $this->db->query("select * from studeprofile p join online_enrollment oe on p.StudentNumber=oe.StudentNumber where oe.Semester = ? and oe.SY = ? and oe.enrolStatus='For Validation'", array($Semester, $SY));
 		return $query->result();
 	}
 
 	//get the latest semester and reflect it on the proof_payment
 	function getSemesterfromOE($id)
 	{
-		$query = $this->db->query("select * from online_enrollment where StudentNumber='" . $id . "' order by oeID desc limit 1");
+		$query = $this->db->query("select * from online_enrollment where StudentNumber = ? order by oeID desc limit 1", array($id));
 		return $query->result();
 	}
 
@@ -2228,7 +2228,7 @@ class StudentModel extends CI_Model
 	//Admission History
 	function admissionHistory($id)
 	{
-		$query = $this->db->query("select p.StudentNumber, concat(p.FirstName,' ',p.MiddleName,' ',p.LastName) as StudentName, s.Course, s.Major, s.YearLevel, s.SY, s.Semester from studeprofile p join semesterstude s on p.StudentNumber=s.StudentNumber join o_srms_settings st on p.settingsID=st.settingsID where p.StudentNumber='" . $id . "'");
+		$query = $this->db->query("select p.StudentNumber, concat(p.FirstName,' ',p.MiddleName,' ',p.LastName) as StudentName, s.Course, s.Major, s.YearLevel, s.SY, s.Semester from studeprofile p join semesterstude s on p.StudentNumber=s.StudentNumber join o_srms_settings st on p.settingsID=st.settingsID where p.StudentNumber = ?", array($id));
 		return $query->result();
 	}
 	//Get Course and Display on the combo box
@@ -2370,7 +2370,7 @@ class StudentModel extends CI_Model
 	//update enrollees status
 	function updateEnrollees($id)
 	{
-		$this->db->query("update online_enrollment set enrolStatus='Verified' where oeID='" . $id . "'");
+		$this->db->query("update online_enrollment set enrolStatus='Verified' where oeID = ?", array($id));
 	}
 
 	//Masterlist by Grade Level
@@ -2394,7 +2394,7 @@ class StudentModel extends CI_Model
 	//Student Enrollment Status
 	function studeEnrollStat($id, $sem, $sy)
 	{
-		$query = $this->db->query("select * from semesterstude where StudentNumber='" . $id . "' and Semester='" . $sem . "' and SY='" . $sy . "'");
+		$query = $this->db->query("select * from semesterstude where StudentNumber = ? and Semester = ? and SY = ?", array($id, $sem, $sy));
 
 		return $query->result();
 
@@ -2407,7 +2407,7 @@ class StudentModel extends CI_Model
 	function studeBalance($id)
 	{
 		//$query=$this->db->query("select * from studeaccount where StudentNumber='".$id."' and Sem='".$sem."' and SY='".$sy."'");
-		$query = $this->db->query("select * from studeaccount where StudentNumber='" . $id . "' order by AccountID desc limit 1");
+		$query = $this->db->query("select * from studeaccount where StudentNumber = ? order by AccountID desc limit 1", array($id));
 
 		return $query->result();
 
@@ -2461,7 +2461,7 @@ class StudentModel extends CI_Model
 	//Student Total Enrolled Subjects
 	function studeTotalSubjects($id, $sem, $sy)
 	{
-		$query = $this->db->query("SELECT count(SubjectCode) as subjectCounts FROM registration where StudentNumber='" . $id . "' and Sem='" . $sem . "' and SY='" . $sy . "'");
+		$query = $this->db->query("SELECT count(SubjectCode) as subjectCounts FROM registration where StudentNumber = ? and Sem = ? and SY = ?", array($id, $sem, $sy));
 
 		return $query->result();
 
@@ -2474,7 +2474,7 @@ class StudentModel extends CI_Model
 	//Student Total Semesters Enrolled
 	function semStudeCount($id)
 	{
-		$query = $this->db->query("SELECT StudentNumber, count(Semester) as SemesterCounts FROM semesterstude where StudentNumber='" . $id . "' group by StudentNumber");
+		$query = $this->db->query("SELECT StudentNumber, count(Semester) as SemesterCounts FROM semesterstude where StudentNumber = ? group by StudentNumber", array($id));
 
 		return $query->result();
 
@@ -2521,7 +2521,7 @@ class StudentModel extends CI_Model
 	//Masterlist (All)
 	function masterlistAll2($id, $semester, $sy)
 	{
-		$query = $this->db->query("select * from studeprofile p join semesterstude s on p.StudentNumber=s.StudentNumber where s.semstudentid='" . $id . "' and s.Semester='" . $semester . "' and s.SY='" . $sy . "' and s.Status='Enrolled' order by p.LastName, p.Sex");
+		$query = $this->db->query("select * from studeprofile p join semesterstude s on p.StudentNumber=s.StudentNumber where s.semstudentid = ? and s.Semester = ? and s.SY = ? and s.Status='Enrolled' order by p.LastName, p.Sex", array($id, $semester, $sy));
 		return $query->result();
 	}
 
@@ -2594,12 +2594,12 @@ class StudentModel extends CI_Model
 		$query = $this->db->query("SELECT * 
 								   FROM studeprofile p 
 								   JOIN semesterstude s ON p.StudentNumber = s.StudentNumber 
-								   WHERE s.SY = '" . $sy . "' 
-								   AND s.Semester = '" . $sem . "' 
+								   WHERE s.SY = ? 
+								   AND s.Semester = ? 
 								   AND s.Status = 'Enrolled' 
-								   AND s.YearLevel = '" . $yearLevel . "' 
-								   AND s.Course = '" . $course . "' 
-								   ORDER BY p.LastName, p.Sex");
+								   AND s.YearLevel = ? 
+								   AND s.Course = ? 
+								   ORDER BY p.LastName, p.Sex", array($sy, $sem, $yearLevel, $course));
 
 		return $query->result();
 	}
@@ -2902,13 +2902,13 @@ class StudentModel extends CI_Model
 
 	function expensesReport($from, $to)
 	{
-		$query = $this->db->query("select * from expenses where ExpenseDate>='" . $from . "' and ExpenseDate<='" . $to . "' order by ExpenseDate desc");
+		$query = $this->db->query("select * from expenses where ExpenseDate >= ? and ExpenseDate <= ? order by ExpenseDate desc", array($from, $to));
 		return $query->result();
 	}
 
 	function expensesTotal($from, $to)
 	{
-		$query = $this->db->query("select Sum(Amount) as TotalAmount from expenses where ExpenseDate>='" . $from . "' and ExpenseDate<='" . $to . "'");
+		$query = $this->db->query("select Sum(Amount) as TotalAmount from expenses where ExpenseDate >= ? and ExpenseDate <= ?", array($from, $to));
 		return $query->result();
 	}
 
@@ -2917,19 +2917,19 @@ class StudentModel extends CI_Model
 
 	function collectionSummary($from, $to)
 	{
-		$query = $this->db->query("SELECT PaymentType, format(sum(Amount),2) as TotalAmount FROM paymentsaccounts where PDate>='" . $from . "' and PDate<='" . $to . "' and ORStatus='Valid' group by PaymentType");
+		$query = $this->db->query("SELECT PaymentType, format(sum(Amount),2) as TotalAmount FROM paymentsaccounts where PDate >= ? and PDate <= ? and ORStatus='Valid' group by PaymentType", array($from, $to));
 		return $query->result();
 	}
 
 	function expensesSummary($from, $to)
 	{
-		$query = $this->db->query("SELECT Category, format(sum(Amount),2) as TotalAmount FROM expenses where ExpenseDate>='" . $from . "' and ExpenseDate<='" . $to . "' group by Category");
+		$query = $this->db->query("SELECT Category, format(sum(Amount),2) as TotalAmount FROM expenses where ExpenseDate >= ? and ExpenseDate <= ? group by Category", array($from, $to));
 		return $query->result();
 	}
 
 	function collectionTotalYear($year)
 	{
-		$query = $this->db->query("select Sum(Amount) as TotalAmount from paymentsaccounts where YEAR(PDate)='" . $year . "' and ORStatus='Valid' order by PDate desc");
+		$query = $this->db->query("select Sum(Amount) as TotalAmount from paymentsaccounts where YEAR(PDate) = ? and ORStatus='Valid' order by PDate desc", array($year));
 		return $query->result();
 	}
 
@@ -3194,7 +3194,7 @@ class StudentModel extends CI_Model
 
 	function scholarshipReservation($program)
 	{
-		$query = $this->db->query("SELECT * FROM reservation where course='" . $program . "' and appStatus='Pending' order by appNo");
+		$query = $this->db->query("SELECT * FROM reservation where course = ? and appStatus='Pending' order by appNo", array($program));
 		return $query->result();
 	}
 
@@ -3301,7 +3301,7 @@ class StudentModel extends CI_Model
 
 	function display_itemsById($itemID)
 	{
-		$query = $this->db->query("select * from ls_items where itemID='" . $itemID . "'");
+		$query = $this->db->query("select * from ls_items where itemID = ?", array($itemID));
 		return $query->result();
 	}
 
@@ -3334,7 +3334,7 @@ class StudentModel extends CI_Model
 
 	public function getstudentbyId($StudentNumber)
 	{
-		$query = $this->db->query("SELECT * FROM studeprofile WHERE StudentNumber = '" . $StudentNumber . "'");
+		$query = $this->db->query("SELECT * FROM studeprofile WHERE StudentNumber = ?", array($StudentNumber));
 		return $query->result();
 	}
 

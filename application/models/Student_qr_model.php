@@ -14,12 +14,16 @@ class Student_qr_model extends CI_Model {
         }
         $token = bin2hex(random_bytes(16));
         $now   = date('Y-m-d H:i:s');
+        // QR tokens expire after 1 year — forces re-issue so stale tokens
+        // don't remain valid indefinitely.
+        $expires = date('Y-m-d H:i:s', strtotime('+1 year'));
 
         $this->db->insert('student_qr', [
             'student_number' => $student_number,
             'qr_token'       => $token,
             'status'         => 'active',
             'issued_at'      => $now,
+            'expires_at'     => $expires,
         ]);
 
         return (object)[
@@ -28,6 +32,7 @@ class Student_qr_model extends CI_Model {
             'token'          => $token,
             'status'         => 'active',
             'issued_at'      => $now,
+            'expires_at'     => $expires,
         ];
     }
 
@@ -50,7 +55,19 @@ class Student_qr_model extends CI_Model {
         $row = $this->db->where('qr_token', $token)
                         ->where('status', 'active')
                         ->get('student_qr')->row();
-        if ($row) $row->token = $row->qr_token;
+        if ($row) {
+            // Check expiry — if the token has expired, mark it revoked
+            // and refuse to return it.
+            if (!empty($row->expires_at) && strtotime($row->expires_at) < time()) {
+                $this->db->where('id', $row->id)
+                         ->update('student_qr', [
+                             'status'     => 'revoked',
+                             'revoked_at' => date('Y-m-d H:i:s'),
+                         ]);
+                return null;
+            }
+            $row->token = $row->qr_token;
+        }
         return $row;
     }
 }

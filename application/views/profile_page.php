@@ -29,7 +29,7 @@
                         ? ($this->session->userdata('avatar') ?: 'default.png')
                         : ((!empty($data1) && !empty($data1[0]->avatar)) ? $data1[0]->avatar : 'default.png');
                       ?>
-                      <img src="<?= base_url('upload/profile/' . $avatar); ?>" alt="" class="avatar-lg rounded-circle shadow-sm">
+                      <img src="<?= base_url('upload/profile/' . htmlspecialchars($avatar, ENT_QUOTES, 'UTF-8')); ?>" alt="" class="avatar-lg rounded-circle shadow-sm">
                     </div>
 
                     <?php

@@ -1637,68 +1637,62 @@ class Page extends CI_Controller
 			$auditBefore   = $this->student_audit_snapshot($studentNumber);
 			$auditOriginal = $studentNumber;
 
-			$firstName  = strtoupper(trim((string)($form['FirstName'] ?? '')));
-			$middleName = strtoupper(trim((string)($form['MiddleName'] ?? '')));
-			$lastName   = strtoupper(trim((string)($form['LastName'] ?? '')));
-			$nameExtn   = strtoupper(trim((string)($form['nameExtn'] ?? '')));
+			// ── IDENTITY FIELD PROTECTION ──────────────────────────────
+			// Students may NOT change their name or StudentNumber through
+			// this endpoint. The 2026-08-28 incident used POST /Page/myProfile
+			// to rename "EDONG, CLARK" to "DAKO, PALAUTOG KONG". Only staff
+			// (registrar/admin) may change identity fields, and only through
+			// updateStudeProfile. Here we lock students to their existing
+			// values and reject any attempt to change them.
+			$existingProfile = $this->StudentModel->displayrecordsById($studentNumber);
+			$existingRow = is_array($existingProfile) && !empty($existingProfile) ? $existingProfile[0] : null;
+
+			$existingFirstName  = $existingRow ? strtoupper(trim((string)$existingRow->FirstName))  : '';
+			$existingMiddleName = $existingRow ? strtoupper(trim((string)$existingRow->MiddleName)) : '';
+			$existingLastName   = $existingRow ? strtoupper(trim((string)$existingRow->LastName))   : '';
+			$existingNameExtn   = $existingRow ? strtoupper(trim((string)$existingRow->nameExtn))   : '';
+
+			$postedFirstName  = strtoupper(trim((string)($form['FirstName'] ?? '')));
+			$postedMiddleName = strtoupper(trim((string)($form['MiddleName'] ?? '')));
+			$postedLastName   = strtoupper(trim((string)($form['LastName'] ?? '')));
+			$postedNameExtn   = strtoupper(trim((string)($form['nameExtn'] ?? '')));
+			$postedStudentNo  = strtoupper(trim((string)($form['StudentNumber'] ?? $studentNumber)));
+
+			if ($postedFirstName  !== $existingFirstName
+				|| $postedMiddleName !== $existingMiddleName
+				|| $postedLastName   !== $existingLastName
+				|| $postedNameExtn   !== $existingNameExtn
+				|| $postedStudentNo  !== strtoupper($studentNumber)
+			) {
+				$this->load->library('securityaudit');
+				$this->securityaudit->event('PROFILE_BLOCKED', [
+					'module'   => 'Student Self-Service',
+					'table'    => 'myProfile',
+					'record_pk'=> $studentNumber,
+					'target'   => $studentNumber,
+					'status'   => 'blocked',
+					'description' => 'Blocked student attempt to change identity fields (name/student no) via myProfile',
+				]);
+				$this->session->set_flashdata('danger',
+					'You cannot change your Student Number or name. Contact the registrar if this needs updating.');
+				redirect('Page/myProfile');
+				return;
+			}
+
+			// Lock identity fields to existing values (ignore any posted changes)
+			$firstName  = $existingFirstName;
+			$middleName = $existingMiddleName;
+			$lastName   = $existingLastName;
+			$nameExtn   = $existingNameExtn;
+
 			$email      = trim((string)($form['email'] ?? ''));
 			$contactNo  = trim((string)($form['contactNo'] ?? ''));
 			$birthDate  = trim((string)($form['birthDate'] ?? ''));
 			$age        = trim((string)($form['age'] ?? ''));
 
-			// Handle StudentNumber change (with duplicate guard)
-			$oldStudentNo = trim((string)($form['oldStudentNo'] ?? $studentNumber));
-			$newStudentNo = strtoupper(trim((string)($form['StudentNumber'] ?? $studentNumber)));
-
-			if ($newStudentNo !== strtoupper($studentNumber)) {
-				// Duplicate check across all tables, excluding own current SN
-				$this->db->where('StudentNumber', $newStudentNo);
-				$this->db->where('StudentNumber !=', strtoupper($oldStudentNo));
-				$dupProfile = $this->db->count_all_results('studeprofile');
-
-				$this->db->where('StudentNumber', $newStudentNo);
-				$this->db->where('StudentNumber !=', strtoupper($oldStudentNo));
-				$dupSignup = $this->db->count_all_results('studentsignup');
-
-				$this->db->where('username', $newStudentNo);
-				$this->db->where('username !=', strtoupper($oldStudentNo));
-				$dupUsers = $this->db->count_all_results('o_users');
-
-				// Also check IDNumber since login falls back to it
-				$this->db->where('IDNumber', $newStudentNo);
-				$this->db->where('IDNumber !=', strtoupper($oldStudentNo));
-				$dupIdNumber = $this->db->count_all_results('o_users');
-
-				if ($dupProfile > 0 || $dupSignup > 0 || $dupUsers > 0 || $dupIdNumber > 0) {
-					$this->session->set_flashdata('danger', 'Student ID already exists. Please use a different one.');
-					redirect('Page/myProfile');
-					return;
-				}
-
-				// Update StudentNumber across all tables
-				$this->db->where('StudentNumber', $oldStudentNo);
-				$this->db->update('studeprofile', ['StudentNumber' => $newStudentNo]);
-
-				$this->db->where('StudentNumber', $oldStudentNo);
-				$this->db->update('studentsignup', ['StudentNumber' => $newStudentNo]);
-
-				$this->db->where('StudentNumber', $oldStudentNo);
-				$this->db->update('semesterstude', ['StudentNumber' => $newStudentNo]);
-
-				$this->db->where('StudentNumber', $oldStudentNo);
-				$this->db->update('paymentsaccounts', ['StudentNumber' => $newStudentNo]);
-
-				$this->db->where('StudentNumber', $oldStudentNo);
-				$this->db->update('studeaccount', ['StudentNumber' => $newStudentNo]);
-
-				$this->db->where('username', $oldStudentNo);
-				$this->db->update('o_users', ['username' => $newStudentNo, 'IDNumber' => $newStudentNo]);
-
-				// Update session so subsequent operations use the new SN
-				$this->session->set_userdata('username', $newStudentNo);
-				$this->session->set_userdata('IDNumber', $newStudentNo);
-				$studentNumber = $newStudentNo;
-			}
+			// StudentNumber is locked — no rename allowed through this endpoint
+			$oldStudentNo = $studentNumber;
+			$newStudentNo = strtoupper($studentNumber);
 
 			$accountData = [
 				'fName' => $firstName,
@@ -2514,13 +2508,20 @@ class Page extends CI_Controller
 			//get data from the form
 
 			$StudentNumber = $this->input->post('StudentNumber');
+			// Students may only upload requirements for themselves.
+			if (in_array($this->session->userdata('level'), ['Student', 'Stude Applicant'], true)) {
+				$StudentNumber = $this->session->userdata('username');
+			}
 			$email = $this->session->userdata('email');
 			$FName = $this->session->userdata('fname');
 
 			$filename = $this->upload->data('file_name');
 			$docName = $this->input->post('docName');
 			$date = date("Y-m-d");
-			$que = $this->db->query("insert into online_requirements values('','$StudentNumber','$filename','$date','$docName')");
+			$que = $this->db->query(
+				"INSERT INTO online_requirements VALUES ('', ?, ?, ?, ?)",
+				array($StudentNumber, $filename, $date, $docName)
+			);
 
 			if ($this->session->userdata('level') === 'Admin') {
 				redirect('Page/profileList');
@@ -3205,6 +3206,11 @@ class Page extends CI_Controller
 			$username = $this->session->userdata('username');
 			$newpass = fbmso_password_hash($this->input->post('newpassword'));
 			if ($newpass !== '' && $this->StudentModel->reset_userpassword($username, $newpass)) {
+				// Clear the force-change flag — the user has now set a fresh
+				// bcrypt password of their own choosing.
+				$this->db->where('username', $username)->update('o_users', ['force_change_password' => 0]);
+				$this->session->unset_userdata('force_change_password');
+
 				// Record that it changed. Never the value, old or new.
 				$this->load->library('securityaudit');
 				$this->securityaudit->event('PASSWORD_CHANGED', [
@@ -3576,7 +3582,7 @@ class Page extends CI_Controller
 			$Encoder = $this->session->userdata('username');
 
 			//check if record exist
-			$que = $this->db->query("select * from studeprofile where StudentNumber='" . $StudentNumber . "'");
+			$que = $this->db->query("SELECT * FROM studeprofile WHERE StudentNumber = ?", array($StudentNumber));
 			$row = $que->num_rows();
 			if ($row) {
 				//redirect('Page/notification_error');
@@ -3584,10 +3590,19 @@ class Page extends CI_Controller
 				redirect('Page/profileList');
 			} else {
 				//save profile
-				$que = $this->db->query("insert into studeprofile values('$StudentNumber','$FirstName','$MiddleName','$LastName','$Sex','$CivilStatus','$BirthPlace','$Religion','$email','$MobileNumber','$working','','','','','$BirthDate','$AdmissionDate','$GraduationDate','$guardian','$guardianRelationship','$guardianContact','$guardianAddress','','','','','','','','','$father','$fOccupation','','$mother','$mOccupation','','','','$age','','','','','','$ethnicity','$fourPs','','','','','$province','$city','$brgy','$province','$city','$brgy','$sitio','','','','','','','','','','','','','','','','','','','','1','','','$AdmissionDate','$Encoder','','','','','','','','','','','$nameExtn','','','$nationality')");
-				$que = $this->db->query("insert into o_users values('$StudentNumber','$Password','Student','$FirstName','$MiddleName','$LastName','email','avatar.png','Active','$AdmissionDate','$completeName','$StudentNumber')");
-				$que = $this->db->query("insert into profimage values('','','$StudentNumber')");
-				$que = $this->db->query("insert into atrail values('','Created Student''s Profile and User Account','$AdmissionDate','$now','$Encoder','$StudentNumber')");
+				$this->db->query(
+					"INSERT INTO studeprofile VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+					array($StudentNumber,$FirstName,$MiddleName,$LastName,$Sex,$CivilStatus,$BirthPlace,$Religion,$email,$MobileNumber,$working,'','','','',$BirthDate,$AdmissionDate,$GraduationDate,$guardian,$guardianRelationship,$guardianContact,$guardianAddress,'','','','','','','','',$father,$fOccupation,'',$mother,$mOccupation,'','','',$age,'','','','','',$ethnicity,$fourPs,'','','','',$province,$city,$brgy,$province,$city,$brgy,$sitio,'','','','','','','','','','','','','','','','','','','','1','','',$AdmissionDate,$Encoder,'','','','','','','','','','',$nameExtn,'','',$nationality)
+				);
+				$this->db->query(
+					"INSERT INTO o_users VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+					array($StudentNumber,$Password,'Student',$FirstName,$MiddleName,$LastName,'email','avatar.png','Active',$AdmissionDate,$completeName,$StudentNumber)
+				);
+				$this->db->query("INSERT INTO profimage VALUES ('', '', ?)", array($StudentNumber));
+				$this->db->query(
+					"INSERT INTO atrail VALUES ('', 'Created Student''s Profile and User Account', ?, ?, ?, ?)",
+					array($AdmissionDate,$now,$Encoder,$StudentNumber)
+				);
 				$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Profile has been saved successfully.</b></div>');
 
 				//Email Notification (queued)
@@ -3945,7 +3960,18 @@ class Page extends CI_Controller
 
 	public function changeDP()
 	{
-		$this->load->view('upload_profile_pic');
+		// Pin the target to the session user — the ?id= parameter is
+		// ignored for students so they can't change another student's
+		// profile picture. Staff may use ?id= to manage any student.
+		$level = (string)$this->session->userdata('level');
+		if (in_array($level, ['Student', 'Stude Applicant'], true)) {
+			$id = $this->session->userdata('username');
+		} else {
+			$id = $this->input->get('id') ?: $this->session->userdata('username');
+		}
+
+		$result['id'] = $id;
+		$this->load->view('upload_profile_pic', $result);
 	}
 
 	public function uploadProfPic()
@@ -4220,6 +4246,10 @@ class Page extends CI_Controller
 		}
 
 		$result['data'] = $records;
+		// Students may view their profile but cannot change their Student
+		// Number or name — those are identity fields that only the registrar
+		// / admin should edit. Staff get full edit access.
+		$result['readOnly'] = in_array($level, ['Student', 'Stude Applicant'], true);
 		$this->load->view('profile_form_update', $result);
 
 		if ($this->input->post('submit')) {
@@ -4242,26 +4272,66 @@ class Page extends CI_Controller
 					redirect('Page/student');
 					return;
 				}
+
+				// Students cannot change their identity fields (StudentNumber,
+				// name). Ignore any posted values for those and keep the
+				// existing ones so a tampered form can't rename a student.
+				$postedNewSn = $this->input->post('StudentNumber');
+				$postedFn    = $this->input->post('FirstName');
+				$postedMn    = $this->input->post('MiddleName');
+				$postedLn    = $this->input->post('LastName');
+				$existingRow = $this->StudentModel->displayrecordsById($postedOld);
+				$existing    = is_array($existingRow) && !empty($existingRow) ? $existingRow[0] : null;
+				$origSn = $existing ? $existing->StudentNumber : $postedOld;
+				$origFn = $existing ? $existing->FirstName : '';
+				$origMn = $existing ? $existing->MiddleName : '';
+				$origLn = $existing ? $existing->LastName : '';
+
+				if (strtoupper((string)$postedNewSn) !== strtoupper((string)$origSn)
+					|| strcasecmp((string)$postedFn, (string)$origFn) !== 0
+					|| strcasecmp((string)$postedMn, (string)$origMn) !== 0
+					|| strcasecmp((string)$postedLn, (string)$origLn) !== 0
+				) {
+					$this->AuditLogModel->write(
+						'update',
+						'Profile',
+						'studeprofile',
+						(string)$postedOld,
+						null,
+						null,
+						0,
+						'Blocked student attempt to change identity fields (name/student no)'
+					);
+					$this->session->set_flashdata('danger',
+						'You cannot change your Student Number or name. Contact the registrar if this needs updating.');
+					redirect('Page/updateStudeProfile?id=' . urlencode($postedOld));
+					return;
+				}
 			}
 
 			// Get form data — ONLY include fields that profile_form_update.php
 			// actually submits. Including fields the form doesn't have would
 			// set them to null and wipe existing data (email, Religion, etc.)
+			// Strip HTML tags from free-text fields to prevent stored XSS even
+			// though views escape output — defense in depth.
+			$strip = function($field) {
+				return strip_tags((string)$this->input->post($field));
+			};
 			$data = array(
-				'StudentNumber' => $this->input->post('StudentNumber'),
-				'FirstName'     => $this->input->post('FirstName'),
-				'MiddleName'    => $this->input->post('MiddleName'),
-				'LastName'      => $this->input->post('LastName'),
-				'nameExtn'      => $this->input->post('nameExtn'),
+				'StudentNumber' => $strip('StudentNumber'),
+				'FirstName'     => $strip('FirstName'),
+				'MiddleName'    => $strip('MiddleName'),
+				'LastName'      => $strip('LastName'),
+				'nameExtn'      => $strip('nameExtn'),
 				'Sex'           => $this->input->post('Sex'),
 				'CivilStatus'   => $this->input->post('CivilStatus'),
-				'contactNo'     => $this->input->post('contactNo'),
+				'contactNo'     => $strip('contactNo'),
 				'birthDate'     => $this->input->post('birthDate'),
 				'Age'           => $this->input->post('Age'),
-				'Province'      => $this->input->post('Province'),
-				'City'          => $this->input->post('City'),
-				'Brgy'          => $this->input->post('Brgy'),
-				'Sitio'         => $this->input->post('Sitio'),
+				'Province'      => $strip('Province'),
+				'City'          => $strip('City'),
+				'Brgy'          => $strip('Brgy'),
+				'Sitio'         => $strip('Sitio'),
 				'Encoder'       => $this->session->userdata('username')
 			);
 
@@ -4738,14 +4808,24 @@ class Page extends CI_Controller
 
 		$expire_val = (!empty($date_expire)) ? date('Y-m-d', strtotime($date_expire)) : null;
 
+		// Use the DB-stored image filename, not the user-supplied POST value,
+		// to prevent path traversal via old_image=../../some/file. Strip any
+		// path components with basename() as defense in depth.
+		$db_image = !empty($rec->image) ? basename((string)$rec->image) : '';
+
 		// Image handling
-		$final_image = $old_image ?: null;
+		$final_image = $db_image ?: null;
 
 		// Remove image if requested
 		if ($remove_img) {
-			if (!empty($old_image)) {
-				$old_path = FCPATH . 'upload/announcements/' . $old_image;
-				if (file_exists($old_path)) @unlink($old_path);
+			if (!empty($db_image)) {
+				$old_path = FCPATH . 'upload/announcements/' . $db_image;
+				// Verify the resolved path is still inside the upload directory.
+				$real = realpath($old_path);
+				$base = realpath(FCPATH . 'upload/announcements/');
+				if ($real && $base && strpos($real, $base) === 0 && file_exists($real)) {
+					@unlink($real);
+				}
 			}
 			$final_image = null;
 		}
@@ -4769,9 +4849,13 @@ class Page extends CI_Controller
 			$new_file    = $file_data['file_name'];
 			$final_image = $new_file;
 
-			if (!empty($old_image)) {
-				$old_path = FCPATH . 'upload/announcements/' . $old_image;
-				if (file_exists($old_path)) @unlink($old_path);
+			if (!empty($db_image)) {
+				$old_path = FCPATH . 'upload/announcements/' . $db_image;
+				$real = realpath($old_path);
+				$base = realpath(FCPATH . 'upload/announcements/');
+				if ($real && $base && strpos($real, $base) === 0 && file_exists($real)) {
+					@unlink($real);
+				}
 			}
 		}
 
@@ -4980,7 +5064,7 @@ class Page extends CI_Controller
 		}
 
 		// Update the user account status
-		$this->db->query("UPDATE o_users SET acctStat = '$newStatus' WHERE username = ?", array($u));
+		$this->db->query("UPDATE o_users SET acctStat = ? WHERE username = ?", array($newStatus, $u));
 
 		// Insert a trail record
 		$this->db->query(
@@ -5021,8 +5105,8 @@ class Page extends CI_Controller
 			return redirect($redirectTo);
 		}
 
-		// Generate new password (12 chars hex) + hash
-		$password       = bin2hex(random_bytes(6));
+		// Generate new password (16 chars hex, ~64 bits of entropy) + hash
+		$password       = bin2hex(random_bytes(8));
 		$hashedPassword = fbmso_password_hash($password);
 
 		date_default_timezone_set('Asia/Manila');
@@ -5104,7 +5188,12 @@ class Page extends CI_Controller
 		}
 
 		// Update password (always update by actual username from fetched row).
-		$ok = $this->db->where('username', $targetUsername)->update('o_users', ['password' => $hashedPassword]);
+		// Force a password change on next login so the temp password is not
+		// used indefinitely.
+		$ok = $this->db->where('username', $targetUsername)->update('o_users', [
+			'password' => $hashedPassword,
+			'force_change_password' => 1,
+		]);
 
 		if (!$ok && $queuedId > 0) {
 			// The queued email advertises a password that was never applied.
@@ -5133,6 +5222,14 @@ class Page extends CI_Controller
 			$this->session->set_flashdata('danger', 'Password reset failed. Please try again.');
 			return redirect($redirectTo);
 		}
+
+		// Revoke all web sessions and mobile bearer tokens for the target
+		// account — a password reset means the old credential is no longer
+		// trusted, so nobody should stay logged in with it.
+		$this->load->library('sessionregistry');
+		$this->sessionregistry->revokeAllForUser($targetUsername, 'password reset by admin');
+		$this->load->model('MobileTokenModel');
+		$this->MobileTokenModel->revokeAllForUser($targetUsername);
 
 		$this->session->set_flashdata('success', "Password reset for {$targetUsername}. The new password is queued for delivery to {$user->email} and usually arrives within a couple of minutes.");
 
@@ -5196,7 +5293,10 @@ class Page extends CI_Controller
 			$otherDetails = $this->input->post('otherDetails');
 			$otherNotes = $this->input->post('otherNotes');
 
-			$que = $this->db->query("insert into medical_records (StudentNumber, caseNo, incidentDate, temperature, bp, complaint, painTolerance, medication, otherDetails, otherNotes) values('$StudentNumber','$caseNo','$incidentDate','$temperature','$bp','$complaint','$painTolerance','$medication','$otherDetails','$otherNotes')");
+			$que = $this->db->query(
+				"INSERT INTO medical_records (StudentNumber, caseNo, incidentDate, temperature, bp, complaint, painTolerance, medication, otherDetails, otherNotes) VALUES (?,?,?,?,?,?,?,?,?,?)",
+				array($StudentNumber, $caseNo, $incidentDate, $temperature, $bp, $complaint, $painTolerance, $medication, $otherDetails, $otherNotes)
+			);
 			$this->session->set_flashdata('success', 'Added successfully.');
 			redirect('Page/medRecords');
 		}
@@ -5204,8 +5304,8 @@ class Page extends CI_Controller
 
 	public function deleteMedRec()
 	{
-		$id = $this->input->get('id');
-		$que = $this->db->query("delete from medical_records where mrID='" . $id . "'");
+		$id = $this->input->post('id');
+		$this->db->where('mrID', $id)->delete('medical_records');
 		$this->session->set_flashdata('success', 'Deleted successfully.');
 		redirect("Page/medRecords");
 	}
@@ -5227,7 +5327,10 @@ class Page extends CI_Controller
 			$otherDetails = $this->input->post('otherDetails');
 			$otherNotes = $this->input->post('otherNotes');
 
-			$que = $this->db->query("update medical_records set StudentNumber='$StudentNumber',caseNo='$caseNo',incidentDate='$incidentDate',temperature='$temperature',bp='$bp',complaint='$complaint',painTolerance='$painTolerance',medication='$medication',otherDetails='$otherDetails',otherNotes='$otherNotes' where mrID='$id'");
+			$que = $this->db->query(
+				"UPDATE medical_records SET StudentNumber=?, caseNo=?, incidentDate=?, temperature=?, bp=?, complaint=?, painTolerance=?, medication=?, otherDetails=?, otherNotes=? WHERE mrID=?",
+				array($StudentNumber, $caseNo, $incidentDate, $temperature, $bp, $complaint, $painTolerance, $medication, $otherDetails, $otherNotes, $id)
+			);
 			$this->session->set_flashdata('success', 'Updated successfully.');
 			redirect(base_url() . 'Page/updateMedRecords?id=' . $id);
 		}
@@ -5252,7 +5355,10 @@ class Page extends CI_Controller
 			$specialDieNeeds = $this->input->post('specialDieNeeds');
 			$respiratoryProblems = $this->input->post('respiratoryProblems');
 
-			$que = $this->db->query("insert into medical_info (StudentNumber, height, weight, bloodType, vision, allergiesDrugs, allergiesFood, eyeColor, hairColor, specialPhyNeeds, specialDieNeeds, respiratoryProblems) values('$StudentNumber','$height','$weight','$bloodType','$vision','$allergiesDrugs','$allergiesFood','$eyeColor','$hairColor','$specialPhyNeeds','$specialDieNeeds','$respiratoryProblems')");
+			$que = $this->db->query(
+				"INSERT INTO medical_info (StudentNumber, height, weight, bloodType, vision, allergiesDrugs, allergiesFood, eyeColor, hairColor, specialPhyNeeds, specialDieNeeds, respiratoryProblems) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+				array($StudentNumber, $height, $weight, $bloodType, $vision, $allergiesDrugs, $allergiesFood, $eyeColor, $hairColor, $specialPhyNeeds, $specialDieNeeds, $respiratoryProblems)
+			);
 			$this->session->set_flashdata('success', ' Added successfully.');
 			redirect('Page/medInfo');
 		}
@@ -5260,8 +5366,8 @@ class Page extends CI_Controller
 
 	public function deleteMedInfo()
 	{
-		$id = $this->input->get('id');
-		$que = $this->db->query("delete from medical_info where medID='" . $id . "'");
+		$id = $this->input->post('id');
+		$this->db->where('medID', $id)->delete('medical_info');
 		$this->session->set_flashdata('success', ' Deleted successfully.');
 		redirect("Page/medInfo");
 	}
@@ -5285,7 +5391,10 @@ class Page extends CI_Controller
 			$specialDieNeeds = $this->input->post('specialDieNeeds');
 			$respiratoryProblems = $this->input->post('respiratoryProblems');
 
-			$que = $this->db->query("update medical_info set StudentNumber='$StudentNumber',height='$height',weight='$weight',bloodType='$bloodType',vision='$vision',allergiesDrugs='$allergiesDrugs',allergiesFood='$allergiesFood',eyeColor='$eyeColor',hairColor='$hairColor',specialPhyNeeds='$specialPhyNeeds',specialDieNeeds='$specialDieNeeds',respiratoryProblems='$respiratoryProblems' where medID='$id'");
+			$que = $this->db->query(
+				"UPDATE medical_info SET StudentNumber=?, height=?, weight=?, bloodType=?, vision=?, allergiesDrugs=?, allergiesFood=?, eyeColor=?, hairColor=?, specialPhyNeeds=?, specialDieNeeds=?, respiratoryProblems=? WHERE medID=?",
+				array($StudentNumber, $height, $weight, $bloodType, $vision, $allergiesDrugs, $allergiesFood, $eyeColor, $hairColor, $specialPhyNeeds, $specialDieNeeds, $respiratoryProblems, $id)
+			);
 			$this->session->set_flashdata('success', 'Updated successfully.');
 			// redirect('Page/medInfo');
 			redirect(base_url() . 'Page/updateMedInfo?id=' . $id);
@@ -5310,7 +5419,10 @@ class Page extends CI_Controller
 			$sanction = $this->input->post('sanction');
 			$actionTaken = $this->input->post('actionTaken');
 
-			$que = $this->db->query("insert into guidance_incidents (StudentNumber, caseNo, incidentDate, incPlace, offenseLevel, offense, sanction, actionTaken, sem, sy) values('$StudentNumber','$caseNo','$incidentDate','$incPlace','$offenseLevel','$offense','$sanction','$actionTaken','$sem','$sy')");
+			$que = $this->db->query(
+				"INSERT INTO guidance_incidents (StudentNumber, caseNo, incidentDate, incPlace, offenseLevel, offense, sanction, actionTaken, sem, sy) VALUES (?,?,?,?,?,?,?,?,?,?)",
+				array($StudentNumber, $caseNo, $incidentDate, $incPlace, $offenseLevel, $offense, $sanction, $actionTaken, $sem, $sy)
+			);
 			$this->session->set_flashdata('success', 'Added successfully.');
 			redirect('Page/incidents');
 		}
@@ -5331,7 +5443,10 @@ class Page extends CI_Controller
 			$sanction = $this->input->post('sanction');
 			$actionTaken = $this->input->post('actionTaken');
 
-			$que = $this->db->query("update guidance_incidents  set StudentNumber='$StudentNumber',caseNo='$caseNo',incidentDate='$incidentDate',incPlace='$incPlace',offenseLevel='$offenseLevel',offense='$offense',sanction='$sanction',actionTaken='$actionTaken' where incID='$id'");
+			$que = $this->db->query(
+				"UPDATE guidance_incidents SET StudentNumber=?, caseNo=?, incidentDate=?, incPlace=?, offenseLevel=?, offense=?, sanction=?, actionTaken=? WHERE incID=?",
+				array($StudentNumber, $caseNo, $incidentDate, $incPlace, $offenseLevel, $offense, $sanction, $actionTaken, $id)
+			);
 			$this->session->set_flashdata('success', 'Updated successfully.');
 			// redirect('Page/medInfo');
 			redirect(base_url() . 'Page/updateIncidents?id=' . $id);
@@ -5340,8 +5455,8 @@ class Page extends CI_Controller
 
 	public function deleteIncident()
 	{
-		$id = $this->input->get('id');
-		$que = $this->db->query("delete from guidance_incidents where incID='" . $id . "'");
+		$id = $this->input->post('id');
+		$this->db->where('incID', $id)->delete('guidance_incidents');
 		$this->session->set_flashdata('success', ' Deleted successfully.');
 		redirect("Page/incidents");
 	}
@@ -5361,7 +5476,10 @@ class Page extends CI_Controller
 			$actionPlan = $this->input->post('actionPlan');
 			$otherNotes = $this->input->post('otherNotes');
 
-			$que = $this->db->query("insert into guidance_counselling (StudentNumber, recordNo, recordDate, details, actionPlan, sem, sy) values('$StudentNumber','$recordNo','$recordDate','$details','$actionPlan','$sem','$sy')");
+			$que = $this->db->query(
+				"INSERT INTO guidance_counselling (StudentNumber, recordNo, recordDate, details, actionPlan, sem, sy) VALUES (?,?,?,?,?,?,?)",
+				array($StudentNumber, $recordNo, $recordDate, $details, $actionPlan, $sem, $sy)
+			);
 			$this->session->set_flashdata('success', ' Added successfully.');
 			redirect('Page/counselling');
 		}
@@ -5380,7 +5498,10 @@ class Page extends CI_Controller
 			$actionPlan = $this->input->post('actionPlan');
 			$otherNotes = $this->input->post('otherNotes');
 
-			$que = $this->db->query("update guidance_counselling set StudentNumber='$StudentNumber',recordNo='$recordNo',recordDate='$recordDate',details='$details',actionPlan='$actionPlan' where id='$id'");
+			$que = $this->db->query(
+				"UPDATE guidance_counselling SET StudentNumber=?, recordNo=?, recordDate=?, details=?, actionPlan=? WHERE id=?",
+				array($StudentNumber, $recordNo, $recordDate, $details, $actionPlan, $id)
+			);
 			$this->session->set_flashdata('success', 'Updated successfully.');
 			// redirect('Page/medInfo');
 			redirect(base_url() . 'Page/updateCounselling?id=' . $id);
@@ -5446,7 +5567,13 @@ class Page extends CI_Controller
 	//Requirements
 	function uploadedRequirements()
 	{
-		$id = $this->input->get('id');
+		// Students are pinned to their own ID — prevent viewing another
+		// student's requirements via ?id=<someone-else>.
+		if (in_array($this->session->userdata('level'), ['Student', 'Stude Applicant'], true)) {
+			$id = $this->session->userdata('username');
+		} else {
+			$id = $this->input->get('id');
+		}
 		$result['data'] = $this->StudentModel->requirements($id);
 		$this->load->view('uploaded_requirements', $result);
 	}
@@ -5501,12 +5628,24 @@ class Page extends CI_Controller
 			//$config['max_height'] = 1500;
 
 			$this->load->library('upload', $config);
-			$this->upload->do_upload('nonoy');
+			if (!$this->upload->do_upload('nonoy')) {
+				$this->session->set_flashdata('msg',
+					'<div class="alert alert-danger text-center"><b>Upload failed: '
+					. htmlspecialchars($this->upload->display_errors('', ''), ENT_QUOTES, 'UTF-8')
+					. '</b></div>');
+				redirect('Page/submitRequest?id=' . urlencode($this->input->post('StudentNumber')));
+				return;
+			}
 			$data = array('image_metadata' => $this->upload->data());
 			$filename = $this->upload->data('file_name');
 
 			$email = $this->input->post('email');
 			$StudentNumber = $this->input->post('StudentNumber');
+			// Students may only submit requests for themselves.
+			if (in_array($this->session->userdata('level'), ['Student', 'Stude Applicant'], true)) {
+				$StudentNumber = $this->session->userdata('username');
+				$email = $this->session->userdata('email');
+			}
 			$docName = $this->input->post('docName');
 			$purpose = $this->input->post('purpose');
 			$trackingNo = $this->input->post('trackingNo');
@@ -5568,6 +5707,29 @@ class Page extends CI_Controller
 	{
 		$id = $this->input->get('trackingNo');
 		$result['data'] = $this->StudentModel->studerequestTracking($id);
+
+		// Students may only view their own requests — verify the tracking
+		// number belongs to the logged-in student.
+		if (in_array($this->session->userdata('level'), ['Student', 'Stude Applicant'], true)) {
+			$owner = '';
+			if (is_object($result['data']) && !empty($result['data'])) {
+				$owner = trim((string)($result['data']->StudentNumber ?? $result['data']->student_number ?? ''));
+			} elseif (is_array($result['data']) && !empty($result['data'])) {
+				$row = is_object($result['data'][0]) ? $result['data'][0] : (object)$result['data'][0];
+				$owner = trim((string)($row->StudentNumber ?? $row->student_number ?? ''));
+			}
+			$myId = (string)$this->session->userdata('username');
+			if ($owner !== '' && strcasecmp($owner, $myId) !== 0) {
+				$this->AuditLogModel->write(
+					'view', 'Request', 'stude_request', $id, null, null, 0,
+					'Blocked student attempt to view another student\'s request'
+				);
+				$this->session->set_flashdata('danger', 'You can only view your own requests.');
+				redirect('Page/student');
+				return;
+			}
+		}
+
 		$this->load->view('stude_request_status', $result);
 
 		if ($this->input->post('submit')) {
@@ -5694,16 +5856,16 @@ class Page extends CI_Controller
 	//delete student's enrollment
 	public function deleteEnrollment()
 	{
-		$id = $this->input->get('id');
-		$query = $this->db->query("delete from semesterstude where semstudentid='" . $id . "'");
+		$id = $this->input->post('id');
+		$this->db->where('semstudentid', $id)->delete('semesterstude');
 		$this->session->set_flashdata('msg', '<div class="alert alert-danger text-center"><b>Deleted successfully.</b></div>');
 		redirect('Masterlist/enrolledList');
 	}
 
 	public function deleteEnrollmentPH()
 	{
-		$id = $this->input->get('id');
-		$query = $this->db->query("delete from semesterstude where semstudentid='" . $id . "'");
+		$id = $this->input->post('id');
+		$this->db->where('semstudentid', $id)->delete('semesterstude');
 		$this->session->set_flashdata('msg', 'Deleted successfully.');
 		redirect('Masterlist/enrolledListPH');
 	}
@@ -5909,8 +6071,9 @@ class Page extends CI_Controller
 	public function process201Upload()
 	{
 		$config['upload_path'] = './upload/201files/';
-		$config['allowed_types'] = '*';
+		$config['allowed_types'] = 'pdf|doc|docx|jpg|jpeg|png';
 		$config['max_size'] = 5120;
+		$config['encrypt_name'] = TRUE;
 		//$config['max_width'] = 1500;
 		//$config['max_height'] = 1500;
 
@@ -5924,11 +6087,14 @@ class Page extends CI_Controller
 			$data = array('image_metadata' => $this->upload->data());
 			//get data from the form
 			$IDNumber = $this->input->post('IDNumber');
-			//$filename=$this->input->post('nonoy');
 			$filename = $this->upload->data('file_name');
 			$docName = $this->input->post('docName');
 			$date = date("Y-m-d");
-			$que = $this->db->query("insert into hris_files values('','$IDNumber','$docName','$filename','$date')");
+			// Use query bindings to prevent SQL injection
+			$que = $this->db->query(
+			    "INSERT INTO hris_files VALUES ('', ?, ?, ?, ?)",
+			    array($IDNumber, $docName, $filename, $date)
+			);
 			$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Uploaded Succesfully!</b></div>');
 			redirect('Page/viewfilesAll');
 		}
@@ -6022,8 +6188,8 @@ class Page extends CI_Controller
 		date_default_timezone_set('Asia/Manila'); # add your city to set local time zone
 		$now = date('H:i:s A');
 		$date = date("Y-m-d");
-		$query = $this->db->query("delete from stude_request where trackingNo='" . $id . "'");
-		$query = $this->db->query("insert into atrail values('','Deleted Student''s Request','$date','$now','$username','$id')");
+		$this->db->where('trackingNo', $id)->delete('stude_request');
+		$this->db->query("INSERT INTO atrail VALUES('', 'Deleted Student''s Request', ?, ?, ?, ?)", array($date, $now, $username, $id));
 		redirect('Page/profileList');
 	}
 
@@ -6049,8 +6215,14 @@ class Page extends CI_Controller
 
 			//save denial
 			//$que=$this->db->query("insert into semesterstude values('','$StudentNumber','$FName','$MName','$LName','$Course','$YearLevel','Enrolled','$Semester','$SY','Term','$Section','$StudeStatus','','','','','','','0','$YearLevelStat','$Major','1','$EnrolledDate','','','','','','','')");
-			$que = $this->db->query("insert into online_enrollment_deny values('','$StudentNumber','$FName','$MName','$LName','$reason','$dateDenied','$timeDenied','$processor','$sem','$sy')");
-			$que1 = $this->db->query("update online_enrollment set enrolStatus='Denied' where StudentNumber='$StudentNumber' and Semester='$sem' and SY='$sy'");
+			$que = $this->db->query(
+				"INSERT INTO online_enrollment_deny VALUES ('', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				array($StudentNumber, $FName, $MName, $LName, $reason, $dateDenied, $timeDenied, $processor, $sem, $sy)
+			);
+			$que1 = $this->db->query(
+				"UPDATE online_enrollment SET enrolStatus='Denied' WHERE StudentNumber=? AND Semester=? AND SY=?",
+				array($StudentNumber, $sem, $sy)
+			);
 			$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Denied successfully! </b></div>');
 
 			redirect('Page/forValidation');
@@ -6282,6 +6454,12 @@ class Page extends CI_Controller
 							$this->StudentModel->gradesUploading($userdata);
 						}
 					}
+
+					// Delete the CSV from the web-accessible upload directory
+					// now that import is complete — grades files contain
+					// sensitive student data and must not remain downloadable.
+					@unlink($filePath);
+
 					// $data['response'] = '<div class="alert alert-info text-center">Uploaded Successfully.</div>';
 					$this->session->set_flashdata('success', ' Uploaded Successfully.');
 				} else {
@@ -7575,8 +7753,18 @@ class Page extends CI_Controller
 		}
 	}
 
-	public function deleteSection($id)
+	public function deleteSection($id = null)
 	{
+		// Accept ID from POST (CSRF-protected) or URL segment (backward compat).
+		if ($this->input->post('id')) {
+			$id = $this->input->post('id');
+		}
+		if (!$id) {
+			$this->session->set_flashdata('error', 'No section ID provided.');
+			redirect('Page/manageSections');
+			return;
+		}
+
 		// Snapshot old row BEFORE delete
 		$oldRow = $this->CourseSectionModel->getSectionById($id);
 		$old = $oldRow ? [

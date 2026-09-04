@@ -22,7 +22,7 @@
                                 <div class="row">
                                     <div class="col-sm-6">
                                         <div class="profile-user-img">
-                                            <img src="<?= base_url(); ?>upload/profile/<?= !empty($data1) ? $data1[0]->avatar : 'avatar.png'; ?>" alt="" class="avatar-lg rounded-circle">
+                                            <img src="<?= base_url(); ?>upload/profile/<?= !empty($data1) ? htmlspecialchars($data1[0]->avatar, ENT_QUOTES, 'UTF-8') : 'avatar.png'; ?>" alt="" class="avatar-lg rounded-circle">
                                         </div>
                                         <?php if (!empty($data)) { ?>
                                             <div class="">

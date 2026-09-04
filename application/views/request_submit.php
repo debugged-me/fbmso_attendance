@@ -53,7 +53,7 @@
                                     <div class="row">
                                         <div class="col-md-6">
                                             <h4 class="m-t-0 header-title mb-2"><b>REQUEST FORM</b> <br />
-                                                <span class="badge badge-primary mb-3"><?php echo $_GET['fname'] . ' ' . $_GET['mname'] . ' ' . $_GET['lname']; ?></span>
+                                                <span class="badge badge-primary mb-3"><?php echo htmlspecialchars(($_GET['fname'] ?? '') . ' ' . ($_GET['mname'] ?? '') . ' ' . ($_GET['lname'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
                                             </h4>
                                             <form enctype='multipart/form-data' method="post">
                                                 <div class="form-group">
@@ -61,7 +61,7 @@
                                                     <input type="text" class="form-control" name="StudentNumber" value="<?php if ($this->session->userdata('level') === 'Student') {
                                                                                                                             echo $this->session->userdata('username');
                                                                                                                         } else {
-                                                                                                                            echo $_GET['id'];
+                                                                                                                            echo htmlspecialchars($_GET['id'] ?? '', ENT_QUOTES, 'UTF-8');
                                                                                                                         }; ?>" readonly required>
 
                                                 </div>
@@ -100,8 +100,8 @@
                                                     <label>Attachment </label>
                                                     <input type="file" class="form-control" name="nonoy">
                                                 </div>
-                                                <input type="hidden" class="form-control" name="email" value="<?php echo $_GET['email']; ?>" required>
-                                                <input type="hidden" class="form-control" name="fname" value="<?php echo $_GET['fname']; ?>" required>
+                                                <input type="hidden" class="form-control" name="email" value="<?php echo htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
+                                                <input type="hidden" class="form-control" name="fname" value="<?php echo htmlspecialchars($_GET['fname'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
                                                 <div class="box-footer">
                                                     <input type="submit" name="submit" class="btn btn-info float-md-right" value="Submit Request">
                                                 </div>

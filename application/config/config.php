@@ -24,9 +24,29 @@ if (($base_url = getenv('BASE_URL')) !== FALSE && $base_url !== '') {
         || (isset($_SERVER['HTTP_X_FORWARDED_SSL']) && strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) === 'on')
         || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443);
 
-    // Host: strip anything that is not a valid host/port pair.
+    // Host: validate against an allowlist of known domains so an attacker
+    // cannot spoof the Host header to make password-reset emails link to
+    // a lookalike domain. localhost/127.0.0.1 are allowed for local dev.
     $host = $_SERVER['HTTP_HOST'];
-    if (! preg_match('/^[a-z0-9.\-]+(:[0-9]+)?$/i', $host)) {
+    $allowed_hosts = array(
+        'fbmso.srmsportal.com',
+        'fbmso.softtechco.biz',
+        'www.fbmso.softtechco.biz',
+        'localhost',
+        '127.0.0.1',
+    );
+    $host_valid = false;
+    foreach ($allowed_hosts as $ah) {
+        if (strcasecmp($host, $ah) === 0) { $host_valid = true; break; }
+    }
+    // Also allow any host that ends with a known suffix (e.g. :8080)
+    if (!$host_valid) {
+        foreach ($allowed_hosts as $ah) {
+            $hostSuffix = $ah . ':';
+            if (stripos($host, $hostSuffix) === 0) { $host_valid = true; break; }
+        }
+    }
+    if (!$host_valid) {
         $host = isset($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : 'localhost';
     }
 
@@ -36,7 +56,7 @@ if (($base_url = getenv('BASE_URL')) !== FALSE && $base_url !== '') {
     $path   = ($path === '/' || $path === '.') ? '' : rtrim($path, '/');
 
     $config['base_url'] = ($is_https ? 'https' : 'http') . '://' . $host . $path . '/';
-    unset($is_https, $host, $script, $path);
+    unset($is_https, $host, $script, $path, $host_valid, $allowed_hosts);
 } else {
     // CLI / cron fallback.
     $config['base_url'] = 'http://localhost/fbmso_attendance/';
@@ -232,7 +252,7 @@ $config['allow_get_array'] = TRUE;
 | your log files will fill up very fast.
 |
 */
-$config['log_threshold'] = 0;
+$config['log_threshold'] = 1;
 
 /*
 |--------------------------------------------------------------------------
@@ -442,9 +462,9 @@ $config['sess_driver'] = 'files';
 $config['sess_cookie_name'] = 'ci_session';
 $config['sess_expiration'] = 7200;
 $config['sess_save_path'] = NULL;
-$config['sess_match_ip'] = FALSE;
+$config['sess_match_ip'] = TRUE;
 $config['sess_time_to_update'] = 300;
-$config['sess_regenerate_destroy'] = FALSE;
+$config['sess_regenerate_destroy'] = TRUE;
 
 /*
 |--------------------------------------------------------------------------
@@ -464,8 +484,11 @@ $config['sess_regenerate_destroy'] = FALSE;
 $config['cookie_prefix']    = '';
 $config['cookie_domain']    = '';
 $config['cookie_path']        = '/';
-// Only flag cookies as secure when the request actually arrived over HTTPS.
-$config['cookie_secure']    = (strpos($config['base_url'], 'https://') === 0);
+// Flag cookies as secure only when actually on HTTPS. On localhost (XAMPP
+// dev with a self-signed cert) we use plain HTTP, so secure cookies would
+// be rejected by the browser and break sessions.
+$config['cookie_secure']    = (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
+    || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
 $config['cookie_httponly']     = TRUE;
 
 /*
@@ -511,8 +534,8 @@ $config['global_xss_filtering'] = FALSE;
 | 'csrf_exclude_uris' = Array of URIs which ignore CSRF checks
 */
 $config['csrf_protection'] = TRUE;
-$config['csrf_token_name'] = 'csrf_test_name';
-$config['csrf_cookie_name'] = 'csrf_cookie_name';
+$config['csrf_token_name'] = 'fbmso_csrf_token';
+$config['csrf_cookie_name'] = 'fbmso_csrf_cookie';
 $config['csrf_expire'] = 7200;
 // Rotating the token on every submission breaks this app: pages fire several
 // AJAX POSTs at once, and whichever lands second would carry a token the
@@ -524,6 +547,11 @@ $config['csrf_exclude_uris'] = array(
     // session or cookie, so there is no cross-site request to forge and no
     // token it could send. 80 endpoints across four controllers.
     'api/.*',
+
+    // Forensic capture runs on the login page BEFORE the user has a session
+    // or CSRF token. It only stores data the browser voluntarily provides
+    // (photo, GPS, device info) and cannot be used to bypass authentication.
+    'login/forensic_capture',
 );
 
 /*

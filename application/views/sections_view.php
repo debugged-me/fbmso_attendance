@@ -125,12 +125,11 @@
                                                             class="btn btn-primary waves-effect waves-light btn-sm"><i class="mdi mdi-pencil"></i>Edit</a>
 
 
-                                                        <a href="<?= base_url(); ?>Settings/deleteSection?id=<?= $section->sectionID ?>"
-                                                            data-ui-confirm="Section <?= htmlspecialchars((string)$section->Section, ENT_QUOTES, 'UTF-8'); ?> is removed from the list. This cannot be undone."
-                                                            data-ui-confirm-title="Delete this section?"
-                                                            data-ui-confirm-ok="Delete section">
-                                                            <button type="button" class="btn btn-danger btn-xs">Delete</button>
-                                                        </a>
+                                                        <form action="<?= base_url(); ?>Settings/deleteSection" method="post" style="display:inline">
+                                                            <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>" />
+                                                            <input type="hidden" name="id" value="<?= $section->sectionID ?>" />
+                                                            <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Delete this section? This cannot be undone.')">Delete</button>
+                                                        </form>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>

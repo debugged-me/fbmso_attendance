@@ -42,7 +42,7 @@ class LibraryModel extends CI_Model
 	
 	function bookDetails($id)
 	{
-	$query=$this->db->query("Select * from libbookentry where BookID='".$id."'");
+	$query=$this->db->query("Select * from libbookentry where BookID = ?", array($id));
 	return $query->result();
 	}
 	
@@ -80,7 +80,7 @@ class LibraryModel extends CI_Model
 	
     public function getAuthorbyId($authorID)
     {
-        $query = $this->db->query("SELECT * FROM libauthors WHERE authorID = '" . $authorID . "'");
+        $query = $this->db->query("SELECT * FROM libauthors WHERE authorID = ?", array($authorID));
         return $query->result();
     }
 	
@@ -120,7 +120,7 @@ class LibraryModel extends CI_Model
 
 	public function getcategorybyId($catID)
     {
-        $query = $this->db->query("SELECT * FROM libcategory WHERE catID = '" . $catID . "'");
+        $query = $this->db->query("SELECT * FROM libcategory WHERE catID = ?", array($catID));
         return $query->result();
     }
 
@@ -153,7 +153,7 @@ class LibraryModel extends CI_Model
 
 	public function getlocationbyId($locID)
     {
-        $query = $this->db->query("SELECT * FROM liblocation WHERE locID = '" . $locID . "'");
+        $query = $this->db->query("SELECT * FROM liblocation WHERE locID = ?", array($locID));
         return $query->result();
     }
 
@@ -185,7 +185,7 @@ class LibraryModel extends CI_Model
 
 	public function getpublisherbyId($pubID)
     {
-        $query = $this->db->query("SELECT * FROM libpublisher WHERE pubID = '" . $pubID . "'");
+        $query = $this->db->query("SELECT * FROM libpublisher WHERE pubID = ?", array($pubID));
         return $query->result();
     }
 
@@ -208,7 +208,7 @@ class LibraryModel extends CI_Model
 	//Student Total Semesters Enrolled
 	function semStudeCount($id)
 	{
-	$query=$this->db->query("SELECT StudentNumber, count(Semester) as SemesterCounts FROM semesterstude where StudentNumber='".$id."' group by StudentNumber");
+	$query=$this->db->query("SELECT StudentNumber, count(Semester) as SemesterCounts FROM semesterstude where StudentNumber = ? group by StudentNumber", array($id));
 
 	return $query->result();
 

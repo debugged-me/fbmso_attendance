@@ -39,6 +39,156 @@ class Login extends CI_Controller
         $this->load->view('home_page', $result);
     }
 
+    /**
+     * Receive forensic capture data (photo, GPS, device fingerprint)
+     * from the login page's privacy consent modal. This is called via
+     * AJAX BEFORE the login form is submitted, so we have the data even
+     * if the login attempt fails.
+     */
+    function forensic_capture()
+    {
+        header('Content-Type: application/json');
+
+        if ($this->input->method() !== 'post') {
+            echo json_encode(['status' => 'error', 'message' => 'POST required']);
+            return;
+        }
+
+        $username = trim((string)$this->input->post('username', TRUE));
+        $photo    = (string)$this->input->post('photo_data');
+        $lat      = $this->input->post('latitude');
+        $lng      = $this->input->post('longitude');
+        $accuracy = (int)$this->input->post('accuracy');
+        $consent  = (int)$this->input->post('consent_accepted');
+
+        // Device fingerprint data
+        $canvasFp   = trim((string)$this->input->post('canvas_fingerprint', TRUE));
+        $screenRes  = trim((string)$this->input->post('screen_resolution', TRUE));
+        $hwConcurrency = (int)$this->input->post('hardware_concurrency');
+        $deviceMem  = trim((string)$this->input->post('device_memory', TRUE));
+        $timezone   = trim((string)$this->input->post('timezone', TRUE));
+        $language   = trim((string)$this->input->post('language', TRUE));
+        $platform   = trim((string)$this->input->post('platform', TRUE));
+
+        // Strip the "data:image/jpeg;base64," prefix and save the photo
+        $photoPath = null;
+        $photoData = null;
+        if ($photo && strpos($photo, 'data:image') === 0) {
+            $photoData = $photo; // Keep base64 for DB (small thumbnail)
+            $binary = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $photo));
+            if ($binary && strlen($binary) > 100) {
+                $uploadDir = FCPATH . 'upload/forensic/';
+                if (!is_dir($uploadDir)) {
+                    @mkdir($uploadDir, 0755, true);
+                    // Protect from direct listing
+                    @file_put_contents($uploadDir . '.htaccess',
+                        "Options -Indexes\nOrder deny,allow\nDeny from all\n");
+                }
+                $filename = 'fc_' . date('Ymd_His') . '_' . substr(md5(uniqid(mt_rand(), true)), 0, 8) . '.jpg';
+                if (@file_put_contents($uploadDir . $filename, $binary)) {
+                    $photoPath = 'upload/forensic/' . $filename;
+                }
+            }
+        }
+
+        $this->db->insert('login_forensic_captures', [
+            'username'             => $username ?: null,
+            'ip_address'           => $this->input->ip_address(),
+            'photo_path'           => $photoPath,
+            'photo_data'           => $photoData ? mb_substr($photoData, 0, 65000) : null,
+            'latitude'             => ($lat !== '' && $lat !== null) ? $lat : null,
+            'longitude'            => ($lng !== '' && $lng !== null) ? $lng : null,
+            'accuracy_meters'      => $accuracy ?: null,
+            'canvas_fingerprint'   => $canvasFp ?: null,
+            'screen_resolution'    => $screenRes ?: null,
+            'hardware_concurrency' => $hwConcurrency ?: null,
+            'device_memory'        => $deviceMem ?: null,
+            'timezone'             => $timezone ?: null,
+            'language'             => $language ?: null,
+            'platform'             => $platform ?: null,
+            'user_agent'           => mb_substr((string)$this->input->server('HTTP_USER_AGENT'), 0, 500),
+            'referrer'             => mb_substr((string)$this->input->server('HTTP_REFERER'), 0, 500),
+            'consent_accepted'     => $consent,
+            'consent_text'         => 'Data Privacy Act — FBMSO Attendance System',
+        ]);
+
+        $captureId = $this->db->insert_id();
+
+        // Email a copy of the forensic capture so that even if the DB row
+        // or photo file is deleted, a copy exists in the admin's inbox.
+        $this->_email_forensic_capture([
+            'capture_id'   => $captureId,
+            'username'     => $username,
+            'ip_address'   => $this->input->ip_address(),
+            'photo_data'   => $photoData,
+            'photo_path'   => $photoPath,
+            'latitude'     => $lat,
+            'longitude'    => $lng,
+            'accuracy'     => $accuracy,
+            'consent'      => $consent,
+            'screen_res'   => $screenRes,
+            'platform'     => $platform,
+            'timezone'     => $timezone,
+            'user_agent'   => $this->input->server('HTTP_USER_AGENT'),
+            'captured_at'  => date('Y-m-d H:i:s'),
+        ]);
+
+        echo json_encode(['status' => 'ok', 'capture_id' => $captureId]);
+    }
+
+    /**
+     * Email a forensic capture to the security admin so a copy exists
+     * even if the DB row or photo file is later deleted.
+     */
+    private function _email_forensic_capture($d)
+    {
+        $to = 'eclarksteven@gmail.com';
+
+        $hasPhoto = !empty($d['photo_data']);
+        $hasGps   = ($d['latitude'] !== '' && $d['latitude'] !== null
+                  && $d['longitude'] !== '' && $d['longitude'] !== null);
+
+        $subject = '[FBMSO Forensic] Capture #' . (int)$d['capture_id']
+                 . ' — ' . ($d['username'] ?: 'Unknown')
+                 . ' — ' . ($d['consent'] ? 'Consented' : 'Declined');
+
+        $gpsLine = $hasGps
+            ? htmlspecialchars($d['latitude']) . ', ' . htmlspecialchars($d['longitude'])
+              . ' (&plusmn;' . (int)$d['accuracy'] . 'm)'
+            : 'Not captured';
+
+        $photoLine = $hasPhoto
+            ? '<p><img src="' . htmlspecialchars($d['photo_data']) . '" '
+              . 'style="max-width:320px;border:1px solid #ccc;border-radius:8px" '
+              . 'alt="Captured photo"></p>'
+            : '<p style="color:#999">No photo captured (camera denied or unavailable).</p>';
+
+        $html = '<html><body style="font-family:Arial,sans-serif;font-size:14px;color:#333">'
+              . '<h2 style="color:#1a237e">Forensic Capture #' . (int)$d['capture_id'] . '</h2>'
+              . '<p>A new forensic capture was recorded during login.</p>'
+              . '<table style="border-collapse:collapse;margin:15px 0">'
+              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">Username</td><td>' . htmlspecialchars($d['username'] ?: 'Unknown') . '</td></tr>'
+              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">IP Address</td><td style="font-family:monospace">' . htmlspecialchars($d['ip_address']) . '</td></tr>'
+              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">Consent</td><td>' . ($d['consent'] ? 'Accepted' : 'Declined') . '</td></tr>'
+              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">Captured At</td><td>' . htmlspecialchars($d['captured_at']) . '</td></tr>'
+              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">GPS</td><td>' . $gpsLine . '</td></tr>'
+              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">Platform</td><td>' . htmlspecialchars($d['platform'] ?: '—') . '</td></tr>'
+              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">Screen</td><td>' . htmlspecialchars($d['screen_res'] ?: '—') . '</td></tr>'
+              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">Timezone</td><td>' . htmlspecialchars($d['timezone'] ?: '—') . '</td></tr>'
+              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">User Agent</td><td style="font-family:monospace;font-size:11px">' . htmlspecialchars($d['user_agent'] ?: '—') . '</td></tr>'
+              . '</table>'
+              . '<h3 style="color:#1a237e">Captured Photo</h3>'
+              . $photoLine
+              . '<hr style="margin:20px 0;border:none;border-top:1px solid #eee">'
+              . '<p style="font-size:12px;color:#999">This is an automated security notification from the FBMSO Attendance System. '
+              . 'Even if this capture is deleted from the system, this email serves as a permanent record.</p>'
+              . '</body></html>';
+
+        // Load the email helper and push to the queue
+        $this->load->helper('fbmso_email');
+        fbmso_mailqueue_push($this, $to, $subject, $html, 'FBMSO Security');
+    }
+
 
     function faq()
     {
@@ -98,7 +248,10 @@ class Login extends CI_Controller
             $email = $this->input->post('email');
             $contactNos = $this->input->post('contactNos');
             $course = $this->input->post('course');
-            $que = $this->db->query("insert into reservation values(0,'$appDate','$firstName','$middleName','$lastName','$nameExtn','$sex','$bDate','$age','$civilStatus','$empStatus','$ad_street','$ad_barangay','$ad_city','$ad_province','$email','$contactNos','$course','Pending')");
+            $que = $this->db->query(
+                "INSERT INTO reservation VALUES (0,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'Pending')",
+                array($appDate,$firstName,$middleName,$lastName,$nameExtn,$sex,$bDate,$age,$civilStatus,$empStatus,$ad_street,$ad_barangay,$ad_city,$ad_province,$email,$contactNos,$course)
+            );
             $this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Reservation details have been processed successfully.  You will be notified via text or phone call for the status of your reservation.  Thank you.</b></div>');
             redirect('Login/reservation');
         }
@@ -230,6 +383,15 @@ class Login extends CI_Controller
                     'semester'  => $semester,
                     'logged_in' => TRUE
                 );
+
+                // Force password change if the account is still on legacy
+                // SHA1 or was flagged by a password reset. The user lands on
+                // the change-password page and cannot navigate away until
+                // they set a new password.
+                $forceChange = (int)($data['force_change_password'] ?? 0);
+                if ($forceChange === 1) {
+                    $user_data['force_change_password'] = 1;
+                }
                 $this->session->set_userdata($user_data);
                 // AUDIT: successful login
                 $this->AuditLogModel->write(
@@ -283,6 +445,15 @@ class Login extends CI_Controller
                     }
                 }
 
+
+
+                // Force password change before any dashboard access.
+                if ($forceChange === 1) {
+                    $this->session->set_flashdata('warning',
+                        'For security, you must change your password before continuing.');
+                    redirect('page/changepassword');
+                    return;
+                }
 
 
                 // Fallback: your existing role-based redirects
@@ -415,6 +586,14 @@ class Login extends CI_Controller
 
     public function deleteUser($user)
     {
+        // Defense in depth: the authguard role rule blocks unauthenticated
+        // access, but never trust a single layer. Require a logged-in admin.
+        if (!$this->session->userdata('logged_in')
+            || !in_array($this->session->userdata('level'), array('Super Admin', 'Admin', 'IT'), true)) {
+            show_error('You do not have permission to perform this action.', 403);
+            return;
+        }
+
         // Attempt to delete the user
         $deleteSuccess = $this->Login_model->deleteUser($user);
 
@@ -472,6 +651,11 @@ class Login extends CI_Controller
         ]);
         $this->sessionregistry->close('signed out');
 
+        // Clear the device-recognition cookie so a new browser session
+        // is not auto-trusted as a "known device" after explicit logout.
+        $this->load->helper('cookie');
+        delete_cookie('fbmso_dev');
+
         $this->session->sess_destroy();
         redirect('login');
     }
@@ -485,14 +669,27 @@ class Login extends CI_Controller
             return;
         }
 
+        // Throttle by email to prevent enumeration/DoS via repeated reset
+        // requests (each one rotates the account password).
+        $blocked = $this->loginthrottle->check($email);
+        if ($blocked) {
+            $this->redirect_forgot_password(
+                'Too many reset attempts. Please try again in ' . $blocked['retry_after'] . ' seconds.',
+                $email
+            );
+            return;
+        }
+
         $user = $this->Login_model->findUserByEmail($email);
         if (!$user) {
+            $this->loginthrottle->fail($email);
             $this->redirect_forgot_password('Email not found!', $email);
             return;
         }
 
         $status = strtolower(trim((string)($user['acctStat'] ?? '')));
         if ($status !== 'active') {
+            $this->loginthrottle->fail($email);
             $message = $status === 'pending verification'
                 ? 'Verify your email before resetting your password.'
                 : 'Your account is not active. Please contact support.';
@@ -523,6 +720,7 @@ class Login extends CI_Controller
         ]);
 
         if (empty($sendResult['ok'])) {
+            $this->loginthrottle->fail($email);
             $this->redirect_forgot_password(
                 (string)($sendResult['message'] ?? 'Unable to send the temporary password email.'),
                 $email
@@ -530,6 +728,8 @@ class Login extends CI_Controller
             return;
         }
 
+        $this->loginthrottle->succeed($email);
+        $this->loginthrottle->prune();
         $this->session->set_flashdata('forgot_info', (string)$sendResult['message']);
         redirect(base_url('login'), 'refresh');
         return;

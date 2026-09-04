@@ -185,7 +185,7 @@ class Login_model extends CI_Model
       ];
     }
 
-    $tempPassword = (string) random_int(10000000, 99999999);
+    $tempPassword = substr(bin2hex(random_bytes(10)), 0, 16);
 
     $schoolSettings = $this->db->get('o_srms_settings')->row();
     $schoolName = $schoolSettings ? $schoolSettings->SchoolName : 'School Records Management System';
@@ -243,7 +243,10 @@ class Login_model extends CI_Model
 
     $updated = $this->db
       ->where('username', $user['username'])
-      ->update('o_users', ['password' => fbmso_password_hash($tempPassword)]);
+      ->update('o_users', [
+          'password' => fbmso_password_hash($tempPassword),
+          'force_change_password' => 1,
+      ]);
 
     if (!$updated) {
       // The queued email now advertises a password that was never applied.
@@ -263,6 +266,11 @@ class Login_model extends CI_Model
     // person requesting the reset is, by definition, not signed in.
     $this->load->library('sessionregistry');
     $this->sessionregistry->revokeAllForUser((string)$user['username'], 'password reset');
+
+    // Also revoke any mobile bearer tokens so a stolen phone can't stay
+    // logged in after a password reset.
+    $this->load->model('MobileTokenModel');
+    $this->MobileTokenModel->revokeAllForUser((string)$user['username']);
 
     return [
       'ok' => true,
@@ -286,12 +294,22 @@ class Login_model extends CI_Model
   {
     date_default_timezone_set('Asia/Manila');
 
+    // Build a device fingerprint from IP + User-Agent so the same device
+    // can be tracked across multiple accounts without storing the password.
+    $ua = (string)$this->input->server('HTTP_USER_AGENT');
+    $ip = $this->input->ip_address();
+    $fp = hash('sha256', $ip . '|' . $ua);
+
     $data = [
-      'username'         => $username,
-      'password_attempt' => fbmso_password_fingerprint($password_attempt),
-      'status'           => $status,
-      'ip_address'       => $this->input->ip_address(),
-      'login_time'       => date('Y-m-d H:i:s')
+      'username'           => $username,
+      'password_attempt'   => fbmso_password_fingerprint($password_attempt),
+      'status'             => $status,
+      'ip_address'         => $ip,
+      'user_agent'         => mb_substr($ua, 0, 500),
+      'referrer'           => mb_substr((string)$this->input->server('HTTP_REFERER'), 0, 500),
+      'device_fingerprint' => $fp,
+      'session_id'         => session_id(),
+      'login_time'         => date('Y-m-d H:i:s')
     ];
 
     return $this->db->insert('login_logs', $data);

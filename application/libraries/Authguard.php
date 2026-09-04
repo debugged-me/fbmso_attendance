@@ -79,6 +79,11 @@ class Authguard
             return;
         }
 
+        // IP blacklist — block known attacker IPs before anything else.
+        // This runs even for public routes so attackers can't even load
+        // the login page.
+        $this->checkIpBlacklist();
+
         if ($this->is_public($route)) {
             return;
         }
@@ -120,9 +125,82 @@ class Authguard
             return;
         }
 
+        // Force password change: if the session flag is set, the user may
+        // only reach the change-password page and its handler. Everything
+        // else bounces them there. This catches legacy SHA1 accounts and
+        // accounts whose password was just reset by an admin.
+        if ($this->CI->session->userdata('force_change_password')) {
+            $allowed_during_forced = array('page/changepassword', 'page/update_password', 'login/logout');
+            $routeLower = strtolower($route);
+            $may_pass = false;
+            foreach ($allowed_during_forced as $p) {
+                if ($routeLower === $p || $routeLower === $p . '/index') {
+                    $may_pass = true;
+                    break;
+                }
+            }
+            if (!$may_pass) {
+                $this->CI->session->set_flashdata('warning',
+                    'For security, you must change your password before continuing.');
+                redirect('page/changepassword');
+                return;
+            }
+        }
+
         $allowed = $this->rule_for($route, $this->role_rules);
         if ($allowed !== null && !$this->has_level($allowed)) {
             $this->reject_forbidden($allowed);
+        }
+    }
+
+    /**
+     * Block requests from blacklisted IPs. The check covers every route
+     * including the login page, so attackers can't even see the login form.
+     */
+    protected function checkIpBlacklist()
+    {
+        $ip = $this->CI->input->ip_address();
+        if ($ip === '' || $ip === '0.0.0.0') return;
+
+        // Quick cache: only hit the DB once per request.
+        static $checked = false;
+        if ($checked) return;
+        $checked = true;
+
+        $row = $this->CI->db->select('reason, expires_at, is_permanent')
+            ->where('ip_address', $ip)
+            ->group_start()
+                ->where('is_permanent', 1)
+                ->or_group_start()
+                    ->where('expires_at IS NOT NULL')
+                    ->where('expires_at >', date('Y-m-d H:i:s'))
+                ->group_end()
+            ->group_end()
+            ->limit(1)
+            ->get('ip_blacklist')
+            ->row_array();
+
+        if ($row) {
+            // Log the blocked attempt
+            $this->CI->load->library('securityaudit');
+            $this->CI->securityaudit->event('IP_BLOCKED', [
+                'status'      => 'blocked',
+                'description' => 'Blocked access from blacklisted IP: ' . $row['reason'],
+                'target'      => $ip,
+            ]);
+
+            http_response_code(403);
+            echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Access Denied</title>'
+               . '<style>body{font-family:system-ui,Arial,sans-serif;display:flex;align-items:center;'
+               . 'justify-content:center;min-height:100vh;margin:0;background:#f8f9fa;color:#333}'
+               . '.box{text-align:center;padding:3rem;border-radius:12px;background:#fff;'
+               . 'box-shadow:0 2px 10px rgba(0,0,0,.1);max-width:500px}'
+               . 'h1{color:#dc3545;font-size:1.5rem}p{color:#666;line-height:1.6}</style></head>'
+               . '<body><div class="box"><h1>Access Denied</h1>'
+               . '<p>Your IP address has been blocked due to a security violation.</p>'
+               . '<p>If you believe this is an error, contact the school administration.</p>'
+               . '</div></body></html>';
+            exit;
         }
     }
 

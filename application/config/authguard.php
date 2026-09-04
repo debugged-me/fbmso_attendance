@@ -30,6 +30,11 @@ $config['authguard_public'] = array(
 
     // --- Sign-in / account recovery -------------------------------------
     'login/*',
+    // Forensic capture endpoint (photo + GPS + device fingerprint) is
+    // called by the login page's privacy consent modal before the user
+    // authenticates, so it must be public. It only stores what the
+    // browser voluntarily provides.
+    'login/forensic_capture',
     'verifyemail/*',
 
     // --- Student self-registration --------------------------------------
@@ -100,6 +105,31 @@ $config['authguard_roles'] = array(
     // touched several accounts, and can end anyone's session. The controller
     // checks this for itself too.
     'security/*' => array('Super Admin'),
+
+    // Login::deleteUser is under the public 'login/*' wildcard, but it
+    // deletes user accounts — it must require an authenticated Super Admin.
+    // Without this, any anonymous visitor can delete any account by visiting
+    // /login/deleteUser/<username>.
+    'login/deleteuser' => array('Super Admin', 'Admin', 'IT'),
+
+    // Deny-by-default for the two largest staff controllers. Before this,
+    // any authenticated non-student (Registrar, Accounting, Encoder, etc.)
+    // could reach every Page/* and Settings/* method, including creating
+    // Super Admin accounts, resetting passwords, and deleting records.
+    //
+    // Student access is unaffected: students are locked to
+    // authguard_student_routes, which is checked separately and overrides
+    // role rules. The entries below only affect non-student staff.
+    'page/*'    => array('Super Admin', 'Admin', 'IT', 'School Admin', 'Registrar',
+                         'Head Registrar', 'Accounting', 'HR Admin', 'Human Resource',
+                         'Academic Officer', 'Encoder', 'Instructor', 'Teacher',
+                         'Personnel', 'Guidance', 'Medical', 'Librarian'),
+    'settings/*' => array('Super Admin', 'Admin', 'IT', 'School Admin'),
+
+    // Security admin dashboard — forensic investigation, IP blacklist.
+    // Super Admin only: this exposes forensic data, captured photos,
+    // GPS coordinates, and device fingerprints from all login sessions.
+    'securityadmin/*' => array('Super Admin'),
 );
 
 /*

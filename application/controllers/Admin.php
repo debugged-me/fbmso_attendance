@@ -9,10 +9,19 @@ class Admin extends CI_Controller
         parent::__construct();
         $this->load->dbutil(); // Load Database Utility
         $this->load->helper(array('file', 'download'));
+        $this->load->library('session');
     }
 
     public function backup_database()
     {
+        // Database backups contain every user, password hash, and token —
+        // restrict to Super Admin only.
+        $level = (string)$this->session->userdata('level');
+        if (strcasecmp($level, 'Super Admin') !== 0) {
+            show_error('Forbidden — Super Admin only.', 403);
+            return;
+        }
+
         $this->load->dbutil();
         $this->load->helper('download');
 

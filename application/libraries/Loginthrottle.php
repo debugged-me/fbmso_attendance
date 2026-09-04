@@ -219,10 +219,20 @@ class Loginthrottle
         );
     }
 
-    /** Normalised account key: throttling must not be dodged by casing. */
+    /** Normalised account key: throttling must not be dodged by casing
+     *  or email formatting differences. */
     protected function key($username)
     {
-        return substr(strtolower(trim((string)$username)), 0, 100);
+        $k = strtolower(trim((string)$username));
+        // Canonicalize emails so John@Example.com and john@example.com
+        // share the same throttle bucket.
+        if (filter_var($k, FILTER_VALIDATE_EMAIL)) {
+            $parts = explode('@', $k, 2);
+            if (count($parts) === 2) {
+                $k = $parts[0] . '@' . $parts[1];
+            }
+        }
+        return substr($k, 0, 100);
     }
 
     protected function row($scope, $key)

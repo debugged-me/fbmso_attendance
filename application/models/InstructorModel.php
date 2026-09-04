@@ -156,7 +156,7 @@ class InstructorModel extends CI_Model
 
     function gradingSheets($instructor, $sy, $sem)
     {
-        $query = $this->db->query("SELECT * FROM grades where Instructor='" . $instructor . "' and Semester='" . $sem . "' and SY='" . $sy . "' group by SubjectCode, Section");
+        $query = $this->db->query("SELECT * FROM grades WHERE Instructor = ? AND Semester = ? AND SY = ? GROUP BY SubjectCode, Section", array($instructor, $sem, $sy));
         return $query->result();
     }
 

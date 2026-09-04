@@ -213,7 +213,9 @@ class Securityaudit
         return $this->CI->db->insert('security_audit_logs', $row);
     }
 
-    /** Hash of the meaningful payload, chained to the previous record. */
+    /** Hash of the meaningful payload, chained to the previous record.
+     *  Uses HMAC-SHA256 with a pepper from config so an attacker with only
+     *  DB access cannot forge valid hashes. */
     protected function hashRow(array $row, $prevHash)
     {
         $payload = array();
@@ -222,13 +224,23 @@ class Securityaudit
             'actor_username', 'target_username',
             'table_name', 'record_pk', 'changed_field', 'old_value', 'new_value',
             'ip_address', 'request_uri', 'request_method',
-            'device_model_code', 'raw_user_agent',
-            'risk_score', 'description',
+            'device_model_code', 'device_name', 'operating_system', 'os_version',
+            'browser', 'browser_version', 'raw_user_agent',
+            'risk_score', 'risk_level', 'risk_reason',
+            'description', 'extra',
         ) as $k) {
             $payload[$k] = array_key_exists($k, $row) ? (string)$row[$k] : '';
         }
 
-        return hash('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE) . '|' . $prevHash);
+        $pepper = (string)config_item('login_attempt_pepper');
+        $data = json_encode($payload, JSON_UNESCAPED_UNICODE) . '|' . (string)$prevHash;
+
+        if ($pepper !== '') {
+            return hash_hmac('sha256', $data, $pepper);
+        }
+        // Fallback if no pepper is configured — still chained, but not
+        // protected against a DB-only attacker.
+        return hash('sha256', $data);
     }
 
     protected function lastHash()

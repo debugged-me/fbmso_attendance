@@ -93,7 +93,7 @@
 							<div class="card">
 								<div class="card-body table-responsive">
 									<!-- <h4 class="m-t-0 header-title mb-4"><b>Heading Here</b></h4>-->
-									<form role="form" method="post" enctype="multipart/form-data">
+									<form role="form" method="post">
 										<!-- general form elements -->
 										<div class="card-body">
 

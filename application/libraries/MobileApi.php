@@ -123,19 +123,29 @@ class MobileApi extends CI_Controller
     }
 
     /**
-     * CORS support so the Flutter web build (dev preview on another port)
-     * can call the API. Native mobile apps don't need CORS, so this is
-     * harmless for them. OPTIONS preflights are answered immediately.
+     * CORS support. Native mobile apps (Flutter on iOS/Android) do not send
+     * an Origin header and are not affected by CORS at all, so this only
+     * matters for browser-based callers. We restrict the allowed origins to
+     * the school's own domains rather than reflecting any Origin back,
+     * which would let attacker-controlled web pages call the API.
      */
     private function send_cors_headers(): void
     {
         $origin = $this->input->get_request_header('Origin');
-        if ($origin) {
+
+        // Allowlist of origins that may call the API from a browser.
+        $allowed_origins = [
+            'https://fbmso.srmsportal.com',
+            'https://fbmso.softtechco.biz',
+        ];
+
+        if ($origin && in_array($origin, $allowed_origins, true)) {
             header('Access-Control-Allow-Origin: ' . $origin);
             header('Vary: Origin');
-        } else {
-            header('Access-Control-Allow-Origin: *');
         }
+        // If the origin is not on the allowlist, send no ACAO header at all.
+        // The browser will block the response — which is the desired behaviour.
+
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
         header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Idempotency-Key');
         header('Access-Control-Max-Age: 86400');

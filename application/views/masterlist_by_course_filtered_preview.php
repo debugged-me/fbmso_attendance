@@ -26,12 +26,12 @@
                         <div class="col-md-12">
                             <div class="page-title-box">
                                 <h4 class="page-title">
-                                    <?php echo $this->input->get('yearLevel'); ?> Year -
-                                    <?php echo $this->input->get('course'); ?>
+                                    <?php echo htmlspecialchars($this->input->get('yearLevel') ?? '', ENT_QUOTES, 'UTF-8'); ?> Year -
+                                    <?php echo htmlspecialchars($this->input->get('course') ?? '', ENT_QUOTES, 'UTF-8'); ?>
                                 </h4>
                                 <div class="page-title-right">
                                     <ol class="breadcrumb p-0 m-0">
-                                        <li class="breadcrumb-item">SY: <?php echo $this->input->get('sy'); ?>, Semester: <?php echo $this->input->get('semester'); ?></li>
+                                        <li class="breadcrumb-item">SY: <?php echo htmlspecialchars($this->input->get('sy') ?? '', ENT_QUOTES, 'UTF-8'); ?>, Semester: <?php echo htmlspecialchars($this->input->get('semester') ?? '', ENT_QUOTES, 'UTF-8'); ?></li>
                                     </ol>
                                 </div>
                                 <div class="clearfix"></div>

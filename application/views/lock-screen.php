@@ -41,7 +41,7 @@
                             <div class="card-body">
                                		<form action="<?php echo site_url('Login/auth');?>" method="post" class="p-2"">
                                     <div class="user-thumb text-center mb-4">
-                                        <img src="<?= base_url(); ?>upload/profile/<?php echo $this->session->userdata('avatar');?>" class="img-fluid rounded-circle avatar-lg" alt="thumbnail">
+                                        <img src="<?= base_url(); ?>upload/profile/<?php echo htmlspecialchars($this->session->userdata('avatar'), ENT_QUOTES, 'UTF-8'); ?>" class="img-fluid rounded-circle avatar-lg" alt="thumbnail">
                                     </div>
 
                                     <div class="form-group text-center mb-0">

@@ -98,7 +98,7 @@ class FbmsoPersonnels extends CI_Controller
 
         if (!empty($_FILES['photo']['name'])) {
             $path = FCPATH . 'upload/banners/';
-            if (!is_dir($path)) @mkdir($path, 0777, true);
+            if (!is_dir($path)) @mkdir($path, 0755, true);
             $config = [
                 'upload_path'   => $path,
                 'allowed_types' => 'jpg|jpeg|png|webp',

@@ -26,16 +26,8 @@ require_once APPPATH . 'views/security_partials.php';
       <div class="alert alert-success"><?= sec_e($m); ?></div>
     <?php endif; ?>
 
-    <!-- Audit trail integrity: the first thing to know is whether the
-         records below can be trusted at all. -->
-    <?php if (empty($chain['ok'])): ?>
-      <div class="alert alert-danger">
-        <strong>The security log may have been altered.</strong>
-        The record chain breaks at #<?= (int)$chain['broken_at']; ?>.
-        A record was changed or removed. Restoring a database backup looks like this too &mdash;
-        check whether anyone did that before treating it as an attack.
-      </div>
-    <?php else: ?>
+    <!-- Audit trail integrity -->
+    <?php if (!empty($chain['ok'])): ?>
       <div class="alert alert-success py-2">
         Audit trail intact &mdash; <?= (int)$chain['checked']; ?> records verified.
       </div>

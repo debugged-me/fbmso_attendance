@@ -46,7 +46,7 @@
                         <div class="col-md-12">
                             <div class="card">
                                 <div class="card-body table-responsive">
-                                    <h4 class="m-t-0 header-title mb-4"><b><?php echo $_GET['id']; ?> | <?php echo $_GET['FName'] . ' ' . $_GET['MName'] . ' ' . $_GET['LName']; ?></b></h4>
+                                    <h4 class="m-t-0 header-title mb-4"><b><?php echo htmlspecialchars($_GET['id'] ?? '', ENT_QUOTES, 'UTF-8'); ?> | <?php echo htmlspecialchars(($_GET['FName'] ?? '') . ' ' . ($_GET['MName'] ?? '') . ' ' . ($_GET['LName'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></b></h4>
                                     <table class="table mb-0">
                                         <tbody>
                                             <tr>

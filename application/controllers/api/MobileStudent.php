@@ -190,7 +190,8 @@ class MobileStudent extends MobileApi
         $config['upload_path']   = './upload/requirements/';
         $config['allowed_types'] = 'pdf|doc|docx|jpg|jpeg|png';
         $config['max_size']      = 2048;
-        $config['file_name']     = time() . '_' . $_FILES['requirement_file']['name'];
+        $config['encrypt_name']  = TRUE;
+        $config['remove_spaces'] = TRUE;
 
         $this->load->library('upload', $config);
 

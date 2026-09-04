@@ -90,4 +90,20 @@ class MobileTokenModel extends CI_Model
         }
         $this->db->where('username', $username)->update(self::TABLE, ['revoked' => 1]);
     }
+
+    /**
+     * Delete tokens that have been expired or revoked for more than 30 days.
+     * Call periodically (e.g. from a cron or on login) to keep the table
+     * from growing indefinitely.
+     */
+    public function pruneExpired(int $olderThanSeconds = 2592000): int
+    {
+        $cutoff = time() - $olderThanSeconds;
+        $this->db->group_start()
+                 ->where('revoked', 1)
+                 ->or_where('expires_at <', $cutoff)
+                 ->group_end()
+                 ->delete(self::TABLE);
+        return $this->db->affected_rows();
+    }
 }

@@ -148,7 +148,7 @@ public function getSectionsByCourseAndMajor($course, $major)
 
     public function getexpensesbyId($expensesid)
     {
-        $query = $this->db->query("SELECT * FROM expenses WHERE expensesid = '" . $expensesid . "'");
+        $query = $this->db->query("SELECT * FROM expenses WHERE expensesid = ?", array($expensesid));
         return $query->result();
     }
 
@@ -188,7 +188,7 @@ public function getSectionsByCourseAndMajor($course, $major)
 
     public function getexpensescategorybyId($categoryID)
     {
-        $query = $this->db->query("SELECT * FROM expensescategory WHERE categoryID = '" . $categoryID . "'");
+        $query = $this->db->query("SELECT * FROM expensescategory WHERE categoryID = ?", array($categoryID));
         return $query->result();
     }
 
@@ -226,7 +226,7 @@ public function getSectionsByCourseAndMajor($course, $major)
 
     public function getprevschoolbyId($schoolID)
     {
-        $query = $this->db->query("SELECT * FROM prevschool WHERE schoolID = '" . $schoolID . "'");
+        $query = $this->db->query("SELECT * FROM prevschool WHERE schoolID = ?", array($schoolID));
         return $query->result();
     }
 
@@ -277,7 +277,7 @@ public function getSectionsByCourseAndMajor($course, $major)
 
     public function get_brandbyID($brandID)
     {
-        $query = $this->db->query("SELECT * FROM ls_brands WHERE brandID = '" . $brandID . "'");
+        $query = $this->db->query("SELECT * FROM ls_brands WHERE brandID = ?", array($brandID));
         return $query->result();
     }
 
@@ -309,7 +309,7 @@ public function getSectionsByCourseAndMajor($course, $major)
 
     public function get_categorybyID($CatNo)
     {
-        $query = $this->db->query("SELECT * FROM ls_categories WHERE CatNo = '" . $CatNo . "'");
+        $query = $this->db->query("SELECT * FROM ls_categories WHERE CatNo = ?", array($CatNo));
         return $query->result();
     }
 
@@ -343,7 +343,7 @@ public function getSectionsByCourseAndMajor($course, $major)
 
     public function get_officebyID($officeID)
     {
-        $query = $this->db->query("SELECT * FROM ls_office WHERE officeID = '" . $officeID . "'");
+        $query = $this->db->query("SELECT * FROM ls_office WHERE officeID = ?", array($officeID));
         return $query->result();
     }
 
@@ -584,7 +584,7 @@ public function getSectionsByCourseAndMajor($course, $major)
 
     public function getethnicitybyId($id)
     {
-        $query = $this->db->query("SELECT * FROM settings_ethnicity WHERE id = '" . $id . "'");
+        $query = $this->db->query("SELECT * FROM settings_ethnicity WHERE id = ?", array($id));
         return $query->result();
     }
 
@@ -624,7 +624,7 @@ public function getSectionsByCourseAndMajor($course, $major)
 
     public function getroombyId($roomID)
     {
-        $query = $this->db->query("SELECT * FROM rooms WHERE roomID = '" . $roomID . "'");
+        $query = $this->db->query("SELECT * FROM rooms WHERE roomID = ?", array($roomID));
         return $query->result();
     }
 
@@ -662,7 +662,7 @@ public function getSectionsByCourseAndMajor($course, $major)
 
     public function getreligionbyId($id)
     {
-        $query = $this->db->query("SELECT * FROM settings_religion WHERE id = '" . $id . "'");
+        $query = $this->db->query("SELECT * FROM settings_religion WHERE id = ?", array($id));
         return $query->result();
     }
 
@@ -963,13 +963,13 @@ public function getSectionsByCourseAndMajor($course, $major)
 
     public function updateCourseFeesbyId($feesid)
     {
-        $query = $this->db->query("SELECT * FROM fees WHERE feesid = '" . $feesid . "'");
+        $query = $this->db->query("SELECT * FROM fees WHERE feesid = ?", array($feesid));
         return $query->result();
     }
 
     public function updateTuitionFeesbyId($coursefeesID)
     {
-        $query = $this->db->query("SELECT * FROM coursefees WHERE coursefeesID = '" . $coursefeesID . "'");
+        $query = $this->db->query("SELECT * FROM coursefees WHERE coursefeesID = ?", array($coursefeesID));
         return $query->result();
     }
 
@@ -1331,7 +1331,7 @@ public function getSectionsByCourseAndMajor($course, $major)
 
     public function get_subjectbyId($subjectid)
     {
-        $query = $this->db->query("SELECT * FROM subjects WHERE subjectid = '" . $subjectid . "'");
+        $query = $this->db->query("SELECT * FROM subjects WHERE subjectid = ?", array($subjectid));
         return $query->result();
     }
 
@@ -1691,7 +1691,7 @@ public function get_courseTable()
 
     public function get_classbyId($subjectid)
     {
-        $query = $this->db->query("SELECT * FROM semsubjects WHERE subjectid = '" . $subjectid . "'");
+        $query = $this->db->query("SELECT * FROM semsubjects WHERE subjectid = ?", array($subjectid));
         return $query->result();
     }
 

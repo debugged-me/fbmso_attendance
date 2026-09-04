@@ -77,9 +77,11 @@
                                                         <a href="<?= base_url(); ?>Page/updateEnrollment?id=<?php echo $row->semstudentid; ?>&?email=<?php echo $row->email; ?>"><b><i class="mdi mdi-account-settings-variant mr-1"></i> Edit</b></a>
                                                     </button>
 
-                                                    <button type="button" class="btn btn-warning btn-xs waves-effect waves-light">
-                                                        <a href="<?= base_url(); ?>Page/deleteEnrollment?id=<?php echo $row->semstudentid; ?>"><b><i class="mdi mdi-account-settings-variant mr-1"></i> Delete</b></a>
-                                                    </button>
+                                                    <form action="<?= base_url(); ?>Page/deleteEnrollment" method="post" style="display:inline">
+                                                        <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>" />
+                                                        <input type="hidden" name="id" value="<?php echo $row->semstudentid; ?>" />
+                                                        <button type="submit" class="btn btn-warning btn-xs waves-effect waves-light" onclick="return confirm('Delete this enrollment record?')"><b><i class="mdi mdi-account-settings-variant mr-1"></i> Delete</b></button>
+                                                    </form>
                                                 </td>
                                             <?php
                                                 echo "</tr>";

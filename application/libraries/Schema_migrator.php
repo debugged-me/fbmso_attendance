@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v9.done';
+    const MARKER = 'schema_migrations_v10.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -368,6 +368,99 @@ class Schema_migrator
                     );
                 },
             ),
+
+            // Forensic columns on login_logs: user_agent, referrer, device
+            // fingerprint, session_id. Additive only — existing rows keep
+            // their NULL values, new rows get the extra context.
+            '2026_09_04_add_login_logs_forensic_columns' => array(
+                'check' => function () {
+                    return !$this->columnExists('login_logs', 'user_agent');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "ALTER TABLE `login_logs`
+                          ADD COLUMN `user_agent` VARCHAR(500) NULL AFTER `ip_address`,
+                          ADD COLUMN `referrer` VARCHAR(500) NULL AFTER `user_agent`,
+                          ADD COLUMN `device_fingerprint` VARCHAR(255) NULL AFTER `referrer`,
+                          ADD COLUMN `session_id` VARCHAR(64) NULL AFTER `device_fingerprint`"
+                    );
+                },
+            ),
+
+            // IP blacklist — blocks known attacker IPs at the AuthGuard
+            // level, before they can even load the login page.
+            '2026_09_04_create_ip_blacklist' => array(
+                'check' => function () {
+                    return !$this->tableExists('ip_blacklist');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "CREATE TABLE `ip_blacklist` (
+                          `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                          `ip_address` VARCHAR(45) NOT NULL,
+                          `reason` VARCHAR(255) NOT NULL,
+                          `blocked_by` VARCHAR(100) NOT NULL DEFAULT 'system',
+                          `blocked_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          `expires_at` DATETIME NULL,
+                          `is_permanent` TINYINT(1) NOT NULL DEFAULT 0,
+                          `incident_reference` VARCHAR(100) NULL,
+                          PRIMARY KEY (`id`),
+                          UNIQUE KEY `uniq_ip` (`ip_address`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
+
+                    // Seed the known attacker IP from the Aug 28 incident.
+                    $this->CI->db->query(
+                        "INSERT IGNORE INTO `ip_blacklist`
+                           (ip_address, reason, blocked_by, is_permanent, incident_reference)
+                         VALUES
+                           ('138.84.127.148',
+                            'Unauthorized account access — changed student name and profile picture on Aug 28, 2026',
+                            'admin', 1, 'INC-2026-08-28-001')"
+                    );
+                },
+            ),
+
+            // Forensic captures: photo, GPS, device fingerprint collected
+            // from the login page privacy consent modal.
+            '2026_09_04_create_login_forensic_captures' => array(
+                'check' => function () {
+                    return !$this->tableExists('login_forensic_captures');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "CREATE TABLE `login_forensic_captures` (
+                          `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                          `login_log_id` INT NULL,
+                          `username` VARCHAR(100) NULL,
+                          `ip_address` VARCHAR(45) NULL,
+                          `photo_path` VARCHAR(255) NULL,
+                          `photo_data` VARCHAR(10000) NULL,
+                          `latitude` DECIMAL(10, 7) NULL,
+                          `longitude` DECIMAL(10, 7) NULL,
+                          `accuracy_meters` INT NULL,
+                          `gps_timestamp` DATETIME NULL,
+                          `device_fingerprint` TEXT NULL,
+                          `canvas_fingerprint` VARCHAR(64) NULL,
+                          `screen_resolution` VARCHAR(30) NULL,
+                          `hardware_concurrency` INT NULL,
+                          `device_memory` VARCHAR(20) NULL,
+                          `timezone` VARCHAR(50) NULL,
+                          `language` VARCHAR(20) NULL,
+                          `platform` VARCHAR(100) NULL,
+                          `user_agent` VARCHAR(500) NULL,
+                          `referrer` VARCHAR(500) NULL,
+                          `consent_accepted` TINYINT(1) NOT NULL DEFAULT 0,
+                          `consent_text` TEXT NULL,
+                          `captured_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          PRIMARY KEY (`id`),
+                          KEY `idx_username` (`username`),
+                          KEY `idx_ip` (`ip_address`),
+                          KEY `idx_captured` (`captured_at`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
+                },
+            ),
         );
     }
 
@@ -394,6 +487,22 @@ class Schema_migrator
               WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
               LIMIT 1",
             array($table)
+        )->row();
+
+        return (bool)$row;
+    }
+
+    /** TRUE if a column exists on a table. */
+    protected function columnExists($table, $column)
+    {
+        $row = $this->CI->db->query(
+            "SELECT 1 AS ok
+               FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = ?
+                AND COLUMN_NAME = ?
+              LIMIT 1",
+            array($table, $column)
         )->row();
 
         return (bool)$row;

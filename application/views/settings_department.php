@@ -132,11 +132,13 @@
                             <td data-label="Series Year"><?= $row->SeriesYear; ?></td>
                             <td data-label="Action" style="text-align:center;">
                               <a href="<?= base_url('Settings/updateCourse?courseid=' . $row->courseid); ?>" class="up-btn up-btn-ghost up-btn-sm"><i class="mdi mdi-pencil"></i> Edit</a>
-                              <a href="<?= base_url(); ?>Settings/deleteCourse?id=<?= $row->courseid; ?>" class="up-btn up-btn-danger up-btn-sm course-delete-btn"
-                                data-delete-url="<?= base_url(); ?>Settings/deleteCourse?id=<?= $row->courseid; ?>"
-                                data-course-name="<?= htmlspecialchars($row->CourseDescription, ENT_QUOTES, 'UTF-8'); ?>">
-                                <i class="mdi mdi-delete-forever"></i> Delete
-                              </a>
+                              <form action="<?= base_url(); ?>Settings/deleteCourse" method="post" style="display:inline">
+                                <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>" />
+                                <input type="hidden" name="id" value="<?= $row->courseid; ?>" />
+                                <button type="submit" class="up-btn up-btn-danger up-btn-sm" onclick="return confirm('Delete course <?= htmlspecialchars($row->CourseDescription, ENT_QUOTES, 'UTF-8'); ?>? This cannot be undone.')">
+                                  <i class="mdi mdi-delete-forever"></i> Delete
+                                </button>
+                              </form>
                             </td>
                           <?php } ?>
                       </tbody>

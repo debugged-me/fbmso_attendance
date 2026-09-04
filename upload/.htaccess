@@ -3,8 +3,8 @@
 
 Options -Indexes -ExecCGI
 
-# Block every scripting handler for anything stored here.
-<FilesMatch "\.(?:php[0-9]*|phtml|phar|pht|phps|cgi|pl|py|sh|bash|asp|aspx|jsp|htaccess)$">
+# Block every scripting handler and HTML/SVG (stored XSS) for anything stored here.
+<FilesMatch "\.(?:php[0-9]*|phtml|phar|pht|phps|cgi|pl|py|sh|bash|asp|aspx|jsp|htaccess|html?|svg|shtml)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
@@ -13,6 +13,15 @@ Options -Indexes -ExecCGI
         Deny from all
     </IfModule>
 </FilesMatch>
+
+# Force-download for HTML/SVG files that slip past the block above so they
+# are never rendered inline by the browser.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(?:html?|svg)$">
+    Header set Content-Disposition "attachment"
+    Header set X-Content-Type-Options "nosniff"
+  </FilesMatch>
+</IfModule>
 
 <IfModule mod_php.c>
     php_flag engine off

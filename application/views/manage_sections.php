@@ -133,9 +133,11 @@
                                                         <td data-label="Section"><?= htmlspecialchars($sectionName, ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Action" class="up-rt-actions" style="text-align:center;">
                                                             <a href="<?= base_url('Page/editSection/' . $section->id); ?>" class="up-btn up-btn-ghost up-btn-sm"><i class="mdi mdi-pencil"></i> Edit</a>
-                                                            <a href="<?= base_url('Page/deleteSection/' . $section->id); ?>" class="up-btn up-btn-danger up-btn-sm section-delete-btn"
-                                                                data-delete-url="<?= base_url('Page/deleteSection/' . $section->id); ?>"
-                                                                data-section-name="<?= htmlspecialchars($sectionName !== '' ? $sectionName : $courseLabel, ENT_QUOTES, 'UTF-8'); ?>"><i class="mdi mdi-delete"></i> Delete</a>
+                                                            <form action="<?= base_url('Page/deleteSection'); ?>" method="post" style="display:inline">
+                                                                <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>" />
+                                                                <input type="hidden" name="id" value="<?= (int)$section->id; ?>" />
+                                                                <button type="submit" class="up-btn up-btn-danger up-btn-sm" onclick="return confirm('Delete section <?= htmlspecialchars($sectionName !== '' ? $sectionName : $courseLabel, ENT_QUOTES, 'UTF-8'); ?>? This cannot be undone.')"><i class="mdi mdi-delete"></i> Delete</button>
+                                                            </form>
                                                         </td>
                                                     </tr>
                                                 <?php endforeach; ?>

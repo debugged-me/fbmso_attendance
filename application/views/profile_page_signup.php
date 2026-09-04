@@ -38,10 +38,10 @@
                                 <div class="row">
                                     <div class="col-sm-6">
                                         <?php if ($this->session->userdata('level') === 'Student') : ?>
-                                            <div class="profile-user-img"><img src="<?= base_url(); ?>upload/profile/<?php echo $this->session->userdata('avatar'); ?>" alt="" class="avatar-lg rounded-circle"></div>
+                                            <div class="profile-user-img"><img src="<?= base_url(); ?>upload/profile/<?php echo htmlspecialchars($this->session->userdata('avatar'), ENT_QUOTES, 'UTF-8'); ?>" alt="" class="avatar-lg rounded-circle"></div>
 
                                         <?php else : ?>
-                                            <div class="profile-user-img"><img src="<?= base_url(); ?>upload/profile/<?php echo $data1[0]->avatar; ?>" alt="" class="avatar-lg rounded-circle"></div>
+                                            <div class="profile-user-img"><img src="<?= base_url(); ?>upload/profile/<?php echo htmlspecialchars($data1[0]->avatar, ENT_QUOTES, 'UTF-8'); ?>" alt="" class="avatar-lg rounded-circle"></div>
                                         <?php endif; ?>
                                         <div class="">
                                             <h4 class="mt-5 font-18 ellipsis"><?php echo $data[0]->FirstName . ' ' . $data[0]->MiddleName . ' ' . $data[0]->LastName; ?></h4>

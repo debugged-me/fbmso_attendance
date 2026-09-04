@@ -3,7 +3,7 @@ class PersonnelModel extends CI_Model
 {
 	function displaypersonnelById($id)
 	{
-	$query=$this->db->query("select * from staff where IDNumber='".$id."'");
+	$query=$this->db->query("select * from staff where IDNumber = ?", array($id));
 	return $query->result();
 	}
 	
@@ -61,14 +61,14 @@ class PersonnelModel extends CI_Model
 	//Get Leave Credits
 	function displayleavecredits($id)
 	{
-	$query=$this->db->query("select * from hris_leaverecords where IDNumber='".$id."'");
+	$query=$this->db->query("select * from hris_leaverecords where IDNumber = ?", array($id));
 	return $query->result();
 	}
 	
 	//view files
 	function viewfiles($id)
 	{
-	$query=$this->db->query("select * from hris_files f join staff s on f.IDNumber=s.IDNumber where s.IDNumber='".$id."'");
+	$query=$this->db->query("select * from hris_files f join staff s on f.IDNumber=s.IDNumber where s.IDNumber = ?", array($id));
 	return $query->result();
 	}
 	//view 201 files All
@@ -194,14 +194,14 @@ class PersonnelModel extends CI_Model
 	//For Retirement
 	public function forRetirement($year)
 	{
-	$query=$this->db->query("SELECT count(retYear) as retYearCounts FROM hris_staff s join hris_employment e on s.IDNumber=e.IDNumber where s.retYear='".$year."' and e.endDate='Present'");
+	$query=$this->db->query("SELECT count(retYear) as retYearCounts FROM hris_staff s join hris_employment e on s.IDNumber=e.IDNumber where s.retYear = ? and e.endDate='Present'", array($year));
 	return $query->result();
 	}
 	
 	//For Loyalty Cash Award
 	public function forLoyalty($year)
 	{
-	$query=$this->db->query("SELECT count(l.loyaltyDate) as loyaltyCounts FROM hris_loyalty l join hris_employment e on l.IDNumber=e.IDNumber WHERE YEAR(l.loyaltyDate ) = '".$year."' and e.endDate='Present'");
+	$query=$this->db->query("SELECT count(l.loyaltyDate) as loyaltyCounts FROM hris_loyalty l join hris_employment e on l.IDNumber=e.IDNumber WHERE YEAR(l.loyaltyDate ) = ? and e.endDate='Present'", array($year));
 	return $query->result();
 	}
 

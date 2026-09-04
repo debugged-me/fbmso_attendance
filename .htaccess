@@ -4,9 +4,75 @@ RewriteEngine On
   AddType application/manifest+json .webmanifest
 </IfModule>
 
+# ---------------------------------------------------------------------------
+# Security: block access to sensitive dotfiles, backup files, and
+# directories/files that contain secrets or source code but should never be
+# served to a browser.
+# ---------------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+  # Git repository and environment files
+  RewriteRule ^\.git(?:/|$) - [F,L]
+  RewriteRule ^\.gitignore$ - [F,L]
+  RewriteRule ^\.env$ - [F,L]
+
+  # Flutter app source — not part of the web app, contains source + configs
+  RewriteRule ^flutter_attendance(?:/|$) - [F,L]
+
+  # resources/ directory — CSVs, captcha keys, internal docs
+  RewriteRule ^resources(?:/|$) - [F,L]
+
+  # Text files in the web root that contain secrets or internal documentation
+  RewriteRule ^Capcha\.txt$ - [F,L]
+  RewriteRule "^MOODLE SRMS Token\.txt$" - [F,L]
+  RewriteRule ^database\ script\.txt$ - [F,L]
+  RewriteRule ^temp_studmodel_excerpt\.txt$ - [F,L]
+  RewriteRule ^README\.md$ - [F,L]
+  RewriteRule ^MOBILE-RESPONSIVE-PLAN\.md$ - [F,L]
+  RewriteRule ^contributing\.md$ - [F,L]
+  RewriteRule ^license\.txt$ - [F,L]
+  RewriteRule ^readme\.rst$ - [F,L]
+
+  # Composer and other dev/build files
+  RewriteRule ^composer\.(json|lock)$ - [F,L]
+  RewriteRule ^simple\.htaccess$ - [F,L]
+  RewriteRule ^error_log$ - [F,L]
+  RewriteRule ^\.DS_Store$ - [F,L]
+</IfModule>
+
+# Block backup/database/dump file extensions anywhere in the tree
+<IfModule mod_alias.c>
+  RedirectMatch 404 /\.(bak|sql|dump|log|old|orig|save|swp|swo|tmp)$
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# Security headers
+# HSTS is only sent over HTTPS — sending it over HTTP would lock localhost
+# to HTTPS (which breaks on XAMPP's self-signed cert).
+# ---------------------------------------------------------------------------
+<IfModule mod_headers.c>
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  Header always unset X-Powered-By
+  <If "%{HTTPS} == 'on'">
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  </If>
+</IfModule>
+
+# Disable directory browsing
+Options -Indexes
+
 # Redirect fbmso.softtechco.biz to fbmso.srmsportal.com
 RewriteCond %{HTTP_HOST} ^(www\.)?fbmso\.softtechco\.biz$ [NC]
 RewriteRule ^(.*)$ https://fbmso.srmsportal.com/$1 [R=301,L]
+
+# Force HTTPS for all traffic — but skip localhost and 127.0.0.1
+# (XAMPP uses a self-signed cert that browsers reject on local dev)
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP_HOST} !^localhost [NC]
+RewriteCond %{HTTP_HOST} !^127\.0\.0\.1 [NC]
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 
 # ---------------------------------------------------------------------------
 # Static assets

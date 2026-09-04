@@ -342,6 +342,7 @@ class Securitycheck extends CI_Controller
 
         $failedIps = $this->db->query(
             "SELECT ip_address, COUNT(*) c, COUNT(DISTINCT target_username) accounts,
+                    GROUP_CONCAT(DISTINCT target_username ORDER BY target_username SEPARATOR ', ') AS targeted_accounts,
                     TRIM(BOTH ' ' FROM CONCAT_WS(' ',
                         MAX(COALESCE(device_marketing_name, device_model_code, '')),
                         MAX(COALESCE(browser, ''))
@@ -469,7 +470,7 @@ class Securitycheck extends CI_Controller
             if ($ts === false) return (string)$s;
             $m = date('M', $ts);
             if ($m === 'Sep') $m = 'Sept';
-            return $m . date(' j, Y &middot; g:i A', $ts);
+            return $m . date(' j, Y \a\t g:i A', $ts);
         };
 
         // Written as prose rather than tables. A wall of counters gets skimmed
@@ -477,13 +478,13 @@ class Securitycheck extends CI_Controller
         // actually reads it and notices when a number is wrong.
         $mono = 'font-family:ui-monospace,SFMono-Regular,Menlo,monospace';
         $flow = function (array $steps) use ($e, $mono) {
-            $h = '<div style="' . $mono . ';font-size:13px;line-height:1.7;background:#f7f8fa;'
-               . 'border-left:3px solid #c9ced6;padding:14px 16px;margin:12px 0">';
+            $h = '<div style="' . $mono . ';font-size:12px;line-height:1.8;background:#f5f5f5;'
+               . 'border-left:4px solid #b42318;padding:14px 18px;margin:12px 0;border-radius:0 4px 4px 0">';
             $last = count($steps) - 1;
             foreach ($steps as $i => $step) {
-                $h .= '<div>' . $e($step) . '</div>';
+                $h .= '<div style="color:#333">' . $e($step) . '</div>';
                 if ($i !== $last) {
-                    $h .= '<div style="color:#9aa3ad;padding-left:2px">&darr;</div>';
+                    $h .= '<div style="color:#999;padding-left:2px;font-size:11px">&darr;</div>';
                 }
             }
             return $h . '</div>';
@@ -535,20 +536,24 @@ class Securitycheck extends CI_Controller
         };
 
         $banner = $ok ? '#1a7f37' : '#b42318';
-        $h  = '<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1f2328;'
-            . 'max-width:680px;margin:auto;line-height:1.6">';
-        $h .= '<div style="background:' . $banner . ';color:#fff;padding:18px 22px;border-radius:6px 6px 0 0">';
-        $h .= '<div style="font-size:19px;font-weight:600">'
-            . ($ok ? 'Nothing looks wrong' : 'Something looks wrong with the security log')
-            . '</div>';
-        $h .= '<div style="opacity:.9;font-size:13px;margin-top:3px">'
-            . $e(date('l, j F Y \a\t g:i A')) . ' &middot; covering the last ' . (int)$hours . ' hours</div>';
-        $h .= '</div><div style="border:1px solid #d8dde3;border-top:none;padding:22px;border-radius:0 0 6px 6px">';
+        $h  = '<div style="font-family:Georgia,\'Times New Roman\',serif;color:#1a1a1a;'
+            . 'max-width:720px;margin:auto;line-height:1.7;font-size:14px">';
+        // Document header
+        $h .= '<div style="border-bottom:3px double #333;padding-bottom:16px;margin-bottom:24px">';
+        $h .= '<div style="font-size:11px;color:#666;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">'
+            . 'FBMSO Attendance System</div>';
+        $h .= '<div style="font-size:22px;font-weight:bold;color:' . $banner . ';font-family:Georgia,serif;margin-bottom:4px">'
+            . ($ok ? 'Security Report — All Clear' : 'Security Report — Alert') . '</div>';
+        $h .= '<div style="font-size:13px;color:#555;font-style:italic">'
+            . $e(date('l, j F Y \a\t g:i A')) . ' &middot; Covering the last ' . (int)$hours . ' hours</div>';
+        $h .= '</div>';
 
         // ---- the alarming part, told as a sequence -----------------------
         if (!$ok) {
-            $h .= '<p style="margin-top:0"><strong>The security log is smaller than it was.</strong> '
-                . 'Nothing in the application ever deletes from it, so this should not happen on its own.</p>';
+            $h .= '<div style="background:#fef2f2;border-left:4px solid #b42318;padding:14px 18px;margin:0 0 20px 0;border-radius:0 4px 4px 0">';
+            $h .= '<strong style="color:#b42318">The security log is smaller than it was.</strong> '
+                . 'Nothing in the application ever deletes from it, so this should not happen on its own.';
+            $h .= '</div>';
 
             if ($prev) {
                 $h .= $flow(array(
@@ -560,28 +565,31 @@ class Securitycheck extends CI_Controller
                 ));
             }
 
-            $h .= '<p>Specifically:</p><ul style="margin:6px 0 14px 18px;padding:0">';
-            foreach ($alerts as $a) { $h .= '<li>' . $e($a) . '</li>'; }
+            $h .= '<p style="font-size:13px;color:#444;margin:12px 0 6px"><strong>Specifically:</strong></p>'
+                . '<ul style="margin:6px 0 14px 20px;padding:0;font-size:13px;color:#444">';
+            foreach ($alerts as $a) { $h .= '<li style="margin-bottom:4px">' . $e($a) . '</li>'; }
             $h .= '</ul>';
 
-            $h .= '<p style="background:#fff8f0;border-left:3px solid #d4a017;padding:12px 14px;margin:14px 0">'
-                . '<strong>Before assuming the worst.</strong> Restoring a database backup, re-importing a copy, '
+            $h .= '<div style="background:#fffbeb;border-left:4px solid #d4a017;padding:14px 18px;margin:14px 0;border-radius:0 4px 4px 0;font-size:13px;color:#444">'
+                . '<strong style="color:#92400e">Before assuming the worst.</strong> Restoring a database backup, re-importing a copy, '
                 . 'or clearing test data all look exactly like this. Check whether anyone did one of those first. '
-                . 'On the server, <span style="' . $mono . '">SELECT AUTO_INCREMENT FROM information_schema.TABLES '
+                . 'On the server, <span style="' . $mono . ';font-size:11px">SELECT AUTO_INCREMENT FROM information_schema.TABLES '
                 . 'WHERE TABLE_NAME=\'security_audit_logs\'</span> tells you which: a low number means the table was '
                 . 'emptied and started again; a number above the old maximum means individual rows were removed, '
-                . 'which is far harder to explain innocently.</p>';
+                . 'which is far harder to explain innocently.</div>';
         } else {
-            $h .= '<p style="margin-top:0">The audit trail is intact. Every record still matches its hash, '
-                . 'and the log has only grown since the last check.</p>';
+            $h .= '<div style="background:#f0fdf4;border-left:4px solid #1a7f37;padding:14px 18px;margin:0 0 20px 0;border-radius:0 4px 4px 0">';
+            $h .= '<strong style="color:#1a7f37">The audit trail is intact.</strong> Every record still matches its hash, '
+                . 'and the log has only grown since the last check.';
+            $h .= '</div>';
         }
 
         // ---- mail health -------------------------------------------------
         if (!empty($mail['warnings'])) {
-            $h .= '<p style="background:#fffbe6;border-left:3px solid #d4a017;padding:12px 14px">'
-                . '<strong>Email is not getting through properly.</strong></p><ul style="margin:6px 0 14px 18px">';
-            foreach ($mail['warnings'] as $w) { $h .= '<li>' . $e($w) . '</li>'; }
-            $h .= '</ul>';
+            $h .= '<div style="background:#fffbeb;border-left:4px solid #d4a017;padding:14px 18px;margin:0 0 20px 0;border-radius:0 4px 4px 0">';
+            $h .= '<strong style="color:#92400e">Email is not getting through properly.</strong><ul style="margin:8px 0 0 18px;padding:0">';
+            foreach ($mail['warnings'] as $w) { $h .= '<li style="margin-bottom:4px">' . $e($w) . '</li>'; }
+            $h .= '</ul></div>';
         }
 
         // ---- what happened, in words -------------------------------------
@@ -589,7 +597,8 @@ class Securitycheck extends CI_Controller
         foreach ($activity['byType'] as $r) { $c[$r['event_type']] = (int)$r['c']; }
         $n = function ($k) use ($c) { return isset($c[$k]) ? $c[$k] : 0; };
 
-        $h .= '<h3 style="font-size:15px;margin:22px 0 6px">What happened</h3>';
+        $h .= '<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;border-bottom:1px solid #ddd;'
+            . 'padding-bottom:6px;margin:28px 0 12px;font-family:Georgia,serif">What happened</h3>';
 
         if (!array_sum($c)) {
             $h .= '<p>Nobody signed in and nothing changed. Quiet day.</p>';
@@ -630,32 +639,98 @@ class Securitycheck extends CI_Controller
 
         // ---- suspicious IPs, explained ------------------------------------
         if (!empty($activity['failedIps'])) {
-            $h .= '<h3 style="font-size:15px;margin:22px 0 6px">Worth a look</h3>';
+            $h .= '<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;border-bottom:1px solid #ddd;'
+                . 'padding-bottom:6px;margin:28px 0 12px;font-family:Georgia,serif">Worth a look</h3>';
             foreach ($activity['failedIps'] as $r) {
                 $many = (int)$r['accounts'] > 1;
                 $desc = trim((string)($r['device_desc'] ?? ''));
-                $h .= '<p style="margin:8px 0">'
-                    . '<span style="' . $mono . '">' . $e($r['ip_address']) . '</span>'
-                    . ($desc !== '' ? ' (' . $e($desc) . ')' : '') . ' failed '
-                    . '<strong>' . $e($r['c']) . '</strong> times';
+                $h .= '<div style="background:#fafafa;border:1px solid #e0e0e0;border-radius:4px;'
+                    . 'padding:16px 20px;margin:12px 0">';
+                $h .= '<div style="font-size:14px;color:#1a1a1a;margin-bottom:8px;padding-bottom:6px;'
+                    . 'border-bottom:1px solid #eee">'
+                    . '<span style="' . $mono . ';font-weight:600;font-size:13px">' . $e($r['ip_address']) . '</span>'
+                    . ($desc !== '' ? ' &middot; <span style="color:#666">' . $e($desc) . '</span>' : '')
+                    . ' &mdash; failed <strong>' . $e($r['c']) . '</strong> times'
+                    . '</div>';
                 if ($many) {
-                    $h .= ' against <strong>' . $e($r['accounts']) . ' different accounts</strong>. '
+                    // Look up names for the targeted accounts
+                    $targetedAccounts = trim((string)($r['targeted_accounts'] ?? ''));
+                    $accountNames = '';
+                    if ($targetedAccounts !== '') {
+                        $acctList = array_map('trim', explode(',', $targetedAccounts));
+                        $placeholders = implode(',', array_fill(0, count($acctList), '?'));
+                        $nameRows = $this->db->query(
+                            "SELECT username, TRIM(CONCAT(fname, ' ', lname)) AS full_name
+                               FROM o_users WHERE username IN ($placeholders)",
+                            $acctList
+                        )->result();
+                        $nameMap2 = array();
+                        foreach ($nameRows as $nr) {
+                            $nameMap2[$nr->username] = trim($nr->full_name);
+                        }
+                        $displayAccounts = array();
+                        foreach ($acctList as $acct) {
+                            $displayAccounts[] = isset($nameMap2[$acct]) && $nameMap2[$acct] !== ''
+                                ? $nameMap2[$acct] . ' (' . $acct . ')'
+                                : $acct;
+                        }
+                        $accountNames = implode(', ', $displayAccounts);
+                    }
+
+                    $h .= '<div style="font-size:13px;color:#4b5563;line-height:1.6">'
+                        . 'Tried <strong>' . $e($r['accounts']) . ' different accounts</strong>. '
                         . 'One address trying several accounts is what credential spraying looks like &mdash; '
-                        . 'the same shape as 28 August. A shared campus or household connection can look '
+                        . 'the same shape as 28 August.<br>'
+                        . '<span style="color:#6b7280">A shared campus or household connection can look '
                         . 'identical, so check whether those accounts have anything to do with each other '
-                        . 'before treating it as an attack.';
+                        . 'before treating it as an attack.</span>';
+                    if ($accountNames !== '') {
+                        $h .= '<div style="margin-top:6px;padding:6px 10px;background:#fff;border-radius:4px;'
+                            . 'font-size:12px;color:#374151"><strong>Targeted accounts:</strong> '
+                            . $e($accountNames) . '</div>';
+                    }
+                    $h .= '</div>';
                 } else {
-                    $h .= ' against one account. Most likely somebody who has forgotten their password.';
+                    $h .= '<div style="font-size:13px;color:#4b5563;line-height:1.6">'
+                        . 'Tried one account. Most likely somebody who has forgotten their password.'
+                        . '</div>';
                 }
-                $h .= '</p>';
+                $h .= '</div>';
             }
         }
 
         // ---- account changes, as small sequences --------------------------
-        $h .= '<h3 style="font-size:15px;margin:22px 0 6px">Account changes</h3>';
+        $h .= '<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;border-bottom:1px solid #ddd;'
+            . 'padding-bottom:6px;margin:28px 0 12px;font-family:Georgia,serif">Account changes</h3>';
         if (empty($activity['changes'])) {
             $h .= '<p>No profile fields, passwords or names were changed.</p>';
         } else {
+            // Look up real names for all actors/targets in one query
+            $usernames = array();
+            foreach ($activity['changes'] as $r) {
+                if (!empty($r['actor_username']))  $usernames[] = $r['actor_username'];
+                if (!empty($r['target_username'])) $usernames[] = $r['target_username'];
+            }
+            $nameMap = array();
+            if ($usernames) {
+                $unique = array_unique($usernames);
+                $placeholders = implode(',', array_fill(0, count($unique), '?'));
+                $rows = $this->db->query(
+                    "SELECT username, TRIM(CONCAT(fname, ' ', lname)) AS full_name
+                       FROM o_users WHERE username IN ($placeholders)",
+                    $unique
+                )->result();
+                foreach ($rows as $row) {
+                    $nameMap[$row->username] = trim($row->full_name);
+                }
+            }
+            $displayName = function ($u) use ($nameMap) {
+                $u = (string)$u;
+                if ($u === '') return 'someone';
+                $name = isset($nameMap[$u]) ? $nameMap[$u] : '';
+                return $name !== '' ? $name . ' (' . $u . ')' : $u;
+            };
+
             // One profile save writes a row per changed field, so an edit
             // touching seven fields would otherwise print seven near-identical
             // blocks. Collapse anything by the same actor, on the same record,
@@ -687,8 +762,8 @@ class Securitycheck extends CI_Controller
                 $target = (string)$r['target_username'];
 
                 $who = ($actor !== '' && $target !== '' && $actor !== $target)
-                    ? $actor . ' changed ' . $target . "'s record"
-                    : (($actor ?: $target ?: 'someone') . ' changed their own record');
+                    ? $displayName($actor) . ' changed ' . $displayName($target) . "'s record"
+                    : ($displayName($actor ?: $target) . ' changed their own record');
 
                 $count = count($g['fields']);
                 if ($count > 1) {
@@ -698,45 +773,54 @@ class Securitycheck extends CI_Controller
                 // A compact card per event: date header, who, device, then
                 // the changed fields listed underneath. Easier to scan than
                 // the old monospace down-arrow chain.
-                $h .= '<div style="background:#f7f8fa;border:1px solid #e3e7ec;border-radius:6px;'
-                    . 'padding:14px 16px;margin:12px 0">';
-                $h .= '<div style="font-weight:600;color:#1f2328;font-size:13px;margin-bottom:6px">'
+                $h .= '<div style="background:#fafafa;border:1px solid #e0e0e0;border-radius:4px;'
+                    . 'padding:16px 20px;margin:12px 0">';
+                $h .= '<div style="font-weight:bold;color:#333;font-size:12px;margin-bottom:8px;'
+                    . 'text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #eee;'
+                    . 'padding-bottom:6px">'
                     . $fmtDate($r['event_time']) . '</div>';
-                $h .= '<div style="font-size:14px;color:#1f2328;margin-bottom:4px">' . $e($who) . '</div>';
+                $h .= '<div style="font-size:15px;color:#1a1a1a;margin-bottom:6px;font-weight:600">' . $e($who) . '</div>';
                 $dev = $deviceLine($r);
                 if ($dev !== '') {
-                    $h .= '<div style="font-size:12px;color:#6b7280;margin-bottom:8px">' . $e($dev) . '</div>';
+                    $h .= '<div style="font-size:12px;color:#777;margin-bottom:10px;font-style:italic">' . $e($dev) . '</div>';
                 }
 
                 if ($count) {
-                    $h .= '<div style="font-size:13px;color:#1f2328;border-top:1px solid #eceff2;margin-top:4px">';
+                    $h .= '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:6px">';
                     foreach ($g['fields'] as $f) {
-                        $h .= '<div style="padding:5px 0">' . $e($f) . '</div>';
+                        $h .= '<tr><td style="padding:6px 12px 6px 0;border-top:1px solid #eee;color:#555;'
+                            . 'white-space:nowrap;vertical-align:top;width:40%">' . $e($f) . '</td></tr>';
                     }
-                    $h .= '</div>';
+                    $h .= '</table>';
                 } elseif ($r['description']) {
-                    $h .= '<div style="font-size:13px;color:#1f2328;border-top:1px solid #eceff2;'
-                        . 'margin-top:4px;padding:5px 0">' . $e((string)$r['description']) . '</div>';
+                    $h .= '<div style="font-size:13px;color:#1a1a1a;border-top:1px solid #eee;'
+                        . 'margin-top:6px;padding-top:8px">' . $e((string)$r['description']) . '</div>';
                 }
                 $h .= '</div>';
             }
         }
 
         // ---- checkpoint, with the reason it matters -----------------------
-        $h .= '<h3 style="font-size:15px;margin:24px 0 6px">Keep this email</h3>';
-        $h .= '<p>These numbers are the only copy of the audit trail\'s size that lives outside the server. '
-            . 'If a future report shows <em>fewer</em> records or a <em>lower</em> last id than this one, '
-            . 'the log was cut &mdash; no matter what the server claims.</p>';
-        $h .= '<div style="' . $mono . ';font-size:13px;background:#f7f8fa;border:1px solid #e3e7ec;'
-            . 'padding:12px 14px;border-radius:4px;word-break:break-all">'
-            . 'records&nbsp;&nbsp;&nbsp;' . $e($state['total']) . '<br>'
-            . 'last&nbsp;id&nbsp;&nbsp;&nbsp;#' . $e($state['last_id'] === null ? '-' : $state['last_id']) . '<br>'
-            . 'hash&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' . $e($state['last_hash'] === null ? '-' : $state['last_hash'])
+        $h .= '<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;border-bottom:1px solid #ddd;'
+            . 'padding-bottom:6px;margin:28px 0 12px;font-family:Georgia,serif">Keep this email</h3>';
+        $h .= '<p style="font-size:13px;color:#444">These numbers are the only copy of the audit trail\'s size '
+            . 'that lives outside the server. If a future report shows <em>fewer</em> records or a <em>lower</em> '
+            . 'last id than this one, the log was cut &mdash; no matter what the server claims.</p>';
+        $h .= '<div style="' . $mono . ';font-size:12px;background:#f5f5f5;border:1px solid #ddd;'
+            . 'padding:14px 18px;border-radius:4px;word-break:break-all;margin:12px 0">'
+            . '<div style="margin-bottom:4px"><span style="color:#666;display:inline-block;width:80px">records</span>'
+            . $e($state['total']) . '</div>'
+            . '<div style="margin-bottom:4px"><span style="color:#666;display:inline-block;width:80px">last id</span>#'
+            . $e($state['last_id'] === null ? '-' : $state['last_id']) . '</div>'
+            . '<div><span style="color:#666;display:inline-block;width:80px">hash</span>'
+            . $e($state['last_hash'] === null ? '-' : $state['last_hash']) . '</div>'
             . '</div>';
 
-        $h .= '<p style="font-size:12px;color:#6b7280;margin-top:22px;border-top:1px solid #eceff2;padding-top:12px">'
-            . 'Sent automatically by FBMSO. No passwords, hashes or session tokens appear in this email.</p>';
-        $h .= '</div></div>';
+        $h .= '<div style="margin-top:30px;border-top:3px double #333;padding-top:14px">';
+        $h .= '<p style="font-size:11px;color:#888;margin:0;font-style:italic">'
+            . 'Sent automatically by FBMSO Attendance System. No passwords, hashes or session tokens appear in this email.</p>';
+        $h .= '</div>';
+        $h .= '</div>';
 
         return $h;
     }

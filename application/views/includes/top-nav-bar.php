@@ -13,7 +13,7 @@
                    <?php endif; ?>
                    <li class="dropdown notification-list ms-profile-action">
                        <a class="nav-link dropdown-toggle nav-user mr-0 waves-effect" data-toggle="dropdown" href="#" role="button" aria-haspopup="false" aria-expanded="false">
-                           <img src="<?= base_url(); ?>upload/profile/<?php echo $this->session->userdata('avatar'); ?>" alt="user-image" class="rounded-circle">
+                           <img src="<?= base_url(); ?>upload/profile/<?php echo htmlspecialchars($this->session->userdata('avatar'), ENT_QUOTES, 'UTF-8'); ?>" alt="user-image" class="rounded-circle">
                            <span class="pro-user-name ml-1">
                                <?php echo $this->session->userdata('fname'); ?> <i class="mdi mdi-chevron-down"></i>
                            </span>

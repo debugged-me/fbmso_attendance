@@ -177,6 +177,13 @@ class MobileAttendance extends MobileApi
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
 
+        // Only staff (instructors, admins, etc.) may scan and consume student
+        // QR tokens. Students use the separate checkin() endpoint for self
+        // check-in.
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
         if ($this->replay_if_duplicate()) return; // idempotency replay
 
         $payload   = $this->read_payload();
@@ -413,6 +420,11 @@ class MobileAttendance extends MobileApi
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
 
+        // Per-activity attendance logs are staff-only.
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
         $activityId = (int)$activity_id;
         if ($activityId <= 0) {
             return $this->json(['ok' => false, 'rows' => [], 'message' => 'Invalid activity id.']);
@@ -507,6 +519,11 @@ class MobileAttendance extends MobileApi
     {
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
+
+        // CSV export of attendance logs is staff-only.
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
 
         $activityId = (int)$activity_id;
         if ($activityId <= 0) {

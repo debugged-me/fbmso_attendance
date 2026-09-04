@@ -53,7 +53,13 @@
  *
  * NOTE: If you change these, also change the error_reporting() code below
  */
-	define('ENVIRONMENT', isset($_SERVER['CI_ENV']) ? $_SERVER['CI_ENV'] : 'development');
+	define('ENVIRONMENT', isset($_SERVER['CI_ENV']) ? $_SERVER['CI_ENV'] : 'production');
+
+	// Hide the X-Powered-By header that PHP adds by default.
+	@ini_set('expose_php', 'Off');
+	if (!headers_sent()) {
+		header_remove('X-Powered-By');
+	}
 
 /*
  *---------------------------------------------------------------
