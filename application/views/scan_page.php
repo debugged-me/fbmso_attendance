@@ -374,7 +374,7 @@
   <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.select.min.js"></script>
 
   <!-- html5-qrcode -->
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <?php
   $csrf_name  = method_exists($this->security ?? null, 'get_csrf_token_name') ? $this->security->get_csrf_token_name() : '';
@@ -1127,18 +1127,47 @@
         }
       }
 
-      // Initial camera enumeration
-      initCamerasThenMaybeStart();
+      // Requests camera permission from within a user gesture. Browsers
+      // (especially on mobile) reject getUserMedia / enumerateDevices that
+      // isn't triggered by a tap, which is what caused the
+      // "NotAllowedError: Permission denied" on load.
+      async function ensurePermission() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } },
+            audio: false
+          });
+          // Release immediately — Html5Qrcode reopens the camera itself.
+          stream.getTracks().forEach(t => t.stop());
+          return true;
+        } catch (e) {
+          if (e && e.name === 'NotAllowedError') {
+            addLine('Camera permission denied. Allow camera access, then tap Start.', 'text-danger');
+            setStatus('Camera blocked — allow access and tap Start', 'text-danger');
+          } else if (e && e.name === 'NotFoundError') {
+            addLine('No camera found on this device.', 'text-danger');
+            setStatus('No camera found', 'text-danger');
+          } else {
+            addLine('Camera error: ' + (e && e.name ? e.name : e), 'text-danger');
+            setStatus('Camera error — check permissions', 'text-warning');
+          }
+          return false;
+        }
+      }
+
+      // Don't touch the camera on page load — wait for the user to tap Start.
+      setStatus('Tap Start to enable the camera', 'text-info');
 
       btnStart.addEventListener('click', async function() {
-        if (running) return;
+        if (running || starting) return;
+        // Permission first, inside this tap's user gesture.
+        const ok = await ensurePermission();
+        if (!ok) return;
+        // Now that permission is granted, device labels are available.
         if (!devicesLoaded) await enumerateCameras();
-        const id = camSel.value;
-        if (!id && !isIOS) {
-          addLine('Select a camera first', 'text-danger');
-          return;
-        }
-        await start(id);
+        // start() falls back to facingMode:environment when no id is set,
+        // so an empty selection is fine.
+        await start(camSel.value || '');
       });
 
       btnStop.addEventListener('click', stop);

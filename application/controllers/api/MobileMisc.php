@@ -270,9 +270,9 @@ class MobileMisc extends MobileApi
         $done = !empty($payload['done']);
 
         if ($done) {
-            $this->ToDoModel->mark_task_done((int)$id, date('Y-m-d H:i:s'));
+            $this->ToDoModel->mark_task_done((int)$id, date('Y-m-d H:i:s'), $username);
         } else {
-            $this->ToDoModel->mark_task_undone((int)$id);
+            $this->ToDoModel->mark_task_undone((int)$id, $username);
         }
 
         $body = json_encode(['ok' => true, 'done' => $done]);
@@ -865,8 +865,8 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        if (!$this->is_admin($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Admin only.'], 403);
         }
 
         $p = $this->read_payload();
@@ -1073,8 +1073,8 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        if (!$this->is_admin($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Admin only.'], 403);
         }
 
         $p = $this->read_payload();
@@ -1179,8 +1179,8 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        if (!$this->is_admin($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Admin only.'], 403);
         }
 
         $p = $this->read_payload();
@@ -1219,6 +1219,13 @@ class MobileMisc extends MobileApi
             return true;
         }
         return false;
+    }
+
+    /** Stricter check: only senior admins can delete records. */
+    private function is_admin(array $tokenRow): bool
+    {
+        $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
+        return in_array($pos, ['super admin', 'admin', 'it'], true);
     }
 
     /** Look up the o_users.position for a username. */

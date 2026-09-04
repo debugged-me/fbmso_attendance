@@ -54,20 +54,23 @@ class ToDoModel extends CI_Model
     }
 
 
-    public function mark_task_done($id, $completed_at)
+    public function mark_task_done($id, $completed_at, $username = null)
     {
         $data = [
             'is_done' => 1,  // Mark as done
             'completed_at' => $completed_at  // Save the Manila time completion date
         ];
 
-        // Update the task with the provided ID
+        // Update the task with the provided ID — verify ownership
         $this->db->where('id', $id);
+        if ($username !== null) {
+            $this->db->where('username', $username);
+        }
         $this->db->update('todos', $data);
     }
 
 
-    public function mark_task_undone($id)
+    public function mark_task_undone($id, $username = null)
     {
         // Reset the 'completed_at' field and mark the task as not done
         $data = [
@@ -75,8 +78,11 @@ class ToDoModel extends CI_Model
             'completed_at' => NULL  // Reset the completed_at field
         ];
 
-        // Update the task with the provided ID
+        // Update the task with the provided ID — verify ownership
         $this->db->where('id', $id);
+        if ($username !== null) {
+            $this->db->where('username', $username);
+        }
         $this->db->update('todos', $data);
     }
 

@@ -247,6 +247,8 @@ class Accounting extends CI_Controller
 
 	public function expenses()
 	{
+		$this->ensureAccess();
+
 		$data['data'] = $this->SettingsModel->expenses();
 		$data['data1'] = $this->SettingsModel->get_expensesCategory();
 
@@ -270,6 +272,7 @@ class Accounting extends CI_Controller
 
 	public function updateexpenses()
 	{
+		$this->ensureAccess();
 		$expensesid = $this->input->get('expensesid');
 		$result['data'] = $this->SettingsModel->getexpensesbyId($expensesid);
 		$data['data1'] = $this->SettingsModel->get_expensesCategory();
@@ -295,6 +298,7 @@ class Accounting extends CI_Controller
 
 	public function Deleteexpenses()
 	{
+		$this->ensureAccess();
 		$expensesid = $this->input->get('expensesid');
 		if ($expensesid) {
 			$this->SettingsModel->Delete_expenses($expensesid);
@@ -309,6 +313,7 @@ class Accounting extends CI_Controller
 
 	public function expensescategory()
 	{
+		$this->ensureAccess();
 		$data['data'] = $this->SettingsModel->get_expensesCategory();
 		$this->load->view('expensescategory', $data);
 
@@ -325,6 +330,7 @@ class Accounting extends CI_Controller
 
 	public function updateexpensescategory()
 	{
+		$this->ensureAccess();
 		$categoryID = $this->input->get('categoryID');
 		$result['data'] = $this->SettingsModel->getexpensescategorybyId($categoryID);
 		$this->load->view('updateexpensescategory', $result);
@@ -343,6 +349,7 @@ class Accounting extends CI_Controller
 
 	public function Deleteexpensescategory()
 	{
+		$this->ensureAccess();
 		$categoryID = $this->input->get('categoryID');
 		if ($categoryID) {
 			$this->SettingsModel->Delete_expensescategory($categoryID);
@@ -357,6 +364,7 @@ class Accounting extends CI_Controller
 
 	public function expensesReport()
 	{
+		$this->ensureAccess();
 		$this->load->model('SettingsModel');
 
 		$data['data'] = $this->SettingsModel->get_expenses();
@@ -371,6 +379,7 @@ class Accounting extends CI_Controller
 
 	public function expenseSGenerate()
 	{
+		$this->ensureAccess();
 		// Get parameters from the URL
 		$category = $this->input->get('category');
 		$fromDate = $this->input->get('from');
@@ -1227,6 +1236,7 @@ class Accounting extends CI_Controller
 
 	public function collectionDateRange()
 	{
+		$this->ensureAccess();
 		$this->collectionReport();
 	}
 

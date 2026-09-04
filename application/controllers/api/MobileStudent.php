@@ -209,9 +209,9 @@ class MobileStudent extends MobileApi
             'requirement_id' => $requirementId,
             'date_submitted' => date('Y-m-d'),
             'file_path'      => $filePath,
-            'is_verified'    => 1,
-            'verified_by'    => $username,
-            'verified_at'    => date('Y-m-d H:i:s'),
+            'is_verified'    => 0,
+            'verified_by'    => null,
+            'verified_at'    => null,
             'comment'        => 'Uploaded by ' . $username . ' (mobile)',
         ];
 

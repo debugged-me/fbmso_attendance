@@ -213,6 +213,24 @@ class MobileApi extends CI_Controller
             $this->json(['ok' => false, 'message' => 'Invalid or expired token. Please log in again.'], 401);
             return null;
         }
+
+        // Verify the account is still active. A disabled/deleted user's
+        // token should not work even before it expires.
+        $user = $this->db->where('username', $row['username'])
+            ->select('acctStat, force_change_password')
+            ->get('o_users')->row_array();
+        if (!$user) {
+            // Account deleted — revoke the token
+            $this->MobileTokenModel->revoke($raw);
+            $this->json(['ok' => false, 'message' => 'Account no longer exists.'], 401);
+            return null;
+        }
+        if (isset($user['acctStat']) && $user['acctStat'] === 'Inactive') {
+            $this->MobileTokenModel->revoke($raw);
+            $this->json(['ok' => false, 'message' => 'Account has been deactivated.'], 401);
+            return null;
+        }
+
         return $row;
     }
 

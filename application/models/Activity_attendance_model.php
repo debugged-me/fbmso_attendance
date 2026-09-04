@@ -588,7 +588,7 @@ public function list_student_attendance($student_number, $limit=100, $offset=0)
             $sectionTok = trim($section);
             $this->db->group_start()
                      ->where('sst.Section', $sectionTok)
-                     ->or_like('sst.Section', $sectionTok, 'both', false)
+                     ->or_like('sst.Section', $sectionTok, 'both', true)
                      ->or_where('ssu.section', $sectionTok)
                      ->group_end();
         }

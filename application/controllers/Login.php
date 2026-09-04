@@ -54,6 +54,21 @@ class Login extends CI_Controller
             return;
         }
 
+        // Verify origin to prevent cross-site abuse. The forensic endpoint
+        // is CSRF-excluded (beacon/fetch can't send CSRF tokens reliably),
+        // so we check that the request comes from our own login page.
+        $origin = $this->input->server('HTTP_ORIGIN') ?: $this->input->server('HTTP_REFERER') ?: '';
+        $host = $this->input->server('HTTP_HOST') ?: '';
+        if ($origin !== '' && $host !== '') {
+            $originHost = parse_url($origin, PHP_URL_HOST);
+            $originPort = parse_url($origin, PHP_URL_PORT);
+            $originFull = $originHost . ($originPort ? ':' . $originPort : '');
+            if ($originFull !== $host && $originHost !== $host) {
+                echo json_encode(['status' => 'error', 'message' => 'Invalid origin']);
+                return;
+            }
+        }
+
         $username = trim((string)$this->input->post('username', TRUE));
         $photo    = (string)$this->input->post('photo_data');
         $lat      = $this->input->post('latitude');
@@ -519,11 +534,11 @@ class Login extends CI_Controller
                     $query = parse_url($next, PHP_URL_QUERY);
                     $rel   = ltrim($path . ($query ? ('?' . $query) : ''), '/');
 
-                    // Compute the *current* origin (proxy/CDN aware)
-                    $xfProto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null;
-                    $xfHost  = $_SERVER['HTTP_X_FORWARDED_HOST']  ?? null;
-                    $scheme  = $xfProto ?: ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http');
-                    $hostNow = $xfHost  ?: ($_SERVER['HTTP_HOST'] ?? parse_url(base_url(), PHP_URL_HOST));
+                    // Compute the *current* origin — do NOT trust
+                    // X-Forwarded-Host as it can be spoofed by the client.
+                    // Only use HTTP_HOST which is set by the web server.
+                    $scheme  = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                    $hostNow = $_SERVER['HTTP_HOST'] ?? parse_url(base_url(), PHP_URL_HOST);
                     $origin  = $scheme . '://' . $hostNow;
 
                     // Relative NEXT → make an absolute URL on the current origin

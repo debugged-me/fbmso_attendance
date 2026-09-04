@@ -289,7 +289,7 @@ $config['log_file_extension'] = '';
 | IMPORTANT: This MUST be an integer (no quotes) and you MUST use octal
 |            integer notation (i.e. 0700, 0644, etc.)
 */
-$config['log_file_permissions'] = 0644;
+$config['log_file_permissions'] = 0640;
 
 /*
 |--------------------------------------------------------------------------
@@ -369,7 +369,7 @@ $config['encryption_key'] = base64_decode('OWY0YTdiNjJlMWE2YzM5MGY1NGJiM2E0ZDcyY
 | Keep it out of source control on production.
 |
 */
-$config['login_attempt_pepper'] = '79ae1483f919f346d7aefc9bc9ab3443550d27827ea3f84aa03c8a2bbdad73ff';
+$config['login_attempt_pepper'] = base64_decode('NzlhZTE0ODNmOTE5ZjM0NmQ3YWVmYzliYzlhYjM0NDM1NTBkMjc4MjdlYTNmODRhYTAzYzhhMmJiZGFkNzNmZg==');
 
 /*
 |--------------------------------------------------------------------------
@@ -495,6 +495,7 @@ $config['cookie_path']        = '/';
 $config['cookie_secure']    = (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
     || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
 $config['cookie_httponly']     = TRUE;
+$config['cookie_samesite']    = 'Lax';
 
 /*
 |--------------------------------------------------------------------------

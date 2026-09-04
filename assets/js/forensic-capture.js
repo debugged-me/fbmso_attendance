@@ -1,22 +1,25 @@
 /*
- * FBMSO Forensic Capture System
+ * FBMSO Login Security Verification
  *
- * Silently captures device data, photo, and GPS during login.
- * No consent modal is shown — capture happens automatically when
- * the login form is submitted. Data is sent to the server and
- * an email copy goes to the security admin.
+ * On sign-in, the user is shown a consent modal explaining that a photo
+ * and device/location information will be recorded for security
+ * verification. Capture only happens if the user taps "Allow".
  *
- * If camera or GPS is denied/unavailable, the login still proceeds —
- * the denial is logged as part of the forensic record.
+ * The "Allow" tap is itself the user gesture browsers require before
+ * granting camera access, so this is both consent-respecting and more
+ * reliable than a silent background request.
+ *
+ * Verification is REQUIRED: if the user taps "Decline", the sign-in is
+ * cancelled and they remain on the login page. If they Allow but the
+ * camera is unavailable (e.g. inside an in-app webview like Facebook/
+ * Messenger), the login still proceeds and the record notes consent =
+ * accepted with no photo.
  */
 (function () {
   'use strict';
 
   var FORENSIC_URL = (window.SITE_URL || '') + 'login/forensic_capture';
   var captureSent = false;
-  var preloadedPhoto = null;
-  var preloadedGps = null;
-  var captureInProgress = false;
 
   // -- Device fingerprint -------------------------------------------------
 
@@ -31,9 +34,9 @@
       ctx.fillStyle = '#f60';
       ctx.fillRect(0, 0, 100, 30);
       ctx.fillStyle = '#069';
-      ctx.fillText('FBMSO-forensic-' + navigator.userAgent.length, 2, 15);
+      ctx.fillText('FBMSO-verify-' + navigator.userAgent.length, 2, 15);
       ctx.fillStyle = 'rgba(102,204,0,0.7)';
-      ctx.fillText('FBMSO-forensic-' + navigator.userAgent.length, 4, 17);
+      ctx.fillText('FBMSO-verify-' + navigator.userAgent.length, 4, 17);
       var dataUrl = canvas.toDataURL();
       var hash = 0;
       for (var i = 0; i < dataUrl.length; i++) {
@@ -60,15 +63,11 @@
   }
 
   // -- Camera capture with timeout ----------------------------------------
+  // Must be called synchronously from within the "Allow" click handler so
+  // the browser treats it as a user-gesture-initiated camera request.
 
   function capturePhoto() {
     return new Promise(function (resolve) {
-      // If we already captured a photo on page load, use it
-      if (preloadedPhoto !== null) {
-        resolve(preloadedPhoto);
-        return;
-      }
-
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         resolve({ photo: null, error: 'camera-not-supported' });
         return;
@@ -78,20 +77,21 @@
       var video = document.createElement('video');
       video.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:128px;height:96px;';
       video.autoplay = true;
+      video.muted = true;
       video.playsInline = true;
+      video.setAttribute('playsinline', '');
 
-      // Timeout: if camera doesn't produce a frame in 6 seconds, give up
       var timer = setTimeout(function () {
         if (resolved) return;
         resolved = true;
-        try { 
+        try {
           if (video.srcObject) {
             video.srcObject.getTracks().forEach(function (t) { t.stop(); });
           }
         } catch (e) {}
         if (video.parentNode) document.body.removeChild(video);
         resolve({ photo: null, error: 'camera-timeout' });
-      }, 6000);
+      }, 7000);
 
       navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } },
@@ -99,6 +99,7 @@
       }).then(function (stream) {
         video.srcObject = stream;
         document.body.appendChild(video);
+        try { video.play(); } catch (e) {}
 
         video.onloadedmetadata = function () {
           var isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
@@ -135,7 +136,7 @@
               clearTimeout(timer);
               resolve({ photo: null, error: 'capture-failed' });
             }
-          }, isMobile ? 1500 : 1000);
+          }, isMobile ? 1200 : 800);
         };
       }).catch(function (err) {
         if (video.parentNode) document.body.removeChild(video);
@@ -150,19 +151,12 @@
 
   function captureGPS() {
     return new Promise(function (resolve) {
-      if (preloadedGps !== null) {
-        resolve(preloadedGps);
-        return;
-      }
-
       if (!navigator.geolocation) {
         resolve({ lat: null, lng: null, accuracy: 0, error: 'gps-not-supported' });
         return;
       }
 
       var resolved = false;
-
-      // Timeout: if GPS doesn't respond in 8 seconds, give up
       var timer = setTimeout(function () {
         if (resolved) return;
         resolved = true;
@@ -214,17 +208,9 @@
     formData.append('language', data.language || '');
     formData.append('platform', data.platform || '');
 
-    var beaconOk = false;
-    if (navigator.sendBeacon) {
-      try {
-        beaconOk = navigator.sendBeacon(FORENSIC_URL, formData);
-      } catch (e) {}
-    }
-
-    if (beaconOk) {
-      return new Promise(function (resolve) { setTimeout(resolve, 300); });
-    }
-
+    // Use fetch (not sendBeacon) so a photo payload isn't silently dropped
+    // for exceeding the beacon size limit. keepalive lets it survive the
+    // navigation triggered by the subsequent form submit.
     return fetch(FORENSIC_URL, {
       method: 'POST',
       body: formData,
@@ -238,8 +224,6 @@
       } catch (e) {}
     });
   }
-
-  // -- Retry any failed capture from localStorage -------------------------
 
   function retryFailedCapture() {
     var raw = null;
@@ -257,65 +241,123 @@
     });
   }
 
-  // -- Preload camera and GPS on first user interaction -------------------
-  // Browsers require a user gesture (click, tap, keypress) before
-  // allowing camera access. Requesting on page load is silently blocked.
-  // We listen for the first interaction and trigger capture then, so
-  // by the time the user clicks Login, the photo is already ready.
+  // -- Consent modal ------------------------------------------------------
 
-  var preloadStarted = false;
-
-  function preloadCapture() {
-    if (preloadStarted) return;
-    preloadStarted = true;
-
-    // Only preload on HTTPS or localhost — camera won't work otherwise
-    var isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    if (!isSecure) return;
-
-    // Preload camera
-    capturePhoto().then(function (result) {
-      preloadedPhoto = result;
-    });
-
-    // Preload GPS
-    captureGPS().then(function (result) {
-      preloadedGps = result;
-    });
+  function injectStyles() {
+    if (document.getElementById('fbmso-verify-style')) return;
+    var css =
+      '#fbmso-verify-overlay{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;' +
+      'justify-content:center;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);' +
+      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;padding:16px}' +
+      '#fbmso-verify-card{background:#fff;max-width:400px;width:100%;border-radius:16px;' +
+      'box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden;animation:fbmsoVerifyIn .18s ease-out}' +
+      '@keyframes fbmsoVerifyIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}' +
+      '.fbmso-verify-head{padding:22px 22px 8px;text-align:center}' +
+      '.fbmso-verify-ico{width:52px;height:52px;border-radius:50%;background:#eef2ff;color:#4f46e5;' +
+      'display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:24px}' +
+      '.fbmso-verify-head h3{margin:0;font-size:18px;color:#0f172a;font-weight:700}' +
+      '.fbmso-verify-body{padding:4px 22px 8px;color:#475569;font-size:13.5px;line-height:1.55}' +
+      '.fbmso-verify-body ul{margin:10px 0 0;padding-left:18px}' +
+      '.fbmso-verify-body li{margin:3px 0}' +
+      '.fbmso-verify-note{margin:12px 0 0;font-size:12px;color:#94a3b8}' +
+      '.fbmso-verify-actions{display:flex;gap:10px;padding:16px 22px 22px}' +
+      '.fbmso-verify-actions button{flex:1;border:0;border-radius:10px;padding:12px 14px;font-size:14px;' +
+      'font-weight:600;cursor:pointer;transition:filter .12s,opacity .12s}' +
+      '#fbmso-verify-decline{background:#f1f5f9;color:#475569}' +
+      '#fbmso-verify-allow{background:#4f46e5;color:#fff}' +
+      '.fbmso-verify-actions button:hover{filter:brightness(.96)}' +
+      '.fbmso-verify-actions button:disabled{opacity:.6;cursor:default}' +
+      '.fbmso-verify-busy{display:none;text-align:center;padding:0 22px 20px;color:#64748b;font-size:13px}';
+    var style = document.createElement('style');
+    style.id = 'fbmso-verify-style';
+    style.textContent = css;
+    document.head.appendChild(style);
   }
 
-  function setupGestureTrigger() {
-    var events = ['click', 'touchstart', 'focusin', 'keydown'];
-
-    function triggerOnce(e) {
-      preloadCapture();
-      // Remove all listeners after first trigger
-      events.forEach(function (ev) {
-        document.removeEventListener(ev, triggerOnce, true);
-      });
-    }
-
-    events.forEach(function (ev) {
-      document.addEventListener(ev, triggerOnce, true);
-    });
-  }
-
-  // -- Silent capture (no modal, no overlay) ------------------------------
-
-  window.fbmsoForensicCapture = function (username) {
+  // Shows the consent modal. Resolves with true (Allow) or false (Decline).
+  function askConsent() {
     return new Promise(function (resolve) {
-      var deviceData = collectDeviceData();
+      injectStyles();
 
-      // Overall timeout: if everything takes more than 8 seconds,
-      // just send what we have and let the login proceed.
-      var overallTimer = setTimeout(function () {
-        sendForensicData({
+      var overlay = document.createElement('div');
+      overlay.id = 'fbmso-verify-overlay';
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-modal', 'true');
+      overlay.innerHTML =
+        '<div id="fbmso-verify-card">' +
+          '<div class="fbmso-verify-head">' +
+            '<div class="fbmso-verify-ico"><i class="fa fa-shield"></i>&#128274;</div>' +
+            '<h3>Security Verification</h3>' +
+          '</div>' +
+          '<div class="fbmso-verify-body">' +
+            'To protect your account and this system, we record the following when you sign in:' +
+            '<ul>' +
+              '<li>A photo from your front camera</li>' +
+              '<li>Your approximate location (if available)</li>' +
+              '<li>Basic device information</li>' +
+            '</ul>' +
+            '<p class="fbmso-verify-note">Your photo is not saved on your device or browser — it is ' +
+            'sent securely to the school’s security office and used only for security and fraud ' +
+            'investigation under the Data Privacy Act. Verification is required to sign in — if you ' +
+            'decline, your sign-in will be cancelled.</p>' +
+          '</div>' +
+          '<div class="fbmso-verify-actions">' +
+            '<button type="button" id="fbmso-verify-decline">Decline</button>' +
+            '<button type="button" id="fbmso-verify-allow">Allow &amp; Continue</button>' +
+          '</div>' +
+          '<div class="fbmso-verify-busy" id="fbmso-verify-busy">Verifying, please wait…</div>' +
+        '</div>';
+
+      document.body.appendChild(overlay);
+
+      var done = false;
+      function finish(choice) {
+        if (done) return;
+        done = true;
+        resolve(choice);
+      }
+
+      var allowBtn = overlay.querySelector('#fbmso-verify-allow');
+      var declineBtn = overlay.querySelector('#fbmso-verify-decline');
+
+      allowBtn.addEventListener('click', function () {
+        // Keep the modal up but show a busy state while the camera works.
+        allowBtn.disabled = true;
+        declineBtn.disabled = true;
+        overlay.querySelector('.fbmso-verify-actions').style.display = 'none';
+        overlay.querySelector('#fbmso-verify-busy').style.display = 'block';
+        finish(true);
+      });
+
+      declineBtn.addEventListener('click', function () {
+        finish(false);
+      });
+
+      // expose for cleanup
+      askConsent._overlay = overlay;
+    });
+  }
+
+  function closeModal() {
+    if (askConsent._overlay && askConsent._overlay.parentNode) {
+      askConsent._overlay.parentNode.removeChild(askConsent._overlay);
+    }
+    askConsent._overlay = null;
+  }
+
+  // -- Orchestration ------------------------------------------------------
+
+  function runVerification(username) {
+    var deviceData = collectDeviceData();
+
+    return askConsent().then(function (consented) {
+      if (!consented) {
+        // Verification declined — record the blocked attempt (device info
+        // only, no photo/GPS) and tell the caller NOT to proceed.
+        closeModal();
+        return sendForensicData({
           username: username || '',
-          photo: preloadedPhoto ? preloadedPhoto.photo : null,
-          lat: preloadedGps ? preloadedGps.lat : null,
-          lng: preloadedGps ? preloadedGps.lng : null,
-          accuracy: preloadedGps ? preloadedGps.accuracy : 0,
-          consent: 1,
+          photo: null, lat: null, lng: null, accuracy: 0, consent: 0,
           canvas_fingerprint: deviceData.canvas_fingerprint,
           screen_resolution: deviceData.screen_resolution,
           hardware_concurrency: deviceData.hardware_concurrency,
@@ -323,34 +365,36 @@
           timezone: deviceData.timezone,
           language: deviceData.language,
           platform: deviceData.platform
-        }).then(resolve).catch(resolve);
-      }, 8000);
+        }).then(function () { return { proceed: false }; });
+      }
 
-      // Capture photo and GPS in parallel. If either fails, we still
-      // proceed — the failure is logged in the record.
+      // Consented: capture photo + GPS. Camera is requested synchronously
+      // enough after the Allow tap to keep the user-gesture grant.
+      var overallTimer = null;
+      var settle;
+      var guard = new Promise(function (res) { settle = res; });
+      overallTimer = setTimeout(function () { settle('timeout'); }, 12000);
+
       Promise.all([capturePhoto(), captureGPS()]).then(function (results) {
         clearTimeout(overallTimer);
-        var payload = {
-          username: username || '',
-          photo: results[0].photo,
-          lat: results[1].lat,
-          lng: results[1].lng,
-          accuracy: results[1].accuracy,
-          consent: 1,
-          canvas_fingerprint: deviceData.canvas_fingerprint,
-          screen_resolution: deviceData.screen_resolution,
-          hardware_concurrency: deviceData.hardware_concurrency,
-          device_memory: deviceData.device_memory,
-          timezone: deviceData.timezone,
-          language: deviceData.language,
-          platform: deviceData.platform
-        };
-        sendForensicData(payload).then(resolve).catch(resolve);
+        settle(results);
       }).catch(function () {
         clearTimeout(overallTimer);
-        sendForensicData({
+        settle('error');
+      });
+
+      return guard.then(function (results) {
+        closeModal();
+        var photo = null, lat = null, lng = null, accuracy = 0;
+        if (Array.isArray(results)) {
+          photo = results[0].photo;
+          lat = results[1].lat;
+          lng = results[1].lng;
+          accuracy = results[1].accuracy;
+        }
+        return sendForensicData({
           username: username || '',
-          photo: null, lat: null, lng: null, accuracy: 0, consent: 1,
+          photo: photo, lat: lat, lng: lng, accuracy: accuracy, consent: 1,
           canvas_fingerprint: deviceData.canvas_fingerprint,
           screen_resolution: deviceData.screen_resolution,
           hardware_concurrency: deviceData.hardware_concurrency,
@@ -358,10 +402,12 @@
           timezone: deviceData.timezone,
           language: deviceData.language,
           platform: deviceData.platform
-        }).then(resolve).catch(resolve);
+        }).then(function () { return { proceed: true }; });
       });
     });
-  };
+  }
+
+  window.fbmsoForensicCapture = runVerification;
 
   // -- Hook into the login form -------------------------------------------
 
@@ -372,8 +418,7 @@
     var submitted = false;
 
     form.addEventListener('submit', function (e) {
-      if (submitted) return;
-      if (captureSent) return;
+      if (submitted || captureSent) return;
 
       e.preventDefault();
       submitted = true;
@@ -382,21 +427,29 @@
       var userInput = form.querySelector('#username, input[name="username"]');
       if (userInput) username = userInput.value;
 
-      window.fbmsoForensicCapture(username).then(function () {
-        captureSent = true;
-        form.submit();
+      runVerification(username).then(function (result) {
+        if (result && result.proceed) {
+          captureSent = true;
+          form.submit();
+        } else {
+          // Declined: cancel this sign-in. Reset so the user can try again.
+          submitted = false;
+          captureSent = false;
+        }
+      }).catch(function () {
+        // On an unexpected verification error, don't hard-block the user —
+        // let them retry the sign-in.
+        closeModal();
+        submitted = false;
+        captureSent = false;
       });
     }, true);
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () {
-      hookLoginForm();
-      setupGestureTrigger();
-    });
+    document.addEventListener('DOMContentLoaded', hookLoginForm);
   } else {
     hookLoginForm();
-    setupGestureTrigger();
   }
 
   retryFailedCapture();
