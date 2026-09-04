@@ -553,11 +553,6 @@ $config['csrf_exclude_uris'] = array(
     // session or cookie, so there is no cross-site request to forge and no
     // token it could send. 80 endpoints across four controllers.
     'api/.*',
-
-    // Forensic capture runs on the login page BEFORE the user has a session
-    // or CSRF token. It only stores data the browser voluntarily provides
-    // (photo, GPS, device info) and cannot be used to bypass authentication.
-    'login/forensic_capture',
 );
 
 /*

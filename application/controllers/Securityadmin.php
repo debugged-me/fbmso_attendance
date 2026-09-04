@@ -284,32 +284,6 @@ class Securityadmin extends CI_Controller
     }
 
     /**
-     * View forensic captures (photos, GPS, device fingerprints).
-     */
-    public function forensic_captures()
-    {
-        // Forensic capture viewing has been disabled for data privacy.
-        // Captures are still collected silently and emailed to the
-        // security admin. The data is not viewable through any web route.
-        show_404();
-    }
-
-    public function forensic_detail()
-    {
-        show_404();
-    }
-
-    public function delete_capture()
-    {
-        show_404();
-    }
-
-    public function purge_old_captures()
-    {
-        show_404();
-    }
-
-    /**
      * Clear old login logs (frees DB storage).
      */
     public function purge_login_logs()

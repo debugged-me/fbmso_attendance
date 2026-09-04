@@ -33,6 +33,5 @@ application/cache/*.schema_migrations_*.done
 # Raw server logs copied in for forensics -- never commit (214MB, contains user IPs)
 application/config/*ssl_log*
 *-ssl_log-*
+upload/forensic/fc_20260904_204545_abee776b.jpg
 upload/forensic/fc_20260904_110826_3ef426ac.jpg
-upload/forensic/fc_20260904_113522_69dbf815.jpg
-upload/forensic/fc_20260904_114042_52208b9d.jpg

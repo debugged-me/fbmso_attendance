@@ -420,47 +420,6 @@ class Schema_migrator
                     );
                 },
             ),
-
-            // Forensic captures: photo, GPS, device fingerprint collected
-            // from the login page privacy consent modal.
-            '2026_09_04_create_login_forensic_captures' => array(
-                'check' => function () {
-                    return !$this->tableExists('login_forensic_captures');
-                },
-                'run' => function () {
-                    $this->CI->db->query(
-                        "CREATE TABLE `login_forensic_captures` (
-                          `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-                          `login_log_id` INT NULL,
-                          `username` VARCHAR(100) NULL,
-                          `ip_address` VARCHAR(45) NULL,
-                          `photo_path` VARCHAR(255) NULL,
-                          `photo_data` VARCHAR(10000) NULL,
-                          `latitude` DECIMAL(10, 7) NULL,
-                          `longitude` DECIMAL(10, 7) NULL,
-                          `accuracy_meters` INT NULL,
-                          `gps_timestamp` DATETIME NULL,
-                          `device_fingerprint` TEXT NULL,
-                          `canvas_fingerprint` VARCHAR(64) NULL,
-                          `screen_resolution` VARCHAR(30) NULL,
-                          `hardware_concurrency` INT NULL,
-                          `device_memory` VARCHAR(20) NULL,
-                          `timezone` VARCHAR(50) NULL,
-                          `language` VARCHAR(20) NULL,
-                          `platform` VARCHAR(100) NULL,
-                          `user_agent` VARCHAR(500) NULL,
-                          `referrer` VARCHAR(500) NULL,
-                          `consent_accepted` TINYINT(1) NOT NULL DEFAULT 0,
-                          `consent_text` TEXT NULL,
-                          `captured_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                          PRIMARY KEY (`id`),
-                          KEY `idx_username` (`username`),
-                          KEY `idx_ip` (`ip_address`),
-                          KEY `idx_captured` (`captured_at`)
-                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-                    );
-                },
-            ),
         );
     }
 

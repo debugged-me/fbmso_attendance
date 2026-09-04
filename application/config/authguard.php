@@ -30,11 +30,6 @@ $config['authguard_public'] = array(
 
     // --- Sign-in / account recovery -------------------------------------
     'login/*',
-    // Forensic capture endpoint (photo + GPS + device fingerprint) is
-    // called by the login page's privacy consent modal before the user
-    // authenticates, so it must be public. It only stores what the
-    // browser voluntarily provides.
-    'login/forensic_capture',
     'verifyemail/*',
 
     // --- Student self-registration --------------------------------------
