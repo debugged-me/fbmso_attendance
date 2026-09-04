@@ -14,7 +14,7 @@ if (!function_exists('fbmso_mailqueue_ensure_table'))
         }
         if ($ci->db->table_exists('fbmso_email_queue')) {
             // Add the attachment column to pre-existing tables (used to
-            // deliver a forensic photo as a real inline attachment).
+            // deliver an inline image as a real attachment).
             if (!$ci->db->field_exists('attachment_path', 'fbmso_email_queue')) {
                 $ci->db->query("ALTER TABLE `fbmso_email_queue` ADD COLUMN `attachment_path` VARCHAR(255) NOT NULL DEFAULT '' AFTER `school_name`");
                 $ci->db->data_cache = [];
@@ -322,7 +322,7 @@ if (!function_exists('fbmso_mailqueue_deliver'))
         $ci->email->to($toEmail);
         $ci->email->subject((string) $subject);
 
-        // Inline photo attachment: attach the file and swap the CID
+        // Inline image attachment: attach the file and swap the CID
         // placeholder in the body for the real Content-ID so it renders
         // inline (data: URIs are stripped by Gmail and most webmail).
         $body = (string) $htmlBody;
@@ -331,11 +331,11 @@ if (!function_exists('fbmso_mailqueue_deliver'))
             $ci->email->attach($attachmentPath, 'inline');
             $cid = method_exists($ci->email, 'attachment_cid') ? $ci->email->attachment_cid($attachmentPath) : '';
             if ($cid) {
-                $body = str_replace('__FORENSIC_PHOTO_CID__', $cid, $body);
+                $body = str_replace('__INLINE_IMAGE_CID__', $cid, $body);
             }
         }
         // Clean up any placeholder that wasn't replaced (missing file).
-        $body = str_replace('cid:__FORENSIC_PHOTO_CID__', '', $body);
+        $body = str_replace('cid:__INLINE_IMAGE_CID__', '', $body);
         $ci->email->message($body);
 
         if ((bool) $ci->email->send(false)) {
