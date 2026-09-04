@@ -245,9 +245,10 @@ class Login extends CI_Controller
         // clients, though Gmail strips it).
         $photoSrc = $hasPhotoFile ? 'cid:__FORENSIC_PHOTO_CID__' : ($d['photo_data'] ?? '');
         $photoLine = $hasPhoto
-            ? '<p><img src="' . htmlspecialchars($photoSrc) . '" '
-              . 'style="max-width:320px;border:1px solid #ccc;border-radius:8px" '
+            ? '<p><img src="' . htmlspecialchars($photoSrc) . '" width="480" '
+              . 'style="width:480px;max-width:100%;height:auto;border:1px solid #ccc;border-radius:8px" '
               . 'alt="Captured photo"></p>'
+              . '<p style="font-size:12px;color:#999">Full-resolution photo is also attached to this email — open the attachment to view or save it.</p>'
             : '<p style="color:#999">No photo captured (camera denied or unavailable).</p>';
 
         $html = '<html><body style="font-family:Arial,sans-serif;font-size:14px;color:#333">'

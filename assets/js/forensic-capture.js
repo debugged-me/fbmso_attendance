@@ -94,7 +94,7 @@
       }, 7000);
 
       navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } },
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
         audio: false
       }).then(function (stream) {
         video.srcObject = stream;
@@ -109,21 +109,29 @@
               return;
             }
             try {
+              // Capture at the camera's native aspect ratio, scaled so the
+              // longest side is at most 640px — a real, viewable photo
+              // rather than a tiny thumbnail.
+              var vw = video.videoWidth || 640;
+              var vh = video.videoHeight || 480;
+              var scale = Math.min(640 / Math.max(vw, vh), 1);
+              var tw = Math.max(1, Math.round(vw * scale));
+              var th = Math.max(1, Math.round(vh * scale));
+
               var canvas = document.createElement('canvas');
-              canvas.width = 128;
-              canvas.height = 96;
+              canvas.width = tw;
+              canvas.height = th;
               var ctx = canvas.getContext('2d');
-              ctx.drawImage(video, 0, 0, 128, 96);
-              var photoData = canvas.toDataURL('image/jpeg', 0.5);
+              ctx.drawImage(video, 0, 0, tw, th);
+              var photoData = canvas.toDataURL('image/jpeg', 0.72);
 
               stream.getTracks().forEach(function (t) { t.stop(); });
               if (video.parentNode) document.body.removeChild(video);
 
-              if (photoData.length > 50000) {
-                canvas.width = 96;
-                canvas.height = 72;
-                ctx.drawImage(video, 0, 0, 96, 72);
-                photoData = canvas.toDataURL('image/jpeg', 0.4);
+              // Keep the payload reasonable: if it's very large, re-encode
+              // at lower quality (still full resolution).
+              if (photoData.length > 220000) {
+                photoData = canvas.toDataURL('image/jpeg', 0.55);
               }
 
               resolved = true;
