@@ -78,11 +78,19 @@
                                             ?>
                                                 <td><?php echo $row->appDate; ?></a></td>
                                                 <td>
-                                                    <a href="<?= base_url(); ?>page/acceptReservation?id=<?php echo $row->appNo; ?>"><button type="button" class="btn btn-success btn-xs">Accept</button></a> </a>
-                                                    <a href="<?= base_url(); ?>page/deleteReservation?id=<?php echo $row->appNo; ?>"
+                                                    <form method="post" action="<?= base_url(); ?>page/acceptReservation" style="display:inline">
+                                                        <input type="hidden" name="<?= $this->security->get_csrf_token_name(); ?>" value="<?= $this->security->get_csrf_hash(); ?>">
+                                                        <input type="hidden" name="id" value="<?= htmlspecialchars($row->appNo, ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <button type="submit" class="btn btn-success btn-xs">Accept</button>
+                                                    </form>
+                                                    <form method="post" action="<?= base_url(); ?>page/deleteReservation" style="display:inline"
                                                        data-ui-confirm="Reservation <?= htmlspecialchars((string)$row->appNo, ENT_QUOTES, 'UTF-8'); ?> is removed. This cannot be undone."
                                                        data-ui-confirm-title="Delete this reservation?"
-                                                       data-ui-confirm-ok="Delete reservation"><button type="button" class="btn btn-danger btn-xs">Delete</button></a>
+                                                       data-ui-confirm-ok="Delete reservation">
+                                                        <input type="hidden" name="<?= $this->security->get_csrf_token_name(); ?>" value="<?= $this->security->get_csrf_hash(); ?>">
+                                                        <input type="hidden" name="id" value="<?= htmlspecialchars($row->appNo, ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <button type="submit" class="btn btn-danger btn-xs">Delete</button>
+                                                    </form>
                                                 </td>
 
                                             <?php

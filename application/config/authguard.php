@@ -126,6 +126,39 @@ $config['authguard_roles'] = array(
                          'Personnel', 'Guidance', 'Medical', 'Librarian'),
     'settings/*' => array('Super Admin', 'Admin', 'IT', 'School Admin'),
 
+    // --- Granular rules for the most sensitive operations -------------
+    // These override the broad 'page/*' rule above. Only Super Admin,
+    // Admin, and IT can perform these actions — not every staff member.
+    //
+    // Account management: creating accounts, changing roles, resetting
+    // passwords, activating/deactivating accounts, bulk account operations.
+    'page/useraccounts'           => array('Super Admin', 'Admin', 'IT'),
+    'page/updateuserinfo'         => array('Super Admin', 'Admin', 'IT'),
+    'page/changesuserstat'        => array('Super Admin', 'Admin', 'IT'),
+    'page/changestat'             => array('Super Admin', 'Admin', 'IT'),
+    'page/resetpass'              => array('Super Admin', 'Admin', 'IT'),
+    'page/copy_users_to_o_users'  => array('Super Admin', 'Admin', 'IT'),
+    'page/updatenames'            => array('Super Admin', 'Admin', 'IT'),
+    'page/create_teacher_accts'   => array('Super Admin', 'Admin', 'IT'),
+    'page/create_stude_accts'     => array('Super Admin', 'Admin', 'IT'),
+    'page/transfersignuptoprofile'=> array('Super Admin', 'Admin', 'IT'),
+
+    // School settings & payment credentials: only top-level admins.
+    'page/updatesuperadmin'       => array('Super Admin', 'Admin', 'IT'),
+    'page/saveschoolsettings'     => array('Super Admin', 'Admin', 'IT'),
+
+    // Destructive record deletion: restrict to top-level admins.
+    'page/deleteprofile'          => array('Super Admin', 'Admin', 'IT'),
+    'page/deletepersonnel'        => array('Super Admin', 'Admin', 'IT'),
+    'page/deleterequest'          => array('Super Admin', 'Admin', 'IT'),
+    'page/deletesection'          => array('Super Admin', 'Admin', 'IT'),
+    'page/deleteinventoryitem'    => array('Super Admin', 'Admin', 'IT'),
+    'page/deleteduplicatestudent' => array('Super Admin', 'Admin', 'IT'),
+    'page/deletesignup'           => array('Super Admin', 'Admin', 'IT'),
+
+    // Grades import: only admins and registrars, not all staff.
+    'page/grades_upload'          => array('Super Admin', 'Admin', 'IT', 'Registrar', 'Head Registrar'),
+
     // Security admin dashboard — forensic investigation, IP blacklist.
     // Super Admin only: this exposes forensic data, captured photos,
     // GPS coordinates, and device fingerprints from all login sessions.

@@ -737,6 +737,13 @@ class Login extends CI_Controller
             return;
         }
 
+        // Require POST: this is a destructive action. A GET link (e.g. from
+        // an email or another site) must not be able to delete a user account.
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            show_error('This action requires a POST request.', 405);
+            return;
+        }
+
         // Attempt to delete the user
         $deleteSuccess = $this->Login_model->deleteUser($user);
 

@@ -66,7 +66,11 @@
                                                         <button type="button" class="btn btn-success btn-xs">View File</button>
                                                     </a>
 
-                                                    <a href="<?= base_url(); ?>Page/deleteRequirement?id=<?php echo $row->reqID; ?>"><button type="button" class="btn btn-danger btn-xs waves-effect waves-light">Delete File</button></a>
+                                                    <form method="post" action="<?= base_url(); ?>Page/deleteRequirement" style="display:inline" onsubmit="return confirm('Delete this requirement?')">
+                                                        <input type="hidden" name="<?= $this->security->get_csrf_token_name(); ?>" value="<?= $this->security->get_csrf_hash(); ?>">
+                                                        <input type="hidden" name="id" value="<?= htmlspecialchars($row->reqID, ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <button type="submit" class="btn btn-danger btn-xs waves-effect waves-light">Delete File</button>
+                                                    </form>
 
                                                 </td>
                                             <?php

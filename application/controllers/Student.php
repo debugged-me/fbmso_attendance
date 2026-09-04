@@ -18,6 +18,19 @@ class Student extends CI_Controller
     }
   }
 
+  /**
+   * Safe redirect: only allow relative/local URLs. Prevents open redirect
+   * attacks via Referer / referrer headers.
+   */
+  private function safeRedirect($default = 'student/index')
+  {
+    $ref = $this->agent->referrer();
+    if ($ref && strpos($ref, base_url()) === 0) {
+      redirect($ref);
+    }
+    redirect($default);
+  }
+
   public function search_select2()
   {
     $q = $this->input->get('q', true);
@@ -550,7 +563,7 @@ class Student extends CI_Controller
 
     if (!$student || empty($student->email)) {
       $this->session->set_flashdata('danger', 'Student email not found.');
-      redirect($_SERVER['HTTP_REFERER']);
+      $this->safeRedirect();
       return;
     }
 
@@ -565,7 +578,7 @@ class Student extends CI_Controller
 
     if (empty($enrolled)) {
       $this->session->set_flashdata('danger', 'No enrolled subjects found.');
-      redirect($_SERVER['HTTP_REFERER']);
+      $this->safeRedirect();
       return;
     }
 
@@ -590,15 +603,15 @@ class Student extends CI_Controller
     $mail_message .= '
           <h2 style="color: #2b6cb0; text-align: center;">Certificate of Registration (CoR)</h2>
 
-              <p>Dear <strong>' . htmlspecialchars($student->FirstName) . '</strong>,</p>
-              <p>This is your enrolled subject list for the <strong>' . $semester . '</strong>, School Year <strong>' . $sy . '</strong>.</p>
-  
+              <p>Dear <strong>' . htmlspecialchars($student->FirstName, ENT_QUOTES, 'UTF-8') . '</strong>,</p>
+              <p>This is your enrolled subject list for the <strong>' . htmlspecialchars($semester, ENT_QUOTES, 'UTF-8') . '</strong>, School Year <strong>' . htmlspecialchars($sy, ENT_QUOTES, 'UTF-8') . '</strong>.</p>
+
               <p>
-                  <strong>Student Number:</strong> ' . $student->StudentNumber . '<br>
-                  <strong>Name:</strong> ' . $student->LastName . ', ' . $student->FirstName . ' ' . $student->MiddleName . '<br>
-                  <strong>Course:</strong> ' . $student->Course . ' | <strong>Year Level:</strong> ' . $student->YearLevel . '<br>
+                  <strong>Student Number:</strong> ' . htmlspecialchars($student->StudentNumber, ENT_QUOTES, 'UTF-8') . '<br>
+                  <strong>Name:</strong> ' . htmlspecialchars($student->LastName, ENT_QUOTES, 'UTF-8') . ', ' . htmlspecialchars($student->FirstName, ENT_QUOTES, 'UTF-8') . ' ' . htmlspecialchars($student->MiddleName, ENT_QUOTES, 'UTF-8') . '<br>
+                  <strong>Course:</strong> ' . htmlspecialchars($student->Course, ENT_QUOTES, 'UTF-8') . ' | <strong>Year Level:</strong> ' . htmlspecialchars($student->YearLevel, ENT_QUOTES, 'UTF-8') . '<br>
               </p>
-  
+
               <table style="width:100%; border-collapse: collapse; margin-top: 15px;">
                   <thead>
                       <tr>
@@ -613,11 +626,11 @@ class Student extends CI_Controller
 
     foreach ($enrolled as $subj) {
       $mail_message .= '<tr>
-              <td style="border: 1px solid #ddd; padding: 8px;">' . $subj->SubjectCode . '</td>
-              <td style="border: 1px solid #ddd; padding: 8px;">' . $subj->Description . '</td>
-              <td style="border: 1px solid #ddd; padding: 8px;">' . $subj->Section . '</td>
-              <td style="border: 1px solid #ddd; padding: 8px;">' . $subj->SchedTime . '</td>
-              <td style="border: 1px solid #ddd; padding: 8px;">' . $subj->Instructor . '</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">' . htmlspecialchars($subj->SubjectCode, ENT_QUOTES, 'UTF-8') . '</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">' . htmlspecialchars($subj->Description, ENT_QUOTES, 'UTF-8') . '</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">' . htmlspecialchars($subj->Section, ENT_QUOTES, 'UTF-8') . '</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">' . htmlspecialchars($subj->SchedTime, ENT_QUOTES, 'UTF-8') . '</td>
+              <td style="border: 1px solid #ddd; padding: 8px;">' . htmlspecialchars($subj->Instructor, ENT_QUOTES, 'UTF-8') . '</td>
           </tr>';
     }
 
@@ -636,7 +649,7 @@ class Student extends CI_Controller
       $this->session->set_flashdata('danger', 'Failed to queue the CoR email. Please check the student\'s email address.');
     }
 
-    redirect($_SERVER['HTTP_REFERER']);
+    $this->safeRedirect();
   }
 
 
@@ -672,7 +685,7 @@ class Student extends CI_Controller
       $this->session->set_flashdata('danger', 'Failed to remove subject.');
     }
 
-    redirect($this->agent->referrer());
+    $this->safeRedirect();
   }
 
   public function getAvailableSubjectsGrouped()
@@ -767,7 +780,7 @@ class Student extends CI_Controller
 
     if (!$profile || empty($profile->email)) {
       $this->session->set_flashdata('danger', 'Student email not found.');
-      redirect($_SERVER['HTTP_REFERER']);
+      $this->safeRedirect();
       return;
     }
 
@@ -782,8 +795,8 @@ class Student extends CI_Controller
             <img src="' . htmlspecialchars($letterheadImg) . '" alt="Letterhead" style="max-width: 100%; height: auto; margin-bottom: 20px;">
             <h2 style="color: #2b6cb0; text-align: center;">Report of Grades</h2>
         </div>
-        <p><strong>Student Name:</strong> ' . $profile->FirstName . ' ' . $profile->MiddleName . ' ' . $profile->LastName . '</p>
-        <p><strong>Course:</strong> ' . $profile->course . '</p>';
+        <p><strong>Student Name:</strong> ' . htmlspecialchars($profile->FirstName, ENT_QUOTES, 'UTF-8') . ' ' . htmlspecialchars($profile->MiddleName, ENT_QUOTES, 'UTF-8') . ' ' . htmlspecialchars($profile->LastName, ENT_QUOTES, 'UTF-8') . '</p>
+        <p><strong>Course:</strong> ' . htmlspecialchars($profile->course, ENT_QUOTES, 'UTF-8') . '</p>';
 
     if (!empty($grades)) {
       $mail_message .= '
@@ -836,7 +849,7 @@ class Student extends CI_Controller
       $this->session->set_flashdata('danger', 'Failed to queue the Report of Grades email.');
     }
 
-    redirect($_SERVER['HTTP_REFERER']);
+    $this->safeRedirect();
   }
 
 
@@ -893,7 +906,7 @@ class Student extends CI_Controller
       $this->session->set_flashdata('danger', 'No file selected.');
     }
 
-    redirect($this->agent->referrer());
+    $this->safeRedirect();
     // 🔄 Use the working method for viewing student profile
     // redirect('Student/studentsprofile?id=' . $studentNumber);
   }
@@ -1101,7 +1114,7 @@ class Student extends CI_Controller
     }
 
     // Redirect back to the previous page (student profile or the previous page)
-    redirect($_SERVER['HTTP_REFERER']);
+    $this->safeRedirect();
   }
 
 
@@ -1136,7 +1149,7 @@ class Student extends CI_Controller
 
       $this->StudentModel->submitRequirement($data);
       // redirect('Student/student_requirements/' . $studentNumber);
-      redirect($this->agent->referrer());
+      $this->safeRedirect();
     }
   }
 
@@ -1247,6 +1260,14 @@ class Student extends CI_Controller
 
   public function approve_upload($id)
   {
+    // Require POST: approving a requirement is a state-changing action that
+    // must not be triggerable by a GET link (CSRF bypass).
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+      $this->session->set_flashdata('error', 'This action requires a form submission.');
+      redirect('student/pending_uploads');
+      return;
+    }
+    $id = $this->input->post('id') ?: $id;
 
     $verifier = $this->session->userdata('username') ?? 'Registrar';
 

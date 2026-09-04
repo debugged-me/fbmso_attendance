@@ -10,8 +10,8 @@ public function get_all_students($sy, $sem)
     
     // Exclude students who already have an account for the current SY and Sem
     $this->db->where("registration.StudentNumber NOT IN (
-        SELECT StudentNumber FROM studeaccount WHERE SY = '$sy' AND Sem = '$sem'
-    )");
+        SELECT StudentNumber FROM studeaccount WHERE SY = ? AND Sem = ?
+    )", array($sy, $sem));
     
     $this->db->where('registration.SY', $sy);
     $this->db->where('registration.Sem', $sem);

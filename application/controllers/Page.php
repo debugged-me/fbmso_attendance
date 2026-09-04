@@ -25,6 +25,37 @@ class Page extends CI_Controller
 		}
 	}
 
+	/**
+	 * Reject GET requests on state-changing endpoints. CodeIgniter's CSRF
+	 * only protects POST, so a destructive action reachable by GET link
+	 * can be triggered by a logged-in user clicking a malicious link
+	 * (CSRF via GET). Calling this at the top of a method forces it to
+	 * be reached only through a POST form, which carries the CSRF token.
+	 */
+	private function requirePost()
+	{
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+			$this->session->set_flashdata('error', 'This action requires a form submission. Please use the buttons on the page.');
+			$this->safeRedirect('Page/index');
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Safe redirect: only allow relative/local URLs. Falls back to a
+	 * default page if the target is external or missing. Prevents open
+	 * redirect attacks via Referer / referrer headers.
+	 */
+	private function safeRedirect($default = 'Page/index')
+	{
+		$ref = $this->agent->referrer();
+		if ($ref && strpos($ref, base_url()) === 0) {
+			redirect($ref);
+		}
+		redirect($default);
+	}
+
 	function profileListEncoder()
 	{
 		$username = $this->session->userdata('username');
@@ -66,6 +97,8 @@ class Page extends CI_Controller
 
 	public function deleteRequirement($id)
 	{
+		if (!$this->requirePost()) return;
+		$id = $this->input->post('id') ?: $id;
 		// Optional: Check if the record exists
 		$requirement = $this->db->get_where('requirements', ['id' => $id])->row();
 
@@ -292,15 +325,17 @@ class Page extends CI_Controller
 
 	function acceptReservation()
 	{
-		$id = $this->input->get('id');
-		$que = $this->db->query("update reservation set appStatus='Confirmed' where appNo='" . $id . "'");
+		if (!$this->requirePost()) return;
+		$id = $this->input->post('id');
+		$this->db->query("update reservation set appStatus='Confirmed' where appNo = ?", array($id));
 		redirect('Page/scholarship');
 	}
 
 	function deleteReservation()
 	{
-		$id = $this->input->get('id');
-		$que = $this->db->query("update reservation set appStatus='Deleted' where appNo='" . $id . "'");
+		if (!$this->requirePost()) return;
+		$id = $this->input->post('id');
+		$this->db->query("update reservation set appStatus='Deleted' where appNo = ?", array($id));
 		redirect('Page/scholarship');
 	}
 
@@ -804,7 +839,7 @@ class Page extends CI_Controller
 
 		if (empty($sid) || empty($course) || empty($yearLevel) || empty($section)) {
 			$this->session->set_flashdata('error', 'Course, Year Level, Section are required.');
-			redirect($_SERVER['HTTP_REFERER'] ?? base_url('page/instructor'));
+			$this->safeRedirect('page/instructor');
 			return;
 		}
 
@@ -1228,13 +1263,13 @@ class Page extends CI_Controller
 
 	function UploadedPayments($id)
 	{
-		$query = $this->db->query("select * from online_payments where StudentNumber='" . $id . "'");
+		$query = $this->db->query("select * from online_payments where StudentNumber = ?", array($id));
 		return $query->result();
 	}
 
 	function UploadedPaymentsAdmin($id)
 	{
-		$query = $this->db->query("select * from online_payments op join studeprofile p on op.StudentNumber=p.StudentNumber where p.StudentNumber='" . $id . "' and op.status='PENDING'");
+		$query = $this->db->query("select * from online_payments op join studeprofile p on op.StudentNumber=p.StudentNumber where p.StudentNumber = ? and op.status='PENDING'", array($id));
 		return $query->result();
 	}
 
@@ -1344,12 +1379,12 @@ class Page extends CI_Controller
 				);
 
 				// Email Notification (queued; the cron sender delivers it)
-				$mail_message  = 'Dear ' . $fname . ',<br><br>';
+				$mail_message  = 'Dear ' . htmlspecialchars($fname, ENT_QUOTES, 'UTF-8') . ',<br><br>';
 				$mail_message .= 'Your enrollment data has been submitted for validation.<br>';
-				$mail_message .= 'Course: <b>' . $Course . '</b><br>';
-				$mail_message .= 'Major: <b>' . $Major . '</b><br>';
-				$mail_message .= 'Year Level: <b>' . $YearLevel . '</b><br>';
-				$mail_message .= 'Sem/SY: <b>' . $Semester . ', ' . $SY . '</b><br>';
+				$mail_message .= 'Course: <b>' . htmlspecialchars($Course, ENT_QUOTES, 'UTF-8') . '</b><br>';
+				$mail_message .= 'Major: <b>' . htmlspecialchars($Major, ENT_QUOTES, 'UTF-8') . '</b><br>';
+				$mail_message .= 'Year Level: <b>' . htmlspecialchars($YearLevel, ENT_QUOTES, 'UTF-8') . '</b><br>';
+				$mail_message .= 'Sem/SY: <b>' . htmlspecialchars($Semester, ENT_QUOTES, 'UTF-8') . ', ' . htmlspecialchars($SY, ENT_QUOTES, 'UTF-8') . '</b><br>';
 				$mail_message .= 'Status: <b>For Validation</b><br><br>';
 				$mail_message .= 'You will be notified once validated.<br><br>';
 				$mail_message .= 'Thanks & Regards,<br>SRMS - Online';
@@ -1446,13 +1481,13 @@ class Page extends CI_Controller
 					'SY'            => $data['SY']
 				])->update('online_enrollment', ['enrolStatus' => 'Enrolled']);
 
-				$mail_message = 'Dear ' . $data['StudentNumber'] . ",<br><br>"; // You may replace with actual name if available
+				$mail_message = 'Dear ' . htmlspecialchars($data['StudentNumber'], ENT_QUOTES, 'UTF-8') . ",<br><br>";
 				$mail_message .= "You are now officially enrolled.<br>";
-				$mail_message .= "Course: <b>{$data['Course']}</b><br>";
-				$mail_message .= "Major: <b>{$data['Major']}</b><br>";
-				$mail_message .= "Year Level: <b>{$data['YearLevel']}</b><br>";
-				$mail_message .= "Section: <b>{$data['Section']}</b><br>";
-				$mail_message .= "Sem/SY: <b>{$data['Semester']}, {$data['SY']}</b><br>";
+				$mail_message .= "Course: <b>" . htmlspecialchars($data['Course'], ENT_QUOTES, 'UTF-8') . "</b><br>";
+				$mail_message .= "Major: <b>" . htmlspecialchars($data['Major'], ENT_QUOTES, 'UTF-8') . "</b><br>";
+				$mail_message .= "Year Level: <b>" . htmlspecialchars($data['YearLevel'], ENT_QUOTES, 'UTF-8') . "</b><br>";
+				$mail_message .= "Section: <b>" . htmlspecialchars($data['Section'], ENT_QUOTES, 'UTF-8') . "</b><br>";
+				$mail_message .= "Sem/SY: <b>" . htmlspecialchars($data['Semester'], ENT_QUOTES, 'UTF-8') . ", " . htmlspecialchars($data['SY'], ENT_QUOTES, 'UTF-8') . "</b><br>";
 				$mail_message .= "Status: <b>Validated</b><br><br>";
 				$mail_message .= "Thanks & Regards,<br>SRMS - Online";
 
@@ -1469,12 +1504,19 @@ class Page extends CI_Controller
 		$semester = $this->input->post('semester');
 		$sy = $this->input->post('sy');
 
+		// Validate format: SY like "2025-2026", semester like "First Semester"
+		if (!preg_match('/^\d{4}-\d{4}$/', $sy) || !preg_match('/^[A-Za-z ]+$/', $semester)) {
+			$this->session->set_flashdata('error', 'Invalid school year or semester format.');
+			redirect('Page/student');
+			return;
+		}
+
 		$this->session->set_userdata('semester', $semester);
 		$this->session->set_userdata('sy', $sy);
 
 		// Optionally add a flash message or log activity
 
-		redirect($this->agent->referrer()); // redirect back to the previous page
+		$this->safeRedirect('Page/index'); // redirect back to the previous page
 	}
 
 
@@ -1484,7 +1526,8 @@ class Page extends CI_Controller
 	//update online enrollees
 	public function update_online_enrollees()
 	{
-		$id = $this->input->get('id');
+		if (!$this->requirePost()) return;
+		$id = $this->input->post('id');
 		$this->StudentModel->updateEnrollees($id);
 		redirect("Page/admin");
 	}
@@ -2685,6 +2728,8 @@ class Page extends CI_Controller
 
 	function deleteInventoryItem($itemID)
 	{
+		if (!$this->requirePost()) return;
+		$itemID = $this->input->post('itemID') ?: $itemID;
 		date_default_timezone_set('Asia/Manila'); // This sets the timezone to Manila
 
 		// Check if item ID is provided
@@ -3026,7 +3071,7 @@ class Page extends CI_Controller
 			);
 
 			$this->session->set_flashdata('danger', 'Unauthorized: Registrar/Admin role required.');
-			redirect($this->input->server('HTTP_REFERER') ?: 'Page/profileList');
+			$this->safeRedirect('Page/profileList');
 			return;
 		}
 
@@ -3038,7 +3083,7 @@ class Page extends CI_Controller
 
 		if ($studno === '') {
 			$this->session->set_flashdata('danger', 'No StudentNumber provided.');
-			redirect($this->input->server('HTTP_REFERER') ?: 'Page/profileList');
+			$this->safeRedirect('Page/profileList');
 			return;
 		}
 
@@ -3606,10 +3651,10 @@ class Page extends CI_Controller
 				$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Profile has been saved successfully.</b></div>');
 
 				//Email Notification (queued)
-				$mail_message = 'Dear ' . $FirstName . ',' . "\r\n";
+				$mail_message = 'Dear ' . htmlspecialchars($FirstName, ENT_QUOTES, 'UTF-8') . ',' . "\r\n";
 				$mail_message .= '<br><br>Your profile is now encoded to SRMS. Please take note of the following:' . "\r\n";
-				$mail_message .= '<br>Username: <b>' . $StudentNumber . '</b>' . "\r\n";
-				$mail_message .= '<br>Password: <b>' . $BirthDate . '</b>' . "\r\n";
+				$mail_message .= '<br>Username: <b>' . htmlspecialchars($StudentNumber, ENT_QUOTES, 'UTF-8') . '</b>' . "\r\n";
+				$mail_message .= '<br>Password: <b>' . htmlspecialchars($BirthDate, ENT_QUOTES, 'UTF-8') . '</b>' . "\r\n";
 
 				$mail_message .= '<br><br>Thanks & Regards,';
 				$mail_message .= '<br>SRMS - Online';
@@ -3951,7 +3996,7 @@ class Page extends CI_Controller
 			if (in_array($userPosition, ['Admin', 'HR Admin'])) {
 				redirect('Page/employeeList');
 			} else {
-				redirect($this->agent->referrer());
+				$this->safeRedirect();
 			}
 		}
 	}
@@ -4981,6 +5026,7 @@ class Page extends CI_Controller
 
 	public function copy_users_to_o_users()
 	{
+		if (!$this->requirePost()) return;
 		$this->load->database();
 
 		// Step 1: Get all usernames already in o_users
@@ -5010,12 +5056,13 @@ class Page extends CI_Controller
 		}
 
 		$this->session->set_flashdata('success', $msg);
-		redirect($this->agent->referrer());
+		$this->safeRedirect();
 	}
 
 
 	public function updateNames()
 	{
+		if (!$this->requirePost()) return;
 		$this->db->query("
         UPDATE o_users u
         JOIN studeprofile sp ON u.username = sp.StudentNumber
@@ -5049,8 +5096,9 @@ class Page extends CI_Controller
 
 	public function changeUserStat()
 	{
-		$u = $this->input->get('u'); // Username of the account to be updated
-		$t = $this->input->get('t'); // Action type (Activate or Deactivate)
+		if (!$this->requirePost()) return;
+		$u = $this->input->post('u'); // Username of the account to be updated
+		$t = $this->input->post('t'); // Action type (Activate or Deactivate)
 		$id = $this->session->userdata('username'); // Current user's username
 		date_default_timezone_set('Asia/Manila');
 		$now = date('H:i:s A'); // Current time
@@ -5087,9 +5135,10 @@ class Page extends CI_Controller
 	}
 	public function resetPass()
 	{
-		$u  = trim((string)$this->input->get('u', true));    // Username/StudentNumber to reset
+		if (!$this->requirePost()) return;
+		$u  = trim((string)$this->input->post('u', true));    // Username/StudentNumber to reset
 		$id = (string)$this->session->userdata('username');  // Resetter username
-		$returnTo = trim((string)$this->input->get('return_to', true));
+		$returnTo = trim((string)$this->input->post('return_to', true));
 
 		$redirectTo = 'Page/userAccounts';
 		if ($returnTo === 'profileList') {
@@ -5510,8 +5559,9 @@ class Page extends CI_Controller
 
 	public function deleteCounselling()
 	{
-		$id = $this->input->get('id');
-		$que = $this->db->query("delete from guidance_counselling where id='" . $id . "'");
+		if (!$this->requirePost()) return;
+		$id = $this->input->post('id');
+		$this->db->query("delete from guidance_counselling where id = ?", array($id));
 		$this->session->set_flashdata('success', ' Deleted successfully.');
 		redirect("Page/counselling");
 	}
@@ -5587,6 +5637,8 @@ class Page extends CI_Controller
 	//Delete Announcement
 	public function deleteAnnouncement($id = null)
 	{
+		if (!$this->requirePost()) return;
+		$id = $this->input->post('id') ?: $id;
 		if ($id) {
 			$this->StudentModel->deleteAnnouncement($id);
 		}
@@ -5686,8 +5738,8 @@ class Page extends CI_Controller
 				$this->session->set_flashdata('msg', '<div class="alert alert-success text-center"><b>Your request has been submitted.</b></div>');
 
 				//Email Notification (queued)
-				$mail_message = 'Dear ' . $fname . ',' . "\r\n";
-				$mail_message .= '<br><br>Your request with tracking number <b>' . $trackingNo . ' </b>has been submitted.' . "\r\n";
+				$mail_message = 'Dear ' . htmlspecialchars($fname, ENT_QUOTES, 'UTF-8') . ',' . "\r\n";
+				$mail_message .= '<br><br>Your request with tracking number <b>' . htmlspecialchars($trackingNo, ENT_QUOTES, 'UTF-8') . ' </b>has been submitted.' . "\r\n";
 				$mail_message .= '<br><br>Login to your portal to check the status of your request.' . "\r\n";
 
 				$mail_message .= '<br><br>Thanks & Regards,';
@@ -5779,7 +5831,8 @@ class Page extends CI_Controller
 	//delete student's profile
 	public function deleteProfile()
 	{
-		$id = $this->input->get('id'); // StudentNumber
+		if (!$this->requirePost()) return;
+		$id = $this->input->post('id'); // StudentNumber
 		$username = $this->session->userdata('username');
 		date_default_timezone_set('Asia/Manila');
 		$now = date('h:i:s A');
@@ -5825,7 +5878,8 @@ class Page extends CI_Controller
 	//delete personnel's profile
 	public function deletePersonnel()
 	{
-		$id = $this->input->get('id', true); // IDNumber of the personnel
+		if (!$this->requirePost()) return;
+		$id = $this->input->post('id', true); // IDNumber of the personnel
 		$username = $this->session->userdata('username');
 
 		date_default_timezone_set('Asia/Manila');
@@ -5934,13 +5988,13 @@ class Page extends CI_Controller
 			$SY = $this->input->post('SY');
 
 			// Email notification (queued)
-			$mail_message = 'Dear ' . $FName . ",<br><br>";
+			$mail_message = 'Dear ' . htmlspecialchars($FName, ENT_QUOTES, 'UTF-8') . ",<br><br>";
 			$mail_message .= "Your enrollment details have been updated.<br>";
-			$mail_message .= "Course: <b>{$updateData['Course']}</b><br>";
-			$mail_message .= "Major: <b>{$updateData['Major']}</b><br>";
-			$mail_message .= "Year Level: <b>{$updateData['YearLevel']}</b><br>";
-			$mail_message .= "Section: <b>{$updateData['Section']}</b><br>";
-			$mail_message .= "Sem/SY: <b>{$Semester}, {$SY}</b><br>";
+			$mail_message .= "Course: <b>" . htmlspecialchars($updateData['Course'], ENT_QUOTES, 'UTF-8') . "</b><br>";
+			$mail_message .= "Major: <b>" . htmlspecialchars($updateData['Major'], ENT_QUOTES, 'UTF-8') . "</b><br>";
+			$mail_message .= "Year Level: <b>" . htmlspecialchars($updateData['YearLevel'], ENT_QUOTES, 'UTF-8') . "</b><br>";
+			$mail_message .= "Section: <b>" . htmlspecialchars($updateData['Section'], ENT_QUOTES, 'UTF-8') . "</b><br>";
+			$mail_message .= "Sem/SY: <b>" . htmlspecialchars($Semester, ENT_QUOTES, 'UTF-8') . ", " . htmlspecialchars($SY, ENT_QUOTES, 'UTF-8') . "</b><br>";
 			$mail_message .= "Status: <b>Validated</b><br><br>";
 			$mail_message .= "Thanks & Regards,<br>SRMS - Online";
 
@@ -6018,13 +6072,13 @@ class Page extends CI_Controller
 			$SY = $this->input->post('SY');
 
 			// Email notification (queued)
-			$mail_message = 'Dear ' . $FName . ",<br><br>";
+			$mail_message = 'Dear ' . htmlspecialchars($FName, ENT_QUOTES, 'UTF-8') . ",<br><br>";
 			$mail_message .= "Your enrollment details have been updated.<br>";
-			$mail_message .= "Course: <b>{$updateData['Course']}</b><br>";
-			$mail_message .= "Major: <b>{$updateData['Major']}</b><br>";
-			$mail_message .= "Year Level: <b>{$updateData['YearLevel']}</b><br>";
-			$mail_message .= "Section: <b>{$updateData['Section']}</b><br>";
-			$mail_message .= "Sem/SY: <b>{$Semester}, {$SY}</b><br>";
+			$mail_message .= "Course: <b>" . htmlspecialchars($updateData['Course'], ENT_QUOTES, 'UTF-8') . "</b><br>";
+			$mail_message .= "Major: <b>" . htmlspecialchars($updateData['Major'], ENT_QUOTES, 'UTF-8') . "</b><br>";
+			$mail_message .= "Year Level: <b>" . htmlspecialchars($updateData['YearLevel'], ENT_QUOTES, 'UTF-8') . "</b><br>";
+			$mail_message .= "Section: <b>" . htmlspecialchars($updateData['Section'], ENT_QUOTES, 'UTF-8') . "</b><br>";
+			$mail_message .= "Sem/SY: <b>" . htmlspecialchars($Semester, ENT_QUOTES, 'UTF-8') . ", " . htmlspecialchars($SY, ENT_QUOTES, 'UTF-8') . "</b><br>";
 			$mail_message .= "Status: <b>Validated</b><br><br>";
 			$mail_message .= "Thanks & Regards,<br>SRMS - Online";
 
@@ -6183,7 +6237,8 @@ class Page extends CI_Controller
 	//delete student's profile
 	public function deleteRequest()
 	{
-		$id = $this->input->get('id');
+		if (!$this->requirePost()) return;
+		$id = $this->input->post('id');
 		$username = $this->session->userdata('username');
 		date_default_timezone_set('Asia/Manila'); # add your city to set local time zone
 		$now = date('H:i:s A');
@@ -6667,6 +6722,7 @@ class Page extends CI_Controller
 
 	public function transferSignupToProfile()
 	{
+		if (!$this->requirePost()) return;
 		// Get records from studentsignup that don't exist yet in studeprofile
 		$query = $this->db->query("
 			SELECT * FROM studentsignup s
@@ -6901,6 +6957,7 @@ class Page extends CI_Controller
 
 	public function create_teacher_accts()
 	{
+		if (!$this->requirePost()) return;
 		$result = $this->StudentModel->insert_teachers(); // returns ['ok'=>bool,'inserted'=>int]
 
 		if (!$result['ok']) {
@@ -6917,6 +6974,7 @@ class Page extends CI_Controller
 
 	public function create_stude_accts()
 	{
+		if (!$this->requirePost()) return;
 		$result = $this->StudentModel->insert_students(); // ['ok'=>bool,'inserted'=>int]
 
 		if (!$result['ok']) {
@@ -7755,6 +7813,7 @@ class Page extends CI_Controller
 
 	public function deleteSection($id = null)
 	{
+		if (!$this->requirePost()) return;
 		// Accept ID from POST (CSRF-protected) or URL segment (backward compat).
 		if ($this->input->post('id')) {
 			$id = $this->input->post('id');

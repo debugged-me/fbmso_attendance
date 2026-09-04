@@ -621,6 +621,46 @@
           });
         });
 
+        // Submit a POST form to the given URL, preserving any query params
+        // as hidden inputs. Required because destructive endpoints now
+        // reject GET (CSRF protection).
+        function postTo(url, params) {
+          var form = document.createElement('form');
+          form.method = 'POST';
+          form.action = url.split('?')[0];
+          // CSRF token
+          var csrfName = $('meta[name="csrf-token-name"]').attr('content') || 'fbmso_csrf_token';
+          var csrfHash = $('meta[name="csrf-token"]').attr('content') || '';
+          if (csrfName && csrfHash) {
+            var csrf = document.createElement('input');
+            csrf.type = 'hidden'; csrf.name = csrfName; csrf.value = csrfHash;
+            form.appendChild(csrf);
+          }
+          // Extract params from query string
+          var query = url.split('?')[1] || '';
+          if (query) {
+            query.split('&').forEach(function(pair) {
+              var kv = pair.split('=');
+              if (kv.length === 2) {
+                var inp = document.createElement('input');
+                inp.type = 'hidden'; inp.name = decodeURIComponent(kv[0]);
+                inp.value = decodeURIComponent(kv[1].replace(/\+/g, ' '));
+                form.appendChild(inp);
+              }
+            });
+          }
+          // Extra params
+          if (params) {
+            Object.keys(params).forEach(function(key) {
+              var inp = document.createElement('input');
+              inp.type = 'hidden'; inp.name = key; inp.value = params[key];
+              form.appendChild(inp);
+            });
+          }
+          document.body.appendChild(form);
+          form.submit();
+        }
+
         $(document).on('click', '.reset-password-btn', function(e) {
           e.preventDefault();
           var $btn = $(this);
@@ -633,7 +673,7 @@
             confirmText: 'Reset',
             confirmColor: '#f59e0b',
             onConfirm: function() {
-              window.location.href = href;
+              postTo(href);
             }
           });
         });
@@ -651,7 +691,7 @@
             confirmText: 'Delete',
             confirmColor: '#ef4444',
             onConfirm: function() {
-              window.location.href = href;
+              postTo(href);
             }
           });
         });
@@ -670,7 +710,7 @@
             confirmText: isDeactivate ? 'Deactivate' : 'Activate',
             confirmColor: isDeactivate ? '#ef4444' : '#10b981',
             onConfirm: function() {
-              window.location.href = href;
+              postTo(href);
             }
           });
         });

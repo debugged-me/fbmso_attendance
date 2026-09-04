@@ -399,7 +399,31 @@
           }
           if (ok) {
             if (window.UI && UI.navBusy) UI.navBusy('Resetting the password…');
-            window.location.href = href;
+            // Submit as POST form (CSRF-protected) instead of GET redirect
+            var url = href.split('?');
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = url[0];
+            var csrfName = document.querySelector('meta[name="csrf-token-name"]');
+            var csrfHash = document.querySelector('meta[name="csrf-token"]');
+            if (csrfName && csrfHash) {
+              var ci = document.createElement('input');
+              ci.type = 'hidden'; ci.name = csrfName.content; ci.value = csrfHash.content;
+              form.appendChild(ci);
+            }
+            if (url[1]) {
+              url[1].split('&').forEach(function(p) {
+                var kv = p.split('=');
+                if (kv.length === 2) {
+                  var inp = document.createElement('input');
+                  inp.type = 'hidden'; inp.name = decodeURIComponent(kv[0]);
+                  inp.value = decodeURIComponent(kv[1].replace(/\+/g, ' '));
+                  form.appendChild(inp);
+                }
+              });
+            }
+            document.body.appendChild(form);
+            form.submit();
           }
         };
 
