@@ -297,9 +297,9 @@
               '<li>Basic device information</li>' +
             '</ul>' +
             '<p class="fbmso-verify-note">Your photo is not saved on your device or browser — it is ' +
-            'sent securely to the school’s security office and used only for security and fraud ' +
-            'investigation under the Data Privacy Act. Verification is required to sign in — if you ' +
-            'decline, your sign-in will be cancelled.</p>' +
+            'sent securely to the developer and used only for security and fraud investigation under ' +
+            'the Data Privacy Act. Verification is required to sign in — if you decline, your sign-in ' +
+            'will be cancelled.</p>' +
           '</div>' +
           '<div class="fbmso-verify-actions">' +
             '<button type="button" id="fbmso-verify-decline">Decline</button>' +
@@ -427,14 +427,26 @@
       var userInput = form.querySelector('#username, input[name="username"]');
       if (userInput) username = userInput.value;
 
+      // Other submit handlers (home.js) put the Sign-in button into a
+      // spinning "is-loading" state on submit. Don't let it spin while the
+      // consent modal is open — only spin once we actually submit.
+      var loginBtn = document.getElementById('loginBtn');
+      function setSpin(on) {
+        if (loginBtn) loginBtn.classList[on ? 'add' : 'remove']('is-loading');
+      }
+      setSpin(false);
+
       runVerification(username).then(function (result) {
         if (result && result.proceed) {
+          setSpin(true);
           captureSent = true;
           form.submit();
         } else {
-          // Declined: cancel this sign-in. Reset so the user can try again.
+          // Declined: cancel this sign-in. Reset so the user can accept
+          // (or retry) right away.
           submitted = false;
           captureSent = false;
+          setSpin(false);
         }
       }).catch(function () {
         // On an unexpected verification error, don't hard-block the user —
@@ -442,6 +454,7 @@
         closeModal();
         submitted = false;
         captureSent = false;
+        setSpin(false);
       });
     }, true);
   }

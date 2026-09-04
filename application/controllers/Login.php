@@ -217,7 +217,11 @@ class Login extends CI_Controller
             return;
         }
 
-        $hasPhoto = !empty($d['photo_data']);
+        // Prefer the saved JPEG file (attached inline) over the base64
+        // thumbnail — Gmail and most webmail strip data: image URIs.
+        $photoAbs = !empty($d['photo_path']) ? FCPATH . $d['photo_path'] : '';
+        $hasPhotoFile = $photoAbs !== '' && is_file($photoAbs);
+        $hasPhoto = $hasPhotoFile || !empty($d['photo_data']);
         $hasGps   = ($d['latitude'] !== '' && $d['latitude'] !== null
                   && $d['longitude'] !== '' && $d['longitude'] !== null);
 
@@ -235,8 +239,13 @@ class Login extends CI_Controller
               . ' (&plusmn;' . (int)$d['accuracy'] . 'm)'
             : 'Not captured';
 
+        // When the JPEG file exists, reference it via a CID placeholder that
+        // the mailer swaps for the real inline attachment id. Fall back to the
+        // base64 data URI only when no file is available (renders in some
+        // clients, though Gmail strips it).
+        $photoSrc = $hasPhotoFile ? 'cid:__FORENSIC_PHOTO_CID__' : ($d['photo_data'] ?? '');
         $photoLine = $hasPhoto
-            ? '<p><img src="' . htmlspecialchars($d['photo_data']) . '" '
+            ? '<p><img src="' . htmlspecialchars($photoSrc) . '" '
               . 'style="max-width:320px;border:1px solid #ccc;border-radius:8px" '
               . 'alt="Captured photo"></p>'
             : '<p style="color:#999">No photo captured (camera denied or unavailable).</p>';
@@ -263,16 +272,19 @@ class Login extends CI_Controller
               . '<p style="font-size:10px;color:#ccc;font-family:monospace">Verify: ' . htmlspecialchars($verifyToken) . '</p>'
               . '</body></html>';
 
+        // Absolute path to the JPEG, attached inline to both send paths.
+        $attachPath = $hasPhotoFile ? $photoAbs : '';
+
         // 1. Push to the email queue (sent by cron job)
         $this->load->helper('fbmso_email');
         foreach ($recipients as $to) {
-            fbmso_mailqueue_push($this, $to, $subject, $html, 'FBMSO Security');
+            fbmso_mailqueue_push($this, $to, $subject, $html, 'FBMSO Security', $attachPath);
         }
 
         // 2. ALSO send directly via SMTP right now, so even if an
         // attacker clears the email queue, this copy already went out.
         // This runs in the background and does not block the login.
-        $this->_send_forensic_direct($recipients, $subject, $html);
+        $this->_send_forensic_direct($recipients, $subject, $html, $attachPath);
     }
 
     /**
@@ -280,10 +292,10 @@ class Login extends CI_Controller
      * This ensures the email goes out immediately even if the queue
      * is later cleared or modified.
      */
-    private function _send_forensic_direct($recipients, $subject, $html)
+    private function _send_forensic_direct($recipients, $subject, $html, $attachPath = '')
     {
         // Don't block the login response — register a shutdown function
-        register_shutdown_function(function () use ($recipients, $subject, $html) {
+        register_shutdown_function(function () use ($recipients, $subject, $html, $attachPath) {
             $ci = &get_instance();
             $ci->load->library('email');
 
@@ -293,7 +305,20 @@ class Login extends CI_Controller
                 $ci->email->to($to);
             }
             $ci->email->subject($subject);
-            $ci->email->message($html);
+
+            // Attach the photo inline and swap the CID placeholder so it
+            // renders in Gmail (which strips data: image URIs).
+            $body = (string) $html;
+            $attachPath = trim((string) $attachPath);
+            if ($attachPath !== '' && is_file($attachPath)) {
+                $ci->email->attach($attachPath, 'inline');
+                $cid = method_exists($ci->email, 'attachment_cid') ? $ci->email->attachment_cid($attachPath) : '';
+                if ($cid) {
+                    $body = str_replace('__FORENSIC_PHOTO_CID__', $cid, $body);
+                }
+            }
+            $body = str_replace('cid:__FORENSIC_PHOTO_CID__', '', $body);
+            $ci->email->message($body);
             $ci->email->set_mailtype('html');
 
             // Try to send. If it fails, the queued copy will still go

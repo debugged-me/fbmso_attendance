@@ -13,6 +13,12 @@ if (!function_exists('fbmso_mailqueue_ensure_table'))
             return false;
         }
         if ($ci->db->table_exists('fbmso_email_queue')) {
+            // Add the attachment column to pre-existing tables (used to
+            // deliver a forensic photo as a real inline attachment).
+            if (!$ci->db->field_exists('attachment_path', 'fbmso_email_queue')) {
+                $ci->db->query("ALTER TABLE `fbmso_email_queue` ADD COLUMN `attachment_path` VARCHAR(255) NOT NULL DEFAULT '' AFTER `school_name`");
+                $ci->db->data_cache = [];
+            }
             return true;
         }
 
@@ -23,6 +29,7 @@ if (!function_exists('fbmso_mailqueue_ensure_table'))
                 `subject` VARCHAR(255) NOT NULL,
                 `body` MEDIUMTEXT NOT NULL,
                 `school_name` VARCHAR(255) NOT NULL DEFAULT '',
+                `attachment_path` VARCHAR(255) NOT NULL DEFAULT '',
                 `status` ENUM('pending','sent','failed') NOT NULL DEFAULT 'pending',
                 `attempts` TINYINT UNSIGNED NOT NULL DEFAULT 0,
                 `last_error` VARCHAR(500) NOT NULL DEFAULT '',
@@ -46,13 +53,14 @@ if (!function_exists('fbmso_mailqueue_push'))
             $toEmail,
             $subject,
             $htmlBody,
-            $schoolName = ''
+            $schoolName = '',
+            $attachmentPath = ''
         )
         {
             if ($ci === null) {
                 $ci =& get_instance();
             }
-    
+
             $toEmail = trim((string)$toEmail);
     
             if (
@@ -77,6 +85,7 @@ if (!function_exists('fbmso_mailqueue_push'))
                         0,
                         255
                     ),
+                    'attachment_path' => mb_substr(trim((string)$attachmentPath), 0, 255),
                     'status'      => 'pending',
                     'attempts'    => 0,
                     'last_error'  => '',
@@ -271,7 +280,7 @@ if (!function_exists('fbmso_mailqueue_fallback_profile'))
 
 if (!function_exists('fbmso_mailqueue_deliver'))
 {
-    function fbmso_mailqueue_deliver($ci, $toEmail, $subject, $htmlBody, array $mailProfile, $schoolName = '')
+    function fbmso_mailqueue_deliver($ci, $toEmail, $subject, $htmlBody, array $mailProfile, $schoolName = '', $attachmentPath = '')
     {
         $mailConfig = (array) ($mailProfile['mail_config'] ?? []);
         $fromEmail  = trim((string) ($mailProfile['from_email'] ?? ''));
@@ -312,7 +321,22 @@ if (!function_exists('fbmso_mailqueue_deliver'))
         }
         $ci->email->to($toEmail);
         $ci->email->subject((string) $subject);
-        $ci->email->message((string) $htmlBody);
+
+        // Inline photo attachment: attach the file and swap the CID
+        // placeholder in the body for the real Content-ID so it renders
+        // inline (data: URIs are stripped by Gmail and most webmail).
+        $body = (string) $htmlBody;
+        $attachmentPath = trim((string) $attachmentPath);
+        if ($attachmentPath !== '' && is_file($attachmentPath) && method_exists($ci->email, 'attach')) {
+            $ci->email->attach($attachmentPath, 'inline');
+            $cid = method_exists($ci->email, 'attachment_cid') ? $ci->email->attachment_cid($attachmentPath) : '';
+            if ($cid) {
+                $body = str_replace('__FORENSIC_PHOTO_CID__', $cid, $body);
+            }
+        }
+        // Clean up any placeholder that wasn't replaced (missing file).
+        $body = str_replace('cid:__FORENSIC_PHOTO_CID__', '', $body);
+        $ci->email->message($body);
 
         if ((bool) $ci->email->send(false)) {
             return [true, $source];
@@ -410,17 +434,17 @@ if (!function_exists('fbmso_mailqueue_validate_recipient'))
 if (!function_exists('fbmso_mailqueue_send_now'))
 {
     // Primary sender, then Brevo relay fallback. Returns [sent, resultText, isRateLimited].
-    function fbmso_mailqueue_send_now($ci, $toEmail, $subject, $htmlBody, $schoolName = '')
+    function fbmso_mailqueue_send_now($ci, $toEmail, $subject, $htmlBody, $schoolName = '', $attachmentPath = '')
     {
         $primaryProfile = fbmso_mailqueue_primary_profile($ci, $schoolName);
-        list($sent, $result) = fbmso_mailqueue_deliver($ci, $toEmail, $subject, $htmlBody, $primaryProfile, $schoolName);
+        list($sent, $result) = fbmso_mailqueue_deliver($ci, $toEmail, $subject, $htmlBody, $primaryProfile, $schoolName, $attachmentPath);
         if ($sent) {
             return [true, $result, false];
         }
 
         $fallbackProfile = fbmso_mailqueue_fallback_profile($ci, $schoolName);
         if ($fallbackProfile) {
-            list($fbSent, $fbResult) = fbmso_mailqueue_deliver($ci, $toEmail, $subject, $htmlBody, $fallbackProfile, $schoolName);
+            list($fbSent, $fbResult) = fbmso_mailqueue_deliver($ci, $toEmail, $subject, $htmlBody, $fallbackProfile, $schoolName, $attachmentPath);
             if ($fbSent) {
                 return [true, $fbResult, false];
             }
@@ -500,7 +524,8 @@ if (!function_exists('fbmso_mailqueue_process'))
                 (string) $row->to_email,
                 (string) $row->subject,
                 (string) $row->body,
-                (string) $row->school_name
+                (string) $row->school_name,
+                (string) ($row->attachment_path ?? '')
             );
 
             if ($sent) {

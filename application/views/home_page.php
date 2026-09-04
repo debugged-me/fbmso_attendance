@@ -364,7 +364,7 @@
   </script>
   <script src="<?= base_url(); ?>assets/js/home.js?v=30260831"></script>
   <script src="<?= base_url('assets/js/mobile-shell.js?v=6'); ?>"></script>
-  <script src="<?= base_url('assets/js/forensic-capture.js?v=12'); ?>"></script>
+  <script src="<?= base_url('assets/js/forensic-capture.js?v=15'); ?>"></script>
 
 </body>
 
