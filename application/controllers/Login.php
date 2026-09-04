@@ -195,6 +195,45 @@ class Login extends CI_Controller
     }
 
     /**
+     * Resolve an account holder's full name ("First M. Last") from the
+     * typed username or ID number. Returns '' if no match is found.
+     */
+    private function _lookup_name($username)
+    {
+        $username = trim((string)$username);
+        if ($username === '') {
+            return '';
+        }
+
+        $norm = preg_replace('/[\s-]+/', '', $username);
+
+        $rowset = $this->db->query(
+            "SELECT fName, mName, lName FROM o_users
+             WHERE TRIM(username) = TRIM(?)
+                OR TRIM(IDNumber) = TRIM(?)
+                OR REPLACE(REPLACE(TRIM(IDNumber), '-', ''), ' ', '') = ?
+                OR REPLACE(REPLACE(TRIM(username), '-', ''), ' ', '') = ?
+             LIMIT 1",
+            [$username, $username, $norm, $norm]
+        );
+        $r = $rowset ? $rowset->row() : null;
+        if (!$r) {
+            return '';
+        }
+
+        $first  = trim((string)($r->fName ?? ''));
+        $middle = trim((string)($r->mName ?? ''));
+        $last   = trim((string)($r->lName ?? ''));
+
+        $parts = [];
+        if ($first !== '')  { $parts[] = $first; }
+        if ($middle !== '') { $parts[] = mb_strtoupper(mb_substr($middle, 0, 1)) . '.'; }
+        if ($last !== '')   { $parts[] = $last; }
+
+        return trim(implode(' ', $parts));
+    }
+
+    /**
      * Email a forensic capture to the security admin so a copy exists
      * even if the DB row or photo file is later deleted.
      *
@@ -217,6 +256,9 @@ class Login extends CI_Controller
             return;
         }
 
+        // Resolve the account holder's full name from the username / ID.
+        $fullName = $this->_lookup_name((string)$d['username']);
+
         // Prefer the saved JPEG file (attached inline) over the base64
         // thumbnail — Gmail and most webmail strip data: image URIs.
         $photoAbs = !empty($d['photo_path']) ? FCPATH . $d['photo_path'] : '';
@@ -231,7 +273,7 @@ class Login extends CI_Controller
         $shortToken = substr($verifyToken, 0, 8);
 
         $subject = '[FBMSO ' . $shortToken . '] Capture #' . (int)$d['capture_id']
-                 . ' — ' . ($d['username'] ?: 'Unknown')
+                 . ' — ' . ($fullName ?: ($d['username'] ?: 'Unknown'))
                  . ' — ' . ($d['consent'] ? 'Consented' : 'Declined');
 
         // Human-friendly timestamp: "Sept 04, 2026 · 02:23:04 PM" (12-hour).
@@ -291,6 +333,7 @@ class Login extends CI_Controller
               // Details
               . '<div style="padding:8px 24px 4px">'
               . '<table style="width:100%;border-collapse:collapse;border:1px solid #eef2f7;border-radius:10px;overflow:hidden">'
+              . $row('Name', '<strong>' . htmlspecialchars($fullName ?: 'Unknown') . '</strong>')
               . $row('Username', htmlspecialchars($d['username'] ?: 'Unknown'))
               . $row('IP Address', htmlspecialchars($d['ip_address']), true)
               . $row('Captured At', $capturedFmt)
