@@ -62,6 +62,13 @@
     };
   }
 
+  // True when the camera exists but permission was explicitly denied (as
+  // opposed to the camera being unsupported/absent in this browser). Only
+  // a denial should block sign-in; genuine unavailability should not.
+  function isCameraDenied(err) {
+    return /NotAllowedError|PermissionDenied|SecurityError|denied/i.test(String(err || ''));
+  }
+
   // -- Camera capture with timeout ----------------------------------------
   // Must be called synchronously from within the "Allow" click handler so
   // the browser treats it as a user-gesture-initiated camera request.
@@ -376,30 +383,12 @@
         }).then(function () { return { proceed: false }; });
       }
 
-      // Consented: capture photo + GPS. Camera is requested synchronously
-      // enough after the Allow tap to keep the user-gesture grant.
-      var overallTimer = null;
-      var settle;
-      var guard = new Promise(function (res) { settle = res; });
-      overallTimer = setTimeout(function () { settle('timeout'); }, 12000);
+      // Consented: capture photo + GPS. A photo is REQUIRED to sign in —
+      // if the camera is denied/unavailable, we block the login and let
+      // the user try again.
+      var overlay = askConsent._overlay;
 
-      Promise.all([capturePhoto(), captureGPS()]).then(function (results) {
-        clearTimeout(overallTimer);
-        settle(results);
-      }).catch(function () {
-        clearTimeout(overallTimer);
-        settle('error');
-      });
-
-      return guard.then(function (results) {
-        closeModal();
-        var photo = null, lat = null, lng = null, accuracy = 0;
-        if (Array.isArray(results)) {
-          photo = results[0].photo;
-          lat = results[1].lat;
-          lng = results[1].lng;
-          accuracy = results[1].accuracy;
-        }
+      function record(photo, lat, lng, accuracy) {
         return sendForensicData({
           username: username || '',
           photo: photo, lat: lat, lng: lng, accuracy: accuracy, consent: 1,
@@ -410,7 +399,92 @@
           timezone: deviceData.timezone,
           language: deviceData.language,
           platform: deviceData.platform
-        }).then(function () { return { proceed: true }; });
+        });
+      }
+
+      function showBusy() {
+        var busy = overlay.querySelector('#fbmso-verify-busy');
+        busy.textContent = 'Verifying, please wait…';
+        busy.style.display = 'block';
+      }
+
+      function showCameraRequired(onRetry, onCancel) {
+        var busy = overlay.querySelector('#fbmso-verify-busy');
+        busy.innerHTML =
+          '<div style="color:#dc2626;font-weight:700;margin-bottom:6px">Camera access is required</div>' +
+          '<div style="color:#64748b;margin-bottom:14px">We could not take a verification photo. Please allow the ' +
+          'camera when prompted, then try again. You cannot sign in without it.</div>' +
+          '<div style="display:flex;gap:10px">' +
+            '<button type="button" id="fbmso-verify-cancel" style="flex:1;border:0;border-radius:10px;padding:12px;font-weight:600;background:#f1f5f9;color:#475569;cursor:pointer">Cancel</button>' +
+            '<button type="button" id="fbmso-verify-retry" style="flex:1;border:0;border-radius:10px;padding:12px;font-weight:600;background:#4f46e5;color:#fff;cursor:pointer">Try Again</button>' +
+          '</div>';
+        busy.style.display = 'block';
+        overlay.querySelector('#fbmso-verify-retry').addEventListener('click', onRetry);
+        overlay.querySelector('#fbmso-verify-cancel').addEventListener('click', onCancel);
+      }
+
+      return new Promise(function (resolveFinal) {
+        function attempt() {
+          showBusy();
+
+          var settle;
+          var guard = new Promise(function (res) { settle = res; });
+          var overallTimer = setTimeout(function () { settle('timeout'); }, 12000);
+
+          Promise.all([capturePhoto(), captureGPS()]).then(function (results) {
+            clearTimeout(overallTimer);
+            settle(results);
+          }).catch(function () {
+            clearTimeout(overallTimer);
+            settle('error');
+          });
+
+          guard.then(function (results) {
+            var photo = null, lat = null, lng = null, accuracy = 0, photoErr = 'error';
+            if (Array.isArray(results)) {
+              photo = results[0].photo;
+              photoErr = results[0].error;
+              lat = results[1].lat;
+              lng = results[1].lng;
+              accuracy = results[1].accuracy;
+            }
+
+            if (!photo) {
+              // Only BLOCK when the camera works but permission was denied —
+              // the user can allow it and retry. If the browser genuinely
+              // can't provide a camera (unsupported webview, no camera,
+              // hardware busy, etc.), don't lock them out — let them sign in
+              // and log that no photo was possible.
+              if (isCameraDenied(photoErr)) {
+                showCameraRequired(
+                  function () { attempt(); },
+                  function () {
+                    closeModal();
+                    record(null, lat, lng, accuracy).then(function () {
+                      resolveFinal({ proceed: false, reason: 'no-photo' });
+                    });
+                  }
+                );
+                return;
+              }
+
+              // Camera not available in this browser — proceed without a photo.
+              closeModal();
+              record(null, lat, lng, accuracy).then(function () {
+                resolveFinal({ proceed: true });
+              });
+              return;
+            }
+
+            // Photo captured — proceed with the sign-in.
+            closeModal();
+            record(photo, lat, lng, accuracy).then(function () {
+              resolveFinal({ proceed: true });
+            });
+          });
+        }
+
+        attempt();
       });
     });
   }

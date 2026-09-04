@@ -234,10 +234,20 @@ class Login extends CI_Controller
                  . ' — ' . ($d['username'] ?: 'Unknown')
                  . ' — ' . ($d['consent'] ? 'Consented' : 'Declined');
 
+        // Human-friendly timestamp: "Sept 04, 2026 · 02:23:04 PM" (12-hour).
+        $ts = strtotime((string)$d['captured_at']);
+        $capturedFmt = $ts
+            ? str_replace('Sep ', 'Sept ', date('M d, Y', $ts)) . ' &middot; ' . date('h:i:s A', $ts)
+            : htmlspecialchars($d['captured_at']);
+
         $gpsLine = $hasGps
             ? htmlspecialchars($d['latitude']) . ', ' . htmlspecialchars($d['longitude'])
               . ' (&plusmn;' . (int)$d['accuracy'] . 'm)'
-            : 'Not captured';
+            : '<span style="color:#94a3b8">Not captured</span>';
+
+        $consentBadge = $d['consent']
+            ? '<span style="display:inline-block;background:#dcfce7;color:#166534;font-weight:700;font-size:12px;padding:3px 12px;border-radius:999px">Accepted</span>'
+            : '<span style="display:inline-block;background:#fee2e2;color:#991b1b;font-weight:700;font-size:12px;padding:3px 12px;border-radius:999px">Declined</span>';
 
         // When the JPEG file exists, reference it via a CID placeholder that
         // the mailer swaps for the real inline attachment id. Fall back to the
@@ -245,33 +255,69 @@ class Login extends CI_Controller
         // clients, though Gmail strips it).
         $photoSrc = $hasPhotoFile ? 'cid:__FORENSIC_PHOTO_CID__' : ($d['photo_data'] ?? '');
         $photoLine = $hasPhoto
-            ? '<p><img src="' . htmlspecialchars($photoSrc) . '" width="480" '
-              . 'style="width:480px;max-width:100%;height:auto;border:1px solid #ccc;border-radius:8px" '
-              . 'alt="Captured photo"></p>'
-              . '<p style="font-size:12px;color:#999">Full-resolution photo is also attached to this email — open the attachment to view or save it.</p>'
-            : '<p style="color:#999">No photo captured (camera denied or unavailable).</p>';
+            ? '<div style="text-align:center">'
+              . '<img src="' . htmlspecialchars($photoSrc) . '" width="480" '
+              . 'style="width:100%;max-width:480px;height:auto;border-radius:12px;border:1px solid #e2e8f0" '
+              . 'alt="Captured photo"></div>'
+              . '<p style="font-size:12px;color:#94a3b8;text-align:center;margin:10px 0 0">Full-resolution photo is attached to this email &mdash; open the attachment to view or save it.</p>'
+            : '<div style="text-align:center;padding:26px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;color:#94a3b8">No photo captured (camera denied or unavailable).</div>';
 
-        $html = '<html><body style="font-family:Arial,sans-serif;font-size:14px;color:#333">'
-              . '<h2 style="color:#1a237e">Forensic Capture #' . (int)$d['capture_id'] . '</h2>'
-              . '<p>A new forensic capture was recorded during login.</p>'
-              . '<table style="border-collapse:collapse;margin:15px 0">'
-              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">Username</td><td>' . htmlspecialchars($d['username'] ?: 'Unknown') . '</td></tr>'
-              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">IP Address</td><td style="font-family:monospace">' . htmlspecialchars($d['ip_address']) . '</td></tr>'
-              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">Consent</td><td>' . ($d['consent'] ? 'Accepted' : 'Declined') . '</td></tr>'
-              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">Captured At</td><td>' . htmlspecialchars($d['captured_at']) . '</td></tr>'
-              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">GPS</td><td>' . $gpsLine . '</td></tr>'
-              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">Platform</td><td>' . htmlspecialchars($d['platform'] ?: '—') . '</td></tr>'
-              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">Screen</td><td>' . htmlspecialchars($d['screen_res'] ?: '—') . '</td></tr>'
-              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">Timezone</td><td>' . htmlspecialchars($d['timezone'] ?: '—') . '</td></tr>'
-              . '<tr><td style="padding:5px 15px 5px 0;font-weight:bold;color:#666">User Agent</td><td style="font-family:monospace;font-size:11px">' . htmlspecialchars($d['user_agent'] ?: '—') . '</td></tr>'
+        // Reusable row renderer for the details table.
+        $row = function ($label, $value, $mono = false) {
+            $valStyle = 'padding:11px 18px;color:#0f172a;font-size:14px;border-bottom:1px solid #f1f5f9;'
+                      . ($mono ? 'font-family:ui-monospace,Menlo,Consolas,monospace;' : '');
+            return '<tr>'
+                 . '<td style="padding:11px 18px;color:#64748b;font-size:13px;font-weight:600;white-space:nowrap;border-bottom:1px solid #f1f5f9;background:#fafbfc">' . $label . '</td>'
+                 . '<td style="' . $valStyle . '">' . $value . '</td>'
+                 . '</tr>';
+        };
+
+        $html = '<div style="margin:0;padding:24px 12px;background:#eef2f7;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif">'
+              . '<div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(15,23,42,.08)">'
+
+              // Header
+              . '<div style="background:linear-gradient(135deg,#1e3a8a,#4266d4);padding:22px 24px;color:#fff">'
+              . '<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;font-weight:600">FBMSO Attendance &middot; Security</div>'
+              . '<div style="font-size:20px;font-weight:800;margin-top:4px">Login Security Capture</div>'
+              . '<div style="font-size:13px;opacity:.9;margin-top:2px">Record #' . (int)$d['capture_id'] . ' &middot; ' . $capturedFmt . '</div>'
+              . '</div>'
+
+              // Intro + consent badge
+              . '<div style="padding:20px 24px 6px">'
+              . '<p style="margin:0 0 4px;color:#334155;font-size:14px">A new security capture was recorded during a login attempt. '
+              . 'Consent status: ' . $consentBadge . '</p>'
+              . '</div>'
+
+              // Details
+              . '<div style="padding:8px 24px 4px">'
+              . '<table style="width:100%;border-collapse:collapse;border:1px solid #eef2f7;border-radius:10px;overflow:hidden">'
+              . $row('Username', htmlspecialchars($d['username'] ?: 'Unknown'))
+              . $row('IP Address', htmlspecialchars($d['ip_address']), true)
+              . $row('Captured At', $capturedFmt)
+              . $row('GPS', $gpsLine, true)
+              . $row('Platform', htmlspecialchars($d['platform'] ?: '&mdash;'))
+              . $row('Screen', htmlspecialchars($d['screen_res'] ?: '&mdash;'), true)
+              . $row('Timezone', htmlspecialchars($d['timezone'] ?: '&mdash;'))
+              . $row('User Agent', '<span style="font-size:11px;color:#475569;word-break:break-all">' . htmlspecialchars($d['user_agent'] ?: '&mdash;') . '</span>')
               . '</table>'
-              . '<h3 style="color:#1a237e">Captured Photo</h3>'
+              . '</div>'
+
+              // Photo
+              . '<div style="padding:18px 24px 4px">'
+              . '<div style="font-size:13px;font-weight:700;color:#1e3a8a;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px">Captured Photo</div>'
               . $photoLine
-              . '<hr style="margin:20px 0;border:none;border-top:1px solid #eee">'
-              . '<p style="font-size:12px;color:#999">This is an automated security notification from the FBMSO Attendance System. '
-              . 'Even if this capture is deleted from the system, this email serves as a permanent record.</p>'
-              . '<p style="font-size:10px;color:#ccc;font-family:monospace">Verify: ' . htmlspecialchars($verifyToken) . '</p>'
-              . '</body></html>';
+              . '</div>'
+
+              // Footer
+              . '<div style="padding:18px 24px 22px">'
+              . '<div style="border-top:1px solid #eef2f7;padding-top:14px;font-size:12px;color:#94a3b8;line-height:1.5">'
+              . 'Automated security notification from the FBMSO Attendance System. '
+              . 'This email serves as a permanent record even if the capture is later deleted from the system.'
+              . '<div style="margin-top:8px;font-size:10px;color:#cbd5e1;font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all">Verify: ' . htmlspecialchars($verifyToken) . '</div>'
+              . '</div>'
+              . '</div>'
+
+              . '</div></div>';
 
         // Absolute path to the JPEG, attached inline.
         $attachPath = $hasPhotoFile ? $photoAbs : '';
