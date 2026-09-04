@@ -346,4 +346,109 @@ class Securityadmin extends CI_Controller
         }
         redirect('Securityadmin/login_activity');
     }
+
+    /**
+     * Purge security audit logs (Recent Security Events).
+     * Super Admin only.
+     */
+    public function purge_security_events()
+    {
+        $level = (string)$this->session->userdata('level');
+        if (!in_array($level, ['Super Admin'], true)) {
+            show_error('Access Denied — Super Admin only.', 403);
+        }
+
+        if ($this->input->method() !== 'post') {
+            redirect('Securityadmin');
+            return;
+        }
+
+        $days = (int)$this->input->post('days');
+        $deleteAll = ($days === 0);
+
+        if ($deleteAll) {
+            $count = $this->db->count_all('security_audit_logs');
+            $this->db->empty_table('security_audit_logs');
+            // Re-seed the hash chain anchor so future events still chain
+            $this->db->insert('security_audit_anchors', [
+                'anchor_hash' => hash('sha256', 'FBMSO-RESET-' . time()),
+                'created_at'  => date('Y-m-d H:i:s'),
+            ]);
+            $this->session->set_flashdata('success', 'Deleted ALL ' . $count . ' security events. Hash chain re-anchored.');
+        } else {
+            if ($days < 1) $days = 30;
+            $cutoff = date('Y-m-d H:i:s', time() - ($days * 86400));
+            $count = $this->db->where('event_time <', $cutoff)->count_all_results('security_audit_logs');
+            $this->db->where('event_time <', $cutoff)->delete('security_audit_logs');
+            $this->session->set_flashdata('success', 'Deleted ' . $count . ' security events older than ' . $days . ' days.');
+        }
+        redirect('Securityadmin');
+    }
+
+    /**
+     * Purge device records (Security/devices page).
+     * Super Admin only.
+     */
+    public function purge_devices()
+    {
+        $level = (string)$this->session->userdata('level');
+        if (!in_array($level, ['Super Admin'], true)) {
+            show_error('Access Denied — Super Admin only.', 403);
+        }
+
+        if ($this->input->method() !== 'post') {
+            redirect('Security/devices');
+            return;
+        }
+
+        $days = (int)$this->input->post('days');
+        $deleteAll = ($days === 0);
+
+        if ($deleteAll) {
+            $count = $this->db->count_all('user_devices');
+            $this->db->empty_table('user_devices');
+            $this->session->set_flashdata('success', 'Deleted ALL ' . $count . ' device records.');
+        } else {
+            if ($days < 1) $days = 30;
+            $cutoff = date('Y-m-d H:i:s', time() - ($days * 86400));
+            $count = $this->db->where('last_seen_at <', $cutoff)->count_all_results('user_devices');
+            $this->db->where('last_seen_at <', $cutoff)->delete('user_devices');
+            $this->session->set_flashdata('success', 'Deleted ' . $count . ' devices not seen in ' . $days . ' days.');
+        }
+        redirect('Security/devices');
+    }
+
+    /**
+     * Purge session records (Security/sessions page).
+     * Super Admin only. Does NOT kick out currently-logged-in users —
+     * it only clears the session tracking table.
+     */
+    public function purge_sessions()
+    {
+        $level = (string)$this->session->userdata('level');
+        if (!in_array($level, ['Super Admin'], true)) {
+            show_error('Access Denied — Super Admin only.', 403);
+        }
+
+        if ($this->input->method() !== 'post') {
+            redirect('Security/sessions');
+            return;
+        }
+
+        $days = (int)$this->input->post('days');
+        $deleteAll = ($days === 0);
+
+        if ($deleteAll) {
+            $count = $this->db->count_all('user_security_sessions');
+            $this->db->empty_table('user_security_sessions');
+            $this->session->set_flashdata('success', 'Deleted ALL ' . $count . ' session records. (Active users are NOT kicked out — only tracking data cleared.)');
+        } else {
+            if ($days < 1) $days = 7;
+            $cutoff = date('Y-m-d H:i:s', time() - ($days * 86400));
+            $count = $this->db->where('last_activity_at <', $cutoff)->count_all_results('user_security_sessions');
+            $this->db->where('last_activity_at <', $cutoff)->delete('user_security_sessions');
+            $this->session->set_flashdata('success', 'Deleted ' . $count . ' sessions older than ' . $days . ' days.');
+        }
+        redirect('Security/sessions');
+    }
 }

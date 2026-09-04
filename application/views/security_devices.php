@@ -15,7 +15,16 @@ require_once APPPATH . 'views/security_partials.php';
     <div class="row"><div class="col-12">
       <div class="page-title-box d-flex justify-content-between align-items-center">
         <h4 class="page-title mb-0">Devices</h4>
-        <a href="<?= base_url('Security'); ?>" class="btn btn-sm btn-outline-secondary">Back to Security</a>
+        <div>
+          <form method="post" action="<?= base_url('Securityadmin/purge_devices') ?>" style="display:inline"
+                onsubmit="return confirm('Delete device records?\n\n0 = delete ALL\n30 = older than 30 days\n\nThis cannot be undone.')">
+            <input type="number" name="days" value="0" min="0" max="365"
+                   style="width:70px;display:inline-block" class="form-control form-control-sm d-inline-block"
+                   title="0 = delete all, or enter days">
+            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="mdi mdi-delete"></i> Purge</button>
+          </form>
+          <a href="<?= base_url('Security'); ?>" class="btn btn-sm btn-outline-secondary">Back</a>
+        </div>
       </div>
     </div></div>
 

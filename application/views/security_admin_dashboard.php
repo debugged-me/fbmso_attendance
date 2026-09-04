@@ -106,7 +106,16 @@ require_once APPPATH . 'views/security_partials.php';
 
     <!-- Recent Security Events -->
     <div class="card">
-      <div class="card-header"><i class="mdi mdi-alert"></i> Recent Security Events</div>
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="mdi mdi-alert"></i> Recent Security Events</span>
+        <form method="post" action="<?= base_url('Securityadmin/purge_security_events') ?>" style="display:inline"
+              onsubmit="return confirm('Delete security events?\n\n0 = delete ALL\n30 = delete older than 30 days\n\nThis cannot be undone.')">
+          <input type="number" name="days" value="0" min="0" max="365"
+                 style="width:70px;display:inline-block" class="form-control form-control-sm d-inline-block"
+                 title="0 = delete all, or enter days">
+          <button type="submit" class="btn btn-sm btn-outline-danger"><i class="mdi mdi-delete"></i> Purge</button>
+        </form>
+      </div>
       <div class="table-responsive">
         <table class="table table-sm table-hover mb-0">
           <thead><tr><th>Time</th><th>Event</th><th>Actor</th><th>Target</th><th>IP</th><th>Description</th></tr></thead>
