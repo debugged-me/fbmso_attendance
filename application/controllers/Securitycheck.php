@@ -463,6 +463,15 @@ class Securitycheck extends CI_Controller
     {
         $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
 
+        // Format a DB datetime (Y-m-d H:i:s) as "Sept 3, 2026 · 11:54 PM".
+        $fmtDate = function ($s) {
+            $ts = strtotime((string)$s);
+            if ($ts === false) return (string)$s;
+            $m = date('M', $ts);
+            if ($m === 'Sep') $m = 'Sept';
+            return $m . date(' j, Y &middot; g:i A', $ts);
+        };
+
         // Written as prose rather than tables. A wall of counters gets skimmed
         // and then ignored; the point of a daily report is that somebody
         // actually reads it and notices when a number is wrong.
@@ -533,7 +542,7 @@ class Securitycheck extends CI_Controller
             . ($ok ? 'Nothing looks wrong' : 'Something looks wrong with the security log')
             . '</div>';
         $h .= '<div style="opacity:.9;font-size:13px;margin-top:3px">'
-            . $e(date('l, j F Y \a\t H:i')) . ' &middot; covering the last ' . (int)$hours . ' hours</div>';
+            . $e(date('l, j F Y \a\t g:i A')) . ' &middot; covering the last ' . (int)$hours . ' hours</div>';
         $h .= '</div><div style="border:1px solid #d8dde3;border-top:none;padding:22px;border-radius:0 0 6px 6px">';
 
         // ---- the alarming part, told as a sequence -----------------------
@@ -543,10 +552,10 @@ class Securitycheck extends CI_Controller
 
             if ($prev) {
                 $h .= $flow(array(
-                    'At ' . substr((string)$prev['checked_at'], 0, 16) . '  the log held '
+                    'At ' . $fmtDate($prev['checked_at']) . '  the log held '
                         . (int)$prev['total_records'] . ' records, ending at #' . (int)$prev['last_record_id'],
                     'Between then and now, records went missing',
-                    'At ' . date('Y-m-d H:i') . '  it holds ' . $state['total']
+                    'At ' . $fmtDate(date('Y-m-d H:i:s')) . '  it holds ' . $state['total']
                         . ' records, ending at #' . ($state['last_id'] === null ? '-' : $state['last_id']),
                 ));
             }
@@ -667,7 +676,7 @@ class Securitycheck extends CI_Controller
                 if ($r['changed_field'] !== null && $r['changed_field'] !== '') {
                     $groups[$key]['fields'][] = $r['changed_field'] . ':  '
                         . ($r['old_value'] === null || $r['old_value'] === '' ? '(empty)' : $r['old_value'])
-                        . '   ->   '
+                        . '  &rarr;  '
                         . ($r['new_value'] === null || $r['new_value'] === '' ? '(empty)' : $r['new_value']);
                 }
             }
@@ -686,21 +695,30 @@ class Securitycheck extends CI_Controller
                     $who .= ' (' . $count . ' fields)';
                 }
 
-                $steps = array(
-                    substr((string)$r['event_time'], 0, 19),
-                    $who,
-                    $deviceLine($r),
-                );
-
-                if ($count) {
-                    foreach ($g['fields'] as $f) {
-                        $steps[] = $f;
-                    }
-                } elseif ($r['description']) {
-                    $steps[] = (string)$r['description'];
+                // A compact card per event: date header, who, device, then
+                // the changed fields listed underneath. Easier to scan than
+                // the old monospace down-arrow chain.
+                $h .= '<div style="background:#f7f8fa;border:1px solid #e3e7ec;border-radius:6px;'
+                    . 'padding:14px 16px;margin:12px 0">';
+                $h .= '<div style="font-weight:600;color:#1f2328;font-size:13px;margin-bottom:6px">'
+                    . $fmtDate($r['event_time']) . '</div>';
+                $h .= '<div style="font-size:14px;color:#1f2328;margin-bottom:4px">' . $e($who) . '</div>';
+                $dev = $deviceLine($r);
+                if ($dev !== '') {
+                    $h .= '<div style="font-size:12px;color:#6b7280;margin-bottom:8px">' . $e($dev) . '</div>';
                 }
 
-                $h .= $flow($steps);
+                if ($count) {
+                    $h .= '<div style="font-size:13px;color:#1f2328;border-top:1px solid #eceff2;margin-top:4px">';
+                    foreach ($g['fields'] as $f) {
+                        $h .= '<div style="padding:5px 0">' . $e($f) . '</div>';
+                    }
+                    $h .= '</div>';
+                } elseif ($r['description']) {
+                    $h .= '<div style="font-size:13px;color:#1f2328;border-top:1px solid #eceff2;'
+                        . 'margin-top:4px;padding:5px 0">' . $e((string)$r['description']) . '</div>';
+                }
+                $h .= '</div>';
             }
         }
 

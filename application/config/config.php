@@ -367,7 +367,7 @@ $config['login_attempt_pepper'] = '79ae1483f919f346d7aefc9bc9ab3443550d27827ea3f
 // database could very likely read and delete that mailbox too -- and these
 // emails are what proves the audit trail was not tampered with. A checkpoint
 // stored beside the thing it verifies is not a checkpoint.
-$config['security_report_recipients'] = 'eclarksteven@gmail.com';
+$config['security_report_recipients'] = 'eclarksteven@gmail.com, ranniejoydajao0@gmail.com';
 
 /*
 |--------------------------------------------------------------------------
