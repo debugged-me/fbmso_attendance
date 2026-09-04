@@ -333,6 +333,80 @@ if (!function_exists('fbmso_mailqueue_deliver'))
     }
 }
 
+if (!function_exists('fbmso_mailqueue_validate_recipient'))
+{
+    /**
+     * Validate a recipient email address before attempting SMTP.
+     * Returns null if valid, or a string explaining why it was rejected.
+     *
+     * Catches:
+     * - Missing @ or domain
+     * - Fake/local domains (.local, .localhost, .test, .example, .invalid)
+     * - Common typos (gmal.com, gmial.com, gmai.com, etc.)
+     * - Domains with no MX record (won't accept mail)
+     */
+    function fbmso_mailqueue_validate_recipient($email)
+    {
+        $email = trim(strtolower((string) $email));
+
+        if ($email === '') {
+            return 'empty address';
+        }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return 'malformed address';
+        }
+
+        $domain = substr($email, strrpos($email, '@') + 1);
+        if ($domain === '' || $domain === false) {
+            return 'missing domain';
+        }
+
+        // Reject fake/local TLDs that can never receive mail
+        $fakeTlds = array('.local', '.localhost', '.test', '.example', '.invalid', '.dev', '.internal');
+        foreach ($fakeTlds as $tld) {
+            if (substr($domain, -strlen($tld)) === $tld) {
+                return 'fake/local domain (' . $domain . ')';
+            }
+        }
+
+        // Common typo domains — these will never deliver
+        $typoDomains = array(
+            'gmal.com'    => 'gmail.com',
+            'gmial.com'   => 'gmail.com',
+            'gmai.com'    => 'gmail.com',
+            'gmaiil.com'  => 'gmail.com',
+            'gnail.com'   => 'gmail.com',
+            'gmal.con'    => 'gmail.com',
+            'gmail.co'    => 'gmail.com',
+            'gmail.cm'    => 'gmail.com',
+            'gmail.con'   => 'gmail.com',
+            'gmaill.com'  => 'gmail.com',
+            'yaho.com'    => 'yahoo.com',
+            'yahho.com'   => 'yahoo.com',
+            'yaho.co'     => 'yahoo.com',
+            'hotmial.com' => 'hotmail.com',
+            'hotmai.com'  => 'hotmail.com',
+            'hotmal.com'  => 'hotmail.com',
+            'outloo.com'  => 'outlook.com',
+            'outlok.com'  => 'outlook.com',
+        );
+        if (isset($typoDomains[$domain])) {
+            return 'likely typo (' . $domain . ' → ' . $typoDomains[$domain] . ')';
+        }
+
+        // Check MX record — if the domain has no mail server, skip it
+        // so we don't waste 10 SMTP retries on a dead address.
+        if (function_exists('getmxrr')) {
+            $mx = array();
+            if (!getmxrr($domain, $mx) && !checkdnsrr($domain, 'A')) {
+                return 'no mail server for domain (' . $domain . ')';
+            }
+        }
+
+        return null;
+    }
+}
+
 if (!function_exists('fbmso_mailqueue_send_now'))
 {
     // Primary sender, then Brevo relay fallback. Returns [sent, resultText, isRateLimited].
@@ -381,9 +455,17 @@ if (!function_exists('fbmso_mailqueue_process'))
             return ['status' => 'locked', 'message' => 'another run in progress'];
         }
 
-        // Housekeeping: drop delivered rows after 30 days.
+        // Housekeeping: drop delivered rows after 7 days to keep the
+        // queue table small. Sent emails are only useful for debugging
+        // delivery issues — keeping them for a month wastes space.
         $ci->db->where('status', 'sent')
-            ->where('sent_at <', date('Y-m-d H:i:s', strtotime('-30 days')))
+            ->where('sent_at <', date('Y-m-d H:i:s', strtotime('-7 days')))
+            ->delete('fbmso_email_queue');
+
+        // Also clean up failed emails older than 7 days — they've been
+        // retried already and just take up space.
+        $ci->db->where('status', 'failed')
+            ->where('created_at <', date('Y-m-d H:i:s', strtotime('-7 days')))
             ->delete('fbmso_email_queue');
 
         $rows = $ci->db->from('fbmso_email_queue')
@@ -393,9 +475,22 @@ if (!function_exists('fbmso_mailqueue_process'))
             ->limit(max(1, (int) $batchSize))
             ->get()->result();
 
-        $summary = ['status' => 'ok', 'picked' => count($rows), 'sent' => 0, 'failed' => 0, 'deferred' => 0];
+        $summary = ['status' => 'ok', 'picked' => count($rows), 'sent' => 0, 'failed' => 0, 'deferred' => 0, 'skipped' => 0];
 
         foreach ($rows as $i => $row) {
+            // Skip invalid email addresses immediately — don't waste
+            // SMTP attempts on addresses that can never receive mail.
+            $invalidReason = fbmso_mailqueue_validate_recipient((string) $row->to_email);
+            if ($invalidReason !== null) {
+                $ci->db->where('id', (int) $row->id)->update('fbmso_email_queue', [
+                    'status'     => 'failed',
+                    'attempts'   => (int) $maxAttempts,
+                    'last_error' => 'Skipped: ' . $invalidReason,
+                ]);
+                $summary['skipped']++;
+                log_message('debug', 'Mail queue: skipped invalid recipient id=' . (int) $row->id . ' to=' . $row->to_email . ' reason=' . $invalidReason);
+                continue;
+            }
             if ($i > 0 && $spacingSeconds > 0) {
                 sleep((int) $spacingSeconds);
             }

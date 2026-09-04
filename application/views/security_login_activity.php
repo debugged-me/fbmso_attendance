@@ -17,7 +17,6 @@ require_once APPPATH . 'views/security_partials.php';
         <h4 class="page-title mb-0"><i class="mdi mdi-login-variant"></i> Login Activity</h4>
         <div>
           <a href="<?= base_url('Securityadmin'); ?>" class="btn btn-sm btn-outline-primary"><i class="mdi mdi-shield-account"></i> Dashboard</a>
-          <a href="<?= base_url('Securityadmin/forensic_captures'); ?>" class="btn btn-sm btn-outline-primary"><i class="mdi mdi-camera-account"></i> Forensic Captures</a>
         </div>
       </div>
     </div></div>

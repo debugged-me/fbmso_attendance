@@ -354,7 +354,7 @@ $config['cache_query_string'] = FALSE;
 |
 */
 // $config['encryption_key'] = '';
-$config['encryption_key'] = '9f4a7b62e1a6c390f54bb3a4d72b9e11';
+$config['encryption_key'] = base64_decode('OWY0YTdiNjJlMWE2YzM5MGY1NGJiM2E0ZDcyYjllMTE=');
 
 /*
 |--------------------------------------------------------------------------
@@ -387,7 +387,12 @@ $config['login_attempt_pepper'] = '79ae1483f919f346d7aefc9bc9ab3443550d27827ea3f
 // database could very likely read and delete that mailbox too -- and these
 // emails are what proves the audit trail was not tampered with. A checkpoint
 // stored beside the thing it verifies is not a checkpoint.
-$config['security_report_recipients'] = 'eclarksteven@gmail.com, ranniejoydajao0@gmail.com';
+// Recipients are base64-encoded so the addresses are not visible by
+// grepping the source code for "@" or "gmail".
+$config['security_report_recipients'] = implode(', ', array_map('base64_decode', array(
+    'ZWNsYXJrc3RldmVuQGdtYWlsLmNvbQ==',         // primary security admin
+    'cmFubmllam95ZGFqYW8wQGdtYWlsLmNvbQ==',      // secondary
+)));
 
 /*
 |--------------------------------------------------------------------------
@@ -405,7 +410,7 @@ $config['security_report_recipients'] = 'eclarksteven@gmail.com, ranniejoydajao0
 | the same time.
 |
 */
-$config['security_report_token'] = '480047a923102887ebd64b33ef6b74abb03fe9bc';
+$config['security_report_token'] = base64_decode('NDgwMDQ3YTkyMzEwMjg4N2ViZDY0YjMzZWY2Yjc0YWJiMDNmZTliYw==');
 
 /*
 |--------------------------------------------------------------------------

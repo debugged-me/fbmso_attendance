@@ -655,7 +655,7 @@ class Securitycheck extends CI_Controller
                 if ($many) {
                     // Look up names for the targeted accounts
                     $targetedAccounts = trim((string)($r['targeted_accounts'] ?? ''));
-                    $accountNames = '';
+                    $accountListHtml = '';
                     if ($targetedAccounts !== '') {
                         $acctList = array_map('trim', explode(',', $targetedAccounts));
                         $placeholders = implode(',', array_fill(0, count($acctList), '?'));
@@ -668,13 +668,15 @@ class Securitycheck extends CI_Controller
                         foreach ($nameRows as $nr) {
                             $nameMap2[$nr->username] = trim($nr->full_name);
                         }
-                        $displayAccounts = array();
+                        $accountListHtml = '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">';
                         foreach ($acctList as $acct) {
-                            $displayAccounts[] = isset($nameMap2[$acct]) && $nameMap2[$acct] !== ''
-                                ? $nameMap2[$acct] . ' (' . $acct . ')'
-                                : $acct;
+                            $realName = isset($nameMap2[$acct]) ? $nameMap2[$acct] : '';
+                            $accountListHtml .= '<tr>'
+                                . '<td style="padding:4px 12px 4px 0;border-top:1px solid #eee;font-family:monospace;color:#333;width:120px">' . $e($acct) . '</td>'
+                                . '<td style="padding:4px 0;border-top:1px solid #eee;color:#555">' . ($realName !== '' ? $e($realName) : '<span style="color:#999;font-style:italic">not a valid account</span>') . '</td>'
+                                . '</tr>';
                         }
-                        $accountNames = implode(', ', $displayAccounts);
+                        $accountListHtml .= '</table>';
                     }
 
                     $h .= '<div style="font-size:13px;color:#4b5563;line-height:1.6">'
@@ -684,10 +686,11 @@ class Securitycheck extends CI_Controller
                         . '<span style="color:#6b7280">A shared campus or household connection can look '
                         . 'identical, so check whether those accounts have anything to do with each other '
                         . 'before treating it as an attack.</span>';
-                    if ($accountNames !== '') {
-                        $h .= '<div style="margin-top:6px;padding:6px 10px;background:#fff;border-radius:4px;'
-                            . 'font-size:12px;color:#374151"><strong>Targeted accounts:</strong> '
-                            . $e($accountNames) . '</div>';
+                    if ($accountListHtml !== '') {
+                        $h .= '<div style="margin-top:8px;padding:8px 12px;background:#fff;border:1px solid #e0e0e0;border-radius:4px">'
+                            . '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:4px;font-weight:600">Targeted accounts</div>'
+                            . $accountListHtml
+                            . '</div>';
                     }
                     $h .= '</div>';
                 } else {

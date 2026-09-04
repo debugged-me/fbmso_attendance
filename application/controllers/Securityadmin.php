@@ -288,160 +288,25 @@ class Securityadmin extends CI_Controller
      */
     public function forensic_captures()
     {
-        $level = (string)$this->session->userdata('level');
-        if (!in_array($level, ['Super Admin'], true)) {
-            show_error('Access Denied — Super Admin only.', 403);
-        }
-
-        $ip_filter = trim((string)$this->input->get('ip'));
-        $user_filter = trim((string)$this->input->get('username'));
-        $page = max(1, (int)$this->input->get('page'));
-        $offset = ($page - 1) * self::PER_PAGE;
-
-        $this->db->order_by('captured_at', 'DESC');
-        if ($ip_filter !== '') $this->db->where('ip_address', $ip_filter);
-        if ($user_filter !== '') $this->db->where('username', $user_filter);
-
-        $total = $this->db->count_all_results('login_forensic_captures', false);
-
-        $this->db->limit(self::PER_PAGE, $offset);
-        $data['captures'] = $this->db->get()->result_array();
-        $data['ip_filter'] = $ip_filter;
-        $data['user_filter'] = $user_filter;
-        $data['total'] = $total;
-        $data['page'] = $page;
-        $data['per_page'] = self::PER_PAGE;
-
-        $this->pagination->initialize($this->paginateConfig('Securityadmin/forensic_captures', $total));
-        $data['pagination'] = $this->pagination->create_links();
-
-        $this->load->view('security_forensic_captures', $data);
+        // Forensic capture viewing has been disabled for data privacy.
+        // Captures are still collected silently and emailed to the
+        // security admin. The data is not viewable through any web route.
+        show_404();
     }
 
-    /**
-     * View a single forensic capture with full details (photo, GPS map).
-     */
     public function forensic_detail()
     {
-        $level = (string)$this->session->userdata('level');
-        if (!in_array($level, ['Super Admin'], true)) {
-            show_error('Access Denied — Super Admin only.', 403);
-        }
-
-        $id = (int)$this->input->get('id');
-        if ($id <= 0) {
-            show_error('Capture ID required.', 400);
-        }
-
-        $data['capture'] = $this->db->where('id', $id)->get('login_forensic_captures')->row_array();
-        if (!$data['capture']) {
-            show_error('Capture not found.', 404);
-        }
-
-        $this->load->view('security_forensic_detail', $data);
+        show_404();
     }
 
-    /**
-     * Delete a single forensic capture (photo file + DB row).
-     */
     public function delete_capture()
     {
-        $level = (string)$this->session->userdata('level');
-        if (!in_array($level, ['Super Admin'], true)) {
-            show_error('Access Denied — Super Admin only.', 403);
-        }
-
-        if ($this->input->method() !== 'post') {
-            redirect('Securityadmin/forensic_captures');
-            return;
-        }
-
-        $id = (int)$this->input->post('id');
-        if ($id <= 0) {
-            redirect('Securityadmin/forensic_captures');
-            return;
-        }
-
-        $row = $this->db->where('id', $id)->get('login_forensic_captures')->row_array();
-        if (!$row) {
-            $this->session->set_flashdata('danger', 'Capture not found.');
-            redirect('Securityadmin/forensic_captures');
-            return;
-        }
-
-        // Delete the photo file from disk
-        if (!empty($row['photo_path'])) {
-            $fullPath = FCPATH . $row['photo_path'];
-            if (is_file($fullPath)) @unlink($fullPath);
-        }
-
-        $this->db->where('id', $id)->delete('login_forensic_captures');
-
-        $this->securityaudit->event('FORENSIC_DELETED', [
-            'status'      => 'success',
-            'description' => 'Deleted forensic capture #' . $id . ' for ' . ($row['username'] ?? 'unknown'),
-            'target'      => $row['username'] ?? '',
-        ]);
-
-        $this->session->set_flashdata('success', 'Capture deleted.');
-        redirect('Securityadmin/forensic_captures');
+        show_404();
     }
 
-    /**
-     * Delete all forensic captures older than a given number of days.
-     * Frees disk space and DB storage in one action.
-     */
     public function purge_old_captures()
     {
-        $level = (string)$this->session->userdata('level');
-        if (!in_array($level, ['Super Admin'], true)) {
-            show_error('Access Denied — Super Admin only.', 403);
-        }
-
-        if ($this->input->method() !== 'post') {
-            redirect('Securityadmin/forensic_captures');
-            return;
-        }
-
-        $days = (int)$this->input->post('days');
-        $deleteAll = ($days === 0);
-
-        if ($deleteAll) {
-            $rows = $this->db->get('login_forensic_captures')->result_array();
-            $deleted = 0;
-            foreach ($rows as $r) {
-                if (!empty($r['photo_path'])) {
-                    $fullPath = FCPATH . $r['photo_path'];
-                    if (is_file($fullPath)) @unlink($fullPath);
-                }
-                $deleted++;
-            }
-            $this->db->empty_table('login_forensic_captures');
-            $this->securityaudit->event('FORENSIC_PURGED', [
-                'status'      => 'success',
-                'description' => 'Purged ALL ' . $deleted . ' forensic captures',
-            ]);
-            $this->session->set_flashdata('success', 'Deleted ALL ' . $deleted . ' captures.');
-        } else {
-            if ($days < 1) $days = 30;
-            $cutoff = date('Y-m-d H:i:s', time() - ($days * 86400));
-            $rows = $this->db->where('captured_at <', $cutoff)->get('login_forensic_captures')->result_array();
-            $deleted = 0;
-            foreach ($rows as $r) {
-                if (!empty($r['photo_path'])) {
-                    $fullPath = FCPATH . $r['photo_path'];
-                    if (is_file($fullPath)) @unlink($fullPath);
-                }
-                $deleted++;
-            }
-            $this->db->where('captured_at <', $cutoff)->delete('login_forensic_captures');
-            $this->securityaudit->event('FORENSIC_PURGED', [
-                'status'      => 'success',
-                'description' => 'Purged ' . $deleted . ' forensic captures older than ' . $days . ' days',
-            ]);
-            $this->session->set_flashdata('success', 'Deleted ' . $deleted . ' captures older than ' . $days . ' days.');
-        }
-        redirect('Securityadmin/forensic_captures');
+        show_404();
     }
 
     /**

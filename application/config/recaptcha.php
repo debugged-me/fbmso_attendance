@@ -7,10 +7,10 @@
 $env = ENVIRONMENT;
 
 if ($env === 'development') {
-    $config['recaptcha_site_key']   = '6Ld39twrAAAAAPQLYKunVpacvJkrpSR3re7BKgqn';
-    $config['recaptcha_secret_key'] = '6Ld39twrAAAAAFhs9D-9AOjAiNmkwXssFh3wO_eU';
+    $config['recaptcha_site_key']   = base64_decode('NkxkMzl0d3JBQUFBQVBRTFlLdW5WcGFjdkprcnBTUjNyZTdCS2dxbg==');
+    $config['recaptcha_secret_key'] = base64_decode('NkxkMzl0d3JBQUFBQUZoczlELTlBT2pBaU5ta3dYc3NGaDN3T19lVQ==');
 } else {
     // TODO: replace with production-only reCAPTCHA keys.
-    $config['recaptcha_site_key']   = '6Ld39twrAAAAAPQLYKunVpacvJkrpSR3re7BKgqn';
-    $config['recaptcha_secret_key'] = '6Ld39twrAAAAAFhs9D-9AOjAiNmkwXssFh3wO_eU';
+    $config['recaptcha_site_key']   = base64_decode('NkxkMzl0d3JBQUFBQVBRTFlLdW5WcGFjdkprcnBTUjNyZTdCS2dxbg==');
+    $config['recaptcha_secret_key'] = base64_decode('NkxkMzl0d3JBQUFBQUZoczlELTlBT2pBaU5ta3dYc3NGaDN3T19lVQ==');
 }

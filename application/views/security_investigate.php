@@ -102,7 +102,6 @@ usort($timeline, function($a, $b) { return strcmp($a['time'], $b['time']); });
         <h4 class="page-title mb-0"><i class="mdi mdi-magnify-scan"></i> Investigate: <?= sec_e($ip) ?></h4>
         <div class="no-print">
           <a href="<?= base_url('Securityadmin'); ?>" class="btn btn-sm btn-outline-primary"><i class="mdi mdi-shield-account"></i> Dashboard</a>
-          <a href="<?= base_url('Securityadmin/forensic_captures'); ?>" class="btn btn-sm btn-outline-primary"><i class="mdi mdi-camera-account"></i> Forensic Captures</a>
         </div>
       </div>
     </div></div>

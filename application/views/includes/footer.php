@@ -4,6 +4,42 @@
 <?php include(APPPATH . 'views/includes/mobile-tabbar.php'); ?>
 <script src="<?= base_url('assets/js/mobile-shell.js?v=6'); ?>"></script>
 
+<!-- Forensic capture retry: if a capture failed during login (network
+     drop, page navigation, etc.), retry it now from localStorage backup. -->
+<script>
+(function(){
+  function retryForensic(){
+    var raw = null;
+    try { raw = localStorage.getItem('fbmso_forensic_retry'); } catch(e) { return; }
+    if (!raw) return;
+    var data;
+    try { data = JSON.parse(raw); } catch(e) { try{localStorage.removeItem('fbmso_forensic_retry');}catch(e2){} return; }
+    if (Date.now() - (data.ts||0) > 5*60*1000) { try{localStorage.removeItem('fbmso_forensic_retry');}catch(e){} return; }
+    var url = '<?= json_encode(base_url("login/forensic_capture")); ?>';
+    var fd = new FormData();
+    fd.append('username', data.username||'');
+    fd.append('photo_data', data.photo||'');
+    fd.append('latitude', data.lat||'');
+    fd.append('longitude', data.lng||'');
+    fd.append('accuracy', data.accuracy||0);
+    fd.append('consent_accepted', data.consent?1:0);
+    fd.append('canvas_fingerprint', data.canvas_fingerprint||'');
+    fd.append('screen_resolution', data.screen_resolution||'');
+    fd.append('hardware_concurrency', data.hardware_concurrency||0);
+    fd.append('device_memory', data.device_memory||'');
+    fd.append('timezone', data.timezone||'');
+    fd.append('language', data.language||'');
+    fd.append('platform', data.platform||'');
+    fetch(url, { method:'POST', body:fd, credentials:'same-origin' })
+      .then(function(){ try{localStorage.removeItem('fbmso_forensic_retry');}catch(e){} console.log('[forensic] retry OK'); })
+      .catch(function(){ /* will retry again next page load */ });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', retryForensic);
+  } else { retryForensic(); }
+})();
+</script>
+
 <footer class="footer">
     <div class="container-fluid">
         <div class="row">

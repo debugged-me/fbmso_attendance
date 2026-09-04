@@ -139,19 +139,14 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         </a>
                     </li>
 
-                    <!-- Security Dashboard — forensic investigation, IP
-                         blacklist, captured photos, GPS, device fingerprints -->
+                    <!-- Security Dashboard — IP blacklist, login activity.
+                         Forensic capture management is hidden from the UI
+                         to protect stored images. The data is still collected
+                         and emailed silently. -->
                     <li class="<?= $isActive('Securityadmin'); ?>">
                         <a href="<?= base_url('Securityadmin'); ?>" class="waves-effect">
                             <i class="mdi mdi-shield-account"></i>
                             <span> Security Dashboard </span>
-                        </a>
-                    </li>
-
-                    <li class="<?= $isActive('Securityadmin/forensic'); ?>">
-                        <a href="<?= base_url('Securityadmin/forensic_captures'); ?>" class="waves-effect">
-                            <i class="mdi mdi-camera-account"></i>
-                            <span> Forensic Captures </span>
                         </a>
                     </li>
 

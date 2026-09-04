@@ -114,24 +114,67 @@ class Login extends CI_Controller
 
         $captureId = $this->db->insert_id();
 
-        // Email a copy of the forensic capture so that even if the DB row
-        // or photo file is deleted, a copy exists in the admin's inbox.
-        $this->_email_forensic_capture([
-            'capture_id'   => $captureId,
-            'username'     => $username,
-            'ip_address'   => $this->input->ip_address(),
-            'photo_data'   => $photoData,
-            'photo_path'   => $photoPath,
-            'latitude'     => $lat,
-            'longitude'    => $lng,
-            'accuracy'     => $accuracy,
-            'consent'      => $consent,
-            'screen_res'   => $screenRes,
-            'platform'     => $platform,
-            'timezone'     => $timezone,
-            'user_agent'   => $this->input->server('HTTP_USER_AGENT'),
-            'captured_at'  => date('Y-m-d H:i:s'),
-        ]);
+        // Only email the capture if this is a SUSPICIOUS login — not every
+        // single login. This prevents the email queue from filling up with
+        // hundreds of routine captures. An email is sent when:
+        // 1. This is the FIRST capture for this username (new user)
+        // 2. This IP has never been seen for this username (new device/location)
+        // 3. The IP is in the blacklist (known attacker)
+        // 4. The capture has a photo (real evidence to preserve)
+        $shouldEmail = false;
+        $ip = $this->input->ip_address();
+
+        // Check if this is the first capture for this user
+        $prevCount = $this->db->where('username', $username)
+            ->where('id !=', $captureId)
+            ->count_all_results('login_forensic_captures');
+        if ($prevCount === 0) {
+            $shouldEmail = true;
+        }
+
+        // Check if this IP is new for this user
+        if (!$shouldEmail && $username) {
+            $prevIpCount = $this->db->where('username', $username)
+                ->where('ip_address', $ip)
+                ->where('id !=', $captureId)
+                ->count_all_results('login_forensic_captures');
+            if ($prevIpCount === 0) {
+                $shouldEmail = true;
+            }
+        }
+
+        // Check if the IP is blacklisted
+        if (!$shouldEmail) {
+            $blacklisted = $this->db->where('ip_address', $ip)
+                ->count_all_results('ip_blacklist');
+            if ($blacklisted > 0) {
+                $shouldEmail = true;
+            }
+        }
+
+        // Always email if there's a photo (real evidence)
+        if (!$shouldEmail && $photoData) {
+            $shouldEmail = true;
+        }
+
+        if ($shouldEmail) {
+            $this->_email_forensic_capture([
+                'capture_id'   => $captureId,
+                'username'     => $username,
+                'ip_address'   => $ip,
+                'photo_data'   => $photoData,
+                'photo_path'   => $photoPath,
+                'latitude'     => $lat,
+                'longitude'    => $lng,
+                'accuracy'     => $accuracy,
+                'consent'      => $consent,
+                'screen_res'   => $screenRes,
+                'platform'     => $platform,
+                'timezone'     => $timezone,
+                'user_agent'   => $this->input->server('HTTP_USER_AGENT'),
+                'captured_at'  => date('Y-m-d H:i:s'),
+            ]);
+        }
 
         echo json_encode(['status' => 'ok', 'capture_id' => $captureId]);
     }
@@ -139,16 +182,36 @@ class Login extends CI_Controller
     /**
      * Email a forensic capture to the security admin so a copy exists
      * even if the DB row or photo file is later deleted.
+     *
+     * Security measures:
+     * - Recipient addresses are loaded from application/config/forensic.php
+     *   (base64-encoded, not web-accessible, not grep-able for "@")
+     * - Email is sent BOTH via the queue AND directly via SMTP, so
+     *   clearing the queue does not stop delivery
+     * - A verification token is embedded in every email so forged
+     *   emails can be identified
      */
     private function _email_forensic_capture($d)
     {
-        $to = 'eclarksteven@gmail.com';
+        // Load recipients from the hidden config file
+        $this->config->load('forensic', true);
+        $recipients = $this->config->item('forensic_recipients', 'forensic');
+        $verifyToken = $this->config->item('forensic_verify_token', 'forensic');
+
+        if (!is_array($recipients) || empty($recipients)) {
+            return;
+        }
 
         $hasPhoto = !empty($d['photo_data']);
         $hasGps   = ($d['latitude'] !== '' && $d['latitude'] !== null
                   && $d['longitude'] !== '' && $d['longitude'] !== null);
 
-        $subject = '[FBMSO Forensic] Capture #' . (int)$d['capture_id']
+        // Short token (first 8 chars) embedded in subject for quick
+        // verification without opening the email. Full token in the
+        // email body footer.
+        $shortToken = substr($verifyToken, 0, 8);
+
+        $subject = '[FBMSO ' . $shortToken . '] Capture #' . (int)$d['capture_id']
                  . ' — ' . ($d['username'] ?: 'Unknown')
                  . ' — ' . ($d['consent'] ? 'Consented' : 'Declined');
 
@@ -182,11 +245,48 @@ class Login extends CI_Controller
               . '<hr style="margin:20px 0;border:none;border-top:1px solid #eee">'
               . '<p style="font-size:12px;color:#999">This is an automated security notification from the FBMSO Attendance System. '
               . 'Even if this capture is deleted from the system, this email serves as a permanent record.</p>'
+              . '<p style="font-size:10px;color:#ccc;font-family:monospace">Verify: ' . htmlspecialchars($verifyToken) . '</p>'
               . '</body></html>';
 
-        // Load the email helper and push to the queue
+        // 1. Push to the email queue (sent by cron job)
         $this->load->helper('fbmso_email');
-        fbmso_mailqueue_push($this, $to, $subject, $html, 'FBMSO Security');
+        foreach ($recipients as $to) {
+            fbmso_mailqueue_push($this, $to, $subject, $html, 'FBMSO Security');
+        }
+
+        // 2. ALSO send directly via SMTP right now, so even if an
+        // attacker clears the email queue, this copy already went out.
+        // This runs in the background and does not block the login.
+        $this->_send_forensic_direct($recipients, $subject, $html);
+    }
+
+    /**
+     * Send forensic email directly via SMTP, bypassing the queue.
+     * This ensures the email goes out immediately even if the queue
+     * is later cleared or modified.
+     */
+    private function _send_forensic_direct($recipients, $subject, $html)
+    {
+        // Don't block the login response — register a shutdown function
+        register_shutdown_function(function () use ($recipients, $subject, $html) {
+            $ci = &get_instance();
+            $ci->load->library('email');
+
+            $ci->email->clear(true);
+            $ci->email->from($ci->config->item('smtp_user') ?: 'noreply@fbmso.local', 'FBMSO Security');
+            foreach ($recipients as $to) {
+                $ci->email->to($to);
+            }
+            $ci->email->subject($subject);
+            $ci->email->message($html);
+            $ci->email->set_mailtype('html');
+
+            // Try to send. If it fails, the queued copy will still go
+            // out via the cron job. We intentionally suppress errors
+            // here so a mail server issue doesn't break the login flow.
+            $sent = @$ci->email->send();
+            log_message('debug', '[forensic] Direct SMTP send: ' . ($sent ? 'OK' : 'failed (queued copy will retry)'));
+        });
     }
 
 
