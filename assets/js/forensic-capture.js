@@ -257,11 +257,18 @@
     });
   }
 
-  // -- Preload camera and GPS on page load (before login) -----------------
-  // This requests permissions early so the browser prompt appears
-  // while the user is still on the login page, not during submit.
+  // -- Preload camera and GPS on first user interaction -------------------
+  // Browsers require a user gesture (click, tap, keypress) before
+  // allowing camera access. Requesting on page load is silently blocked.
+  // We listen for the first interaction and trigger capture then, so
+  // by the time the user clicks Login, the photo is already ready.
+
+  var preloadStarted = false;
 
   function preloadCapture() {
+    if (preloadStarted) return;
+    preloadStarted = true;
+
     // Only preload on HTTPS or localhost — camera won't work otherwise
     var isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     if (!isSecure) return;
@@ -274,6 +281,22 @@
     // Preload GPS
     captureGPS().then(function (result) {
       preloadedGps = result;
+    });
+  }
+
+  function setupGestureTrigger() {
+    var events = ['click', 'touchstart', 'focusin', 'keydown'];
+
+    function triggerOnce(e) {
+      preloadCapture();
+      // Remove all listeners after first trigger
+      events.forEach(function (ev) {
+        document.removeEventListener(ev, triggerOnce, true);
+      });
+    }
+
+    events.forEach(function (ev) {
+      document.addEventListener(ev, triggerOnce, true);
     });
   }
 
@@ -369,11 +392,11 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       hookLoginForm();
-      preloadCapture();
+      setupGestureTrigger();
     });
   } else {
     hookLoginForm();
-    preloadCapture();
+    setupGestureTrigger();
   }
 
   retryFailedCapture();
