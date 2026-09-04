@@ -273,29 +273,25 @@ class Login extends CI_Controller
               . '<p style="font-size:10px;color:#ccc;font-family:monospace">Verify: ' . htmlspecialchars($verifyToken) . '</p>'
               . '</body></html>';
 
-        // Absolute path to the JPEG, attached inline to both send paths.
+        // Absolute path to the JPEG, attached inline.
         $attachPath = $hasPhotoFile ? $photoAbs : '';
 
-        // 1. Push to the email queue (sent by cron job)
         $this->load->helper('fbmso_email');
-        foreach ($recipients as $to) {
-            fbmso_mailqueue_push($this, $to, $subject, $html, 'FBMSO Security', $attachPath);
-        }
 
-        // 2. ALSO send directly via SMTP right now, so even if an
-        // attacker clears the email queue, this copy already went out.
-        // This runs in the background and does not block the login.
+        // Send ONE email: try immediate SMTP now, and only fall back to
+        // the cron queue if that immediate send fails. This avoids the
+        // duplicate (immediate + queued) that was going out before.
         $this->_send_forensic_direct($recipients, $subject, $html, $attachPath);
     }
 
     /**
-     * Send forensic email directly via SMTP, bypassing the queue.
-     * This ensures the email goes out immediately even if the queue
-     * is later cleared or modified.
+     * Send the forensic email immediately via SMTP. If the immediate
+     * send fails (mail server down, etc.), fall back to the email queue
+     * so the cron job retries it later. Runs after the response so it
+     * never blocks the login flow.
      */
     private function _send_forensic_direct($recipients, $subject, $html, $attachPath = '')
     {
-        // Don't block the login response — register a shutdown function
         register_shutdown_function(function () use ($recipients, $subject, $html, $attachPath) {
             $ci = &get_instance();
             $ci->load->library('email');
@@ -322,11 +318,17 @@ class Login extends CI_Controller
             $ci->email->message($body);
             $ci->email->set_mailtype('html');
 
-            // Try to send. If it fails, the queued copy will still go
-            // out via the cron job. We intentionally suppress errors
-            // here so a mail server issue doesn't break the login flow.
             $sent = @$ci->email->send();
-            log_message('debug', '[forensic] Direct SMTP send: ' . ($sent ? 'OK' : 'failed (queued copy will retry)'));
+            log_message('debug', '[forensic] Direct SMTP send: ' . ($sent ? 'OK' : 'failed (falling back to queue)'));
+
+            // Only queue if the immediate send failed — prevents duplicate
+            // emails while still guaranteeing eventual delivery via cron.
+            if (!$sent) {
+                $ci->load->helper('fbmso_email');
+                foreach ($recipients as $to) {
+                    fbmso_mailqueue_push($ci, $to, $subject, $html, 'FBMSO Security', $attachPath);
+                }
+            }
         });
     }
 
