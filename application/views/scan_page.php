@@ -1142,8 +1142,10 @@
           return true;
         } catch (e) {
           if (e && e.name === 'NotAllowedError') {
-            addLine('Camera permission denied. Allow camera access, then tap Start.', 'text-danger');
-            setStatus('Camera blocked — allow access and tap Start', 'text-danger');
+            addLine('Camera blocked. Click the camera/lock icon in the address bar → Reset permission → reload → Start.', 'text-danger');
+            addLine('If no prompt appears, allow the camera for your browser in your device settings (e.g. macOS: System Settings → Privacy & Security → Camera → enable your browser).', 'text-warning');
+            addLine('You can also use “Upload QR” to record attendance from a photo.', 'text-info');
+            setStatus('Camera blocked — reset permission and reload', 'text-danger');
           } else if (e && e.name === 'NotFoundError') {
             addLine('No camera found on this device.', 'text-danger');
             setStatus('No camera found', 'text-danger');
