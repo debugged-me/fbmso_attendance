@@ -114,7 +114,7 @@ class CsrfInjectHook
 
         $tags = '<meta name="csrf-token-name" content="' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '">'
               . '<meta name="csrf-token" content="' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '">'
-              . '<script src="' . htmlspecialchars(base_url('assets/js/csrf.js?v=2'), ENT_QUOTES, 'UTF-8') . '"></script>';
+              . '<script src="' . htmlspecialchars(base_url('assets/js/csrf.js?v=3'), ENT_QUOTES, 'UTF-8') . '"></script>';
 
         // Before </head> so the prefilter is registered before page scripts
         // start firing requests.

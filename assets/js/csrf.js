@@ -40,11 +40,22 @@
   // This file is injected into <head>, but the app loads jQuery at the end of
   // <body>. Registering immediately would therefore do nothing at all, and
   // every AJAX POST would come back 403. Wait for jQuery to exist.
-  function registerJqueryPrefilter() {
-    if (!window.jQuery || registerJqueryPrefilter.done) return;
-    registerJqueryPrefilter.done = true;
+  //
+  // Complication: some pages load jQuery twice. The registration form loads
+  // jQuery 3.6.0 in <head> (so this prefilter attaches early) and then loads
+  // vendor.min.js at the end of <body>, which bundles jQuery 3.4.1 and
+  // overwrites window.jQuery. View scripts capture window.jQuery at their own
+  // load time, so they end up calling $.post on the 3.4.1 instance -- which
+  // never received the prefilter -- and every AJAX POST 403s.
+  //
+  // Tagging the instance (not a one-shot flag) lets us re-register on the
+  // replacement jQuery when DOMContentLoaded/load fires, after vendor.min.js
+  // has run.
+  function attachPrefilter($) {
+    if (!$ || $.__csrfPrefilterAttached) return;
+    $.__csrfPrefilterAttached = true;
 
-    jQuery.ajaxPrefilter(function (options) {
+    $.ajaxPrefilter(function (options) {
       if (!options.type || options.type.toUpperCase() !== 'POST') return;
       if (!isSameOrigin(options.url)) return;
 
@@ -76,11 +87,15 @@
     });
   }
 
-  registerJqueryPrefilter();
-  if (!registerJqueryPrefilter.done) {
-    document.addEventListener('DOMContentLoaded', registerJqueryPrefilter);
-    window.addEventListener('load', registerJqueryPrefilter);
+  function registerJqueryPrefilter() {
+    attachPrefilter(window.jQuery);
   }
+
+  // Try now (head jQuery), and re-try after the body scripts -- including a
+  // replacement jQuery from a vendor bundle -- have finished loading.
+  registerJqueryPrefilter();
+  document.addEventListener('DOMContentLoaded', registerJqueryPrefilter);
+  window.addEventListener('load', registerJqueryPrefilter);
 
   // --- fetch() -------------------------------------------------------
   if (window.fetch) {
