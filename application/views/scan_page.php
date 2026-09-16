@@ -741,14 +741,17 @@
           if (!qr) qr = createQrReader();
 
           const cfg = isMobile ? mobileConfig() : defaultConfig();
+          // html5-qrcode validates this object itself and only accepts
+          // facingMode as a plain string or {exact: ...}; {ideal: ...} throws
+          // "'facingMode' should be string or object with exact as key".
+          // The string form is used rather than {exact:'environment'} so a
+          // device with no rear camera falls back instead of hard-failing.
           const cameraConfig = cameraDeviceId ? {
             deviceId: {
               exact: cameraDeviceId
             }
           } : {
-            facingMode: {
-              ideal: 'environment'
-            }
+            facingMode: 'environment'
           };
 
           await qr.start(cameraConfig, cfg, onScanSuccess, onScanFailure);

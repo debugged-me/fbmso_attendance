@@ -955,7 +955,9 @@ readerEl.style.height = Math.round(w / ar) + 'px';
         try{
           if (!qr) qr = createQrReader();
           const cfgObj = cfg(scannerIsMobile ? 'mobile':'desktop');
-          const cameraConfig = id ? { deviceId:{ exact:id } } : { facingMode:{ ideal:'environment' } };
+          // facingMode must be a string or {exact:...} here — html5-qrcode
+          // rejects {ideal:...} before it ever reaches getUserMedia.
+          const cameraConfig = id ? { deviceId:{ exact:id } } : { facingMode: 'environment' };
 
           await qr.start(
             cameraConfig,
