@@ -405,7 +405,7 @@
   <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.select.min.js"></script>
 
   <!-- html5-qrcode -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="<?= base_url(); ?>assets/libs/html5-qrcode/html5-qrcode.min.js?v=2.3.8"></script>
 
   <?php
   $csrf_name  = method_exists($this->security ?? null, 'get_csrf_token_name') ? $this->security->get_csrf_token_name() : '';
@@ -481,13 +481,13 @@
       const ua = navigator.userAgent || navigator.vendor || '';
       const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
+      const hasCoarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || isIOS || (hasCoarsePointer && Math.min(screen.width, screen.height) <= 1024);
 
       // === Behavior defaults ===
       let pauseOnHit = true;
       let desktopBoost = true;
-      let forceDisableFlip = true;
-      const MOBILE_DEFAULT_ZOOM = 2.0;
+      let forceDisableFlip = false;
 
       // HTTPS requirement hint for iOS
       if ((isIOS || isSafari) && location.protocol !== 'https:' && location.hostname !== 'localhost') {
@@ -623,52 +623,45 @@
         return false;
       }
 
-      async function iosPrePermission() {
-        try {
-          const tmp = await navigator.mediaDevices.getUserMedia({
-            audio: false,
-            video: {
-              facingMode: {
-                ideal: 'environment'
-              }
-            }
-          });
-          tmp.getTracks().forEach(t => t.stop());
-          return true;
-        } catch (e) {
-          addLine('iOS getUserMedia permission failed: ' + e.name, 'text-danger');
-          setStatus('Camera permission denied on iOS', 'text-danger');
-          return false;
+      function createQrReader() {
+        if (typeof Html5Qrcode === 'undefined') {
+          throw new Error('Scanner library did not load (assets/libs/html5-qrcode). Reload the page; if it persists the file is missing from the deploy.');
         }
+        const options = {
+          verbose: false,
+          experimentalFeatures: {
+            // The native detector has intermittent no-read failures on mobile
+            // browsers. ZXing is slower on desktop, but more reliable on phones.
+            useBarCodeDetectorIfSupported: !isMobile
+          }
+        };
+        if (typeof Html5QrcodeSupportedFormats !== 'undefined') {
+          options.formatsToSupport = [Html5QrcodeSupportedFormats.QR_CODE];
+        }
+        return new Html5Qrcode('reader', options);
       }
 
-      function iosConfig() {
+      function mobileConfig() {
         return {
-          fps: 18,
-          rememberLastUsedCamera: true,
-          willReadFrequently: true,
-          disableFlip: !!forceDisableFlip,
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true
+          fps: 10,
+          qrbox: function(viewW, viewH) {
+            const size = Math.floor(Math.min(viewW, viewH) * 0.82);
+            return {
+              width: size,
+              height: size
+            };
           },
-          videoConstraints: {
-            facingMode: {
-              ideal: 'environment'
-            },
-            width: {
-              ideal: 1920
-            },
-            height: {
-              ideal: 1080
-            }
-          }
+          rememberLastUsedCamera: true,
+          showTorchButtonIfSupported: true,
+          willReadFrequently: true,
+          disableFlip: false
         };
       }
 
       function defaultConfig() {
         const useQrbox = desktopBoost;
         return {
-          fps: 24,
+          fps: 15,
           qrbox: useQrbox ? function(viewW, viewH) {
             const size = Math.floor(Math.min(viewW, viewH) * 0.72);
             return {
@@ -680,24 +673,7 @@
           rememberLastUsedCamera: true,
           showTorchButtonIfSupported: true,
           willReadFrequently: true,
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true
-          },
-          disableFlip: !!forceDisableFlip,
-          videoConstraints: {
-            facingMode: {
-              ideal: 'environment'
-            },
-            width: {
-              ideal: desktopBoost ? 2560 : 1920
-            },
-            height: {
-              ideal: desktopBoost ? 1440 : 1080
-            },
-            advanced: [{
-              focusMode: 'continuous'
-            }]
-          }
+          disableFlip: !!forceDisableFlip
         };
       }
 
@@ -729,23 +705,42 @@
         }
       }
 
+      // Turns a camera failure into the actual reason. The old code reported
+      // every failure as a permission problem, which hid missing-library and
+      // camera-in-use errors behind advice that could never fix them.
+      function describeCameraFailure(err) {
+        const name = (err && err.name) ? err.name : '';
+        const msg = (err && err.message) ? err.message : String(err);
+        addLine('× Start failed: ' + (name ? name + ' — ' : '') + msg, 'text-danger');
+
+        if (!window.isSecureContext) {
+          addLine('Page is not a secure context. Cameras only work over HTTPS or on localhost.', 'text-danger');
+          setStatus('Camera needs HTTPS', 'text-danger');
+        } else if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          addLine('This browser exposes no camera API (navigator.mediaDevices is unavailable).', 'text-danger');
+          setStatus('Camera unsupported in this browser', 'text-danger');
+        } else if (name === 'NotAllowedError' || name === 'SecurityError') {
+          addLine('Camera blocked for this site. Open the lock/camera icon in the address bar → Allow camera → reload.', 'text-danger');
+          setStatus('Camera blocked — allow it for this site', 'text-danger');
+        } else if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+          addLine('No camera matched the request. Pick a different camera in the dropdown.', 'text-danger');
+          setStatus('No usable camera found', 'text-danger');
+        } else if (name === 'NotReadableError' || name === 'AbortError') {
+          addLine('The camera is busy — close other tabs or apps using it, then press Start again.', 'text-warning');
+          setStatus('Camera is in use by another app', 'text-warning');
+        } else {
+          setStatus('Camera error — see the log below', 'text-warning');
+        }
+        addLine('You can also use “Upload QR” to record attendance from a photo.', 'text-info');
+      }
+
       async function start(cameraDeviceId) {
         if (starting || running) return;
         starting = true;
         try {
-          if (!qr) qr = new Html5Qrcode('reader', {
-            verbose: false
-          });
+          if (!qr) qr = createQrReader();
 
-          if (isIOS) {
-            const ok = await iosPrePermission();
-            if (!ok) {
-              starting = false;
-              return;
-            }
-          }
-
-          const cfg = isIOS ? iosConfig() : defaultConfig();
+          const cfg = isMobile ? mobileConfig() : defaultConfig();
           const cameraConfig = cameraDeviceId ? {
             deviceId: {
               exact: cameraDeviceId
@@ -775,8 +770,7 @@
           tryEnhanceCamera();
         } catch (err) {
           document.body.classList.remove('ms-scanner-running');
-          addLine('× Start failed: ' + err, 'text-danger');
-          setStatus('Camera error — check permissions', 'text-warning');
+          describeCameraFailure(err);
         } finally {
           starting = false;
         }
@@ -1039,9 +1033,7 @@
         const resume = running;
         try {
           if (running) await stop();
-          if (!qr) qr = new Html5Qrcode('reader', {
-            verbose: false
-          });
+          if (!qr) qr = createQrReader();
           const decodedText = await qr.scanFile(file, false);
           onScanSuccess(decodedText);
         } catch (err) {
@@ -1086,7 +1078,7 @@
         const track = v && v.srcObject && v.srcObject.getVideoTracks ? v.srcObject.getVideoTracks()[0] : null;
         if (!track) return;
 
-        try {
+        if (!isMobile) try {
           track.applyConstraints({
             advanced: [{
               focusMode: 'continuous'
@@ -1112,6 +1104,8 @@
             zoomWrap.style.backdropFilter = 'blur(4px)';
             zoomWrap.style.display = 'flex';
             zoomWrap.style.alignItems = 'center';
+            zoomWrap.style.width = 'min(280px, calc(100% - 24px))';
+            zoomWrap.style.boxSizing = 'border-box';
             zoomWrap.style.zIndex = '5';
 
             const input = document.createElement('input');
@@ -1121,12 +1115,14 @@
             input.max = caps.zoom.max;
             input.step = caps.zoom.step || 0.1;
             input.value = settings.zoom || caps.zoom.min;
-            input.style.width = '180px';
+            input.style.width = '100%';
+            input.style.minWidth = '0';
             input.style.margin = '0 8px';
 
             const lbl = document.createElement('small');
             lbl.textContent = 'Zoom';
             lbl.style.color = '#fff';
+            lbl.style.whiteSpace = 'nowrap';
 
             zoomWrap.appendChild(lbl);
             zoomWrap.appendChild(input);
@@ -1142,18 +1138,6 @@
               }).catch(() => {});
             });
 
-            if (isMobile) {
-              const z = Math.min(Math.max(MOBILE_DEFAULT_ZOOM, caps.zoom.min), caps.zoom.max);
-              track.applyConstraints({
-                  advanced: [{
-                    zoom: z
-                  }]
-                })
-                .then(() => {
-                  input.value = z;
-                })
-                .catch(() => {});
-            }
           }
         }
       }
@@ -1172,18 +1156,7 @@
           stream.getTracks().forEach(t => t.stop());
           return true;
         } catch (e) {
-          if (e && e.name === 'NotAllowedError') {
-            addLine('Camera blocked. Click the camera/lock icon in the address bar → Reset permission → reload → Start.', 'text-danger');
-            addLine('If no prompt appears, allow the camera for your browser in your device settings (e.g. macOS: System Settings → Privacy & Security → Camera → enable your browser).', 'text-warning');
-            addLine('You can also use “Upload QR” to record attendance from a photo.', 'text-info');
-            setStatus('Camera blocked — reset permission and reload', 'text-danger');
-          } else if (e && e.name === 'NotFoundError') {
-            addLine('No camera found on this device.', 'text-danger');
-            setStatus('No camera found', 'text-danger');
-          } else {
-            addLine('Camera error: ' + (e && e.name ? e.name : e), 'text-danger');
-            setStatus('Camera error — check permissions', 'text-warning');
-          }
+          describeCameraFailure(e);
           return false;
         }
       }
@@ -1193,6 +1166,16 @@
 
       btnStart.addEventListener('click', async function() {
         if (running || starting) return;
+        // On phones, start the scanner directly from this tap. Opening and
+        // closing a temporary permission stream first can leave Safari/Chrome
+        // showing video while the decoder receives stale or interrupted frames.
+        if (isMobile) {
+          if (!camSel.options.length) {
+            camSel.add(new Option('Rear camera (automatic)', ''));
+          }
+          await start('');
+          return;
+        }
         // Permission first, inside this tap's user gesture.
         const ok = await ensurePermission();
         if (!ok) return;

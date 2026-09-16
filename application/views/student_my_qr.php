@@ -527,7 +527,7 @@
   <!-- html2canvas for card capture -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <!-- html5-qrcode for camera scanning -->
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="<?= base_url(); ?>assets/libs/html5-qrcode/html5-qrcode.min.js?v=2.3.8"></script>
 
   <!-- Vendor bundle (unchanged) -->
   <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
@@ -832,6 +832,10 @@
 
       // Scanner code attaches when modal is shown, and stops when hidden
       let qr = null, running=false, starting=false, stopping=false, devicesLoaded=false, forceDisableFlip=false;
+      const scannerUa = navigator.userAgent || navigator.vendor || '';
+      const scannerIsIOS = /iPad|iPhone|iPod/.test(scannerUa) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const scannerHasCoarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+      const scannerIsMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(scannerUa) || scannerIsIOS || (scannerHasCoarsePointer && Math.min(screen.width, screen.height) <= 1024);
 
       // ===== Student scan mode (IN / OUT)
       let scanMode = (localStorage.getItem('studentScanMode') === 'out') ? 'out' : 'in';
@@ -911,22 +915,37 @@ readerEl.style.height = Math.round(w / ar) + 'px';
         }catch(e){ setStatus('Camera error','text-danger'); return []; }
       }
 
+      function createQrReader(){
+        if (typeof Html5Qrcode === 'undefined') {
+          throw new Error('Scanner library did not load (assets/libs/html5-qrcode).');
+        }
+        const options = {
+          verbose: false,
+          experimentalFeatures: { useBarCodeDetectorIfSupported: !scannerIsMobile }
+        };
+        if (typeof Html5QrcodeSupportedFormats !== 'undefined') {
+          options.formatsToSupport = [Html5QrcodeSupportedFormats.QR_CODE];
+        }
+        return new Html5Qrcode('reader', options);
+      }
+
       function cfg(env){
-        const isDesktop = !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'');
-        if (env==='ios') {
+        if (env==='mobile') {
           return {
-            fps: 18, rememberLastUsedCamera: true, willReadFrequently: true, disableFlip: !!forceDisableFlip,
-            experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-            videoConstraints: { facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080} }
+            fps: 10,
+            qrbox: function(w,h){ const s=Math.floor(Math.min(w,h)*0.82); return {width:s,height:s}; },
+            rememberLastUsedCamera: true,
+            showTorchButtonIfSupported: true,
+            willReadFrequently: true,
+            disableFlip: false
           };
         }
         return {
-          fps: 24,
-          qrbox: isDesktop ? function(w,h){ const s=Math.floor(Math.min(w,h)*0.72); return {width:s,height:s}; } : undefined,
-          aspectRatio: isDesktop ? 1.3333 : (window.innerWidth<768?1.3333:1.7778),
+          fps: 15,
+          qrbox: function(w,h){ const s=Math.floor(Math.min(w,h)*0.72); return {width:s,height:s}; },
+          aspectRatio: 1.3333,
           rememberLastUsedCamera: true, showTorchButtonIfSupported: true, willReadFrequently: true,
-          experimentalFeatures: { useBarCodeDetectorIfSupported: true }, disableFlip: !!forceDisableFlip,
-          videoConstraints: { facingMode:{ideal:'environment'}, width:{ideal: isDesktop?2560:1920}, height:{ideal:isDesktop?1440:1080}, advanced:[{focusMode:'continuous'}] }
+          disableFlip: !!forceDisableFlip
         };
       }
 
@@ -934,16 +953,8 @@ readerEl.style.height = Math.round(w / ar) + 'px';
         if (starting || running) return;
         starting = true;
         try{
-          const ua = navigator.userAgent || navigator.vendor || '';
-          const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-          if (!qr) qr = new Html5Qrcode('reader',{verbose:false});
-          if (isIOS) {
-            try{
-              const tmp = await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
-              tmp.getTracks().forEach(t=>t.stop());
-            }catch(_){ setStatus('Camera permission denied on iOS','text-danger'); starting=false; return; }
-          }
-          const cfgObj = cfg(isIOS ? 'ios':'default');
+          if (!qr) qr = createQrReader();
+          const cfgObj = cfg(scannerIsMobile ? 'mobile':'desktop');
           const cameraConfig = id ? { deviceId:{ exact:id } } : { facingMode:{ ideal:'environment' } };
 
           await qr.start(
@@ -994,6 +1005,14 @@ readerEl.style.height = Math.round(w / ar) + 'px';
 
         renderModeButtons(); // init the mode buttons
 
+        if (scannerIsMobile) {
+          const camSel = document.getElementById('cameraSelect');
+          if (camSel && !camSel.options.length) {
+            camSel.add(new Option('Rear camera (automatic)', ''));
+          }
+          setStatus('Tap Start to enable the camera','text-info');
+          return;
+        }
         await enumerateCameras();
         const camSel = document.getElementById('cameraSelect');
         await start(camSel && camSel.value);
@@ -1002,7 +1021,15 @@ readerEl.style.height = Math.round(w / ar) + 'px';
       $(document).on('hidden.bs.modal', '#studentScanModal', async function(){ await stop(); });
 
       // Toolbar buttons inside modal
-      $(document).on('click','#btnStart', async function(){ const camSel = document.getElementById('cameraSelect'); if (!devicesLoaded) await enumerateCameras(); await start(camSel && camSel.value); });
+      $(document).on('click','#btnStart', async function(){
+        const camSel = document.getElementById('cameraSelect');
+        if (scannerIsMobile) {
+          await start('');
+          return;
+        }
+        if (!devicesLoaded) await enumerateCameras();
+        await start(camSel && camSel.value);
+      });
       $(document).on('click','#btnStop', async function(){ await stop(); });
       $(document).on('change','#cameraSelect', async function(){ await stop(); await start(this.value); });
 
@@ -1011,7 +1038,7 @@ readerEl.style.height = Math.round(w / ar) + 'px';
       $(document).on('change','#qrFileInput', async function(e){
         const file = e.target.files && e.target.files[0]; if (!file) return;
         try{
-          if (!qr) qr = new Html5Qrcode('reader',{verbose:false});
+          if (!qr) qr = createQrReader();
           if (running) await stop();
           const txt = await qr.scanFile(file, false);
           const activityId = extractActivityIdFrom(txt);
@@ -1023,10 +1050,8 @@ readerEl.style.height = Math.round(w / ar) + 'px';
 
       // HTTPS hint for iOS/Safari
       (function(){
-        const ua = navigator.userAgent || navigator.vendor || '';
-        const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-        if ((isIOS || isSafari) && location.protocol !== 'https:' && location.hostname !== 'localhost') {
+        const isSafari = /^((?!chrome|android).)*safari/i.test(scannerUa);
+        if ((scannerIsIOS || isSafari) && location.protocol !== 'https:' && location.hostname !== 'localhost') {
           const warn = document.createElement('div');
           warn.className = 'scan-tip';
           warn.style.background = '#fef3c7';
