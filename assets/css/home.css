@@ -775,6 +775,15 @@
         border-radius: 22px;
         max-height: none;
         overflow: visible;
+        background: #fff;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+
+      /* Large animated blurred layers are expensive on phone GPUs and made
+         the login screen visibly stutter while scrolling. */
+      .blob {
+        display: none;
       }
 
       .side-art {

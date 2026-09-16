@@ -560,19 +560,20 @@ body.ms-drawer-locked {
   .ms-wide-host {
     position: relative;
     max-width: 100%;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .table-responsive.ms-wide-host {
-    overflow-x: visible;
+    overflow-x: auto;
   }
 
   .ms-wide-table {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    -webkit-overflow-scrolling: touch;
+    display: table;
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
   }
 
   .ms-wide-host::after {
@@ -1041,6 +1042,31 @@ body.ms-drawer-locked {
     bottom: 16px;
     max-width: calc(100% - 32px);
     text-align: center;
+  }
+
+  /* Camera capability controls are injected with inline desktop dimensions.
+     Keep the label on one line and move the slider above the status pill. */
+  body.ms-scan-page #qrZoomWrap {
+    top: 12px !important;
+    bottom: auto !important;
+    gap: 8px;
+    width: min(260px, calc(100% - 24px));
+    max-width: calc(100% - 24px) !important;
+    padding: 7px 12px !important;
+    flex-wrap: nowrap;
+  }
+
+  body.ms-scan-page #qrZoomWrap small {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  body.ms-scan-page #qrZoomInput {
+    flex: 1 1 auto;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 32px;
+    margin: 0 !important;
   }
 
   body.ms-scan-page #scanTips {

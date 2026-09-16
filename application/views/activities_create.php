@@ -61,7 +61,9 @@ $liveState      = $mode === 'edit' ? activity_state($row) : null;
     .custom-control-label{font-weight:400;color:#3b4a6b}
     /* mobile */
     @media (max-width: 768px){
-      .session-row{grid-template-columns:1fr;gap:8px}
+      /* Some rows carry a desktop grid inline; !important is required to
+         prevent that inline declaration from forcing three cramped columns. */
+      .session-row{grid-template-columns:1fr !important;gap:8px}
       .session-label{padding-top:6px}
     }
     @media (max-width: 767.98px){.up-btn{width:100%}.pill{font-size:.72rem}}

@@ -18,13 +18,18 @@ class Student_qr_model extends CI_Model {
         // don't remain valid indefinitely.
         $expires = date('Y-m-d H:i:s', strtotime('+1 year'));
 
-        $this->db->insert('student_qr', [
+        $insert = [
             'student_number' => $student_number,
             'qr_token'       => $token,
             'status'         => 'active',
             'issued_at'      => $now,
-            'expires_at'     => $expires,
-        ]);
+        ];
+        // Remain compatible while the additive lifecycle migration is being
+        // applied on production.
+        if ($this->db->field_exists('expires_at', 'student_qr')) {
+            $insert['expires_at'] = $expires;
+        }
+        $this->db->insert('student_qr', $insert);
 
         return (object)[
             'student_number' => $student_number,
@@ -32,7 +37,7 @@ class Student_qr_model extends CI_Model {
             'token'          => $token,
             'status'         => 'active',
             'issued_at'      => $now,
-            'expires_at'     => $expires,
+            'expires_at'     => isset($insert['expires_at']) ? $expires : null,
         ];
     }
 
@@ -59,11 +64,11 @@ class Student_qr_model extends CI_Model {
             // Check expiry — if the token has expired, mark it revoked
             // and refuse to return it.
             if (!empty($row->expires_at) && strtotime($row->expires_at) < time()) {
-                $this->db->where('id', $row->id)
-                         ->update('student_qr', [
-                             'status'     => 'revoked',
-                             'revoked_at' => date('Y-m-d H:i:s'),
-                         ]);
+                $update = ['status' => 'revoked'];
+                if ($this->db->field_exists('revoked_at', 'student_qr')) {
+                    $update['revoked_at'] = date('Y-m-d H:i:s');
+                }
+                $this->db->where('id', $row->id)->update('student_qr', $update);
                 return null;
             }
             $row->token = $row->qr_token;

@@ -60,7 +60,20 @@ class Attendance extends CI_Controller
         $old_debug = $this->db->db_debug;
         $this->db->db_debug = FALSE;
 
-        $op = $this->Activity_attendance_model->consume_token($activity_id, $token, $direction);
+        try {
+            $op = $this->Activity_attendance_model->consume_token($activity_id, $token, $direction);
+        } catch (Throwable $e) {
+            $this->db->db_debug = $old_debug;
+            log_message('error', 'Attendance::consume failed: ' . $e->getMessage());
+            return $this->output
+                ->set_status_header(500)
+                ->set_content_type('application/json')
+                ->set_output(json_encode([
+                    'ok' => false,
+                    'mode' => 'server_error',
+                    'message' => 'The server could not record this scan. Please try again or contact the administrator.',
+                ]));
+        }
 
         // annotate rows
         $postedRemarks = trim((string)$this->input->post('remarks', true)); // from scan_page.js

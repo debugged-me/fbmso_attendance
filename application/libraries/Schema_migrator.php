@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v10.done';
+    const MARKER = 'schema_migrations_v11.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -418,6 +418,30 @@ class Schema_migrator
                             'Unauthorized account access — changed student name and profile picture on Aug 28, 2026',
                             'admin', 1, 'INC-2026-08-28-001')"
                     );
+                },
+            ),
+
+            // Student QR lifecycle fields were introduced by the QR model but
+            // older installations only have token/status/issued_at. Without
+            // this additive migration, selecting expires_at makes every scan
+            // fail with HTTP 500 on those installations.
+            '2026_09_16_add_student_qr_lifecycle_columns' => array(
+                'check' => function () {
+                    return $this->tableExists('student_qr')
+                        && (!$this->columnExists('student_qr', 'expires_at')
+                            || !$this->columnExists('student_qr', 'revoked_at'));
+                },
+                'run' => function () {
+                    if (!$this->columnExists('student_qr', 'expires_at')) {
+                        $this->CI->db->query(
+                            "ALTER TABLE `student_qr` ADD COLUMN `expires_at` DATETIME NULL AFTER `issued_at`"
+                        );
+                    }
+                    if (!$this->columnExists('student_qr', 'revoked_at')) {
+                        $this->CI->db->query(
+                            "ALTER TABLE `student_qr` ADD COLUMN `revoked_at` DATETIME NULL AFTER `expires_at`"
+                        );
+                    }
                 },
             ),
         );

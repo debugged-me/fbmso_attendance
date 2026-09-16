@@ -36,7 +36,30 @@
 
   function syncBodyState() {
     if (!document.body) return;
-    document.body.classList.toggle('ms-phone', isPhone());
+    var phone = isPhone();
+    document.body.classList.toggle('ms-phone', phone);
+
+    /* Device emulators change the viewport without doing a full reload. A
+       drawer can therefore disappear at the breakpoint while its scroll-lock
+       classes survive (especially after bfcache restore). Never let an
+       invisible drawer leave the document permanently unscrollable. */
+    var drawerOpen = phone && document.body.classList.contains('sidebar-enable');
+    if (!drawerOpen) {
+      document.body.classList.remove('ms-drawer-dragging', 'ms-drawer-locked');
+      document.documentElement.classList.remove('ms-drawer-locked');
+    }
+
+    /* Recover only genuinely stale UI-kit/Bootstrap locks. Active dialogs
+       keep their own lock, so resizing an open modal remains safe. */
+    var hasUiOverlay = document.querySelector('.uk-backdrop, .uk-busy');
+    var hasBootstrapModal = document.querySelector('.modal.show');
+    if (!hasUiOverlay && !hasBootstrapModal && !drawerOpen) {
+      document.body.classList.remove('uk-locked', 'modal-open');
+      document.documentElement.classList.remove('uk-locked');
+      each(document.querySelectorAll('.modal-backdrop'), function (backdrop) {
+        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+      });
+    }
   }
 
   /* ------------------------------------------------------------------------
@@ -204,20 +227,16 @@
       if (document.documentElement.classList.contains('ms-drawer-locked')) {
         document.documentElement.classList.remove('ms-drawer-locked');
       }
-      if (!document.querySelector('.modal.show, .uk-backdrop, .uk-busy')) {
-        if (document.body.classList.contains('uk-locked')) document.body.classList.remove('uk-locked');
-        if (document.documentElement.classList.contains('uk-locked')) {
-          document.documentElement.classList.remove('uk-locked');
-        }
-      }
     }
 
     function openDrawer(pushHistory) {
       if (!isPhone() || isOpen()) return;
       restoreFocus = document.activeElement;
       syncing = true;
-      document.body.classList.add('sidebar-enable', 'uk-locked', 'ms-drawer-locked');
-      document.documentElement.classList.add('uk-locked', 'ms-drawer-locked');
+      /* The drawer owns only the ms-* lock. Reusing the UI kit's uk-locked
+         class caused the two independent components to unlock each other. */
+      document.body.classList.add('sidebar-enable', 'ms-drawer-locked');
+      document.documentElement.classList.add('ms-drawer-locked');
       ownsDrawerLocks = true;
       syncing = false;
       drawer.setAttribute('aria-hidden', 'false');
@@ -233,7 +252,8 @@
     function closeDrawer(options) {
       options = options || {};
       if (!isOpen() && !options.force) {
-        if (ownsDrawerLocks) {
+        if (ownsDrawerLocks || document.body.classList.contains('ms-drawer-locked') ||
+            document.documentElement.classList.contains('ms-drawer-locked')) {
           releaseDrawerLocks();
           ownsDrawerLocks = false;
         }
@@ -306,7 +326,9 @@
         drawer.setAttribute('aria-label', 'Application menu');
         drawer.setAttribute('aria-hidden', isOpen() ? 'false' : 'true');
       } else {
-        if (isOpen()) requestClose();
+        if (isOpen()) closeDrawer({ force: true, restore: false });
+        pushed = false;
+        releaseDrawerLocks();
         drawer.removeAttribute('role');
         drawer.removeAttribute('aria-modal');
         drawer.removeAttribute('aria-label');
@@ -336,7 +358,8 @@
     }
 
     window.addEventListener('pageshow', function () {
-      if (!isOpen() && ownsDrawerLocks) {
+      syncBodyState();
+      if (!isOpen() && (ownsDrawerLocks || document.body.classList.contains('ms-drawer-locked'))) {
         releaseDrawerLocks();
         ownsDrawerLocks = false;
       }
@@ -457,7 +480,7 @@
       if (!tbody) return;
       var queued = false;
       table.__msObserver = new window.MutationObserver(function () {
-        if (table.__msApplyingLabels || queued) return;
+        if (!isPhone() || table.__msApplyingLabels || queued) return;
         queued = true;
         window.requestAnimationFrame(function () {
           queued = false;
@@ -483,8 +506,8 @@
         hint.textContent = 'Swipe to see more →';
         host.insertBefore(hint, host.firstChild);
       }
-      table.addEventListener('scroll', function () {
-        if (table.scrollLeft > 4) host.classList.add('is-scrolled');
+      host.addEventListener('scroll', function () {
+        host.classList.toggle('is-scrolled', host.scrollLeft > 4);
       }, { passive: true });
     }
 
@@ -550,6 +573,26 @@
         table.getAttribute('data-ms-datatable') === 'true';
     }
 
+    function isSafeCardTable(table, headers) {
+      if (table.getAttribute('data-ms-cards') === 'true') return true;
+      if (!table.classList.contains('table') || table.classList.contains('table-sm')) return false;
+      if (table.closest('.modal, .fc-view, .calendar, [role="grid"]')) return false;
+      if (table.querySelector('th[colspan], th[rowspan], td[colspan], td[rowspan]')) return false;
+      if (!table.tBodies || !table.tBodies.length || headers.length < 2) return false;
+
+      /* Card CSS assumes one value cell per heading. Complex report tables
+         need horizontal scrolling instead of being reshaped into malformed
+         cards. Sampling is enough and avoids walking huge server tables. */
+      var checked = 0;
+      var rows = table.tBodies[0].rows;
+      for (var i = 0; i < rows.length && checked < 12; i++) {
+        if (!rows[i].cells.length) continue;
+        checked++;
+        if (rows[i].cells.length !== headers.length) return false;
+      }
+      return checked > 0;
+    }
+
     function prepare(table, dataTableManaged) {
       if (table.__msTablePrepared) {
         labelRows(table);
@@ -559,7 +602,13 @@
       if (table.parentElement && table.parentElement.closest('table')) return;
       var headers = headersFor(table);
       if (headers.length < 2) return;
-      if (headers.length > 10) {
+      if (table.closest('.fc-view, .calendar, [role="grid"]')) return;
+      if (table.classList.contains('table-sm') && headers.length <= 4 &&
+          table.getAttribute('data-ms-cards') !== 'true') {
+        table.__msTablePrepared = true;
+        return;
+      }
+      if (headers.length > 10 || !isSafeCardTable(table, headers)) {
         table.__msTablePrepared = true;
         makeWide(table);
         return;
@@ -573,22 +622,27 @@
     }
 
     var pendingDataTables = [];
-    each(root.querySelectorAll('table'), function (table) {
-      if (expectsDataTable(table) && !isDataTable(table)) {
-        pendingDataTables.push(table);
-        return;
-      }
-      prepare(table, isDataTable(table));
-    });
+    function scanTables() {
+      if (!isPhone()) return;
+      each(root.querySelectorAll('table'), function (table) {
+        if (table.__msTablePrepared) return;
+        if (expectsDataTable(table) && !isDataTable(table)) {
+          if (pendingDataTables.indexOf(table) === -1) pendingDataTables.push(table);
+          return;
+        }
+        prepare(table, isDataTable(table));
+      });
+    }
+    scanTables();
 
     if (hasDataTables) {
       $(document).on('init.dt.msShell', function (_event, settings) {
-        if (settings && settings.nTable && root.contains(settings.nTable)) {
+        if (isPhone() && settings && settings.nTable && root.contains(settings.nTable)) {
           prepare(settings.nTable, true);
         }
       });
       $(document).on('draw.dt.msShell', function (_event, settings) {
-        if (!settings || !settings.nTable || !settings.nTable.__msTablePrepared) return;
+        if (!isPhone() || !settings || !settings.nTable || !settings.nTable.__msTablePrepared) return;
         window.requestAnimationFrame(function () { labelRows(settings.nTable); });
       });
     }
@@ -618,6 +672,7 @@
 
     var media = window.matchMedia('(max-width: ' + BP + 'px)');
     var syncActions = function () {
+      if (media.matches) scanTables();
       each(root.querySelectorAll('table.ms-rt'), function (table) {
         if (media.matches) enhanceRowActions(table);
         else restoreRowActions(table);
@@ -783,7 +838,15 @@
   function boot() {
     syncBodyState();
     if (window.MSDataTables && typeof window.MSDataTables.apply === 'function') window.MSDataTables.apply();
-    window.addEventListener('resize', syncBodyState, { passive: true });
+    var resizeFrame = 0;
+    window.addEventListener('resize', function () {
+      if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(function () {
+        resizeFrame = 0;
+        syncBodyState();
+      });
+    }, { passive: true });
+    window.addEventListener('orientationchange', syncBodyState, { passive: true });
     Object.keys(MS.modules).forEach(function (key) {
       try {
         MS.modules[key]();

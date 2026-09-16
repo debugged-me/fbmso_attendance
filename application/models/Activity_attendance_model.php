@@ -118,12 +118,27 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
         ];
     }
 
-    // 2) QR must be active
-    $qr = $this->db->select('student_number, expires_at')
-                   ->from('student_qr')
-                   ->where('qr_token', $token)
-                   ->where('status', 'active')
-                   ->limit(1)->get()->row();
+    // 2) QR must be active. `expires_at` was added after the original QR
+    // table. Some production databases can temporarily be on the older
+    // schema during a rolling/file-only deploy, so never select a column that
+    // is not there -- CI returns FALSE and calling ->row() on it causes the
+    // blank HTTP 500 previously shown by the scanner.
+    // Reading the row (instead of naming optional columns) also avoids an
+    // information_schema lookup on every scan.
+    $qrQuery = $this->db->from('student_qr')
+                        ->where('qr_token', $token)
+                        ->where('status', 'active')
+                        ->limit(1)->get();
+    if ($qrQuery === false) {
+        $dbError = $this->db->error();
+        log_message('error', 'Attendance QR lookup failed: ' . json_encode($dbError));
+        return [
+            'ok' => false,
+            'mode' => 'server_error',
+            'message' => 'The attendance database could not validate this QR. Please try again.',
+        ];
+    }
+    $qr = $qrQuery->row();
     if (!$qr) {
         return [
             'ok'=>false,
@@ -131,7 +146,8 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
             'message'=>'This student QR is inactive or has been replaced. Ask the student to open My QR and try again.',
         ];
     }
-    if (!empty($qr->expires_at) && strtotime((string)$qr->expires_at) < time()) {
+    if (property_exists($qr, 'expires_at') && !empty($qr->expires_at)
+        && strtotime((string)$qr->expires_at) < time()) {
         return [
             'ok'=>false,
             'mode'=>'expired_qr',
