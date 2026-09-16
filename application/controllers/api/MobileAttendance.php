@@ -201,24 +201,7 @@ class MobileAttendance extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Missing activity_id or token.'], 400);
         }
 
-        // Normalize the token the same way the web consume() does.
-        $token = $raw;
-        if (strpos($token, '|') !== false) {
-            $parts = explode('|', $token);
-            if (count($parts) >= 2) $token = trim($parts[1]);
-        }
-        if (stripos($token, 'http://') === 0 || stripos($token, 'https://') === 0) {
-            $q = parse_url($token, PHP_URL_QUERY);
-            if ($q) {
-                parse_str($q, $qs);
-                if (!empty($qs['token'])) $token = trim($qs['token']);
-            }
-        }
-        if (!preg_match('/^[A-Fa-f0-9]{32}$/', $token)) {
-            if (preg_match('/([A-Fa-f0-9]{32})/', $raw, $m)) {
-                $token = $m[1];
-            }
-        }
+        $token = attendance_normalize_student_qr($raw);
 
         $oldDebug = $this->db->db_debug;
         $this->db->db_debug = false;
@@ -616,7 +599,7 @@ class MobileAttendance extends MobileApi
 
         $autoClose = array_key_exists('auto_close', $payload)
             ? filter_var($payload['auto_close'], FILTER_VALIDATE_BOOLEAN)
-            : true;
+            : false;
         $grace = array_key_exists('grace_minutes', $payload)
             ? activity_normalize_grace($payload['grace_minutes'])
             : ACTIVITY_DEFAULT_GRACE_MINUTES;

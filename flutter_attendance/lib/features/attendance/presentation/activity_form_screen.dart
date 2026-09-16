@@ -17,6 +17,7 @@ class ActivityFormScreen extends StatefulWidget {
   });
 
   final AppSession session;
+
   /// When non-null, the form edits this activity; otherwise it creates new.
   final Activity? activity;
 
@@ -35,7 +36,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
   late final TextEditingController _endTime;
 
   ActivityStatus _status = ActivityStatus.open;
-  bool _autoClose = true;
+  bool _autoClose = false;
   int _graceMinutes = 15;
   bool _saving = false;
   String? _error;
@@ -56,7 +57,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
     _startTime = TextEditingController(text: _hhmm(a?.startTime));
     _endTime = TextEditingController(text: _hhmm(a?.endTime));
     _status = a?.manualStatus ?? ActivityStatus.open;
-    _autoClose = a?.autoClose ?? true;
+    _autoClose = a?.autoClose ?? false;
     _graceMinutes = a?.graceMinutes ?? 15;
   }
 
@@ -117,7 +118,9 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
     if (s.isEmpty) return null;
     final parts = s.split(':');
     if (parts.length >= 2) {
-      return TimeOfDay(hour: int.tryParse(parts[0]) ?? 0, minute: int.tryParse(parts[1]) ?? 0);
+      return TimeOfDay(
+          hour: int.tryParse(parts[0]) ?? 0,
+          minute: int.tryParse(parts[1]) ?? 0);
     }
     return null;
   }

@@ -55,33 +55,7 @@ class Attendance extends CI_Controller
             return $this->output->set_status_header(400)->set_output('Missing activity/token');
         }
 
-        // --- Normalize $raw into a bare 32-hex token
-        $token = trim($raw);
-
-        // Case A: "ACTIVITY|TOKEN"
-        if (strpos($token, '|') !== false) {
-            $parts = explode('|', $token);
-            if (count($parts) >= 2) $token = trim($parts[1]);
-        }
-
-        // Case B: Full URL "...?token=xxxx"
-        if (stripos($token, 'http://') === 0 || stripos($token, 'https://') === 0) {
-            $q = parse_url($token, PHP_URL_QUERY);
-            if ($q) {
-                parse_str($q, $qs);
-                if (!empty($qs['token'])) {
-                    $token = trim($qs['token']);
-                }
-            }
-        }
-
-        // Case C: URL path containing ".../checkin/<id>?token=xxxx"
-        if (!preg_match('/^[A-Fa-f0-9]{32}$/', $token)) {
-            // last-resort: pull last 32-hex from the string
-            if (preg_match('/([A-Fa-f0-9]{32})/', $raw, $m)) {
-                $token = $m[1];
-            }
-        }
+        $token = attendance_normalize_student_qr($raw);
 
         $old_debug = $this->db->db_debug;
         $this->db->db_debug = FALSE;

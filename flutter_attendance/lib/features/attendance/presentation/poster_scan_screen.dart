@@ -7,6 +7,7 @@ import '../../../core/design/tokens/app_tokens.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
 import '../domain/attendance_models.dart';
+import '../domain/qr_payload_parser.dart';
 
 /// Student poster QR scanner. The student scans an activity poster QR
 /// (which contains a URL like `.../attendance/checkin/{id}`), the activity
@@ -27,6 +28,8 @@ class _PosterScanScreenState extends State<PosterScanScreen> {
   String? _statusMessage;
   Color? _statusColor;
   CheckResult? _lastResult;
+  String? _lastPayload;
+  DateTime? _lastDetectedAt;
 
   @override
   void initState() {
@@ -34,6 +37,7 @@ class _PosterScanScreenState extends State<PosterScanScreen> {
     _api = AttendanceApi();
     _controller = MobileScannerController(
       detectionSpeed: DetectionSpeed.noDuplicates,
+      facing: CameraFacing.back,
     );
   }
 
@@ -47,15 +51,7 @@ class _PosterScanScreenState extends State<PosterScanScreen> {
   /// The poster QR contains a URL like:
   ///   http://localhost/fbmso_attendance/attendance/checkin/16
   int? _extractActivityId(String text) {
-    final match = RegExp(r'attendance/checkin/(\d+)', caseSensitive: false)
-        .firstMatch(text);
-    if (match != null) {
-      return int.tryParse(match.group(1)!);
-    }
-    // Also accept a bare numeric ID.
-    final n = int.tryParse(text.trim());
-    if (n != null && n > 0) return n;
-    return null;
+    return QrPayloadParser.activityId(text);
   }
 
   Future<void> _onDetect(BarcodeCapture capture) async {
@@ -65,6 +61,15 @@ class _PosterScanScreenState extends State<PosterScanScreen> {
 
     final raw = barcodes.first.rawValue;
     if (raw == null || raw.isEmpty) return;
+
+    final now = DateTime.now();
+    if (_lastPayload == raw &&
+        _lastDetectedAt != null &&
+        now.difference(_lastDetectedAt!) < const Duration(seconds: 3)) {
+      return;
+    }
+    _lastPayload = raw;
+    _lastDetectedAt = now;
 
     final activityId = _extractActivityId(raw);
     if (activityId == null) {
@@ -83,12 +88,22 @@ class _PosterScanScreenState extends State<PosterScanScreen> {
     });
     HapticFeedback.mediumImpact();
 
-    final result = await _api.selfCheckin(
-      baseUrl: widget.session.baseUrl,
-      token: widget.session.token,
-      activityId: activityId,
-      direction: 'auto',
-    );
+    CheckResult result;
+    try {
+      result = await _api.selfCheckin(
+        baseUrl: widget.session.baseUrl,
+        token: widget.session.token,
+        activityId: activityId,
+        direction: 'auto',
+      );
+    } catch (_) {
+      result = const CheckResult(
+        ok: false,
+        mode: 'err',
+        message:
+            'Could not submit this scan. Check your connection and try again.',
+      );
+    }
 
     if (!mounted) return;
     setState(() {
@@ -107,9 +122,24 @@ class _PosterScanScreenState extends State<PosterScanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final scanSize = (size.shortestSide * 0.66).clamp(210.0, 300.0);
+
     return AppScaffold(
       title: 'Scan Poster QR',
       showBackButton: true,
+      actions: [
+        IconButton(
+          onPressed: _controller.toggleTorch,
+          tooltip: 'Flashlight',
+          icon: const Icon(Icons.flashlight_on_rounded),
+        ),
+        IconButton(
+          onPressed: _controller.switchCamera,
+          tooltip: 'Switch camera',
+          icon: const Icon(Icons.cameraswitch_rounded),
+        ),
+      ],
       body: Stack(
         children: [
           // ── Camera scanner ──────────────────────────────────────────
@@ -121,8 +151,8 @@ class _PosterScanScreenState extends State<PosterScanScreen> {
           // ── Overlay frame ───────────────────────────────────────────
           Center(
             child: Container(
-              width: 250,
-              height: 250,
+              width: scanSize,
+              height: scanSize,
               decoration: BoxDecoration(
                 border: Border.all(
                   color: Colors.white.withValues(alpha: 0.7),
@@ -187,6 +217,8 @@ class _PosterScanScreenState extends State<PosterScanScreen> {
                                   fontWeight: FontWeight.w600,
                                 ),
                                 textAlign: TextAlign.center,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],

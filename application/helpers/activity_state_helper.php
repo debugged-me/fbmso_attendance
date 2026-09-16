@@ -8,7 +8,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
  *   1. MANUAL  — `activities.status` ('draft'|'open'|'closed'|'archived').
  *                `activities.is_open` is kept mirrored (1 only when status='open')
  *                so older clients that only know is_open still behave correctly.
- *   2. AUTO    — when meta.auto_close is on (default), check-ins are only accepted
+ *   2. AUTO    — when meta.auto_close is explicitly on, check-ins are only accepted
  *                inside [start_at - grace, end_at + grace]. end_at falls back to
  *                23:59:59 on the activity date when it is NULL (all-day activity).
  *
@@ -78,16 +78,90 @@ if (!function_exists('activity_auto_close_settings')) {
             ? activity_meta_decode($metaOrRow->meta)
             : activity_meta_decode($metaOrRow);
 
-        // Absent key = on. Existing rows created before this feature auto-close by default.
+        // Auto-close is opt-in. Older activities have session metadata but no
+        // `auto_close` key; treating those rows as opted in made every legacy
+        // activity appear closed in the scanner after its scheduled time.
         $auto = array_key_exists('auto_close', $meta)
             ? filter_var($meta['auto_close'], FILTER_VALIDATE_BOOLEAN)
-            : true;
+            : false;
 
         $grace = array_key_exists('grace_minutes', $meta)
             ? activity_normalize_grace($meta['grace_minutes'])
             : ACTIVITY_DEFAULT_GRACE_MINUTES;
 
         return ['auto_close' => (bool)$auto, 'grace_minutes' => $grace];
+    }
+}
+
+if (!function_exists('attendance_normalize_student_qr')) {
+    /**
+     * Extract a student QR token from the payload formats used by the web app,
+     * native app, printed cards, and older scanner builds.
+     *
+     * Tokens remain high-entropy hexadecimal values. This only makes their
+     * transport tolerant of URL encoding, a UTF-8 BOM, JSON wrappers, full
+     * URLs, and the historic "activity|token" format.
+     */
+    function attendance_normalize_student_qr($raw): string
+    {
+        if (!is_scalar($raw)) return '';
+
+        $original = (string)$raw;
+        $value = preg_replace('/^(?:\xEF\xBB\xBF|\x{FEFF})+/u', '', $original);
+        $value = trim((string)$value);
+        if ($value === '') return '';
+
+        // Some QR tools wrap the value in a tiny JSON object.
+        if ($value[0] === '{') {
+            $json = json_decode($value, true);
+            if (is_array($json)) {
+                foreach (['token', 'qr_token', 'student_token'] as $key) {
+                    if (!empty($json[$key]) && is_scalar($json[$key])) {
+                        $value = trim((string)$json[$key]);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Full URLs and query-string-only payloads.
+        $query = parse_url($value, PHP_URL_QUERY);
+        if ($query === null && strpos($value, '=') !== false) {
+            $query = ltrim($value, '?');
+        }
+        if (is_string($query) && $query !== '') {
+            parse_str(html_entity_decode($query, ENT_QUOTES, 'UTF-8'), $params);
+            foreach (['token', 'qr_token', 'student_token'] as $key) {
+                if (!empty($params[$key]) && is_scalar($params[$key])) {
+                    $value = trim((string)$params[$key]);
+                    break;
+                }
+            }
+        }
+
+        // Historic payload: "activity-id|student-token".
+        if (strpos($value, '|') !== false) {
+            foreach (array_reverse(explode('|', $value)) as $part) {
+                $part = trim($part);
+                if (preg_match('/^[a-f0-9]{32}(?:[a-f0-9]{32})?$/i', $part)) {
+                    $value = $part;
+                    break;
+                }
+            }
+        }
+
+        $value = rawurldecode(trim($value));
+        if (preg_match('/^[a-f0-9]{32}(?:[a-f0-9]{32})?$/i', $value)) {
+            return strtolower($value);
+        }
+
+        // Last resort for labelled/printed payloads. Hex boundaries prevent
+        // silently accepting a fragment of a longer malformed token.
+        if (preg_match('/(?<![a-f0-9])([a-f0-9]{64}|[a-f0-9]{32})(?![a-f0-9])/i', $original, $match)) {
+            return strtolower($match[1]);
+        }
+
+        return '';
     }
 }
 

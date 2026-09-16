@@ -187,14 +187,11 @@ class ActivityDetailSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 AppButton(
-                  label: isOpen ? 'Show My QR' : 'Check-in Closed',
-                  icon: isOpen
-                      ? Icons.qr_code_2_rounded
-                      : Icons.lock_outline_rounded,
+                  label: 'Show My QR',
+                  icon: Icons.qr_code_2_rounded,
                   fullWidth: true,
                   size: AppButtonSize.lg,
                   style: AppButtonStyle.outline,
-                  disabled: !isOpen,
                   onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
@@ -204,38 +201,6 @@ class ActivityDetailSheet extends StatelessWidget {
                     );
                   },
                 ),
-                if (!isOpen) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppInk.caution.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: AppInk.caution.withValues(alpha: 0.25)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline_rounded,
-                            size: 18, color: AppInk.caution),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'This activity has ended. Check-in is no longer '
-                            'available.',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppInk.caution,
-                              height: 1.4,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ] else ...[
                 AppButton(
                   label: isOpen ? 'Scan Students' : 'Check-in Closed',
@@ -341,7 +306,8 @@ class _DetailChip extends StatelessWidget {
 
 /// Standalone activity log view (used from the activity detail sheet).
 class ActivityLogView extends StatefulWidget {
-  const ActivityLogView({super.key, required this.session, required this.activity});
+  const ActivityLogView(
+      {super.key, required this.session, required this.activity});
   final AppSession session;
   final Activity activity;
 
@@ -430,12 +396,11 @@ class _ActivityLogViewState extends State<ActivityLogView> {
                                     .trim();
                                 final studentNo =
                                     (log['student_number'] ?? '').toString();
-                                final checkedIn =
-                                    to12HourFromDateTime((log['checked_in_at'] ?? '').toString());
-                                final checkedOut =
-                                    to12HourFromDateTime((log['checked_out_at'] ?? '').toString());
-                                final source =
-                                    (log['source'] ?? '').toString();
+                                final checkedIn = to12HourFromDateTime(
+                                    (log['checked_in_at'] ?? '').toString());
+                                final checkedOut = to12HourFromDateTime(
+                                    (log['checked_out_at'] ?? '').toString());
+                                final source = (log['source'] ?? '').toString();
 
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
@@ -465,17 +430,14 @@ class _ActivityLogViewState extends State<ActivityLogView> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                name.isEmpty
-                                                    ? studentNo
-                                                    : name,
+                                                name.isEmpty ? studentNo : name,
                                                 style: const TextStyle(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w700,
                                                   color: AppInk.heading,
                                                 ),
                                                 maxLines: 1,
-                                                overflow:
-                                                    TextOverflow.ellipsis,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                               const SizedBox(height: 4),
                                               Wrap(
@@ -489,14 +451,15 @@ class _ActivityLogViewState extends State<ActivityLogView> {
                                                       const Icon(
                                                           Icons.login_rounded,
                                                           size: 14,
-                                                          color: AppInk
-                                                              .positive),
+                                                          color:
+                                                              AppInk.positive),
                                                       const SizedBox(width: 4),
                                                       Text(checkedIn,
-                                                          style: const TextStyle(
-                                                              fontSize: 12,
-                                                              color: AppInk
-                                                                  .muted)),
+                                                          style:
+                                                              const TextStyle(
+                                                                  fontSize: 12,
+                                                                  color: AppInk
+                                                                      .muted)),
                                                     ],
                                                   ),
                                                   if (checkedOut.isNotEmpty)
@@ -513,21 +476,21 @@ class _ActivityLogViewState extends State<ActivityLogView> {
                                                         const SizedBox(
                                                             width: 4),
                                                         Text(checkedOut,
-                                                            style: const TextStyle(
-                                                                fontSize: 12,
-                                                                color: AppInk
-                                                                    .muted)),
+                                                            style:
+                                                                const TextStyle(
+                                                                    fontSize:
+                                                                        12,
+                                                                    color: AppInk
+                                                                        .muted)),
                                                       ],
                                                     ),
                                                   if (source.isNotEmpty)
                                                     Container(
-                                                      padding:
-                                                          const EdgeInsets
-                                                              .symmetric(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
                                                           horizontal: 6,
                                                           vertical: 2),
-                                                      decoration:
-                                                          BoxDecoration(
+                                                      decoration: BoxDecoration(
                                                         color: AppInk.accent
                                                             .withValues(
                                                                 alpha: 0.08),
@@ -541,8 +504,7 @@ class _ActivityLogViewState extends State<ActivityLogView> {
                                                           fontSize: 10,
                                                           fontWeight:
                                                               FontWeight.w700,
-                                                          color:
-                                                              AppInk.accent,
+                                                          color: AppInk.accent,
                                                         ),
                                                       ),
                                                     ),

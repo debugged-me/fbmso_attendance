@@ -147,9 +147,19 @@
       .qr-card-actions .btn{border-radius:12px; font-weight:700; font-size:.84rem; padding:10px 18px; min-width:140px;}
 
       @media (max-width: 575.98px){
-        .qr-card{aspect-ratio:1.4/1; padding:18px 18px;}
-        .qr-card-qr{width:96px; height:96px;}
+        .content-pad{padding:12px}
+        .qr-card{
+          min-height:430px; aspect-ratio:auto; padding:18px;
+          justify-content:flex-start; gap:18px;
+        }
+        .qr-card-mid{flex:1; flex-direction:column; justify-content:center; gap:12px; text-align:center;}
+        .qr-card-qr{width:min(58vw,210px); height:min(58vw,210px); padding:10px;}
+        .qr-card-info{width:100%;}
         .qr-card-info .qc-value{font-size:.92rem;}
+        .qr-card-info .qc-hint{display:none}
+        .qr-card-info .qc-name-line1{font-size:1rem}
+        .qr-card-info .qc-name-line2{font-size:.86rem}
+        .qr-card-bottom{width:100%;}
         .qr-card-actions .btn{min-width:auto; flex:1;}
       }
 
@@ -266,6 +276,31 @@
         background:#fff; color:#6b7a99; border:1px solid #e6ebf5; cursor:pointer; transition:all .15s ease;
       }
       .scan-close-btn:hover{background:#f5f7fc; color:#0d1b4b;}
+
+      @media (max-width:575.98px){
+        #studentScanModal .modal-header{padding:14px 16px}
+        #studentScanModal .modal-body{padding:12px}
+        #studentScanModal .modal-footer{padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+        .scan-toolbar{
+          display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+          gap:8px; padding:10px; margin-bottom:10px;
+        }
+        .scan-toolbar > label[for="cameraSelect"]{display:none}
+        .scan-toolbar select{grid-column:1 / -1; width:100%; min-width:0; min-height:44px}
+        .scan-btn{justify-content:center; min-height:44px; padding:8px 5px}
+        .scan-toggle-fix{grid-column:1 / -1; min-height:36px; margin:0}
+        .scan-mode-group{grid-column:1 / -1; margin:0; justify-content:space-between}
+        .scan-mode-btns{flex:1}
+        .scan-mode-btn{flex:1; min-height:40px}
+        .scan-wrap{border-radius:12px}
+        #reader{min-height:min(82vw,340px)}
+        #scanStatus{
+          bottom:10px; max-width:calc(100% - 20px); padding:7px 12px;
+          white-space:normal; text-align:center; line-height:1.25;
+        }
+        .scan-tip{margin-top:10px; padding:9px 12px}
+        .scan-close-btn{width:100%; min-height:44px}
+      }
 
       /* ===== Motion preference ===== */
       @media (prefers-reduced-motion: reduce){
@@ -533,13 +568,23 @@
       /* ===== Permanent QR render ===== */
       const token = <?= json_encode($token) ?>;
       const qrEl  = document.getElementById('qrcode');
-      new QRCode(qrEl, { text: token, width: qrEl.clientWidth, height: qrEl.clientWidth });
+      new QRCode(qrEl, {
+        text: token,
+        width: qrEl.clientWidth,
+        height: qrEl.clientWidth,
+        correctLevel: QRCode.CorrectLevel.M
+      });
       // Resize QR on viewport changes
       const ro = new ResizeObserver(entries => {
         for (const e of entries){
           const s = Math.floor(e.contentRect.width);
           qrEl.innerHTML = '';
-          new QRCode(qrEl, { text: token, width: s, height: s });
+          new QRCode(qrEl, {
+            text: token,
+            width: s,
+            height: s,
+            correctLevel: QRCode.CorrectLevel.M
+          });
         }
       });
       ro.observe(qrEl);
@@ -676,9 +721,9 @@
           const titleRaw = (r.title && r.title.trim()) ? r.title : (r.activity_id ? ('Activity #' + r.activity_id) : 'Activity');
           const title = escapeHtml(titleRaw);
           const dateStr = r.activity_date ? moment(r.activity_date).format('MMM D, YYYY') : '';
-          const checkIn = r.checked_in_at ? fmt(r.checked_in_at) : '�';
-          const checkOut = r.checked_out_at ? fmt(r.checked_out_at) : '�';
-          const durationText = r.checked_out_at ? dur(r.checked_in_at, r.checked_out_at) : '�';
+          const checkIn = r.checked_in_at ? fmt(r.checked_in_at) : '—';
+          const checkOut = r.checked_out_at ? fmt(r.checked_out_at) : '—';
+          const durationText = r.checked_out_at ? dur(r.checked_in_at, r.checked_out_at) : '—';
           const statusHtml = statusBadge(r);
           const tr = document.createElement('tr');
           tr.innerHTML =
@@ -828,8 +873,18 @@ readerEl.style.height = Math.round(w / ar) + 'px';
 
       }
       function extractActivityIdFrom(anyString) {
-        const m = String(anyString).match(/attendance\/checkin\/(\d+)/i);
-        return m ? m[1] : null;
+        const text = String(anyString || '').trim();
+        if (!text) return null;
+        try {
+          const url = new URL(text, window.location.origin);
+          const fromQuery = url.searchParams.get('activity_id') || url.searchParams.get('activity');
+          if (fromQuery && /^\d+$/.test(fromQuery) && Number(fromQuery) > 0) return fromQuery;
+        } catch (_e) {}
+        const pathMatch = text.match(/attendance[\\/]checkin[\\/](\d+)/i);
+        if (pathMatch && Number(pathMatch[1]) > 0) return pathMatch[1];
+        const labelled = text.match(/(?:activity(?:_id)?|event)\s*[:|=#-]\s*(\d+)/i);
+        if (labelled && Number(labelled[1]) > 0) return labelled[1];
+        return /^\d+$/.test(text) && Number(text) > 0 ? text : null;
       }
       function goToCheckin(id) {
         const base = CHECKIN_BASE + String(id);

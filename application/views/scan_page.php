@@ -173,12 +173,43 @@
 
   /* ===== Mobile ===== */
   @media (max-width:767.98px) {
-    .pl-header { flex-direction:column; gap:10px; }
+    .pl-header { flex-direction:column; gap:8px; margin-bottom:12px; }
+    .pl-header .page-title-box { width:100%; }
     .pl-header .pl-actions { align-self:flex-start; }
-    .cam-controls { width:100%; }
-    .cam-controls select { flex:1; min-width:0; }
-    .mode-row { padding-top:12px; margin-top:12px; }
-    .remarks-row input { min-width:0; }
+    .scan-card { border-radius:14px; }
+    .scan-card-head { align-items:stretch; padding:12px; }
+    .scan-card-head .sch-title { width:100%; }
+    .scan-card-body { padding:12px; }
+    .cam-controls {
+      display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+      width:100%; gap:8px;
+    }
+    .cam-controls select { grid-column:1 / -1; width:100%; min-width:0; }
+    .cam-controls .up-btn { justify-content:center; min-width:0; min-height:44px; padding:8px 6px; }
+    .scan-wrap { margin-top:12px; }
+    #reader { min-height:min(82vw,360px); border-radius:12px; }
+    #scanStatus {
+      bottom:10px; width:auto; max-width:calc(100% - 20px);
+      padding:7px 12px; white-space:normal; text-align:center; line-height:1.25;
+    }
+    .mode-row { align-items:stretch; padding-top:12px; margin-top:12px; }
+    .mode-row .mr-label, .remarks-row .rr-label { width:100%; }
+    .mode-pills { display:flex; width:100%; }
+    .mode-pills .mode-pill { flex:1; min-height:44px; padding:8px 6px; }
+    .remarks-row { align-items:stretch; gap:8px; padding-top:12px; margin-top:12px; }
+    .remarks-row input { width:100%; min-width:0; height:44px; }
+    .col-lg-5 { margin-top:14px; }
+    .last-scan { margin-bottom:10px; padding:12px; }
+    #log { max-height:230px; padding:10px 12px; }
+    #profileModal .pcard-main { align-items:center; }
+    #profileModal .pro-avatar { width:64px; height:64px; flex:0 0 64px; }
+    #profileModal .pcard-name { font-size:1rem; }
+  }
+
+  @media (max-width:359.98px) {
+    .cam-controls { grid-template-columns:1fr; }
+    .cam-controls select { grid-column:auto; }
+    .mode-pills .mode-pill { font-size:.72rem; }
   }
 </style>
 
@@ -905,7 +936,7 @@
               setStatus('Already completed this session', 'text-warning');
             } else {
               addLine('× Failed: ' + (j.message || 'Unknown error'), 'text-danger');
-              setStatus('Error — ' + (j.message || 'see log'), 'text-danger');
+              setStatus(j.message || 'Could not record this scan', 'text-danger');
             }
 
             showLastRecorded(studentPayload || (j.student_number || payload.token), outcome);
@@ -921,9 +952,9 @@
               const msg = outcome === 'in' ? 'IN recorded' :
                 outcome === 'out' ? 'OUT recorded' :
                 outcome === 'dup' ? 'Already recorded' :
-                'Invalid';
+                (j.message || 'Could not record this scan');
               setStatus(`${msg} — keep scanning…`, outcome === 'err' ? 'text-danger' : 'text-success');
-              setTimeout(() => setStatus('Looking for a QR code…', ''), 1200);
+              setTimeout(() => setStatus('Looking for a QR code…', ''), outcome === 'err' ? 3000 : 1200);
             }
           })
           .catch((e) => {

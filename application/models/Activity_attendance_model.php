@@ -92,10 +92,15 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
 {
     $activity_id = (int)$activity_id;
 
-    // 0) Validate 32-hex token
-    $token = trim((string)$token);
-    if (!preg_match('/^[A-Fa-f0-9]{32}$/', $token)) {
-        return ['ok' => false, 'mode' => 'err', 'message' => 'Invalid token format'];
+    // 0) Normalize the supported QR wrappers into the stored token. Keeping
+    // this at the model boundary protects every scanner, including old apps.
+    $token = attendance_normalize_student_qr($token);
+    if ($token === '') {
+        return [
+            'ok' => false,
+            'mode' => 'invalid_qr',
+            'message' => 'This is not a student attendance QR. Please scan the QR shown in My QR.',
+        ];
     }
 
     // 1) Activity open? Manual status AND the auto-close time window must both pass.
@@ -107,20 +112,31 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
     if (!$state['is_open']) {
         return [
             'ok'      => false,
-            'mode'    => 'err',
+            'mode'    => 'activity_' . $state['state'],
             'message' => $state['reason'] ?: 'Activity is closed',
             'state'   => $state['state'],
         ];
     }
 
     // 2) QR must be active
-    $qr = $this->db->select('student_number')
+    $qr = $this->db->select('student_number, expires_at')
                    ->from('student_qr')
                    ->where('qr_token', $token)
                    ->where('status', 'active')
                    ->limit(1)->get()->row();
     if (!$qr) {
-        return ['ok'=>false,'mode'=>'err','message'=>'Invalid or inactive student QR'];
+        return [
+            'ok'=>false,
+            'mode'=>'invalid_qr',
+            'message'=>'This student QR is inactive or has been replaced. Ask the student to open My QR and try again.',
+        ];
+    }
+    if (!empty($qr->expires_at) && strtotime((string)$qr->expires_at) < time()) {
+        return [
+            'ok'=>false,
+            'mode'=>'expired_qr',
+            'message'=>'This student QR has expired. Ask the student to issue a new QR in My QR.',
+        ];
     }
 
     $student_number   = (string)$qr->student_number;
@@ -128,8 +144,8 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
     // 2.1) Block if owner account doesn’t exist or isn’t active
     if (!$this->student_exists_and_active_strict($student_number)) {
         return [
-            'ok'=>false,'mode'=>'err',
-            'message'=>'Account not found or inactive for this QR',
+            'ok'=>false,'mode'=>'inactive_student',
+            'message'=>'This QR belongs to a student account that is inactive or no longer available.',
             'student' => $this->resolve_student_min($student_number)
         ];
     }

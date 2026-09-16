@@ -32,7 +32,7 @@ if (!empty($row->meta)) {
 $statusOptions  = activity_manual_statuses();
 $currentStatus  = $mode === 'edit' ? activity_normalize_status($row->status ?? 'open') : 'open';
 $autoCfg        = activity_auto_close_settings($row->meta ?? '');
-$autoCloseOn    = $mode === 'edit' ? $autoCfg['auto_close'] : true;
+$autoCloseOn    = $mode === 'edit' ? $autoCfg['auto_close'] : false;
 $graceMinutes   = $mode === 'edit' ? $autoCfg['grace_minutes'] : ACTIVITY_DEFAULT_GRACE_MINUTES;
 $liveState      = $mode === 'edit' ? activity_state($row) : null;
 ?>

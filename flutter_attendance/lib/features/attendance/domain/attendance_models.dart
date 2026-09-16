@@ -10,7 +10,8 @@ enum ActivityStatus {
   final String value;
   final String label;
 
-  static ActivityStatus fromValue(String? v) => ActivityStatus.values.firstWhere(
+  static ActivityStatus fromValue(String? v) =>
+      ActivityStatus.values.firstWhere(
         (s) => s.value == (v ?? '').trim().toLowerCase(),
         orElse: () => ActivityStatus.open,
       );
@@ -41,7 +42,7 @@ class Activity {
     this.state = 'open',
     this.stateLabel = 'Open',
     this.closedReason,
-    this.autoClose = true,
+    this.autoClose = false,
     this.graceMinutes = 15,
     this.windowStart,
     this.windowEnd,
@@ -112,7 +113,7 @@ class Activity {
       closedReason: (j['closed_reason'] as String?)?.trim().isEmpty ?? true
           ? null
           : (j['closed_reason'] as String).trim(),
-      autoClose: j['auto_close'] == null ? true : j['auto_close'] == true,
+      autoClose: j['auto_close'] == true,
       graceMinutes: (j['grace_minutes'] as num?)?.toInt() ?? 15,
       windowStart: j['window_start'] as String?,
       windowEnd: j['window_end'] as String?,
@@ -213,7 +214,9 @@ class CheckResult {
   });
 
   final bool ok;
-  /// checked_in | checked_out | already_in | duplicate | err
+
+  /// checked_in | checked_out | already_in | duplicate | queued |
+  /// invalid_qr | expired_qr | activity_* | err
   final String mode;
   final int? id;
   final String? studentNumber;

@@ -105,15 +105,10 @@ class Activities extends CI_Controller
 
         // Build the check-in path once
         $path = 'attendance/checkin/' . $activity_id;
-        $xfProto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null;
-        $xfHost  = $_SERVER['HTTP_X_FORWARDED_HOST']  ?? null;
-
-        $scheme = $xfProto ?: ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http');
-        $host   = $xfHost  ?: ($_SERVER['HTTP_HOST'] ?? parse_url(base_url(), PHP_URL_HOST));
-        $origin = $scheme . '://' . $host;
-
-        $path   = 'attendance/checkin/' . $activity_id;
-        $data['checkin_url']  = rtrim($origin, '/') . '/' . ltrim($path, '/');
+        // site_url() preserves the installation subfolder and index_page.
+        // Building from the host alone produced /attendance/... instead of
+        // /fbmso_attendance/attendance/... on subfolder deployments.
+        $data['checkin_url']  = site_url($path);
         $data['checkin_path'] = $path;
 
 
