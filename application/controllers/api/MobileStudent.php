@@ -27,6 +27,7 @@ class MobileStudent extends MobileApi
         $this->load->helper('url');
         $this->load->model('Student_qr_model', 'StudentQR');
         $this->load->model('StudentModel');
+		$this->load->library('term');
     }
 
     // ─── Profile ───────────────────────────────────────────────────────────
@@ -285,15 +286,10 @@ class MobileStudent extends MobileApi
         if ($tokenRow === null) return;
 
         $username = (string)$tokenRow['username'];
-        $sy = trim((string)$this->input->get('sy', true));
-        $sem = trim((string)$this->input->get('sem', true));
-
-        // Fall back to the active settings if not provided.
-        if ($sy === '' || $sem === '') {
-            $settings = $this->db->query('SELECT active_sy, active_sem FROM o_srms_settings LIMIT 1')->row();
-            if ($sy === '')  $sy  = (string)($settings->active_sy ?? '');
-            if ($sem === '') $sem = (string)($settings->active_sem ?? '');
-        }
+		// COR is a current-term screen. Historical grades remain available from
+		// the grades endpoint, but callers cannot override the active enrolment
+		// term with query parameters.
+		list($sem, $sy) = $this->term->current();
 
         $this->db->select('r.SubjectCode, r.Description, r.LecUnit, r.LabUnit, r.Section, r.SchedTime, r.Room, r.Instructor, r.Course, r.YearLevel, r.Major, r.Sem, r.SY, r.totalUnits, r.schedType');
         $this->db->from('registration r');

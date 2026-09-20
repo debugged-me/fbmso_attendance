@@ -13,6 +13,7 @@ class Login extends CI_Controller
         $this->load->library('sessionregistry');
         $this->load->library('devicetokens');
         $this->load->library('riskengine');
+		$this->load->library('term');
     }
 
     function index()
@@ -124,8 +125,10 @@ class Login extends CI_Controller
         // Trim only leading/trailing whitespace so accidental copy spaces won't break login.
         $raw_password = preg_replace('/^\s+|\s+$/u', '', $raw_password);
 
-        $sy       = $this->input->post('sy', TRUE);
-        $semester = $this->input->post('semester', TRUE);
+		// The Academic Term setting is authoritative for every role. Hidden
+		// form fields are display conveniences and must not be able to put one
+		// browser on a different term from the rest of the system.
+		list($semester, $sy) = $this->term->current();
 
         // NEW: capture next from POST first (form), then GET
         $next = $this->input->post('next', TRUE) ?: $this->input->get('next', TRUE);

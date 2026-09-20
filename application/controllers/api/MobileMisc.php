@@ -1803,10 +1803,10 @@ class MobileMisc extends MobileApi
 
         $this->load->model('ReportsModel');
 
-        // Active SY/sem from settings table (same as web Reports controller)
+        // Canonical Academic Term (same source used by the web application).
         $settings = $this->db->select('active_sy, active_sem')
             ->order_by('settingsID', 'DESC')->limit(1)
-            ->get('settings')->row();
+            ->get('o_srms_settings')->row();
         $sy = (string)($settings->active_sy ?? '');
         $sem = (string)($settings->active_sem ?? '');
 
@@ -1907,10 +1907,10 @@ class MobileMisc extends MobileApi
         }
 
         $this->load->model('ReportsModel');
-        // Use settings table (same as web)
+        // Use the canonical Academic Term setting.
         $settings = $this->db->select('active_sy, active_sem')
             ->order_by('settingsID', 'DESC')->limit(1)
-            ->get('settings')->row();
+            ->get('o_srms_settings')->row();
         $sy = (string)($settings->active_sy ?? '');
         $sem = (string)($settings->active_sem ?? '');
 

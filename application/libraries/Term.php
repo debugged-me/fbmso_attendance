@@ -44,8 +44,9 @@ class Term
 	}
 
 	/**
-	 * The term this request should operate on: the session's term when the
-	 * user picked one at login, otherwise the global active term.
+	 * The term this request should operate on.  The institution-wide setting
+	 * is authoritative; the session is only a fallback for installations that
+	 * have not configured an active term yet.
 	 */
 	public function current()
 	{
@@ -58,10 +59,10 @@ class Term
 		}
 
 		$active = $this->active();
-		if ($sem === '') {
+		if ($active['sem'] !== '') {
 			$sem = $active['sem'];
 		}
-		if ($sy === '') {
+		if ($active['sy'] !== '') {
 			$sy = $active['sy'];
 		}
 
@@ -102,6 +103,18 @@ class Term
 		$ok = $row
 			? $this->CI->db->where('settingsID', (int)$row->settingsID)->update('o_srms_settings', $data)
 			: $this->CI->db->insert('o_srms_settings', $data);
+
+		// A legacy attendance-only settings table existed before Academic Term
+		// management was centralised.  Keep it mirrored for old deployments and
+		// integrations, while all application code reads o_srms_settings.
+		if ($ok && $this->CI->db->table_exists('settings')
+			&& $this->CI->db->field_exists('active_sem', 'settings')
+			&& $this->CI->db->field_exists('active_sy', 'settings')) {
+			$legacy = $this->CI->db->select('settingsID')->from('settings')->limit(1)->get()->row();
+			if ($legacy) {
+				$ok = $this->CI->db->where('settingsID', (int)$legacy->settingsID)->update('settings', $data);
+			}
+		}
 
 		if ($ok) {
 			$this->activeCache = ['sem' => $sem, 'sy' => $sy];
@@ -157,6 +170,23 @@ class Term
 			->group_by(['SY', 'Semester'])
 			->get()
 			->result();
+
+		// Keep the active term visible even before its first enrollee exists.
+		$active = $this->active();
+		$hasActive = false;
+		foreach ($rows as $row) {
+			if ((string)$row->Semester === $active['sem'] && (string)$row->SY === $active['sy']) {
+				$hasActive = true;
+				break;
+			}
+		}
+		if (!$hasActive && $this->isValidSem($active['sem']) && $this->isValidSy($active['sy'])) {
+			$rows[] = (object)[
+				'Semester' => $active['sem'],
+				'SY'        => $active['sy'],
+				'enrollees' => 0,
+			];
+		}
 
 		usort($rows, function ($a, $b) {
 			$ay = (int)substr((string)$a->SY, 0, 4);
@@ -271,5 +301,69 @@ class Term
 		}
 
 		return $created;
+	}
+
+	/**
+	 * Open the ledger shell for one newly enrolled student.  Term activation
+	 * covers the existing roster; this keeps students added later in the same
+	 * term consistent without requiring an administrator to run provisioning
+	 * again.
+	 */
+	public function provisionStudentAccount($studentNumber, $sem, $sy)
+	{
+		$studentNumber = trim((string)$studentNumber);
+		if ($studentNumber === '' || !$this->isValidSem($sem) || !$this->isValidSy($sy)) {
+			return false;
+		}
+
+		$enrollee = $this->CI->db
+			->select('StudentNumber, Course, Major, YearLevel, Section')
+			->from('semesterstude')
+			->where('StudentNumber', $studentNumber)
+			->where('Semester', $sem)
+			->where('SY', $sy)
+			->limit(1)
+			->get()
+			->row();
+		if (!$enrollee) {
+			return false;
+		}
+
+		$exists = $this->CI->db->from('studeaccount')
+			->where('StudentNumber', $studentNumber)
+			->where('Sem', $sem)
+			->where('SY', $sy)
+			->limit(1)
+			->count_all_results() > 0;
+		if ($exists) {
+			return false;
+		}
+
+		$paidRow = $this->CI->db->select('COALESCE(SUM(Amount),0) AS paid', false)
+			->from('paymentsaccounts')
+			->where('StudentNumber', $studentNumber)
+			->where('Sem', $sem)
+			->where('SY', $sy)
+			->where('ORStatus', 'Valid')
+			->where('CollectionSource', "Student's Account")
+			->get()
+			->row();
+
+		$settings = $this->CI->db->select('settingsID')
+			->from('o_srms_settings')->limit(1)->get()->row();
+
+		return (bool)$this->CI->db->insert('studeaccount', [
+			'StudentNumber' => $studentNumber,
+			'Course'        => (string)$enrollee->Course,
+			'Major'         => (string)$enrollee->Major,
+			'YearLevel'     => (string)$enrollee->YearLevel,
+			'Section'       => (string)$enrollee->Section,
+			'FeesDesc'      => '',
+			'feesType'      => 'Shell',
+			'TotalPayments' => (float)($paidRow->paid ?? 0),
+			'Sem'           => $sem,
+			'SY'            => $sy,
+			'settingsID'    => (int)($settings->settingsID ?? 0),
+		]);
 	}
 }

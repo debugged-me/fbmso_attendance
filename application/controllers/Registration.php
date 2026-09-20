@@ -12,6 +12,7 @@ class Registration extends CI_Controller
         $this->load->model('EmailVerificationModel');
         $this->load->helper(['url', 'security']);
         $this->load->database();
+		$this->load->library('term');
     }
 
     public function index()
@@ -217,6 +218,16 @@ class Registration extends CI_Controller
                 return;
             }
 
+			// Public and admin-created registrations must land in the same active
+			// term. Anonymous users do not have a term-stamped session, so resolve
+			// the canonical Academic Term before creating any account rows.
+			list($Semester, $SY) = $this->term->current();
+			if (!$this->term->isValidSem($Semester) || !$this->term->isValidSy($SY)) {
+				$this->flashRegistrationError('<div class="alert alert-danger text-center"><b>Registration is unavailable until an academic term is activated.</b></div>');
+				redirect($registrationRedirect);
+				return;
+			}
+
             // 3) Insert into studentsignup + o_users (legacy) in a transaction
             $this->db->trans_start();
 
@@ -261,21 +272,6 @@ class Registration extends CI_Controller
             }
 
             // 3.5) Create/Update Profiling row in `semesterstude`
-            $SY       = $this->session->userdata('sy');
-            $Semester = $this->session->userdata('semester');
-
-            if (!$SY || !$Semester) {
-                $settingsRow = method_exists($this->SettingsModel, 'getSettingsRow')
-                    ? $this->SettingsModel->getSettingsRow()
-                    : $this->db->limit(1)->get('o_srms_settings')->row();
-                if ($settingsRow) {
-                    $SY       = $SY       ?: ($settingsRow->SY       ?? null);
-                    $Semester = $Semester ?: ($settingsRow->Semester ?? null);
-                }
-            }
-            $SY       = $SY       ?: date('Y') . '-' . (date('Y') + 1);
-            $Semester = $Semester ?: 'First Semester';
-
             $course1 = (string)$this->input->post('Course1', true);
             $major1  = (string)$this->input->post('Major1', true);
 
@@ -328,6 +324,8 @@ class Registration extends CI_Controller
             } else {
                 $this->db->insert('semesterstude', $profiling);
             }
+
+			$this->term->provisionStudentAccount($studentNumber, $Semester, $SY);
 
             // (non-fatal) keep profiles.yearLevel in sync if the row exists
             $this->db->where('studentNumber', $studentNumber)

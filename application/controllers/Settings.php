@@ -2073,6 +2073,11 @@ class Settings extends CI_Controller
 			}
 
 			if ($action === 'provision') {
+				if (!$this->term->isValidSem($sem) || !$this->term->isValidSy($sy)) {
+					$this->session->set_flashdata('danger', 'Invalid semester or school year.');
+					redirect('Settings/academicTerm');
+					return;
+				}
 				$created = $this->term->provisionAccounts($sem, $sy);
 				$this->session->set_flashdata(
 					$created > 0 ? 'success' : 'warning',

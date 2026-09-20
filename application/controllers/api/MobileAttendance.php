@@ -425,7 +425,7 @@ class MobileAttendance extends MobileApi
         // Active SY/Sem from settings (same as web)
         $active = $this->db->select('active_sy, active_sem')
             ->order_by('settingsID', 'DESC')->limit(1)
-            ->get('settings')->row();
+            ->get('o_srms_settings')->row();
         $use_sy  = (string)($active->active_sy ?? '');
         $use_sem = (string)($active->active_sem ?? '');
 
@@ -520,7 +520,7 @@ class MobileAttendance extends MobileApi
 
         $active = $this->db->select('active_sy, active_sem')
             ->order_by('settingsID', 'DESC')->limit(1)
-            ->get('settings')->row();
+            ->get('o_srms_settings')->row();
         $use_sy  = (string)($active->active_sy ?? '');
         $use_sem = (string)($active->active_sem ?? '');
 
@@ -613,16 +613,12 @@ class MobileAttendance extends MobileApi
         $startAt = $activityDate . ' ' . ($startTime !== '' ? $startTime . ':00' : '00:00:00');
         $endAt   = ($endTime !== '') ? ($activityDate . ' ' . $endTime . ':00') : null;
 
-        // Pull active SY/semester from settings if not provided.
-        $sy  = trim((string)($payload['sy'] ?? ''));
-        $sem = trim((string)($payload['semester'] ?? ''));
-        if ($sy === '' || $sem === '') {
-            $settings = $this->db->select('active_sy, active_sem')->from('settings')->limit(1)->get()->row();
-            if ($settings) {
-                if ($sy === '')  $sy  = (string)$settings->active_sy;
-                if ($sem === '') $sem = (string)$settings->active_sem;
-            }
-        }
+		// Activity creation follows the same global term as the web app. Do not
+		// allow a mobile payload to create current operations under another term.
+		$settings = $this->db->select('active_sy, active_sem')
+			->from('o_srms_settings')->limit(1)->get()->row();
+		$sy  = trim((string)($settings->active_sy ?? ''));
+		$sem = trim((string)($settings->active_sem ?? ''));
 
         $username = (string)$tokenRow['username'];
 

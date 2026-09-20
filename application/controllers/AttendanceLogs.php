@@ -8,6 +8,7 @@ class AttendanceLogs extends CI_Controller
         $this->load->database();
         $this->load->helper(['url','form']);
         $this->load->library(['session']);
+		$this->load->library('term');
         $this->load->model('Activities_model','ActivitiesModel');
         $this->load->model('Activity_attendance_model','ActAttModel');
     }
@@ -19,13 +20,7 @@ public function index()
     $date        = trim((string)$this->input->get('date'));      // YYYY-MM-DD (optional)
     $session     = trim((string)$this->input->get('session'));   // am|pm|eve (optional)
 
-    // Get active SY/Sem (fallback to settings if session is empty)
-    $active = $this->db->select('active_sy, active_sem')
-                       ->from('settings')
-                       ->order_by('settingsID','DESC')->limit(1)
-                       ->get()->row();
-    $use_sy  = $this->session->userdata('sy')       ?: ($active->active_sy  ?? null);
-    $use_sem = $this->session->userdata('semester') ?: ($active->active_sem ?? null);
+	list($use_sem, $use_sy) = $this->term->current();
 
     // Build course lookup (CourseCode -> variants) from course_table
     $courseCatalog = $this->db->select('courseid, CourseCode, CourseDescription, Major')
@@ -141,13 +136,7 @@ public function activity($activity_id)
     $activity = $this->ActivitiesModel->find($activity_id);
     if (!$activity) show_404();
 
-    // Ensure consistent SY/Sem
-    $active = $this->db->select('active_sy, active_sem')
-                       ->from('settings')
-                       ->order_by('settingsID','DESC')->limit(1)
-                       ->get()->row();
-    $use_sy  = $this->session->userdata('sy')       ?: ($active->active_sy  ?? null);
-    $use_sem = $this->session->userdata('semester') ?: ($active->active_sem ?? null);
+	list($use_sem, $use_sy) = $this->term->current();
 
     $rows = $this->ActAttModel->report_by_activity_section(
         $activity_id,
@@ -181,13 +170,7 @@ public function export_csv($activity_id)
     $activity = $this->ActivitiesModel->find($activity_id);
     if (!$activity) show_404();
 
-    // Ensure consistent SY/Sem
-    $active = $this->db->select('active_sy, active_sem')
-                       ->from('settings')
-                       ->order_by('settingsID','DESC')->limit(1)
-                       ->get()->row();
-    $use_sy  = $this->session->userdata('sy')       ?: ($active->active_sy  ?? null);
-    $use_sem = $this->session->userdata('semester') ?: ($active->active_sem ?? null);
+	list($use_sem, $use_sy) = $this->term->current();
 
     $rows = $this->ActAttModel->report_by_activity_section(
         $activity_id,

@@ -13,6 +13,7 @@ class Masterlist extends CI_Controller
 		$this->load->model('Common');
 		$this->load->model('Login_model');
 		$this->load->library('session');
+		$this->load->library('term');
 
 
 		if ($this->session->userdata('logged_in') !== TRUE) {
@@ -1106,6 +1107,7 @@ public function bySY()
 
 		// Insert to semesterstude
 		$this->db->insert('semesterstude', $data);
+		$this->term->provisionStudentAccount($studentNumber, $sem, $sy);
 
 		// Sync minimal profile fields
 		$this->db->where('StudentNumber', $data['StudentNumber'])

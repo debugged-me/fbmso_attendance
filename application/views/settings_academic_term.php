@@ -21,7 +21,7 @@
                     <div class="pl-header">
                         <div class="page-title-box">
                             <h4 class="up-page-title">Academic Term</h4>
-                            <div class="up-page-sub">Set the active semester and school year. All modules scope new records and lists to it.</div>
+                            <div class="up-page-sub">Set one active semester and school year for every admin, student, web, and mobile screen.</div>
                             <hr class="up-divider" />
                         </div>
                         <div class="pl-actions">
@@ -59,6 +59,7 @@
                                     <div>
                                         <div style="font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--up-muted);font-weight:700;">Active Term</div>
                                         <div style="font-size:1.15rem;font-weight:800;color:var(--up-ink);"><?= htmlspecialchars($activeLabel !== '' ? $activeLabel : 'Not set', ENT_QUOTES, 'UTF-8'); ?></div>
+                                        <div style="font-size:.78rem;color:var(--up-muted);margin-top:3px;">New enrolment and attendance records use this term. Earlier terms remain unchanged as history.</div>
                                     </div>
                                 </div>
                             </div>
@@ -79,7 +80,7 @@
                                                 <tr>
                                                     <th>School Year</th>
                                                     <th>Semester</th>
-                                                    <th class="text-right">Enrollees</th>
+                                                    <th class="text-right">All Enrollees</th>
                                                     <th>Actions</th>
                                                 </tr>
                                             </thead>
@@ -101,7 +102,7 @@
                                                             <?php endif; ?>
                                                         </td>
                                                         <td data-label="Semester"><?= htmlspecialchars($tSem, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td data-label="Enrollees" class="text-right"><?= (int)$t->enrollees; ?></td>
+                                                        <td data-label="All Enrollees" class="text-right"><?= (int)$t->enrollees; ?></td>
                                                         <td data-label="Actions" class="up-rt-actions">
                                                             <div class="action-wrap">
                                                                 <?php if (!$isActive): ?>
@@ -118,7 +119,7 @@
                                                                     </form>
                                                                 <?php endif; ?>
                                                                 <form method="post" action="<?= base_url('Settings/academicTerm'); ?>"
-                                                                    data-ui-confirm="Ledger accounts will be opened for enrolled students who do not have one yet."
+                                                                    data-ui-confirm="Ledger accounts will be opened for all enrolled students in this term who do not have one yet."
                                                                     data-ui-confirm-title="Open missing accounts for <?= htmlspecialchars($tSem . ' ' . $tSy, ENT_QUOTES, 'UTF-8'); ?>?"
                                                                     data-ui-confirm-ok="Open accounts">
                                                                     <input type="hidden" name="action" value="provision">
@@ -171,7 +172,7 @@
                                             <i class="mdi mdi-check-circle"></i> Activate Term
                                         </button>
                                         <small class="text-muted d-block mt-2">
-                                            Activating a term also opens a ledger account for every student enrolled in it who doesn't have one yet, so their payments can post against a balance.
+                                            Activating a term applies to all users and opens a ledger account for every student already enrolled in it. Students enrolled later are added to the same term automatically.
                                         </small>
                                     </form>
                                 </div>

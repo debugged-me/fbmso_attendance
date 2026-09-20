@@ -33,6 +33,7 @@ class MobileAuth extends MobileApi
         $this->load->model('Login_model');
         $this->load->model('EmailVerificationModel');
         $this->load->library('Loginthrottle');
+		$this->load->library('term');
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -234,8 +235,9 @@ class MobileAuth extends MobileApi
         $username    = trim((string)($payload['username'] ?? ''));
         $passwordRaw = (string)($payload['password'] ?? '');
         $settings    = $this->current_settings();
-        $sy          = trim((string)($payload['sy'] ?? ($settings->active_sy ?? '')));
-        $semester    = trim((string)($payload['semester'] ?? ($settings->active_sem ?? '')));
+		// The mobile client receives the same institution-wide term as web
+		// users. Client-supplied term values cannot override it.
+		list($semester, $sy) = $this->term->current();
 
         if ($username === '' || $passwordRaw === '') {
             return $this->json(['ok' => false, 'message' => 'Username and password are required.'], 422);
@@ -322,8 +324,7 @@ class MobileAuth extends MobileApi
 
         $settings = $this->current_settings();
         $schoolName = (string)($settings->SchoolName ?? 'FBMSO Portal');
-        $sy       = trim((string)($this->input->get('sy', true) ?: ($settings->active_sy ?? '')));
-        $semester = trim((string)($this->input->get('semester', true) ?: ($settings->active_sem ?? '')));
+		list($semester, $sy) = $this->term->current();
 
         return $this->json([
             'ok'         => true,
@@ -594,6 +595,11 @@ class MobileAuth extends MobileApi
             return $this->json(['ok' => false, 'message' => implode(' ', $parts)], 409);
         }
 
+		list($semester, $sy) = $this->term->current();
+		if (!$this->term->isValidSem($semester) || !$this->term->isValidSy($sy)) {
+			return $this->json(['ok' => false, 'message' => 'Registration is unavailable until an academic term is activated.'], 503);
+		}
+
         // Compute age
         $age = 0;
         if ($birthDate !== '') {
@@ -678,10 +684,6 @@ class MobileAuth extends MobileApi
         }
 
         // Create semesterstude profiling row
-        $settings = $this->current_settings();
-        $sy = $settings->SY ?? (date('Y') . '-' . (date('Y') + 1));
-        $semester = $settings->Semester ?? 'First Semester';
-
         $existingSem = $this->db->get_where('semesterstude', [
             'StudentNumber' => $studentNumber,
             'SY' => $sy,
@@ -705,6 +707,7 @@ class MobileAuth extends MobileApi
         if (!$existingSem) {
             $this->db->insert('semesterstude', $profiling);
         }
+		$this->term->provisionStudentAccount($studentNumber, $semester, $sy);
 
         $verification = $this->EmailVerificationModel->queueForUser($studentNumber);
         $message = !empty($verification['ok'])

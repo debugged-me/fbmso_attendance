@@ -20,6 +20,7 @@ class Page extends CI_Controller
 		$this->load->model('StudentModel');
 		$this->load->model('CourseSectionModel');
 		$this->load->model('AuditLogModel');
+		$this->load->library('term');
 		if ($this->session->userdata('logged_in') !== TRUE) {
 			redirect('login');
 		}
@@ -1291,8 +1292,7 @@ class Page extends CI_Controller
 	function enrollment()
 	{
 		$id  = $this->session->userdata('username');
-		$sy  = $this->session->userdata('sy');
-		$sem = $this->session->userdata('semester');
+		list($sem, $sy) = $this->term->current();
 
 		$courseVal    = $this->input->post('course');     // (kept even if not used)
 		$yearlevelVal = $this->input->post('yearlevel');  // (kept even if not used)
@@ -1319,8 +1319,10 @@ class Page extends CI_Controller
 			$Course        = $this->input->post('Course');
 			$Major         = $this->input->post('Major');
 			$YearLevel     = $this->input->post('YearLevel');
-			$Semester      = $this->input->post('Semester');
-			$SY            = $this->input->post('SY');
+			// Never trust a posted term. A student cannot enrol into a historic or
+			// future term by changing hidden form values.
+			$Semester      = $sem;
+			$SY            = $sy;
 			$requirements  = $this->input->post('requirements');
 
 			$fname = $this->session->userdata('fname');
@@ -1415,14 +1417,20 @@ class Page extends CI_Controller
 		if ($this->input->post('submit')) {
 
 			$settings = $this->StudentModel->get_srms_settings(); // Get latest settings before use
+			list($activeSemester, $activeSy) = $this->term->current();
+			if (!$this->term->isValidSem($activeSemester) || !$this->term->isValidSy($activeSy)) {
+				$this->session->set_flashdata('danger', '<div class="alert alert-danger text-center"><b>Activate an academic term before enrolling students.</b></div>');
+				redirect('Masterlist/enrolledList');
+				return;
+			}
 
 			$data = [
 				'StudentNumber' => $this->input->post('StudentNumber'),
 				'Course'        => $this->input->post('Course'),
 				'YearLevel'     => $this->input->post('YearLevel'),
 				'Status'        => $this->input->post('Status'),
-				'Semester'      => $this->input->post('Semester'),
-				'SY'            => $this->input->post('SY'),
+				'Semester'      => $activeSemester,
+				'SY'            => $activeSy,
 				'Section'       => $this->input->post('Section'),
 				'StudeStatus'   => $this->input->post('StudeStatus'),
 				'PayingStatus'  => $this->input->post('PayingStatus'),
@@ -1451,6 +1459,7 @@ class Page extends CI_Controller
 			} else {
 				// insert to semesterstude
 				$this->db->insert('semesterstude', $data);
+				$this->term->provisionStudentAccount($data['StudentNumber'], $activeSemester, $activeSy);
 
 				// sync studeprofile
 				$this->db->where('StudentNumber', $data['StudentNumber'])
@@ -1501,22 +1510,13 @@ class Page extends CI_Controller
 
 	public function updateSemesterSy()
 	{
-		$semester = $this->input->post('semester');
-		$sy = $this->input->post('sy');
-
-		// Validate format: SY like "2025-2026", semester like "First Semester"
-		if (!preg_match('/^\d{4}-\d{4}$/', $sy) || !preg_match('/^[A-Za-z ]+$/', $semester)) {
-			$this->session->set_flashdata('error', 'Invalid school year or semester format.');
-			redirect('Page/student');
-			return;
-		}
-
+		// Kept as a compatibility endpoint for old bookmarks/forms. Individual
+		// users may no longer override the institution-wide Academic Term.
+		list($semester, $sy) = $this->term->current();
 		$this->session->set_userdata('semester', $semester);
 		$this->session->set_userdata('sy', $sy);
-
-		// Optionally add a flash message or log activity
-
-		$this->safeRedirect('Page/index'); // redirect back to the previous page
+		$this->session->set_flashdata('warning', 'The academic term is managed centrally and applies to every user.');
+		$this->safeRedirect('Page/index');
 	}
 
 
@@ -5910,17 +5910,34 @@ class Page extends CI_Controller
 	//delete student's enrollment
 	public function deleteEnrollment()
 	{
-		$id = $this->input->post('id');
-		$this->db->where('semstudentid', $id)->delete('semesterstude');
-		$this->session->set_flashdata('msg', '<div class="alert alert-danger text-center"><b>Deleted successfully.</b></div>');
+		if (!$this->requirePost()) return;
+		$id = (int)$this->input->post('id');
+		list($semester, $sy) = $this->term->current();
+		$this->db->where('semstudentid', $id)
+			->where('Semester', $semester)
+			->where('SY', $sy)
+			->delete('semesterstude');
+		$this->session->set_flashdata(
+			'msg',
+			$this->db->affected_rows() > 0
+				? '<div class="alert alert-danger text-center"><b>Enrollment removed from the active term.</b></div>'
+				: '<div class="alert alert-warning text-center"><b>No active-term enrollment was changed.</b></div>'
+		);
 		redirect('Masterlist/enrolledList');
 	}
 
 	public function deleteEnrollmentPH()
 	{
-		$id = $this->input->post('id');
-		$this->db->where('semstudentid', $id)->delete('semesterstude');
-		$this->session->set_flashdata('msg', 'Deleted successfully.');
+		if (!$this->requirePost()) return;
+		$id = (int)$this->input->post('id');
+		list($semester, $sy) = $this->term->current();
+		$this->db->where('semstudentid', $id)
+			->where('Semester', $semester)
+			->where('SY', $sy)
+			->delete('semesterstude');
+		$this->session->set_flashdata('msg', $this->db->affected_rows() > 0
+			? 'Enrollment removed from the active term.'
+			: 'No active-term enrollment was changed.');
 		redirect('Masterlist/enrolledListPH');
 	}
 
@@ -5928,9 +5945,17 @@ class Page extends CI_Controller
 
 	public function updateEnrollment()
 	{
-		$id = $this->input->get('id');
-		$semester = $this->session->userdata('semester');
-		$sy = $this->session->userdata('sy');
+		$id = (int)$this->input->get('id');
+		list($semester, $sy) = $this->term->current();
+		$termEnrollment = $this->db->from('semesterstude')
+			->where('semstudentid', $id)
+			->where('Semester', $semester)
+			->where('SY', $sy)
+			->limit(1)->get()->row();
+		if (!$termEnrollment) {
+			show_error('Enrollment record not found in the active academic term.', 404);
+			return;
+		}
 
 		// Load dropdown values and student data
 		$result['course'] = $this->StudentModel->getCourse();
@@ -5951,8 +5976,8 @@ class Page extends CI_Controller
 				'Course'        => $this->input->post('Course'),
 				'YearLevel'     => $this->input->post('YearLevel'),
 				'Status'     => $this->input->post('Status'),
-				'Semester'      => $this->input->post('Semester'),
-				'SY'            => $this->input->post('SY'),
+				'Semester'      => $semester,
+				'SY'            => $sy,
 				'Section'       => $this->input->post('Section'),
 				'StudeStatus'   => $this->input->post('StudeStatus'),
 				'PayingStatus'   => $this->input->post('PayingStatus'),
@@ -6011,9 +6036,17 @@ class Page extends CI_Controller
 
 	public function updateEnrollmentPH()
 	{
-		$id = $this->input->get('id');
-		$semester = $this->session->userdata('semester');
-		$sy = $this->session->userdata('sy');
+		$id = (int)$this->input->get('id');
+		list($semester, $sy) = $this->term->current();
+		$termEnrollment = $this->db->from('semesterstude')
+			->where('semstudentid', $id)
+			->where('Semester', $semester)
+			->where('SY', $sy)
+			->limit(1)->get()->row();
+		if (!$termEnrollment) {
+			show_error('Enrollment record not found in the active academic term.', 404);
+			return;
+		}
 
 		// Load dropdown values and student data
 		$result['course'] = $this->StudentModel->getCourse();
@@ -6034,8 +6067,8 @@ class Page extends CI_Controller
 				'Course'        => $this->input->post('Course'),
 				'YearLevel'     => $this->input->post('YearLevel'),
 				'Status'     => $this->input->post('Status'),
-				'Semester'      => $this->input->post('Semester'),
-				'SY'            => $this->input->post('SY'),
+				'Semester'      => $semester,
+				'SY'            => $sy,
 				'Section'       => $this->input->post('Section'),
 				'StudeStatus'   => $this->input->post('StudeStatus'),
 				'PayingStatus'   => $this->input->post('PayingStatus'),
