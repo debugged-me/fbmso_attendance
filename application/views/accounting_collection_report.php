@@ -49,19 +49,33 @@
                             <div class="up-card mb-0">
                                 <div class="up-card-body py-3">
                                     <form method="get" action="<?= base_url('Accounting/collectionReport'); ?>" class="form-row align-items-end">
-                                        <div class="col-md-4 mb-2">
+                                        <div class="col-md-3 mb-2">
                                             <label for="from" class="mb-1">From</label>
                                             <input type="date" id="from" name="from" class="form-control"
                                                 value="<?= htmlspecialchars((string)$from, ENT_QUOTES, 'UTF-8'); ?>" required>
                                         </div>
-                                        <div class="col-md-4 mb-2">
+                                        <div class="col-md-3 mb-2">
                                             <label for="to" class="mb-1">To</label>
                                             <input type="date" id="to" name="to" class="form-control"
                                                 value="<?= htmlspecialchars((string)$to, ENT_QUOTES, 'UTF-8'); ?>" required>
                                         </div>
-                                        <div class="col-md-4 mb-2 text-right">
+                                        <div class="col-md-3 mb-2">
+                                            <label for="term" class="mb-1">Term</label>
+                                            <select id="term" name="term" class="form-control">
+                                                <option value="">All terms</option>
+                                                <?php
+                                                $selectedTerm = trim((string)($filter_sem ?? '') . '|' . (string)($filter_sy ?? ''), '|');
+                                                foreach (($term_options ?? []) as $t):
+                                                    $termVal = (string)$t->Semester . '|' . (string)$t->SY;
+                                                    $termLabel = trim((string)$t->Semester . ' ' . (string)$t->SY);
+                                                ?>
+                                                    <option value="<?= htmlspecialchars($termVal, ENT_QUOTES, 'UTF-8'); ?>" <?= $termVal === $selectedTerm ? 'selected' : ''; ?>><?= htmlspecialchars($termLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 mb-2 text-right">
                                             <button class="up-btn up-btn-primary btn-block" type="submit">
-                                                <i class="mdi mdi-filter-outline"></i> Apply Date Range
+                                                <i class="mdi mdi-filter-outline"></i> Apply Filters
                                             </button>
                                         </div>
                                     </form>

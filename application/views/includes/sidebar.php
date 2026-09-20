@@ -363,6 +363,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     $manageTargets = [
                         'Settings/Department',
                         'Settings/department',
+                        'Settings/academicTerm',
                         'Page/manageSections',
                         'Page/addSection',
                         'Page/editSection',
@@ -386,10 +387,12 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                             $sectionPrefixes  = ['Page/manageSections', 'Page/addSection', 'Page/editSection'];
                             $isSectionActive  = $manageMatch($sectionPrefixes);
                             $isUserActive     = stripos($currentUri, trim('Page/userAccounts', '/')) === 0;
+                            $isTermActive     = stripos($currentUri, trim('Settings/academicTerm', '/')) === 0;
 
                             $courseLinkClass  = $isCourseActive ? 'active' : '';
                             $sectionLinkClass = $isSectionActive ? 'active' : '';
                             $userLinkClass    = $isUserActive ? 'active' : '';
+                            $termLinkClass    = $isTermActive ? 'active' : '';
                             ?>
                             <li>
                                 <a class="<?= $courseLinkClass; ?>" href="<?= base_url('Settings/Department'); ?>"> Course </a>
@@ -397,6 +400,9 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                             <!-- Manage Sections -->
                             <li>
                                 <a class="<?= $sectionLinkClass; ?>" href="<?= base_url('Page/manageSections'); ?>"> Sections </a>
+                            </li>
+                            <li>
+                                <a class="<?= $termLinkClass; ?>" href="<?= base_url('Settings/academicTerm'); ?>"> Academic Term </a>
                             </li>
                             <li>
                                 <a class="<?= $userLinkClass; ?>" href="<?= base_url('Page/userAccounts'); ?>"> Admin Accounts </a>

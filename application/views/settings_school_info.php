@@ -203,8 +203,9 @@
                                                     </div>
                                                     <div class="col-lg-6">
                                                         <div class="form-group">
-                                                            <label>Active SY </label>
-                                                            <input type="text" class="form-control" name="active_sy" value="<?php echo $data[0]->active_sy; ?>">
+                                                            <label>Active Term</label>
+                                                            <input type="text" class="form-control" value="<?php echo htmlspecialchars(trim(($data[0]->active_sem ?? '') . ' ' . ($data[0]->active_sy ?? '')), ENT_QUOTES, 'UTF-8'); ?>" readonly>
+                                                            <small class="text-muted">Changed under <a href="<?= base_url('Settings/academicTerm'); ?>">Academic Term</a>.</small>
                                                         </div>
                                                     </div>
                                                 </div>

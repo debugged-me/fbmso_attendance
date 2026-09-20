@@ -60,9 +60,18 @@
                     <div class="row">
                         <div class="col-12">
                             <div class="up-card">
-                                <div class="up-card-head">
+                                <div class="up-card-head" style="flex-wrap:wrap;gap:8px;">
                                     <h4><i class="mdi mdi-cash-multiple"></i> Recent Student Payments</h4>
-                                    <span class="badge badge-purple"><?= count($recent_payments); ?> entries</span>
+                                    <div class="d-flex align-items-center" style="gap:8px;">
+                                        <select id="termFilter" class="form-control form-control-sm" style="max-width:220px;" title="Filter by term">
+                                            <option value="">All terms</option>
+                                            <?php foreach (($term_options ?? []) as $t): ?>
+                                                <?php $termLabel = trim((string)$t->Semester . ' ' . (string)$t->SY); ?>
+                                                <option value="<?= htmlspecialchars($termLabel, ENT_QUOTES, 'UTF-8'); ?>"><?= htmlspecialchars($termLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <span class="badge badge-purple"><?= count($recent_payments); ?> entries</span>
+                                    </div>
                                 </div>
                                 <div class="up-card-body" style="padding:0 !important;">
                                     <div class="table-responsive up-rt-host">
@@ -166,9 +175,14 @@
                     </div>
 
                     <div class="modal-body">
-                        <input type="hidden" name="Sem" id="paymentSem" value="<?= htmlspecialchars((string)$semester, ENT_QUOTES, 'UTF-8'); ?>">
-                        <input type="hidden" name="SY" id="paymentSy" value="<?= htmlspecialchars((string)$sy, ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="payment_submit_token" value="<?= htmlspecialchars((string)($payment_submit_token ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+
+                        <div class="alert alert-info py-2 px-3 mb-3" style="font-size:.82rem;">
+                            <i class="mdi mdi-calendar-check"></i>
+                            Recorded under the active term:
+                            <b><?= htmlspecialchars(trim((string)$semester . ' ' . (string)$sy), ENT_QUOTES, 'UTF-8'); ?></b>
+                            <span id="studentTermHint" class="d-block mt-1" style="display:none;"></span>
+                        </div>
 
                         <!-- keep description for controller, but hidden -->
                         <input type="hidden" name="description" id="descriptionHidden" value="">
@@ -274,8 +288,6 @@
 
                     <div class="modal-body">
                         <input type="hidden" name="id" id="editId" value="">
-                        <input type="hidden" name="Sem" id="editSem" value="<?= htmlspecialchars((string)$semester, ENT_QUOTES, 'UTF-8'); ?>">
-                        <input type="hidden" name="SY" id="editSy" value="<?= htmlspecialchars((string)$sy, ENT_QUOTES, 'UTF-8'); ?>">
 
                         <input type="hidden" name="description" id="editDescriptionHidden" value="">
 
@@ -330,8 +342,6 @@
     <script>
         (function() {
             var baseUrl = <?= json_encode(base_url()); ?>;
-            var defaultSem = <?= json_encode((string)$semester); ?>;
-            var defaultSy = <?= json_encode((string)$sy); ?>;
             var defaultOrNumber = <?= json_encode((string)$next_or_number); ?>;
             var defaultPaymentDate = <?= json_encode((string)$default_payment_date); ?>;
             var restoredPaymentForm = <?= json_encode($paymentFormOld); ?>;
@@ -345,14 +355,18 @@
             var paymentFormSubmitting = false;
             var paymentSubmitDefaultHtml = '';
 
-            // The hidden Sem/SY follow the selected student's enrolment term so
-            // the payment (and the ledger update) lands on the right semester.
-            function applyStudentTerm($select, $semInput, $syInput) {
+            // Show the selected student's enrolment term for context — the
+            // payment itself always records under the active term.
+            function updateStudentTermHint($select) {
                 var $opt = $select.find('option:selected');
                 var sem = $.trim($opt.attr('data-sem') || '');
                 var sy = $.trim($opt.attr('data-sy') || '');
-                $semInput.val(sem !== '' ? sem : defaultSem);
-                $syInput.val(sy !== '' ? sy : defaultSy);
+                var $hint = $('#studentTermHint');
+                if (sem !== '' || sy !== '') {
+                    $hint.text('Student enrolled in: ' + $.trim(sem + ' ' + sy)).show();
+                } else {
+                    $hint.hide().text('');
+                }
             }
 
             function initTooltips() {
@@ -687,6 +701,15 @@
                     }
                 });
 
+                // Term filter — exact-match on the Sem/SY column (index 4)
+                $('#termFilter').on('change', function() {
+                    var v = this.value;
+                    dt.column(4).search(
+                        v === '' ? '' : '^' + $.fn.dataTable.util.escapeRegex(v) + '$',
+                        true, false
+                    ).draw();
+                });
+
                 // tooltips first run
                 initTooltips();
                 setPaymentSubmitState(false);
@@ -726,11 +749,7 @@
                 });
 
                 $(document).on('change', '#studentSelect', function() {
-                    applyStudentTerm($(this), $('#paymentSem'), $('#paymentSy'));
-                });
-
-                $(document).on('change', '#editStudentSelect', function() {
-                    applyStudentTerm($(this), $('#editSem'), $('#editSy'));
+                    updateStudentTermHint($(this));
                 });
 
                 $(document).on('change', '#descriptionField', function() {

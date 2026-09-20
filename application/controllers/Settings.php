@@ -8,6 +8,7 @@ class Settings extends CI_Controller
 		$this->load->helper('url');
 		$this->load->helper('url', 'form');
 		$this->load->library('form_validation');
+		$this->load->library('term');
 		$this->load->model('StudentModel');
 		$this->load->model('SettingsModel');
 		$this->load->model('Login_model');
@@ -369,8 +370,7 @@ class Settings extends CI_Controller
 				'cashierPosition'       => $this->input->post('cashierPosition'),
 				'PropertyCustodian'     => $this->input->post('PropertyCustodian'),
 				'slogan'                => $this->input->post('slogan'),
-				'active_sem'                => $this->input->post('active_sem'),
-				'active_sy'                => $this->input->post('active_sy'),
+				'viewGrades'            => $this->input->post('viewGrades'),
 				'allow_signup'                => $this->input->post('allow_signup'),
 
 				'dragonpay_merchantid'                => $this->input->post('dragonpay_merchantid'),
@@ -2004,5 +2004,99 @@ class Settings extends CI_Controller
 		];
 
 		$this->load->view('grades_status_list', $data);
+	}
+
+	/**
+	 * Academic term management — the one place the active semester + school
+	 * year changes. Admin only. Activating a term also opens ledger accounts
+	 * (studeaccount shells) for that term's enrollees so payments have an
+	 * account to post against.
+	 */
+	public function academicTerm()
+	{
+		if (!in_array($this->session->userdata('level'), ['Admin', 'Super Admin'], true)) {
+			show_error('Access Denied', 403);
+			return;
+		}
+
+		if (strtoupper((string)$this->input->method()) === 'POST') {
+			$action = trim((string)$this->input->post('action', true));
+			$sem    = trim((string)$this->input->post('sem', true));
+			$sy     = trim((string)$this->input->post('sy', true));
+
+			if ($action === 'activate') {
+				if (!$this->term->isValidSem($sem) || !$this->term->isValidSy($sy)) {
+					$this->session->set_flashdata('danger', 'Invalid semester or school year.');
+					redirect('Settings/academicTerm');
+					return;
+				}
+
+				$active = $this->term->active();
+				if ($active['sem'] === $sem && $active['sy'] === $sy) {
+					$this->session->set_flashdata('warning', "$sem $sy is already the active term.");
+					redirect('Settings/academicTerm');
+					return;
+				}
+
+				$this->db->trans_begin();
+				$this->term->setActive($sem, $sy);
+				$created = $this->term->provisionAccounts($sem, $sy);
+
+				if ($this->db->trans_status() === false) {
+					$this->db->trans_rollback();
+					$this->session->set_flashdata('danger', 'Unable to activate the term. Please try again.');
+					redirect('Settings/academicTerm');
+					return;
+				}
+				$this->db->trans_commit();
+
+				// This session is logged in — re-stamp it immediately so the
+				// admin doesn't have to sign out to see the new term.
+				$this->session->set_userdata('semester', $sem);
+				$this->session->set_userdata('sy', $sy);
+
+				$this->db->insert('atrail', [
+					'atDesc' => "Activated academic term $sem $sy (provisioned $created student accounts)",
+					'atDate' => date('Y-m-d'),
+					'atTime' => date('H:i:s'),
+					'atRes'  => $this->session->userdata('username') ?? 'Unknown',
+					'atSNo'  => ''
+				]);
+
+				$msg = "Active term is now <b>$sem, $sy</b>.";
+				$msg .= $created > 0
+					? " Opened ledger accounts for $created enrolled student(s)."
+					: " All enrolled students already had accounts.";
+				$this->session->set_flashdata('success', $msg);
+				redirect('Settings/academicTerm');
+				return;
+			}
+
+			if ($action === 'provision') {
+				$created = $this->term->provisionAccounts($sem, $sy);
+				$this->session->set_flashdata(
+					$created > 0 ? 'success' : 'warning',
+					$created > 0
+						? "Opened ledger accounts for $created student(s) in $sem $sy."
+						: "No missing accounts for $sem $sy."
+				);
+				redirect('Settings/academicTerm');
+				return;
+			}
+
+			$this->session->set_flashdata('danger', 'Unknown action.');
+			redirect('Settings/academicTerm');
+			return;
+		}
+
+		$active = $this->term->active();
+		$this->load->view('settings_academic_term', [
+			'active_sem'   => $active['sem'],
+			'active_sy'    => $active['sy'],
+			'terms'        => $this->term->terms(),
+			'semesters'    => $this->term->semesters(),
+			'school_years' => $this->term->schoolYears(),
+			'next_sy'      => $this->term->nextSy($active['sy']),
+		]);
 	}
 }

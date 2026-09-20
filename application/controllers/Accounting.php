@@ -11,7 +11,7 @@ class Accounting extends CI_Controller
 		parent::__construct();
 		$this->load->database();
 		$this->load->helper(['url', 'form']);
-		$this->load->library(['session', 'form_validation']);
+		$this->load->library(['session', 'form_validation', 'term']);
 		$this->load->model('SettingsModel');
 		$this->config->load('mass_announcement_email', true);
 
@@ -37,27 +37,7 @@ class Accounting extends CI_Controller
 
 	private function currentSemSy()
 	{
-		$sem = trim((string)$this->session->userdata('semester'));
-		$sy  = trim((string)$this->session->userdata('sy'));
-
-		if ($sem === '' || $sy === '') {
-			$row = $this->db->select('active_sem, active_sy')
-				->from('o_srms_settings')
-				->limit(1)
-				->get()
-				->row();
-
-			if ($row) {
-				if ($sem === '') {
-					$sem = trim((string)$row->active_sem);
-				}
-				if ($sy === '') {
-					$sy = trim((string)$row->active_sy);
-				}
-			}
-		}
-
-		return [$sem, $sy];
+		return $this->term->current();
 	}
 
 	private function isValidDate($date)
@@ -639,6 +619,26 @@ class Accounting extends CI_Controller
 		$this->db->limit(1);
 		$row = $this->db->get()->row();
 
+		if (!$row) {
+			// Not enrolled in the payment's term — fall back to their most
+			// recent enrolment for course/year context.
+			$row = $this->db->select("
+				ss.StudentNumber, ss.Course, ss.Major, ss.YearLevel, ss.Semester, ss.SY,
+				COALESCE(NULLIF(TRIM(sp.email),''), NULLIF(TRIM(su.email),'')) AS Email,
+				COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName,
+				COALESCE(NULLIF(sp.MiddleName,''), su.MiddleName, '') AS MiddleName,
+				COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName
+			", false)
+				->from('semesterstude ss')
+				->join('studeprofile sp', 'sp.StudentNumber = ss.StudentNumber', 'left')
+				->join('studentsignup su', 'su.StudentNumber = ss.StudentNumber', 'left')
+				->where('ss.StudentNumber', $studentNumber)
+				->order_by('ss.semstudentid', 'DESC')
+				->limit(1)
+				->get()
+				->row();
+		}
+
 		if ($row) {
 			return $row;
 		}
@@ -707,6 +707,65 @@ class Accounting extends CI_Controller
 		return $this->db->get()->row();
 	}
 
+	/**
+	 * Make sure the student has a studeaccount row for the term so payment
+	 * ledger updates have somewhere to land — e.g. a student paying while
+	 * not enrolled in the active term. Rows created here are zero-amount
+	 * shells, same shape as Term::provisionAccounts().
+	 */
+	private function ensureStudeAccount($studentNumber, $sem, $sy)
+	{
+		$exists = $this->db->select('StudentNumber')
+			->from('studeaccount')
+			->where('StudentNumber', $studentNumber)
+			->where('Sem', $sem)
+			->where('SY', $sy)
+			->limit(1)
+			->get()
+			->row();
+
+		if ($exists) {
+			return;
+		}
+
+		// Prefer the enrolment row for this term; fall back to the latest.
+		$enrol = $this->db->select('Course, Major, YearLevel, Section')
+			->from('semesterstude')
+			->where('StudentNumber', $studentNumber)
+			->where('Semester', $sem)
+			->where('SY', $sy)
+			->limit(1)
+			->get()
+			->row();
+
+		if (!$enrol) {
+			$enrol = $this->db->select('Course, Major, YearLevel, Section')
+				->from('semesterstude')
+				->where('StudentNumber', $studentNumber)
+				->order_by('semstudentid', 'DESC')
+				->limit(1)
+				->get()
+				->row();
+		}
+
+		$settingsId = (int)($this->db->select('settingsID')
+			->from('o_srms_settings')->limit(1)->get()->row()->settingsID ?? 0);
+
+		$this->db->insert('studeaccount', [
+			'StudentNumber' => $studentNumber,
+			'Course'        => (string)($enrol->Course ?? ''),
+			'Major'         => (string)($enrol->Major ?? ''),
+			'YearLevel'     => (string)($enrol->YearLevel ?? ''),
+			'Section'       => (string)($enrol->Section ?? ''),
+			'FeesDesc'      => '',
+			'feesType'      => 'Shell',
+			'TotalPayments' => 0,
+			'Sem'           => $sem,
+			'SY'            => $sy,
+			'settingsID'    => $settingsId,
+		]);
+	}
+
 	private function recomputeStudeAccount($studentNumber, $sem, $sy)
 	{
 		$studentNumber = trim((string)$studentNumber);
@@ -715,6 +774,8 @@ class Accounting extends CI_Controller
 		if ($studentNumber === '' || $sem === '' || $sy === '') {
 			return;
 		}
+
+		$this->ensureStudeAccount($studentNumber, $sem, $sy);
 
 		$sumRow = $this->db->select('COALESCE(SUM(Amount),0) AS total', false)
 			->from('paymentsaccounts')
@@ -818,7 +879,7 @@ class Accounting extends CI_Controller
 		];
 	}
 
-	private function collectionRows($from, $to)
+	private function collectionRows($from, $to, $sem = '', $sy = '')
 	{
 		$this->db->select("p.ID, p.PDate, p.ORNumber, p.StudentNumber, p.Amount, p.description, p.PaymentType, p.Cashier,
 			p.CollectionSource, p.Sem, p.SY,
@@ -835,6 +896,12 @@ class Accounting extends CI_Controller
 		$this->db->where('p.ORStatus', 'Valid');
 		$this->db->where('p.PDate >=', $from);
 		$this->db->where('p.PDate <=', $to);
+		if ($sem !== '') {
+			$this->db->where('p.Sem', $sem);
+		}
+		if ($sy !== '') {
+			$this->db->where('p.SY', $sy);
+		}
 		$this->db->order_by('p.PDate', 'DESC');
 		$this->db->order_by('p.ID', 'DESC');
 		return $this->db->get()->result();
@@ -920,19 +987,11 @@ class Accounting extends CI_Controller
 			$checkNumber   = trim((string)$this->input->post('CheckNumber', true));
 			$bank          = trim((string)$this->input->post('Bank', true));
 			$refNo         = trim((string)$this->input->post('refNo', true));
-			$postedSem     = trim((string)$this->input->post('Sem', true));
-			$postedSy      = trim((string)$this->input->post('SY', true));
 
-			// The hidden Sem/SY fields carry the selected student's enrolment
-			// term (JS fills them from the option's data attributes), falling
-			// back to the active term. Trust them when present so a payment is
-			// tagged to the term it actually belongs to.
-			if ($postedSem !== '') {
-				$sem = $postedSem;
-			}
-			if ($postedSy !== '') {
-				$sy = $postedSy;
-			}
+			// Payments are always booked in the active term — the term the
+			// money was received in — not the student's enrolment term. The
+			// collection report's Sem/SY filter then answers "cash collected
+			// during term X".
 
 			if (!$this->isValidDate($pDateInput)) {
 				$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
@@ -1011,13 +1070,7 @@ class Accounting extends CI_Controller
 			$insertError = $this->db->error();
 
 			if ($insertOk && $sem !== '' && $sy !== '') {
-				$amountSql = $this->db->escape($amount);
-				$this->db->set('TotalPayments', "COALESCE(TotalPayments,0) + {$amountSql}", false);
-				$this->db->set('CurrentBalance', "GREATEST(COALESCE(AcctTotal,0) - COALESCE(Discount,0) - (COALESCE(TotalPayments,0) + {$amountSql}), 0)", false);
-				$this->db->where('StudentNumber', $studentNumber)
-					->where('Sem', $sem)
-					->where('SY', $sy)
-					->update('studeaccount');
+				$this->recomputeStudeAccount($studentNumber, $sem, $sy);
 			}
 
 			if (!$insertOk || $this->db->trans_status() === false) {
@@ -1074,6 +1127,7 @@ class Accounting extends CI_Controller
 			'next_or_number'       => $this->generateNextOrNumber($now->format('Y-m-d')),
 			'students'             => $this->getStudentsForPayment($sem, $sy),
 			'recent_payments'      => $this->getRecentPayments(),
+			'term_options'         => $this->term->terms(),
 			'fee_templates'        => $this->getFeeTemplates(),
 			'settings'             => $settings,
 			'payment_form_old'     => $oldPaymentForm,
@@ -1425,9 +1479,9 @@ class Accounting extends CI_Controller
 		$this->load->view('accounting_fee_setup', $data);
 	}
 
-	private function renderCollection($from, $to, $title)
+	private function renderCollection($from, $to, $title, $sem = '', $sy = '')
 	{
-		$rows = $this->collectionRows($from, $to);
+		$rows = $this->collectionRows($from, $to, $sem, $sy);
 		$total = 0.0;
 		foreach ($rows as $row) {
 			$total += (float)$row->Amount;
@@ -1437,6 +1491,9 @@ class Accounting extends CI_Controller
 		$reportPeriod = $from === $to
 			? date('F d, Y', strtotime($from))
 			: date('F d, Y', strtotime($from)) . ' to ' . date('F d, Y', strtotime($to));
+		if ($sem !== '' || $sy !== '') {
+			$reportPeriod .= ' — ' . trim($sem . ' ' . $sy);
+		}
 		$generatedAt = (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('F d, Y h:i A');
 
 		$data = [
@@ -1445,6 +1502,9 @@ class Accounting extends CI_Controller
 			'generated_at'   => $generatedAt,
 			'from'           => $from,
 			'to'             => $to,
+			'filter_sem'     => $sem,
+			'filter_sy'      => $sy,
+			'term_options'   => $this->term->terms(),
 			'rows'           => $rows,
 			'total_amount'   => $total,
 			'total_count'    => count($rows),
@@ -1467,7 +1527,15 @@ class Accounting extends CI_Controller
 			$to = date('Y-m-d');
 		}
 
-		$this->renderCollection($from, $to, 'Collection Report (Date Range)');
+		// Optional term scope — "Semester|SY" pair from the filter select.
+		$sem = '';
+		$sy  = '';
+		$term = trim((string)$this->input->get('term', true));
+		if ($term !== '' && strpos($term, '|') !== false) {
+			[$sem, $sy] = array_map('trim', explode('|', $term, 2));
+		}
+
+		$this->renderCollection($from, $to, 'Collection Report (Date Range)', $sem, $sy);
 	}
 
 	public function collectionDateRange()

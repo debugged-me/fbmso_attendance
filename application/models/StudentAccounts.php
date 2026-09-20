@@ -8,9 +8,11 @@ public function get_all_students($sy, $sem)
     $this->db->from('registration');
     $this->db->join('studeprofile', 'registration.StudentNumber = studeprofile.StudentNumber');
     
-    // Exclude students who already have an account for the current SY and Sem
+    // Exclude students who already have an ASSESSED account for the current
+    // SY and Sem — zero-amount shell rows opened by term provisioning still
+    // need to show up here so they can be assessed.
     $this->db->where("registration.StudentNumber NOT IN (
-        SELECT StudentNumber FROM studeaccount WHERE SY = ? AND Sem = ?
+        SELECT StudentNumber FROM studeaccount WHERE SY = ? AND Sem = ? AND AcctTotal > 0
     )", array($sy, $sem));
     
     $this->db->where('registration.SY', $sy);

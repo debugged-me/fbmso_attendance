@@ -142,11 +142,15 @@ class Student extends CI_Controller
       return;
     }
 
-    $existing = $this->db->get_where('studeaccount', [
-      'StudentNumber' => $studentNumber,
-      'SY' => $sy,
-      'Sem' => $sem
-    ])->row();
+    // A zero-amount shell row (opened by Academic Term provisioning so
+    // payments can post) is not an assessment — only block when a real
+    // assessed account exists.
+    $existing = $this->db->where('StudentNumber', $studentNumber)
+      ->where('SY', $sy)
+      ->where('Sem', $sem)
+      ->where('AcctTotal >', 0)
+      ->get('studeaccount')
+      ->row();
 
     if ($existing) {
       $this->session->set_flashdata('msg', "<div class='alert alert-warning'>Account already exists for this SY ($sy) and Semester ($sem).</div>");

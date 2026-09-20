@@ -43,6 +43,16 @@ $hook['post_controller_constructor'] = array(
         'filename' => 'AuthGuardHook.php',
         'filepath' => 'hooks',
     ),
+    /*
+    | Active term re-sync. Runs after auth so only logged-in sessions get
+    | their semester/sy re-stamped from o_srms_settings.
+    */
+    array(
+        'class'    => 'TermSyncHook',
+        'function' => 'sync',
+        'filename' => 'TermSyncHook.php',
+        'filepath' => 'hooks',
+    ),
 
     /*
     | Self-applying database indexes. Deploying the files is enough — no SQL
