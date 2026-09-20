@@ -258,11 +258,20 @@
 }
 .pl-header .page-title-box { flex: 1 1 auto; margin: 0; }
 .pl-header .page-title-box .up-divider { margin: 10px 0 0; }
-.pl-header .pl-actions { flex: 0 0 auto; align-self: center; }
+.pl-header .pl-actions {
+  flex: 0 0 auto;
+  align-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
   .pl-header { flex-direction: column; gap: 10px; margin-bottom: 14px; }
   .pl-header .pl-actions { align-self: flex-start; }
+}
+
+@media (max-width: 767.98px) {
   .pl-actions .up-btn { font-size: .8rem; padding: 8px 14px; }
 }
 
@@ -270,8 +279,10 @@
    Shared responsive table → card system
    Any page can add class "up-rt" to a <table> to get card layout on mobile.
    Cells need data-label="..." attributes for the card labels.
+   Applies below the lg breakpoint so tablets in portrait also get cards
+   instead of a horizontally clipped table.
    ============================================================ */
-@media (max-width: 767.98px) {
+@media (max-width: 991.98px) {
   /* DataTables wrapper overrides for card mode */
   .up-rt.dataTables_wrapper { display: block !important; }
   .up-rt-host.table-responsive,
@@ -345,6 +356,15 @@
     text-align: center;
     font-size: .82rem;
     padding: 8px 12px;
+  }
+  /* Button rows wrapped in a .action-wrap must wrap inside the card,
+     not stay on one clipped line. */
+  table.up-rt tbody td.up-rt-actions .action-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 6px;
+    white-space: normal;
   }
   /* Show d-none cells in card mode (e.g. hidden name column) */
   table.up-rt tbody td.d-none { display: flex !important; }

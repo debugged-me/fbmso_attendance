@@ -65,15 +65,16 @@
                                     <span class="badge badge-purple"><?= count($recent_payments); ?> entries</span>
                                 </div>
                                 <div class="up-card-body" style="padding:0 !important;">
-                                    <div class="table-responsive">
-                                        <table id="recentPaymentsTable" class="table table-bordered table-sm dt-responsive nowrap up-rt" style="width:100%">
+                                    <div class="table-responsive up-rt-host">
+                                        <table id="recentPaymentsTable" class="table table-bordered table-sm up-rt ms-rt-keep" style="width:100%">
                                             <thead>
                                                 <tr>
                                                     <th>Date</th>
                                                     <th>O.R.</th>
                                                     <th>Student</th>
                                                     <th>Description</th>
-                                                    <th class="text-right">Amount</th>
+                                                    <th>Sem/SY</th>
+                                                    <th class="text-right" style="white-space:nowrap;">Amount</th>
                                                     <th>Actions</th>
                                                 </tr>
                                             </thead>
@@ -91,23 +92,15 @@
                                                         <td data-label="O.R." style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:var(--up-blue);"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Student" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Description" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-ink);">₱ <?= number_format((float)($row->Amount ?? 0), 2); ?></td>
+                                                        <td data-label="Sem/SY" style="color:var(--up-muted);"><?= htmlspecialchars(trim((string)($row->Sem ?? '') . ' ' . (string)($row->SY ?? '')), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-ink);white-space:nowrap;">₱ <?= number_format((float)($row->Amount ?? 0), 2); ?></td>
                                                         <td data-label="Actions" class="up-rt-actions">
                                                             <div class="action-wrap">
                                                                 <button type="button"
                                                                     class="up-btn up-btn-ghost print-receipt-btn"
                                                                     style="padding:8px 12px;font-size:.78rem;"
                                                                     data-toggle="tooltip" data-placement="top" title="Print Receipt"
-                                                                    data-id="<?= $rowId; ?>"
-                                                                    data-ornumber="<?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-date="<?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-studentname="<?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-studentno="<?= htmlspecialchars((string)($row->StudentNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-description="<?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-amount="<?= htmlspecialchars((string)($row->Amount ?? 0), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-sem="<?= htmlspecialchars((string)($row->Sem ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-sy="<?= htmlspecialchars((string)($row->SY ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-cashier="<?= htmlspecialchars((string)($row->Cashier ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                                                    data-id="<?= $rowId; ?>">
                                                                     <i class="mdi mdi-printer"></i> Receipt
                                                                 </button>
 
@@ -173,8 +166,8 @@
                     </div>
 
                     <div class="modal-body">
-                        <input type="hidden" name="Sem" value="<?= htmlspecialchars((string)$semester, ENT_QUOTES, 'UTF-8'); ?>">
-                        <input type="hidden" name="SY" value="<?= htmlspecialchars((string)$sy, ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="Sem" id="paymentSem" value="<?= htmlspecialchars((string)$semester, ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="SY" id="paymentSy" value="<?= htmlspecialchars((string)$sy, ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="payment_submit_token" value="<?= htmlspecialchars((string)($payment_submit_token ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
 
                         <!-- keep description for controller, but hidden -->
@@ -197,12 +190,16 @@
                                     $course = trim((string)($student->Course ?? ''));
                                     $major = trim((string)($student->Major ?? ''));
                                     $yearLevel = trim((string)($student->YearLevel ?? ''));
+                                    $studentSem = trim((string)($student->Semester ?? ''));
+                                    $studentSy = trim((string)($student->SY ?? ''));
                                     ?>
                                     <option
                                         value="<?= htmlspecialchars($studentNo, ENT_QUOTES, 'UTF-8'); ?>"
                                         data-course="<?= htmlspecialchars($course, ENT_QUOTES, 'UTF-8'); ?>"
                                         data-major="<?= htmlspecialchars($major, ENT_QUOTES, 'UTF-8'); ?>"
-                                        data-yearlevel="<?= htmlspecialchars($yearLevel, ENT_QUOTES, 'UTF-8'); ?>">
+                                        data-yearlevel="<?= htmlspecialchars($yearLevel, ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-sem="<?= htmlspecialchars($studentSem, ENT_QUOTES, 'UTF-8'); ?>"
+                                        data-sy="<?= htmlspecialchars($studentSy, ENT_QUOTES, 'UTF-8'); ?>">
                                         <?= htmlspecialchars($optionText, ENT_QUOTES, 'UTF-8'); ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -277,8 +274,8 @@
 
                     <div class="modal-body">
                         <input type="hidden" name="id" id="editId" value="">
-                        <input type="hidden" name="Sem" value="<?= htmlspecialchars((string)$semester, ENT_QUOTES, 'UTF-8'); ?>">
-                        <input type="hidden" name="SY" value="<?= htmlspecialchars((string)$sy, ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="Sem" id="editSem" value="<?= htmlspecialchars((string)$semester, ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="SY" id="editSy" value="<?= htmlspecialchars((string)$sy, ENT_QUOTES, 'UTF-8'); ?>">
 
                         <input type="hidden" name="description" id="editDescriptionHidden" value="">
 
@@ -286,28 +283,6 @@
                             <label for="editStudentSelect">Student</label>
                             <select class="form-control" id="editStudentSelect" name="StudentNumber" required>
                                 <option value="">Select student...</option>
-                                <?php foreach ($students as $student): ?>
-                                    <?php
-                                    $studentNo = trim((string)($student->StudentNumber ?? ''));
-                                    $ln = trim((string)($student->LastName ?? ($student->LName ?? '')));
-                                    $fn = trim((string)($student->FirstName ?? ($student->FName ?? '')));
-                                    $mn = trim((string)($student->MiddleName ?? ($student->MName ?? '')));
-
-                                    $name = trim(($ln !== '' ? $ln . ', ' : '') . $fn . ($mn !== '' ? ' ' . $mn : ''));
-                                    $optionText = ($name !== '') ? trim($studentNo . ' - ' . $name) : $studentNo;
-
-                                    $course = trim((string)($student->Course ?? ''));
-                                    $major = trim((string)($student->Major ?? ''));
-                                    $yearLevel = trim((string)($student->YearLevel ?? ''));
-                                    ?>
-                                    <option
-                                        value="<?= htmlspecialchars($studentNo, ENT_QUOTES, 'UTF-8'); ?>"
-                                        data-course="<?= htmlspecialchars($course, ENT_QUOTES, 'UTF-8'); ?>"
-                                        data-major="<?= htmlspecialchars($major, ENT_QUOTES, 'UTF-8'); ?>"
-                                        data-yearlevel="<?= htmlspecialchars($yearLevel, ENT_QUOTES, 'UTF-8'); ?>">
-                                        <?= htmlspecialchars($optionText, ENT_QUOTES, 'UTF-8'); ?>
-                                    </option>
-                                <?php endforeach; ?>
                             </select>
                         </div>
 
@@ -352,83 +327,11 @@
         </div>
     </div>
 
-    <!-- PRINT RECEIPT MODAL -->
-    <div class="modal fade" id="printReceiptModal" tabindex="-1" role="dialog" aria-labelledby="printReceiptModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-sm" role="document" style="max-width: 5.5in;">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="printReceiptModalLabel">Receipt Preview</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body p-0">
-                    <div class="receipt-preview">
-                        <div class="receipt-body">
-                            <div class="receipt-header">
-                                <div class="school-name" id="prevSchoolName"></div>
-                                <div class="receipt-title">OFFICIAL RECEIPT</div>
-                            </div>
-
-                            <div class="receipt-divider"></div>
-
-                            <div class="receipt-ornumber">
-                                <span class="label">OR NO:</span>
-                                <span class="value" id="prevORNumber"></span>
-                            </div>
-
-                            <div class="receipt-details">
-                                <div class="detail-row">
-                                    <span class="label">Date:</span>
-                                    <span class="value" id="prevDate"></span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="label">Received From:</span>
-                                    <span class="value" id="prevStudentName"></span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="label">Student No:</span>
-                                    <span class="value" id="prevStudentNo"></span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="label">Description:</span>
-                                    <span class="value" id="prevDescription"></span>
-                                </div>
-                            </div>
-
-                            <div class="receipt-divider"></div>
-
-                            <div class="receipt-amount">
-                                <span class="label">AMOUNT:</span>
-                                <span class="value" id="prevAmount"></span>
-                            </div>
-
-                            <div class="receipt-divider"></div>
-
-                            <div class="receipt-signature">
-                                <div class="sig-line"></div>
-                                <div class="sig-label" id="prevCashier"></div>
-                                <div class="sig-pos">Cashier</div>
-                            </div>
-
-                            <div class="receipt-footer" id="prevFooter"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Close</button>
-                    <button type="button" class="up-btn up-btn-primary" onclick="printReceipt()">
-                        <i class="mdi mdi-printer"></i> Print
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script>
         (function() {
             var baseUrl = <?= json_encode(base_url()); ?>;
-            var schoolName = <?= json_encode((string)($settings->SchoolName ?? 'School')); ?>;
+            var defaultSem = <?= json_encode((string)$semester); ?>;
+            var defaultSy = <?= json_encode((string)$sy); ?>;
             var defaultOrNumber = <?= json_encode((string)$next_or_number); ?>;
             var defaultPaymentDate = <?= json_encode((string)$default_payment_date); ?>;
             var restoredPaymentForm = <?= json_encode($paymentFormOld); ?>;
@@ -441,6 +344,16 @@
             var orCheckRequest = null;
             var paymentFormSubmitting = false;
             var paymentSubmitDefaultHtml = '';
+
+            // The hidden Sem/SY follow the selected student's enrolment term so
+            // the payment (and the ledger update) lands on the right semester.
+            function applyStudentTerm($select, $semInput, $syInput) {
+                var $opt = $select.find('option:selected');
+                var sem = $.trim($opt.attr('data-sem') || '');
+                var sy = $.trim($opt.attr('data-sy') || '');
+                $semInput.val(sem !== '' ? sem : defaultSem);
+                $syInput.val(sy !== '' ? sy : defaultSy);
+            }
 
             function initTooltips() {
                 if ($.fn.tooltip) {
@@ -812,6 +725,14 @@
                     useRestoredPaymentState = false;
                 });
 
+                $(document).on('change', '#studentSelect', function() {
+                    applyStudentTerm($(this), $('#paymentSem'), $('#paymentSy'));
+                });
+
+                $(document).on('change', '#editStudentSelect', function() {
+                    applyStudentTerm($(this), $('#editSem'), $('#editSy'));
+                });
+
                 $(document).on('change', '#descriptionField', function() {
                     applyDescriptionSelection($('#descriptionField'), $('#descriptionHidden'), $('#amount'), $('#feeWarning'));
                 });
@@ -906,6 +827,18 @@
                     $('#editPaymentDate').val(date);
                     $('#editAmount').val(parseFloat(amount || 0).toFixed(2));
 
+                    // The edit select is populated by cloning the add form's
+                    // options — rendering ~3000 <option> nodes twice would
+                    // double this page's weight for no benefit.
+                    var $editSel = $('#editStudentSelect');
+                    if ($editSel.find('option').length <= 1) {
+                        $('#studentSelect option').each(function() {
+                            if (this.value !== '') {
+                                $editSel.append($(this).clone());
+                            }
+                        });
+                    }
+
                     $('#editFeeWarning').hide();
 
                     $('#editPaymentModal').modal('show');
@@ -946,43 +879,14 @@
                     if (!validateDesc($('#editDescriptionHidden'), $('#editFeeWarning'))) e.preventDefault();
                 });
 
-                // PRINT receipt
+                // PRINT receipt — open the dedicated receipt page in a new tab;
+                // it renders the full receipt from the database and auto-prints.
                 $(document).on('click', '.print-receipt-btn', function() {
-                    var data = {
-                        ornumber: $(this).data('ornumber'),
-                        date: $(this).data('date'),
-                        studentname: $(this).data('studentname'),
-                        studentno: $(this).data('studentno'),
-                        description: $(this).data('description'),
-                        amount: $(this).data('amount'),
-                        sem: $(this).data('sem'),
-                        sy: $(this).data('sy'),
-                        cashier: $(this).data('cashier')
-                    };
-
-                    if (data.date && data.date !== '0000-00-00') {
-                        var dateObj = new Date(data.date);
-                        data.date = dateObj.toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        });
+                    var id = parseInt($(this).data('id'), 10);
+                    if (!id) {
+                        return;
                     }
-
-                    $('#prevSchoolName').text(schoolName);
-                    $('#prevORNumber').text(data.ornumber);
-                    $('#prevDate').text(data.date);
-                    $('#prevStudentName').text(data.studentname);
-                    $('#prevStudentNo').text(data.studentno);
-                    $('#prevDescription').text(data.description);
-                    $('#prevAmount').text('PHP ' + Number(data.amount || 0).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    }));
-                    $('#prevCashier').text(data.cashier);
-                    $('#prevFooter').text('Sem/SY: ' + data.sem + ' ' + data.sy);
-
-                    $('#printReceiptModal').modal('show');
+                    window.open(baseUrl + 'Accounting/receipt/' + id + '?print=1', '_blank');
                 });
 
                 if (autoOpenPaymentModal) {
@@ -990,37 +894,6 @@
                 }
             });
         })();
-
-        function printReceipt() {
-            var printContent = $('.receipt-preview').html();
-            var printWindow = window.open('', '', 'height=500,width=500');
-            printWindow.document.write('<html><head><title>Receipt</title>');
-            printWindow.document.write('<style>');
-            printWindow.document.write(`
-                body { font-family: "Courier New", monospace; margin: 0; padding: 0.2in; }
-                .receipt-body { font-size: 11px; line-height: 1.3; }
-                .receipt-header { text-align: center; margin-bottom: 0.15in; }
-                .school-name { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
-                .receipt-title { font-size: 11px; font-weight: bold; letter-spacing: 1px; }
-                .receipt-divider { border-top: 1px dashed #333; margin: 0.1in 0; }
-                .receipt-ornumber { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 0.1in; font-size: 12px; }
-                .receipt-details { margin-bottom: 0.1in; }
-                .detail-row { display: flex; justify-content: space-between; margin-bottom: 3px; padding: 0 2px; }
-                .detail-row .label { font-weight: bold; width: 35%; flex-shrink: 0; }
-                .detail-row .value { text-align: right; word-wrap: break-word; }
-                .receipt-amount { display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; padding: 0.1in 0; margin-bottom: 0.1in; }
-                .receipt-signature { text-align: center; margin-top: 0.2in; margin-bottom: 0.1in; }
-                .sig-line { border-top: 1px solid #333; width: 60%; margin: 0 auto 2px; height: 20px; }
-                .sig-label { font-size: 9px; font-weight: bold; }
-                .sig-pos { font-size: 8px; margin-top: 1px; }
-                .receipt-footer { text-align: center; font-size: 9px; border-top: 1px dashed #333; padding-top: 3px; margin-top: 0.1in; }
-            `);
-            printWindow.document.write('</style></head><body>');
-            printWindow.document.write(printContent);
-            printWindow.document.write('</body></html>');
-            printWindow.document.close();
-            printWindow.print();
-        }
     </script>
 
     <style>
@@ -1045,112 +918,6 @@
 
         .action-wrap form {
             margin: 0;
-        }
-
-        .receipt-preview {
-            max-width: 5.5in;
-            margin: 0 auto;
-            background: #fff;
-        }
-
-        .receipt-body {
-            padding: 0.3in;
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-            line-height: 1.3;
-        }
-
-        .receipt-header {
-            text-align: center;
-            margin-bottom: 0.15in;
-        }
-
-        .school-name {
-            font-size: 12px;
-            font-weight: bold;
-            margin-bottom: 2px;
-        }
-
-        .receipt-title {
-            font-size: 11px;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
-
-        .receipt-divider {
-            border-top: 1px dashed #333;
-            margin: 0.1in 0;
-        }
-
-        .receipt-ornumber {
-            display: flex;
-            justify-content: space-between;
-            font-weight: bold;
-            margin-bottom: 0.1in;
-            font-size: 12px;
-        }
-
-        .receipt-details {
-            margin-bottom: 0.1in;
-        }
-
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 3px;
-            padding: 0 2px;
-        }
-
-        .detail-row .label {
-            font-weight: bold;
-            width: 35%;
-            flex-shrink: 0;
-        }
-
-        .detail-row .value {
-            text-align: right;
-            word-wrap: break-word;
-            word-break: break-word;
-        }
-
-        .receipt-amount {
-            display: flex;
-            justify-content: space-between;
-            font-weight: bold;
-            font-size: 12px;
-            padding: 0.1in 0;
-            margin-bottom: 0.1in;
-        }
-
-        .receipt-signature {
-            text-align: center;
-            margin-top: 0.2in;
-            margin-bottom: 0.1in;
-        }
-
-        .sig-line {
-            border-top: 1px solid #333;
-            width: 60%;
-            margin: 0 auto 2px;
-            height: 20px;
-        }
-
-        .sig-label {
-            font-size: 9px;
-            font-weight: bold;
-        }
-
-        .sig-pos {
-            font-size: 8px;
-            margin-top: 1px;
-        }
-
-        .receipt-footer {
-            text-align: center;
-            font-size: 9px;
-            border-top: 1px dashed #333;
-            padding-top: 3px;
-            margin-top: 0.1in;
         }
     </style>
 </body>

@@ -45,7 +45,7 @@
 
                     <!-- Date range + stats -->
                     <div class="row mb-3 no-print">
-                        <div class="col-md-7">
+                        <div class="col-lg-7 mb-3 mb-lg-0">
                             <div class="up-card mb-0">
                                 <div class="up-card-body py-3">
                                     <form method="get" action="<?= base_url('Accounting/collectionReport'); ?>" class="form-row align-items-end">
@@ -69,7 +69,7 @@
                             </div>
                         </div>
 
-                        <div class="col-md-5">
+                        <div class="col-lg-5">
                             <div class="row">
                                 <div class="col-6">
                                     <div class="up-card mb-0">
@@ -102,8 +102,8 @@
                                 </div>
                                 <div class="up-card-body" style="padding:0 !important;">
 
-                                    <div class="table-responsive">
-                                        <table id="collectionTable" class="table table-bordered table-sm dt-responsive nowrap up-rt" style="width:100%">
+                                    <div class="table-responsive up-rt-host">
+                                        <table id="collectionTable" class="table table-bordered table-sm up-rt ms-rt-keep" style="width:100%">
                                             <thead>
                                                 <tr>
                                                     <th>Date</th>

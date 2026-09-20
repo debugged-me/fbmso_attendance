@@ -56,8 +56,8 @@
                                     <span class="badge badge-purple"><?= count($fees); ?> items</span>
                                 </div>
                                 <div class="up-card-body" style="padding:0 !important;">
-                                    <div class="table-responsive">
-                                        <table id="feesTable" class="table table-bordered table-sm dt-responsive nowrap up-rt" style="width:100%">
+                                    <div class="table-responsive up-rt-host">
+                                        <table id="feesTable" class="table table-bordered table-sm up-rt ms-rt-keep" style="width:100%">
                                             <thead>
                                                 <tr>
                                                     <th>Description</th>

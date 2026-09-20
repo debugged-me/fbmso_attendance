@@ -1176,3 +1176,16 @@ body.ms-drawer-locked {
     max-height: 72dvh !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Print: the shell chrome (top app bar, bottom tab bar, toasts, floating
+   chat) is UI furniture — it must never reach paper/PDF output.
+   -------------------------------------------------------------------------- */
+@media print {
+  .ms-appbar,
+  .ms-tabbar,
+  .uk-toasts,
+  #floatingChatBox {
+    display: none !important;
+  }
+}

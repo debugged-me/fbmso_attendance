@@ -490,44 +490,130 @@ class Accounting extends CI_Controller
 
 	private function getStudentsForPayment($sem, $sy)
 	{
-		$this->db->select("
-			ss.StudentNumber, ss.Course, ss.Major, ss.YearLevel, ss.Semester, ss.SY,
-			COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName,
-			COALESCE(NULLIF(sp.MiddleName,''), su.MiddleName, '') AS MiddleName,
-			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName
-		", false);
-		$this->db->from('semesterstude ss');
-		$this->db->join('studeprofile sp', 'sp.StudentNumber = ss.StudentNumber', 'left');
-		$this->db->join('studentsignup su', 'su.StudentNumber = ss.StudentNumber', 'left');
-		if ($sem !== '') {
-			$this->db->where('ss.Semester', $sem);
-		}
-		if ($sy !== '') {
-			$this->db->where('ss.SY', $sy);
-		}
-		$this->db->group_by('ss.StudentNumber');
-		$this->db->order_by('COALESCE(NULLIF(sp.LastName,\'\'), su.LastName, \'\')', 'ASC', false);
-		$this->db->order_by('COALESCE(NULLIF(sp.FirstName,\'\'), su.FirstName, \'\')', 'ASC', false);
-		$rows = $this->db->get()->result();
-
-		if (!empty($rows)) {
-			return $rows;
-		}
-
+		// Every student must be payable, not only those enrolled in the active
+		// term — a cashier has to be able to collect from students enrolled in
+		// other semesters too (e.g. early enrollees, prior-term balances).
+		// Names come from studeprofile first, then studentsignup. Course/major/
+		// year and the Sem/SY the payment is tagged with come from the student's
+		// enrolment row for the active term when present, else their latest one.
 		$this->db->select("
 			su.StudentNumber,
-			COALESCE(NULLIF(sp.course,''), su.Course1, '') AS Course,
-			COALESCE(NULLIF(sp.major,''), su.Major1, '') AS Major,
-			COALESCE(NULLIF(sp.yearLevel,''), su.yearLevel, '') AS YearLevel,
+			COALESCE(NULLIF(sp.course,''), su.Course1, '') AS FallbackCourse,
+			COALESCE(NULLIF(sp.major,''), su.Major1, '') AS FallbackMajor,
+			COALESCE(NULLIF(sp.yearLevel,''), su.yearLevel, '') AS FallbackYearLevel,
 			COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName,
 			COALESCE(NULLIF(sp.MiddleName,''), su.MiddleName, '') AS MiddleName,
 			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName
 		", false);
 		$this->db->from('studentsignup su');
 		$this->db->join('studeprofile sp', 'sp.StudentNumber = su.StudentNumber', 'left');
+		$this->db->where("su.StudentNumber <> ''", null, false);
+		$this->db->group_by('su.StudentNumber');
 		$this->db->order_by('COALESCE(NULLIF(sp.LastName,\'\'), su.LastName, \'\')', 'ASC', false);
 		$this->db->order_by('COALESCE(NULLIF(sp.FirstName,\'\'), su.FirstName, \'\')', 'ASC', false);
-		return $this->db->get()->result();
+		$students = $this->db->get()->result();
+
+		if (empty($students)) {
+			return [];
+		}
+
+		$enrolment = [];
+		$enrolRows = $this->db->select('semstudentid, StudentNumber, Course, Major, YearLevel, Semester, SY')
+			->from('semesterstude')
+			->get()
+			->result();
+
+		foreach ($enrolRows as $e) {
+			$sn = trim((string)$e->StudentNumber);
+			if ($sn === '') {
+				continue;
+			}
+
+			$current = $enrolment[$sn] ?? null;
+			if ($current === null) {
+				$enrolment[$sn] = $e;
+				continue;
+			}
+
+			$currentIsActive = ($current->Semester === $sem && $current->SY === $sy);
+			$newIsActive = ($e->Semester === $sem && $e->SY === $sy);
+
+			if ($newIsActive && !$currentIsActive) {
+				$enrolment[$sn] = $e;
+			} elseif (!$newIsActive && !$currentIsActive && (int)$e->semstudentid > (int)$current->semstudentid) {
+				$enrolment[$sn] = $e;
+			}
+		}
+
+		foreach ($students as $s) {
+			$e = $enrolment[trim((string)$s->StudentNumber)] ?? null;
+			if ($e !== null) {
+				$s->Course    = trim((string)$e->Course) !== '' ? $e->Course : $s->FallbackCourse;
+				$s->Major     = trim((string)$e->Major) !== '' ? $e->Major : $s->FallbackMajor;
+				$s->YearLevel = trim((string)$e->YearLevel) !== '' ? $e->YearLevel : $s->FallbackYearLevel;
+				$s->Semester  = (string)$e->Semester;
+				$s->SY        = (string)$e->SY;
+			} else {
+				$s->Course    = $s->FallbackCourse;
+				$s->Major     = $s->FallbackMajor;
+				$s->YearLevel = $s->FallbackYearLevel;
+				$s->Semester  = '';
+				$s->SY        = '';
+			}
+			unset($s->FallbackCourse, $s->FallbackMajor, $s->FallbackYearLevel);
+		}
+
+		// Students who have an enrolment row but no signup row still need to be
+		// payable — merge them in from studeprofile.
+		$listed = [];
+		foreach ($students as $s) {
+			$listed[trim((string)$s->StudentNumber)] = true;
+		}
+		$missing = array_diff_key($enrolment, $listed);
+		if (!empty($missing)) {
+			$extra = $this->db->select("
+				sp.StudentNumber,
+				COALESCE(sp.course, '') AS Course,
+				COALESCE(sp.major, '') AS Major,
+				COALESCE(sp.yearLevel, '') AS YearLevel,
+				COALESCE(sp.FirstName, '') AS FirstName,
+				COALESCE(sp.MiddleName, '') AS MiddleName,
+				COALESCE(sp.LastName, '') AS LastName
+			", false)
+				->from('studeprofile sp')
+				->where_in('sp.StudentNumber', array_keys($missing))
+				->get()
+				->result();
+
+			foreach ($extra as $s) {
+				$e = $enrolment[trim((string)$s->StudentNumber)];
+				$s->Course    = trim((string)$e->Course) !== '' ? $e->Course : $s->Course;
+				$s->Major     = trim((string)$e->Major) !== '' ? $e->Major : $s->Major;
+				$s->YearLevel = trim((string)$e->YearLevel) !== '' ? $e->YearLevel : $s->YearLevel;
+				$s->Semester  = (string)$e->Semester;
+				$s->SY        = (string)$e->SY;
+				$students[]   = $s;
+				unset($missing[trim((string)$s->StudentNumber)]);
+			}
+
+			// No signup or profile row at all — list the number itself so the
+			// cashier can still collect the payment.
+			foreach ($missing as $sn => $e) {
+				$students[] = (object)[
+					'StudentNumber' => $sn,
+					'Course'        => (string)$e->Course,
+					'Major'         => (string)$e->Major,
+					'YearLevel'     => (string)$e->YearLevel,
+					'Semester'      => (string)$e->Semester,
+					'SY'            => (string)$e->SY,
+					'FirstName'     => '',
+					'MiddleName'    => '',
+					'LastName'      => '',
+				];
+			}
+		}
+
+		return $students;
 	}
 
 	private function getStudentContext($studentNumber, $sem, $sy)
@@ -585,9 +671,12 @@ class Accounting extends CI_Controller
 		return $this->db->get()->result();
 	}
 
-	private function getRecentPayments($sem, $sy, $limit = 80)
+	private function getRecentPayments($limit = 80)
 	{
-		$this->db->select("p.ID, p.PDate, p.ORNumber, p.StudentNumber, p.Amount, p.description, p.PaymentType, p.Cashier,
+		// Payments are tagged to the student's enrolment term, not always the
+		// active one — list the latest across all terms, otherwise a payment
+		// for another semester would look like it was never recorded.
+		$this->db->select("p.ID, p.PDate, p.ORNumber, p.StudentNumber, p.Amount, p.description, p.PaymentType, p.Cashier, p.Sem, p.SY,
 			COALESCE(NULLIF(TRIM(sp.email),''), NULLIF(TRIM(su.email),'')) AS Email,
 			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName,
 			COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName,
@@ -597,12 +686,6 @@ class Accounting extends CI_Controller
 		$this->db->join('studentsignup su', 'su.StudentNumber = p.StudentNumber', 'left');
 		$this->db->where('p.CollectionSource', "Student's Account");
 		$this->db->where('p.ORStatus', 'Valid');
-		if ($sem !== '') {
-			$this->db->where('p.Sem', $sem);
-		}
-		if ($sy !== '') {
-			$this->db->where('p.SY', $sy);
-		}
 		$this->db->order_by('p.PDate', 'DESC');
 		$this->db->order_by('p.ID', 'DESC');
 		$this->db->limit((int)$limit);
@@ -611,7 +694,7 @@ class Accounting extends CI_Controller
 
 	private function getPaymentById($id)
 	{
-		$this->db->select("p.*, 
+		$this->db->select("p.*,
 			COALESCE(NULLIF(TRIM(sp.email),''), NULLIF(TRIM(su.email),'')) AS Email,
 			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName,
 			COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName,
@@ -622,6 +705,36 @@ class Accounting extends CI_Controller
 		$this->db->where('p.ID', (int)$id);
 		$this->db->limit(1);
 		return $this->db->get()->row();
+	}
+
+	private function recomputeStudeAccount($studentNumber, $sem, $sy)
+	{
+		$studentNumber = trim((string)$studentNumber);
+		$sem = trim((string)$sem);
+		$sy  = trim((string)$sy);
+		if ($studentNumber === '' || $sem === '' || $sy === '') {
+			return;
+		}
+
+		$sumRow = $this->db->select('COALESCE(SUM(Amount),0) AS total', false)
+			->from('paymentsaccounts')
+			->where('StudentNumber', $studentNumber)
+			->where('Sem', $sem)
+			->where('SY', $sy)
+			->where('ORStatus', 'Valid')
+			->where('CollectionSource', "Student's Account")
+			->get()
+			->row();
+
+		$newTotal = (float)($sumRow->total ?? 0);
+		$newTotalSql = $this->db->escape($newTotal);
+
+		$this->db->set('TotalPayments', $newTotalSql, false);
+		$this->db->set('CurrentBalance', "GREATEST(COALESCE(AcctTotal,0) - COALESCE(Discount,0) - {$newTotalSql}, 0)", false);
+		$this->db->where('StudentNumber', $studentNumber)
+			->where('Sem', $sem)
+			->where('SY', $sy)
+			->update('studeaccount');
 	}
 
 	private function getReceiptSettings()
@@ -810,10 +923,14 @@ class Accounting extends CI_Controller
 			$postedSem     = trim((string)$this->input->post('Sem', true));
 			$postedSy      = trim((string)$this->input->post('SY', true));
 
-			if ($sem === '') {
+			// The hidden Sem/SY fields carry the selected student's enrolment
+			// term (JS fills them from the option's data attributes), falling
+			// back to the active term. Trust them when present so a payment is
+			// tagged to the term it actually belongs to.
+			if ($postedSem !== '') {
 				$sem = $postedSem;
 			}
-			if ($sy === '') {
+			if ($postedSy !== '') {
 				$sy = $postedSy;
 			}
 
@@ -956,7 +1073,7 @@ class Accounting extends CI_Controller
 			'default_payment_date' => $now->format('Y-m-d'),
 			'next_or_number'       => $this->generateNextOrNumber($now->format('Y-m-d')),
 			'students'             => $this->getStudentsForPayment($sem, $sy),
-			'recent_payments'      => $this->getRecentPayments($sem, $sy),
+			'recent_payments'      => $this->getRecentPayments(),
 			'fee_templates'        => $this->getFeeTemplates(),
 			'settings'             => $settings,
 			'payment_form_old'     => $oldPaymentForm,
@@ -965,6 +1082,116 @@ class Accounting extends CI_Controller
 		];
 
 		$this->load->view('accounting_payment', $data);
+	}
+
+	public function updatePayment()
+	{
+		$this->ensureAccess();
+
+		if (strtoupper((string)$this->input->method()) !== 'POST') {
+			show_error('Invalid request method', 405);
+			return;
+		}
+
+		$id = (int)$this->input->post('id', true);
+		if ($id <= 0) {
+			$this->session->set_flashdata('danger', 'Invalid payment ID.');
+			redirect('Accounting/Payment');
+			return;
+		}
+
+		$payment = $this->db->select('ID, StudentNumber, ORNumber, PDate, Amount, description, Sem, SY, ORStatus, CollectionSource')
+			->from('paymentsaccounts')
+			->where('ID', $id)
+			->limit(1)
+			->get()
+			->row();
+
+		if (!$payment) {
+			$this->session->set_flashdata('danger', 'Payment not found.');
+			redirect('Accounting/Payment');
+			return;
+		}
+
+		if ((string)$payment->ORStatus !== 'Valid') {
+			$this->session->set_flashdata('danger', 'Only VALID payments can be edited.');
+			redirect('Accounting/Payment');
+			return;
+		}
+
+		if ((string)$payment->CollectionSource !== "Student's Account") {
+			$this->session->set_flashdata('danger', "This payment is not under Student's Account.");
+			redirect('Accounting/Payment');
+			return;
+		}
+
+		$this->form_validation->set_rules('StudentNumber', 'Student', 'required|trim');
+		$this->form_validation->set_rules('description', 'Description', 'required|trim');
+		$this->form_validation->set_rules('Amount', 'Amount', 'required|numeric|greater_than[0]');
+		$this->form_validation->set_rules('PDate', 'Payment Date', 'required|trim');
+		$this->form_validation->set_rules('ORNumber', 'O.R. Number', 'required|trim');
+
+		if ($this->form_validation->run() === false) {
+			$this->session->set_flashdata('danger', strip_tags(validation_errors(' ', ' ')));
+			redirect('Accounting/Payment');
+			return;
+		}
+
+		$studentNumber = trim((string)$this->input->post('StudentNumber', true));
+		$description   = trim((string)$this->input->post('description', true));
+		$amount        = (float)$this->input->post('Amount', true);
+		$pDateInput    = trim((string)$this->input->post('PDate', true));
+		$orInput       = trim((string)$this->input->post('ORNumber', true));
+
+		if (!$this->isValidDate($pDateInput)) {
+			$this->session->set_flashdata('danger', 'Invalid payment date.');
+			redirect('Accounting/Payment');
+			return;
+		}
+
+		$orNumber = $this->normalizeOrNumber($orInput, $pDateInput);
+		if (!$this->isValidOrNumberFormat($orNumber)) {
+			$this->session->set_flashdata('danger', 'Invalid O.R. number format. Use YYYY-0001.');
+			redirect('Accounting/Payment');
+			return;
+		}
+
+		if ($orNumber !== (string)$payment->ORNumber && $this->orNumberExists($orNumber, $id)) {
+			$this->session->set_flashdata('danger', 'O.R. number already exists.');
+			redirect('Accounting/Payment');
+			return;
+		}
+
+		$oldStudentNumber = trim((string)$payment->StudentNumber);
+		$sem = trim((string)$payment->Sem);
+		$sy  = trim((string)$payment->SY);
+
+		// Sem/SY are intentionally not updated: re-tagging a payment to another
+		// term would rewrite history. Delete and re-enter it instead.
+		$this->db->trans_begin();
+		$this->db->where('ID', $id)->update('paymentsaccounts', [
+			'StudentNumber' => $studentNumber,
+			'ORNumber'      => $orNumber,
+			'PDate'         => $pDateInput,
+			'Amount'        => $amount,
+			'description'   => $description,
+		]);
+
+		$this->recomputeStudeAccount($oldStudentNumber, $sem, $sy);
+		if ($studentNumber !== $oldStudentNumber) {
+			$this->recomputeStudeAccount($studentNumber, $sem, $sy);
+		}
+
+		if ($this->db->trans_status() === false) {
+			$this->db->trans_rollback();
+			$this->session->set_flashdata('danger', 'Unable to update payment. Please try again.');
+			redirect('Accounting/Payment');
+			return;
+		}
+
+		$this->db->trans_commit();
+		$this->session->set_flashdata('success', 'Payment updated successfully. O.R. #' . $orNumber . '.');
+		redirect('Accounting/Payment');
 	}
 
 	public function ajaxOrNumberStatus()
@@ -1159,10 +1386,19 @@ class Accounting extends CI_Controller
 
 				$feeId = (int)$this->input->post('feesid', true);
 				$updateData = [
-					'feesType'    => trim((string)$this->input->post('feesType', true)),
 					'Description' => trim((string)$this->input->post('Description', true)),
 					'Amount'      => (float)$this->input->post('Amount', true),
 				];
+
+				// The edit form has no feesType field; only update it when one
+				// is actually posted so we never blank an existing value.
+				$feesType = trim((string)$this->input->post('feesType', true));
+				if ($feesType !== '') {
+					$updateData['feesType'] = $feesType;
+				}
+
+				$ok = $feeId > 0
+					&& $this->db->where('feesid', $feeId)->update('fees', $updateData);
 
 				if ($ok) {
 					$this->session->set_flashdata('success', 'Fee updated successfully.');
@@ -1324,34 +1560,7 @@ class Accounting extends CI_Controller
 		$this->db->where('ID', (int)$id)->delete('paymentsaccounts');
 
 		// Recompute totals (ONLY for same sem/sy)
-		if ($studentNumber !== '' && $sem !== '' && $sy !== '') {
-			// total payments = sum of valid Student's Account payments in same sem/sy
-			$sumRow = $this->db->select('COALESCE(SUM(Amount),0) AS total', false)
-				->from('paymentsaccounts')
-				->where('StudentNumber', $studentNumber)
-				->where('Sem', $sem)
-				->where('SY', $sy)
-				->where('ORStatus', 'Valid')
-				->where('CollectionSource', "Student's Account")
-				->get()
-				->row();
-
-			$newTotal = (float)($sumRow->total ?? 0);
-
-			// Update studeaccount using your same balance formula style
-			$newTotalSql = $this->db->escape($newTotal);
-
-			$this->db->set('TotalPayments', $newTotalSql, false);
-			$this->db->set(
-				'CurrentBalance',
-				"GREATEST(COALESCE(AcctTotal,0) - COALESCE(Discount,0) - {$newTotalSql}, 0)",
-				false
-			);
-			$this->db->where('StudentNumber', $studentNumber)
-				->where('Sem', $sem)
-				->where('SY', $sy)
-				->update('studeaccount');
-		}
+		$this->recomputeStudeAccount($studentNumber, $sem, $sy);
 
 		$this->db->trans_complete();
 
