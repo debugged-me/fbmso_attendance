@@ -9,19 +9,20 @@
 
         <style>
             /* ===== Accounting Records — modern redesign ===== */
-            .ar-shell { --ar-ink:#0d1b4b; --ar-muted:#6b7a99; --ar-line:#e6ebf5; --ar-card:#ffffff; --ar-soft:#f5f7fc;
-                        --ar-blue:#2a4090; --ar-blue-2:#4266d4; --ar-green:#16a34a; --ar-amber:#f59e0b; --ar-red:#ef4444; }
+            /* Vars live on :root so the filter modal (outside .ar-shell) resolves them too */
+            :root { --ar-ink:#0d1b4b; --ar-muted:#6b7a99; --ar-line:#e6ebf5; --ar-card:#ffffff; --ar-soft:#f5f7fc;
+                    --ar-blue:#2a4090; --ar-blue-2:#4266d4; --ar-green:#16a34a; --ar-amber:#f59e0b; --ar-red:#ef4444; }
 
             .ar-page-title { font-weight:800; letter-spacing:.02em; color:var(--ar-ink); margin:0; }
             .ar-page-sub   { color:var(--ar-muted); font-size:.9rem; margin-top:2px; }
             .ar-divider { border:0; height:3px; width:64px; border-radius:3px;
-                          background:linear-gradient(90deg,var(--ar-blue),var(--ar-blue-2)); margin:14px 0 22px; }
+                          background:linear-gradient(90deg,var(--ar-blue),var(--ar-blue-2)); margin:10px 0 16px; }
 
             /* Student identity strip */
             .ar-id-strip {
                 display:flex; align-items:center; gap:16px; flex-wrap:wrap;
                 background:linear-gradient(135deg,#2a4090 0%, #3b5fd4 100%);
-                color:#fff; border-radius:18px; padding:18px 22px; margin-bottom:22px;
+                color:#fff; border-radius:18px; padding:16px 22px; margin-bottom:18px;
                 box-shadow:0 14px 30px rgba(42,64,144,.22);
             }
             .ar-id-strip .ar-id-avatar {
@@ -36,27 +37,38 @@
                 padding:6px 14px; border-radius:999px; font-size:.8rem; font-weight:700; letter-spacing:.04em;
             }
 
-            /* Filter card */
-            .ar-filter-card {
-                background:var(--ar-card); border:1px solid var(--ar-line); border-radius:18px;
-                padding:18px 20px; margin-bottom:22px; box-shadow:0 6px 18px rgba(13,27,75,.05);
+            /* Filter modal */
+            .ar-modal .modal-content {
+                border:none; border-radius:18px; overflow:hidden;
+                box-shadow:0 24px 60px rgba(13,27,75,.25);
             }
-            .ar-filter-card .ar-filter-title {
-                font-size:.72rem; font-weight:800; letter-spacing:.18em; text-transform:uppercase;
-                color:var(--ar-muted); margin-bottom:14px;
+            .ar-modal .modal-header {
+                border-bottom:1px solid var(--ar-line); padding:16px 22px;
+                background:linear-gradient(135deg,#f6f8ff,#eef2fd);
             }
-            .ar-filter-card .form-control {
+            .ar-modal .modal-title { font-weight:800; color:var(--ar-ink); font-size:1rem; }
+            .ar-modal .modal-header .close { color:var(--ar-muted); opacity:1; text-shadow:none; font-size:1.4rem; }
+            .ar-modal .modal-header .close:hover { color:var(--ar-ink); }
+            .ar-modal .modal-body { padding:20px 22px; }
+            .ar-modal .modal-footer { border-top:1px solid var(--ar-line); padding:14px 22px; gap:8px; }
+            .ar-modal .form-control {
                 border-radius:12px; border:1px solid var(--ar-line); padding:10px 14px;
                 font-size:.88rem; color:var(--ar-ink); height:auto;
             }
-            .ar-filter-card .form-control:focus { border-color:var(--ar-blue-2); box-shadow:0 0 0 3px rgba(66,102,212,.12); }
-            .ar-filter-card label { font-size:.78rem; font-weight:700; color:var(--ar-muted); letter-spacing:.02em; }
+            .ar-modal .form-control:focus { border-color:var(--ar-blue-2); box-shadow:0 0 0 3px rgba(66,102,212,.12); }
+            .ar-modal label { font-size:.78rem; font-weight:700; color:var(--ar-muted); letter-spacing:.02em; }
 
             .ar-btn { border-radius:12px; font-weight:700; letter-spacing:.02em; padding:10px 18px; font-size:.86rem; border:none; transition:transform .15s ease, box-shadow .15s ease; }
+            .ar-btn-sm { padding:7px 14px; font-size:.8rem; }
             .ar-btn-primary { background:linear-gradient(135deg,var(--ar-blue),var(--ar-blue-2)); color:#fff; box-shadow:0 8px 18px rgba(42,64,144,.22); }
             .ar-btn-primary:hover { transform:translateY(-1px); box-shadow:0 12px 24px rgba(42,64,144,.28); color:#fff; }
             .ar-btn-ghost { background:var(--ar-soft); color:var(--ar-ink); border:1px solid var(--ar-line); }
             .ar-btn-ghost:hover { background:#eef2fb; color:var(--ar-blue); }
+
+            .ar-active-filter {
+                font-size:.74rem; font-weight:700; color:var(--ar-blue);
+                background:#eef2ff; border:1px solid #d8e2ff; padding:5px 12px; border-radius:999px;
+            }
 
             /* Stat cards */
             .ar-stat {
@@ -179,45 +191,6 @@
                         <div class="ar-id-pill"><?= htmlspecialchars((string)$studentNumber, ENT_QUOTES, 'UTF-8'); ?></div>
                     </div>
 
-                    <!-- Filter -->
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="ar-filter-card">
-                                <div class="ar-filter-title"><i class="mdi mdi-filter-variant mr-1"></i> Filter records</div>
-                                <form method="get" action="<?= base_url('Page/studentAccountingRecords'); ?>" class="form-row align-items-end">
-                                    <div class="form-group col-md-4">
-                                        <label class="mb-1">School Year</label>
-                                        <select name="sy" class="form-control">
-                                            <option value="">All School Years</option>
-                                            <?php foreach (($syOptions ?? []) as $sy): ?>
-                                                <option value="<?= htmlspecialchars((string)$sy, ENT_QUOTES, 'UTF-8'); ?>"
-                                                    <?= ((string)$filterSy === (string)$sy) ? 'selected' : ''; ?>>
-                                                    <?= htmlspecialchars((string)$sy, ENT_QUOTES, 'UTF-8'); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="form-group col-md-4">
-                                        <label class="mb-1">Semester</label>
-                                        <select name="sem" class="form-control">
-                                            <option value="">All Semesters</option>
-                                            <?php foreach (($semOptions ?? []) as $sem): ?>
-                                                <option value="<?= htmlspecialchars((string)$sem, ENT_QUOTES, 'UTF-8'); ?>"
-                                                    <?= ((string)$filterSem === (string)$sem) ? 'selected' : ''; ?>>
-                                                    <?= htmlspecialchars((string)$sem, ENT_QUOTES, 'UTF-8'); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="form-group col-md-4 d-flex">
-                                        <button type="submit" class="ar-btn ar-btn-primary mr-2"><i class="mdi mdi-magnify mr-1"></i> Apply</button>
-                                        <a href="<?= base_url('Page/studentAccountingRecords'); ?>" class="ar-btn ar-btn-ghost"><i class="mdi mdi-refresh mr-1"></i> Clear</a>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Stats -->
                     <div class="row">
                         <div class="col-md-6 col-xl-4 mb-3">
@@ -252,7 +225,24 @@
                             <div class="ar-records-card">
                                 <div class="ar-records-head">
                                     <h4><i class="mdi mdi-receipt-text-outline mr-1"></i> Payment Records</h4>
-                                    <span class="ar-records-count"><?= (int)count($payments ?? []); ?> entries</span>
+                                    <?php
+                                    $filterParts = [];
+                                    if (trim((string)($filterSy ?? '')) !== '') {
+                                        $filterParts[] = 'SY ' . trim((string)$filterSy);
+                                    }
+                                    if (trim((string)($filterSem ?? '')) !== '') {
+                                        $filterParts[] = trim((string)$filterSem);
+                                    }
+                                    ?>
+                                    <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+                                        <?php if (!empty($filterParts)): ?>
+                                            <span class="ar-active-filter"><?= htmlspecialchars(implode(' · ', $filterParts), ENT_QUOTES, 'UTF-8'); ?></span>
+                                        <?php endif; ?>
+                                        <span class="ar-records-count"><?= (int)count($payments ?? []); ?> entries</span>
+                                        <button type="button" class="ar-btn ar-btn-ghost ar-btn-sm" data-toggle="modal" data-target="#recordsFilterModal">
+                                            <i class="mdi mdi-filter-variant mr-1"></i> Filter
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="ar-records-body table-responsive">
                                     <table id="studentPaymentsTable" class="table table-bordered table-striped dt-responsive nowrap up-rt" style="width:100%">
@@ -283,7 +273,7 @@
                                         <div class="ar-empty">
                                             <div class="ar-empty-icon"><i class="mdi mdi-file-document-outline"></i></div>
                                             <div class="font-weight-bold">No accounting records found</div>
-                                            <div class="small mt-1">Try adjusting the filters above, or check back after your next payment.</div>
+                                            <div class="small mt-1">Try adjusting the filter, or check back after your next payment.</div>
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -295,6 +285,56 @@
             </div>
 
             <?php include('includes/footer.php'); ?>
+        </div>
+    </div>
+
+    <!-- FILTER MODAL -->
+    <div class="modal fade ar-modal" id="recordsFilterModal" tabindex="-1" role="dialog" aria-labelledby="recordsFilterModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <form method="get" action="<?= base_url('Page/studentAccountingRecords'); ?>">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="recordsFilterModalLabel">
+                            <i class="mdi mdi-filter-variant mr-1"></i> Filter Records
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="mb-1">School Year</label>
+                            <select name="sy" class="form-control">
+                                <option value="">All School Years</option>
+                                <?php foreach (($syOptions ?? []) as $sy): ?>
+                                    <option value="<?= htmlspecialchars((string)$sy, ENT_QUOTES, 'UTF-8'); ?>"
+                                        <?= ((string)$filterSy === (string)$sy) ? 'selected' : ''; ?>>
+                                        <?= htmlspecialchars((string)$sy, ENT_QUOTES, 'UTF-8'); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group mb-0">
+                            <label class="mb-1">Semester</label>
+                            <select name="sem" class="form-control">
+                                <option value="">All Semesters</option>
+                                <?php foreach (($semOptions ?? []) as $sem): ?>
+                                    <option value="<?= htmlspecialchars((string)$sem, ENT_QUOTES, 'UTF-8'); ?>"
+                                        <?= ((string)$filterSem === (string)$sem) ? 'selected' : ''; ?>>
+                                        <?= htmlspecialchars((string)$sem, ENT_QUOTES, 'UTF-8'); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <a href="<?= base_url('Page/studentAccountingRecords'); ?>" class="ar-btn ar-btn-ghost"><i class="mdi mdi-refresh mr-1"></i> Clear</a>
+                        <button type="submit" class="ar-btn ar-btn-primary"><i class="mdi mdi-magnify mr-1"></i> Apply Filters</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 

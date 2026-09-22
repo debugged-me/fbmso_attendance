@@ -1538,10 +1538,18 @@ class Page extends CI_Controller
 		$sy    = $this->session->userdata('sy');
 		$sem   = $this->session->userdata('semester');
 
-		// ID to load
-		$id = ($level === 'Student')
-			? (string)$this->session->userdata('username')
-			: (string)$this->input->get('id');
+		// ID to load — students/applicants are pinned to their own record;
+		// a mismatched ?id= bounces back to the canonical URL.
+		if (in_array($level, ['Student', 'Stude Applicant'], true)) {
+			$id = (string)$this->session->userdata('username');
+			$requestedId = trim((string)$this->input->get('id'));
+			if ($requestedId !== '' && strcasecmp($requestedId, $id) !== 0) {
+				redirect('Page/studentsprofile?id=' . urlencode($id));
+				return;
+			}
+		} else {
+			$id = (string)$this->input->get('id');
+		}
 		$this->ensure_student_profile_exists($id);
 
 		// Pull data from model
@@ -1939,8 +1947,14 @@ class Page extends CI_Controller
 		$sy = $this->session->userdata('sy');
 		$sem = $this->session->userdata('semester');
 
-		if ($userLevel === 'Student') {
+		if (in_array($userLevel, ['Student', 'Stude Applicant'], true)) {
 			$id = $this->session->userdata('username');
+			$requestedId = trim((string)$this->input->get('id'));
+			if ($requestedId !== '' && strcasecmp($requestedId, (string)$id) !== 0) {
+				redirect('Page/studentsprofile2?id=' . urlencode((string)$id));
+				return;
+			}
+			$this->ensure_student_profile_exists($id);
 		} else {
 			$id = $this->input->get('id');
 			$this->ensure_student_profile_exists($id);
@@ -4274,6 +4288,15 @@ class Page extends CI_Controller
 
 		if (in_array($level, ['Student', 'Stude Applicant'], true)) {
 			$id = $this->session->userdata('username');
+
+			// If a student tampers with ?id= to point at someone else, bounce
+			// back to their own record instead of rendering their data under
+			// a foreign URL (confusing and looks like the pinning failed).
+			$requestedId = trim((string)$this->input->get('id'));
+			if ($requestedId !== '' && strcasecmp($requestedId, (string)$id) !== 0) {
+				redirect('Page/updateStudeProfile?id=' . urlencode((string)$id));
+				return;
+			}
 		} else {
 			$mayEditOthers = [
 				'Super Admin', 'Admin', 'School Admin', 'IT',
@@ -4312,7 +4335,7 @@ class Page extends CI_Controller
 		if ($this->input->post('submit')) {
 			// Students may only update their own profile — prevent URL/form
 			// manipulation from touching another student's record.
-			if ($this->session->userdata('level') === 'Student') {
+			if (in_array($this->session->userdata('level'), ['Student', 'Stude Applicant'], true)) {
 				$postedOld = $this->input->post('oldStudentNo');
 				if (strtoupper((string)$postedOld) !== strtoupper((string)$this->session->userdata('username'))) {
 					$this->AuditLogModel->write(
@@ -4525,7 +4548,7 @@ class Page extends CI_Controller
 
 			// If a student changed their own StudentNumber, update the session
 			// so they don't get locked out or see stale data.
-			if ($this->session->userdata('level') === 'Student'
+			if (in_array($this->session->userdata('level'), ['Student', 'Stude Applicant'], true)
 				&& strtoupper((string)$newStudentNo) !== strtoupper((string)$oldStudentNo)) {
 				$this->session->set_userdata('username', $newStudentNo);
 				$this->session->set_userdata('IDNumber', $newStudentNo);

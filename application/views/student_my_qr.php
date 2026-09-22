@@ -10,7 +10,7 @@
     <style>
       /* ===== Root & utilities ===== */
       :root{
-        --bg:#f8fafc;--card:#ffffff;--muted:#64748b;--line:#e5e7eb;--brand:#2563eb;--brand-600:#2563eb;--brand-700:#1d4ed8;--success:#16a34a;--warning:#f59e0b;--info:#0ea5e9;
+        --bg:#f8fafc;--card:#ffffff;--muted:#6b7a99;--line:#e6ebf5;--brand:#2563eb;--brand-600:#2563eb;--brand-700:#1d4ed8;--success:#16a34a;--warning:#f59e0b;--info:#0ea5e9;
       }
       @media (prefers-color-scheme: dark){
         :root{--bg:#0b1220;--card:#0f172a;--muted:#94a3b8;--line:#1e293b;--brand:#3b82f6;--brand-600:#3b82f6;--brand-700:#2563eb;--success:#22c55e;--warning:#fbbf24;--info:#38bdf8}
@@ -29,8 +29,9 @@
 
       /* ===== Header ===== */
       .page-title-box h4{margin:0 0 .25rem;font-weight:800}
+      .qr-page-title{font-weight:800;letter-spacing:.02em;color:#0d1b4b;margin:0}
       .page-sub{color:var(--muted);font-size:.92rem}
-      .divider{border:0;height:2px;background:linear-gradient(90deg,#3b82f6,#f59e0b 60%,#22c55e);border-radius:1px;margin:10px 0 16px}
+      .divider{border:0;height:3px;width:64px;background:linear-gradient(90deg,#2a4090,#4266d4);border-radius:3px;margin:10px 0 18px}
 
       /* Header buttons */
       .qr-header-btn{
@@ -64,8 +65,19 @@
       .att-filter-option.active i{color:#fff;}
 
       /* ===== Card ===== */
-      .card-clean{background:var(--card);border:1px solid var(--line)}
+      .card-clean{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 6px 18px rgba(13,27,75,.05);overflow:hidden}
       .card-clean .card-header{background:color-mix(in srgb,var(--card) 92%,#fff 8%);border-bottom:1px solid var(--line);padding:.75rem 1rem;font-weight:700}
+
+      /* Attendance card header (matches accounting records style) */
+      .qr-card-head{
+        display:flex; align-items:center; justify-content:space-between;
+        gap:10px; flex-wrap:wrap; padding:16px 20px; border-bottom:1px solid var(--line);
+      }
+      .qr-card-head h5{margin:0; font-weight:800; color:#0d1b4b; font-size:1rem;}
+      .qr-count{
+        font-size:.76rem; font-weight:700; color:var(--muted);
+        background:#f5f7fc; padding:4px 12px; border-radius:999px; border:1px solid var(--line);
+      }
 
       /* ===== QR Panel ===== */
       #qrcode{width:min(82vw,320px);aspect-ratio:1/1;border-radius:12px;border:1px dashed var(--line);background:#fff;max-width:320px}
@@ -164,16 +176,13 @@
       }
 
       /* ===== Attendance ===== */
-      .section-h{display:flex;align-items:center;justify-content:space-between;gap:1rem}
-      .section-h h5{margin:0;font-weight:800;color:#0f172a}
-      @media (prefers-color-scheme: dark){ .section-h h5{color:#e2e8f0} }
       .range-group .btn{border-radius:999px!important;padding:.35rem .9rem;font-weight:700;font-size:.78rem}
       .range-group .btn.active{background:var(--brand-600);color:#fff;border-color:var(--brand-600)}
 
       /* Minimal attendance table */
-      .att-minimal-wrap{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
+      .att-minimal-wrap{background:var(--card)}
       #myAttTable{margin:0}
-      #myAttTable thead th{white-space:nowrap;background:var(--card);border-bottom:1px solid var(--line);font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:12px 16px}
+      #myAttTable thead th{white-space:nowrap;background:#f5f7fc;border-bottom:1px solid var(--line);font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:12px 16px}
       #myAttTable tbody td{vertical-align:middle;padding:14px 16px;font-size:.88rem;border-bottom:1px solid var(--line)}
       #myAttTable tbody tr:last-child td{border-bottom:none}
       #myAttTable tbody tr:hover{background:color-mix(in srgb,var(--card) 92%,#3b82f6 6%)}
@@ -202,6 +211,14 @@
         .btn{padding:.45rem .7rem}
         .btn i{margin-right:.2rem}
       }
+
+      /* ===== Attendance filter modal ===== */
+      #attFilterModal .modal-content{border:none; border-radius:18px; box-shadow:0 24px 60px rgba(13,27,75,.25);}
+      #attFilterModal .modal-header{border-bottom:1px solid var(--line); background:linear-gradient(135deg,#f6f8ff,#eef2fd); padding:16px 22px;}
+      #attFilterModal .modal-title{font-weight:800; color:#0d1b4b; font-size:1rem;}
+      #attFilterModal .modal-header .close{color:#6b7a99; opacity:1; text-shadow:none; font-size:1.4rem;}
+      #attFilterModal .modal-header .close:hover{color:#0d1b4b;}
+      #attFilterModal .modal-body{padding:16px 18px;}
 
       /* ===== Modal scanner ===== */
       #studentScanModal .modal-content{border:none; border-radius:20px; overflow:hidden; box-shadow:0 24px 60px rgba(13,27,75,.3);}
@@ -369,7 +386,10 @@
           <div class="row">
             <div class="col-12">
            <div class="page-title-box d-flex align-items-end justify-content-between flex-wrap gap-2">
-  
+  <div>
+    <h4 class="qr-page-title">My QR Code</h4>
+    <div class="page-sub">Present this card at activities, or scan poster QR codes to check in.</div>
+  </div>
 
   <div class="header-actions">
     <button id="btnOpenScanner" class="qr-header-btn qr-header-btn-primary" aria-haspopup="dialog">
@@ -454,15 +474,19 @@
 
             <!-- BOTTOM: Attendance (minimal) -->
             <div id="colAtt">
-              <div class="section-h mb-3">
-                <h5 class="mb-0">My Attendance</h5>
-                <button id="btnAttFilter" class="qr-header-btn qr-header-btn-ghost" type="button">
-                  <i class="mdi mdi-filter-variant" aria-hidden="true"></i>
-                  <span id="attFilterLabel">All</span>
-                </button>
-              </div>
+              <div class="card-clean">
+                <div class="qr-card-head">
+                  <h5>My Attendance</h5>
+                  <div class="d-flex align-items-center" style="gap:8px">
+                    <span class="qr-count" id="attCount">0 records</span>
+                    <button id="btnAttFilter" class="qr-header-btn qr-header-btn-ghost" type="button">
+                      <i class="mdi mdi-filter-variant" aria-hidden="true"></i>
+                      <span id="attFilterLabel">All</span>
+                    </button>
+                  </div>
+                </div>
 
-              <div class="att-minimal-wrap">
+                <div class="att-minimal-wrap">
                 <div class="table-responsive d-none d-md-block" style="-webkit-overflow-scrolling:touch">
                   <table class="table table-hover mb-0" id="myAttTable">
                     <thead>
@@ -479,6 +503,7 @@
                 </div>
                 <div id="mobileAttList" class="d-md-none">
                   <div class="att-empty-mobile">No attendance yet.</div>
+                </div>
                 </div>
               </div>
             </div>
@@ -750,6 +775,8 @@
           }
         });
         if (mobileList) mobileList.innerHTML = mobileHtml;
+        const cnt = document.getElementById('attCount');
+        if (cnt) cnt.textContent = rows.length + (rows.length === 1 ? ' record' : ' records');
       }
       function applyRange(range){
         const filtered=allRows.filter(r=>withinRange(r,range));
