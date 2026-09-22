@@ -13,7 +13,6 @@
   <link rel="stylesheet" href="<?= base_url(); ?>assets/fonts/font-awesome-4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/css/home.css?v=30260836">
-  <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=30260820" rel="stylesheet">
   <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=8'); ?>">
   <meta name="theme-color" content="#1a2942">
   <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
@@ -185,7 +184,7 @@
   <!-- Data Privacy Modal -->
   <div class="modal fade" id="privacyModal" tabindex="-1" role="dialog" aria-labelledby="privacyLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-      <div class="modal-content" style="font-family:'Sora',sans-serif;border-radius:20px;">
+      <div class="modal-content" style="font-family:'DM Sans',sans-serif;border-radius:20px;">
         <div class="modal-header" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;border-radius:20px 20px 0 0;">
           <h5 class="modal-title" id="privacyLabel" style="font-weight:800;display:flex;align-items:center;gap:8px;">
             <i class="mdi mdi-shield-lock-outline"></i> Data Privacy Notice
@@ -239,7 +238,7 @@
   <!-- Terms of Use Modal -->
   <div class="modal fade" id="termsModal" tabindex="-1" role="dialog" aria-labelledby="termsLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-      <div class="modal-content" style="font-family:'Sora',sans-serif;border-radius:20px;">
+      <div class="modal-content" style="font-family:'DM Sans',sans-serif;border-radius:20px;">
         <div class="modal-header" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;border-radius:20px 20px 0 0;">
           <h5 class="modal-title" id="termsLabel" style="font-weight:800;display:flex;align-items:center;gap:8px;">
             <i class="mdi mdi-file-document-outline"></i> Terms of Use
@@ -290,7 +289,7 @@
   <!-- About Modal -->
   <div class="modal fade" id="aboutModal" tabindex="-1" role="dialog" aria-labelledby="aboutLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
-      <div class="modal-content" style="font-family:'Sora',sans-serif;border-radius:20px;">
+      <div class="modal-content" style="font-family:'DM Sans',sans-serif;border-radius:20px;">
         <div class="modal-header" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;border-radius:20px 20px 0 0;">
           <h5 class="modal-title" id="aboutLabel" style="font-weight:800;display:flex;align-items:center;gap:8px;">
             <i class="mdi mdi-information-outline"></i> About
@@ -323,7 +322,7 @@
   </div>
   <div class="modal fade" id="forgotModal" tabindex="-1" role="dialog" aria-labelledby="forgotLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
-      <div class="modal-content" style="font-family:'Sora',sans-serif;">
+      <div class="modal-content" style="font-family:'DM Sans',sans-serif;">
         <div class="modal-header px-4 pt-4 pb-3">
           <h5 class="modal-title" id="forgotLabel">Reset password</h5>
           <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color:#8fa0c8"><span>&times;</span></button>

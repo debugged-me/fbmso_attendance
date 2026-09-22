@@ -6,7 +6,7 @@ Website: https://coderthemes.com/
 Contact: support@coderthemes.com
 File: Main Css File
 */
-@import url("https://fonts.googleapis.com/css?family=Lato:400,700|Montserrat:500,600&display=swap");
+@import url("../fonts/DM_Sans/dm-sans.css");
 html {
   position: relative;
   min-height: 100%;

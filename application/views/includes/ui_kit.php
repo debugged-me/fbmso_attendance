@@ -68,18 +68,18 @@ if (is_array($ui_guard_notice) && !empty($ui_guard_notice['message'])) {
 }
 ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/ui-kit.css'); ?>">
-<link href="<?= base_url('assets/fonts/sora/sora.css?v=20260827'); ?>" rel="stylesheet">
+<link href="<?= base_url('assets/fonts/DM_Sans/dm-sans.css?v=20260922'); ?>" rel="stylesheet">
 <style>
-  /* Sora is the default font for every page.
+  /* DM Sans is the default font for every page and is served locally.
      NOTE: <i> and <span> are excluded — they are almost always icons
      (.fa, .mdi, .bi, .ion, .menu-arrow …) that carry their own font-family.
-     Text inside them inherits Sora from the parent (body, div, p, etc.). */
+     Text inside them inherits DM Sans from the parent (body, div, p, etc.). */
   body,
   h1, h2, h3, h4, h5, h6,
   .h1, .h2, .h3, .h4, .h5, .h6,
   p, a, button, input, select, textarea, label,
   table, th, td, li, small, div {
-    font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
   }
 </style>
 

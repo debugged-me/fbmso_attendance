@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- QR generator -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=30260820" rel="stylesheet">
+  <link href="<?= base_url(); ?>assets/fonts/DM_Sans/dm-sans.css?v=20260922" rel="stylesheet">
   <style>
     :root{--ink:#0d1b4b;--muted:#6b7a99;--ring:#e6ebf5;--accent:#2a4090;--accent2:#4266d4}
     *{box-sizing:border-box}
     body{
-      font-family:'Sora',system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      font-family:'DM Sans',system-ui,-apple-system,Segoe UI,Roboto,Arial;
       color:var(--ink); margin:0; line-height:1.5;
       background:linear-gradient(135deg,#f5f7fc 0%,#eef2fa 100%);
       min-height:100vh;

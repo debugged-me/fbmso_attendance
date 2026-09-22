@@ -16,7 +16,7 @@
     <!-- App css -->
     <link href="<?= base_url(); ?>assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" id="bootstrap-stylesheet" />
     <link href="<?= base_url(); ?>assets/css/icons.min.css" rel="stylesheet" type="text/css" />
-    <link href="<?= base_url(); ?>assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-stylesheet" />
+  <link href="<?= base_url(); ?>assets/css/app.css?v=20260922" rel="stylesheet" type="text/css" id="app-stylesheet" />
     <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=30260827'); ?>">
 
     <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>

@@ -1,0 +1,24 @@
+@font-face {
+  font-family: 'DM Sans';
+  src: url('./DMSans-VariableFont_opsz,wght.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DM Sans';
+  src: url('./DMSans-Italic-VariableFont_opsz,wght.ttf') format('truetype');
+  font-style: italic;
+  font-weight: 100 1000;
+  font-display: swap;
+}
+
+html,
+body,
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6,
+p, a, button, input, select, textarea, label,
+table, th, td, li, small, div {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+}

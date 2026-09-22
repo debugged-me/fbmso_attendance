@@ -202,14 +202,14 @@ if (!empty($activity_id) && !empty($activities)) {
         /* Title + actions on one row */
         .pl-header {
             display:flex; align-items:flex-start; justify-content:space-between;
-            gap:18px; flex-wrap:wrap; margin-bottom:16px;
+            gap:14px; flex-wrap:wrap; margin-bottom:8px;
         }
-        .pl-header .page-title-box { flex:1 1 auto; margin:0; }
-        .pl-header .page-title-box .up-divider { margin:10px 0 0; }
+        .pl-header .page-title-box { flex:1 1 auto; margin:0; padding:12px 0 4px; }
+        .pl-header .page-title-box .up-divider { margin:8px 0 0; }
         .pl-header .pl-actions { flex:0 0 auto; align-self:center; }
 
         /* Filter badges */
-        .filter-badges { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+        .filter-badges { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
         .filter-badge {
             display:inline-flex; align-items:center; gap:6px;
             background:#f5f7fc; border:1px solid #e6ebf5; border-radius:999px;
@@ -221,10 +221,10 @@ if (!empty($activity_id) && !empty($activities)) {
         #logsTable thead th {
             background:#f5f7fc; color:#6b7a99; font-size:.72rem; font-weight:800;
             letter-spacing:.1em; text-transform:uppercase; border-bottom:1px solid #e6ebf5 !important;
-            padding:14px 16px; white-space:nowrap; border-left:none; border-right:none;
+            padding:11px 12px; white-space:nowrap; border-left:none; border-right:none;
         }
         #logsTable tbody td {
-            padding:14px 16px; vertical-align:middle; font-size:.86rem; color:#0d1b4b;
+            padding:11px 12px; vertical-align:middle; font-size:.86rem; color:#0d1b4b;
             border-bottom:1px solid #eef1f5 !important; border-left:none; border-right:none;
         }
         #logsTable tbody tr:hover { background:#f8faff !important; }
@@ -232,7 +232,7 @@ if (!empty($activity_id) && !empty($activities)) {
         .dataTables_wrapper .dataTables_info,
         .dataTables_wrapper .dataTables_paginate { padding:14px 20px !important; margin:0 !important; }
         .dataTables_wrapper .dataTables_filter,
-        .dataTables_wrapper .dataTables_length { padding:16px 20px 10px !important; margin:0 !important; }
+        .dataTables_wrapper .dataTables_length { padding:6px 8px 8px !important; margin:0 !important; }
         .dataTables_wrapper .dataTables_length select {
             border-radius:10px !important; border:1px solid #e6ebf5 !important;
             padding:8px 12px !important; margin:0 6px !important;
@@ -265,14 +265,15 @@ if (!empty($activity_id) && !empty($activities)) {
         .al-empty { text-align:center; padding:48px 20px; color:#6b7a99; }
         .al-empty i { font-size:42px; display:block; margin-bottom:10px; color:#9aa5b8; }
 
-        /* ===== DataTables Responsive: plus icon & expanded rows ===== */
+        /* DataTables spacing. Wide tables scroll horizontally instead of
+           hiding columns behind Responsive's blue +/- control. */
         /* Ensure DataTables controls have proper spacing from card edges */
         .up-card-body[style*="padding:0"] .dataTables_wrapper {
-            padding: 16px 20px !important;
+            padding: 10px 12px 12px !important;
         }
         .up-card .dataTables_wrapper .dataTables_length,
         .up-card .dataTables_wrapper .dataTables_filter {
-            padding-bottom: 12px !important;
+            padding-bottom: 8px !important;
         }
         .up-card .dataTables_wrapper .dataTables_info,
         .up-card .dataTables_wrapper .dataTables_paginate {
@@ -281,65 +282,11 @@ if (!empty($activity_id) && !empty($activities)) {
 
         /* The table itself needs side padding so it doesn't hug card edges */
         .up-card-body .table-responsive {
-            padding: 0 20px !important;
+            padding: 0 8px !important;
             margin: 0 !important;
         }
+        .up-card-head { padding:14px 18px; }
         #logsTable { margin: 0 !important; }
-
-        /* The + / - control column — give it breathing room */
-        #logsTable td.dtr-control {
-            padding-left: 22px !important;
-            padding-right: 10px !important;
-        }
-        #logsTable td.dtr-control:before {
-            font-size:16px !important;
-            color:#4266d4 !important;
-            background:#f4f7ff !important;
-            border-radius:6px !important;
-            width:22px !important;
-            height:22px !important;
-            line-height:22px !important;
-            text-align:center !important;
-            margin-right:8px !important;
-            border:1px solid #e6ebf5 !important;
-            -webkit-print-color-adjust:exact;
-            print-color-adjust:exact;
-        }
-
-        /* Expanded child row content */
-        #logsTable td.child {
-            padding:12px 22px !important;
-            background:#fafbff !important;
-            border-bottom:1px solid #eef1f5 !important;
-        }
-        #logsTable td.child ul.dtr-details {
-            display:grid !important;
-            grid-template-columns:repeat(2, 1fr) !important;
-            gap:8px 24px !important;
-            margin:0 !important;
-            padding:0 !important;
-            list-style:none !important;
-        }
-        #logsTable td.child .dtr-details li {
-            display:flex !important;
-            align-items:flex-start !important;
-            gap:10px !important;
-            padding:0 !important;
-        }
-        #logsTable td.child .dtr-title {
-            font-weight:700 !important;
-            color:#6b7a99 !important;
-            font-size:.76rem !important;
-            text-transform:uppercase !important;
-            letter-spacing:.04em !important;
-            min-width:90px !important;
-            flex-shrink:0 !important;
-        }
-        #logsTable td.child .dtr-data {
-            color:#0d1b4b !important;
-            font-size:.84rem !important;
-            font-weight:600 !important;
-        }
 
         /* Print document header */
         #printHeader { display:none; }
@@ -533,9 +480,9 @@ if (!empty($activity_id) && !empty($activities)) {
                                                 <a class="up-btn up-btn-ghost" style="padding:6px 12px;font-size:.78rem;min-height:auto;background:#dcfce7;color:#16a34a;border-color:#86efac;" href="<?= site_url('AttendanceLogs/export_csv/' . (int)$activity_id . $csvQuery) ?>">
                                                     <i class="bi bi-file-earmark-spreadsheet"></i> CSV
                                                 </a>
-                                                <button type="button" class="up-btn up-btn-ghost" style="padding:6px 12px;font-size:.78rem;min-height:auto;" id="printLogsBtn">
+                                                <a class="up-btn up-btn-ghost" style="padding:6px 12px;font-size:.78rem;min-height:auto;" href="<?= site_url('AttendanceLogs/activity/' . (int)$activity_id . $csvQuery) ?>" target="_blank" rel="noopener">
                                                     <i class="bi bi-printer"></i> Print
-                                                </button>
+                                                </a>
                                             </div>
                                         </div>
                                     </div>
@@ -547,7 +494,7 @@ if (!empty($activity_id) && !empty($activities)) {
                                                 <div class="up-flash up-flash-info" style="margin:16px 18px 0;border-radius:10px;"><?= h($filter_note) ?></div>
                                             <?php endif; ?>
                                             <div class="table-responsive" style="padding:0;margin-top:1px;">
-                                                <table id="logsTable" class="table table-hover dt-responsive nowrap" style="width:100%;margin:0;">
+                                                <table id="logsTable" class="table table-hover nowrap" style="width:100%;margin:0;">
                                                     <thead>
                                                         <tr>
                                                             <th>Student #</th>
@@ -761,6 +708,8 @@ if (!empty($activity_id) && !empty($activities)) {
             if ($table.length && $.fn.DataTable) {
                 $table.DataTable({
                     pageLength: 25,
+                    responsive: false,
+                    autoWidth: false,
                     order: [
                         [7, 'asc'],
                         [2, 'asc'],
@@ -774,7 +723,6 @@ if (!empty($activity_id) && !empty($activities)) {
             var $sectionSelect = $filterModal.find('select[name="section"]');
             var $yearSelect = $filterModal.find('select[name="year_level"]');
             var originalSectionOptions = $sectionSelect.find('option').clone();
-            var $printButton = $('#printLogsBtn');
 
             function refreshSectionOptions(year) {
                 var current = $sectionSelect.val();
@@ -828,138 +776,6 @@ if (!empty($activity_id) && !empty($activities)) {
             $yearSelect.on('change', function() {
                 refreshSectionOptions($(this).val());
             });
-
-            if ($printButton.length) {
-                $printButton.on('click', function(event) {
-                    event.preventDefault();
-                    var dt = null;
-                    try { dt = $('#logsTable').DataTable(); } catch(e) {}
-
-                    // Build a clean print document in a new window
-                    var actTitle = <?= json_encode($actTitle ?: 'Attendance Logs') ?>;
-                    var totalRecords = <?= !empty($rows) ? count($rows) : 0 ?>;
-                    var filterSection = <?= json_encode($section ?? '') ?>;
-                    var filterSession = <?= json_encode(strtoupper($session ?? '')) ?>;
-                    var filterDate = <?= json_encode($date ?? '') ?>;
-
-                    // Get all data from DataTable (not just current page)
-                    var tableEl = document.getElementById('logsTable');
-                    if (!tableEl) { window.print(); return; }
-
-                    // Force all rows visible
-                    var savedLen = null;
-                    if (dt) {
-                        savedLen = dt.page.len();
-                        dt.page.len(-1).draw(false);
-                    }
-
-                    setTimeout(function() {
-                        // Clone the table and force all columns visible
-                        var clone = tableEl.cloneNode(true);
-                        clone.removeAttribute('id');
-                        clone.style.width = '100%';
-                        clone.style.borderCollapse = 'collapse';
-
-                        // Remove responsive classes and force all cells visible
-                        clone.querySelectorAll('td.d-none, th.d-none').forEach(function(el) {
-                            el.classList.remove('d-none');
-                            el.style.display = 'table-cell';
-                        });
-                        clone.querySelectorAll('td.child').forEach(function(el) {
-                            el.style.display = 'none';
-                        });
-                        clone.querySelectorAll('td.dtr-control').forEach(function(el) {
-                            el.classList.remove('dtr-control');
-                        });
-                        // Remove the + icon pseudo content by removing control class
-                        clone.querySelectorAll('.dtr-control').forEach(function(el) {
-                            el.classList.remove('dtr-control');
-                        });
-
-                        // Style rows
-                        clone.querySelectorAll('thead th').forEach(function(th) {
-                            th.style.padding = '8px 8px';
-                            th.style.border = '1px solid #2a4090';
-                            th.style.background = '#2a4090';
-                            th.style.color = '#fff';
-                            th.style.fontSize = '7.5pt';
-                            th.style.fontWeight = '700';
-                            th.style.textTransform = 'uppercase';
-                            th.style.letterSpacing = '.5px';
-                            th.style.textAlign = 'left';
-                        });
-                        clone.querySelectorAll('tbody td').forEach(function(td, idx) {
-                            td.style.padding = '5px 8px';
-                            td.style.border = '1px solid #ccc';
-                            td.style.fontSize = '9pt';
-                            td.style.color = '#1a1a1a';
-                            td.style.textAlign = 'left';
-                            // Remove inline styles that might interfere
-                            td.style.fontFamily = '';
-                        });
-                        // Alternating row colors
-                        var trs = clone.querySelectorAll('tbody tr');
-                        trs.forEach(function(tr, i) {
-                            if (i % 2 === 1) {
-                                tr.querySelectorAll('td').forEach(function(td) {
-                                    td.style.background = '#f5f7fc';
-                                });
-                            }
-                        });
-
-                        // Build meta info
-                        var metaParts = ['Printed: ' + new Date().toLocaleString()];
-                        if (totalRecords) metaParts.push('Total Records: ' + totalRecords);
-                        if (filterSection) metaParts.push('Section: ' + filterSection);
-                        if (filterSession) metaParts.push('Session: ' + filterSession);
-                        if (filterDate) metaParts.push('Date: ' + filterDate);
-
-                        var w = window.open('', '_blank', 'width=900,height=600');
-                        if (!w) {
-                            // Fallback: just print the page
-                            window.print();
-                            if (dt && savedLen !== null) setTimeout(function() { dt.page.len(savedLen).draw(false); }, 300);
-                            return;
-                        }
-                        w.document.write(
-                            '<html><head><title>' + actTitle + ' — Attendance Logs</title>' +
-                            '<style>' +
-                            '@page { size:A4 portrait; margin:14mm; }' +
-                            'body { font-family:Arial,Helvetica,sans-serif; color:#333; margin:0; }' +
-                            '.doc-header { text-align:center; margin-bottom:20px; }' +
-                            '.doc-header h1 { font-size:16pt; font-weight:800; color:#0d1b4b; margin:0; }' +
-                            '.doc-header h2 { font-size:10pt; font-weight:400; color:#555; margin:2px 0 10px; }' +
-                            '.doc-header h3 { font-size:13pt; font-weight:700; color:#2a4090; text-transform:uppercase; letter-spacing:1px; margin:8px 0 4px; }' +
-                            '.doc-header .meta { font-size:9pt; color:#777; display:flex; justify-content:center; gap:20px; flex-wrap:wrap; }' +
-                            '.doc-header .line { height:2px; background:linear-gradient(to right,#2a4090,#4266d4,#2a4090); margin:10px 0 16px; border-radius:1px; }' +
-                            'table { width:100%; border-collapse:collapse; }' +
-                            '.no-print { display:none; }' +
-                            '@media print { .no-print { display:none !important; } }' +
-                            '</style></head><body>' +
-                            '<div class="doc-header">' +
-                            '<h1>FBMSO Attendance</h1>' +
-                            '<h2>Attendance Logs Report</h2>' +
-                            '<h3>' + actTitle + '</h3>' +
-                            '<div class="meta">' + metaParts.map(function(m) { return '<span>' + m + '</span>'; }).join('') + '</div>' +
-                            '<div class="line"></div>' +
-                            '</div>' +
-                            clone.outerHTML +
-                            '<div class="no-print" style="margin-top:20px;text-align:center;">' +
-                            '<button onclick="window.print()" style="padding:10px 24px;font-size:14px;cursor:pointer;border-radius:8px;border:1px solid #ccc;background:#fff;">Print</button> ' +
-                            '<button onclick="window.close()" style="padding:10px 24px;font-size:14px;cursor:pointer;border-radius:8px;border:1px solid #ccc;background:#fff;">Close</button>' +
-                            '</div>' +
-                            '</body></html>'
-                        );
-                        w.document.close();
-                        w.focus();
-
-                        // Restore pagination
-                        if (dt && savedLen !== null) {
-                            setTimeout(function() { dt.page.len(savedLen).draw(false); }, 300);
-                        }
-                    }, 250);
-                });
-            }
 
             // Fallback: also handle browser's native print (Ctrl+P)
             var dtLogs = null;

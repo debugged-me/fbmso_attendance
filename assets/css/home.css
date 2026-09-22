@@ -12,7 +12,7 @@
     }
 
     body {
-      font-family: 'Sora', sans-serif;
+      font-family: 'DM Sans', sans-serif;
       background: #f0f4ff;
       min-height: 100vh;
       min-height: 100dvh;
@@ -394,7 +394,7 @@
       border: 1.5px solid #e2e9ff;
       border-radius: 14px;
       padding: 13px 16px;
-      font-family: 'Sora', sans-serif;
+      font-family: 'DM Sans', sans-serif;
       font-size: .88rem;
       color: #0d1b4b;
       outline: none;
@@ -483,7 +483,7 @@
       padding: 14px;
       border: none;
       border-radius: 18px;
-      font-family: 'Sora', sans-serif;
+      font-family: 'DM Sans', sans-serif;
       font-size: .88rem;
       font-weight: 700;
       color: #fff;
@@ -702,7 +702,7 @@
     }
 
     body {
-      font-family: 'Sora', sans-serif;
+      font-family: 'DM Sans', sans-serif;
       background: #f0f4ff;
 
       /* instead of min-height:100vh + overflow:hidden */

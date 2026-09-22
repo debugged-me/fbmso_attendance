@@ -24,7 +24,7 @@
                     </div>
                     <div class="custom-control custom-switch mb-3">
                         <input type="checkbox" class="custom-control-input theme-choice" id="dark-mode-switch" data-bsStyle="<?= base_url(); ?>assets/css/bootstrap-dark.min.css"
-                            data-appStyle="<?= base_url(); ?>assets/css/app-dark.min.css" />
+                            data-appStyle="<?= base_url(); ?>assets/css/app-dark.css?v=20260922" />
                         <label class="custom-control-label" for="dark-mode-switch">Dark Mode</label>
                     </div>
 
@@ -32,7 +32,7 @@
                         <img src="<?= base_url(); ?>assets/images/layouts/rtl.png" class="img-fluid img-thumbnail" alt="">
                     </div>
                     <div class="custom-control custom-switch mb-5">
-                        <input type="checkbox" class="custom-control-input theme-choice" id="rtl-mode-switch" data-appStyle="<?= base_url(); ?>assets/css/app-rtl.min.css" />
+                        <input type="checkbox" class="custom-control-input theme-choice" id="rtl-mode-switch" data-appStyle="<?= base_url(); ?>assets/css/app-rtl.css?v=20260922" />
                         <label class="custom-control-label" for="rtl-mode-switch">RTL Mode</label>
                     </div>
 

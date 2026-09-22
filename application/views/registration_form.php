@@ -10,8 +10,7 @@
   <link href="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.css" rel="stylesheet" type="text/css" />
   <link href="<?= base_url(); ?>assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" id="bootstrap-stylesheet" />
   <link href="<?= base_url(); ?>assets/css/icons.min.css" rel="stylesheet" type="text/css" />
-  <link href="<?= base_url(); ?>assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-stylesheet" />
-  <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=30260820" rel="stylesheet">
+  <link href="<?= base_url(); ?>assets/css/app.css?v=20260922" rel="stylesheet" type="text/css" id="app-stylesheet" />
 
   <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
   <link href="<?= base_url(); ?>assets/css/registration_form.css?v=30260830" rel="stylesheet" type="text/css" />

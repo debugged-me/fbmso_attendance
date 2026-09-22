@@ -19,7 +19,7 @@
     <link rel="stylesheet"
           href="<?= base_url(); ?>assets/css/home.css?v=30260835">
 
-    <link href="<?= base_url(); ?>assets/fonts/sora/sora.css?v=30260820"
+    <link href="<?= base_url(); ?>assets/fonts/DM_Sans/dm-sans.css?v=20260922"
           rel="stylesheet">
 
     <meta name="theme-color" content="#1a2942">

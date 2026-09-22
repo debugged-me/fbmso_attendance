@@ -125,7 +125,7 @@
       .qr-card-info{flex:1; min-width:0;}
       .qr-card-info .qc-label{font-size:.62rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; opacity:.72;}
       .qr-card-info .qc-value{font-size:1.05rem; font-weight:800; letter-spacing:.04em; font-family:ui-monospace,Menlo,Consolas,monospace; margin-top:2px;}
-      .qr-card-info .qc-name-display{font-family:'Sora',sans-serif; letter-spacing:.02em; text-transform:uppercase; line-height:1.25; word-break:break-word; margin-top:2px;}
+      .qr-card-info .qc-name-display{font-family:'DM Sans',sans-serif; letter-spacing:.02em; text-transform:uppercase; line-height:1.25; word-break:break-word; margin-top:2px;}
       .qr-card-info .qc-name-line1{font-size:1.15rem; font-weight:800;}
       .qr-card-info .qc-name-line2{font-size:.92rem; font-weight:600; opacity:.88;}
       .qr-card-info .qc-hint{font-size:.7rem; opacity:.78; margin-top:8px; line-height:1.35;}
