@@ -326,6 +326,28 @@ class AttendanceApi {
     }
   }
 
+  /// CSV export of an activity's attendance log — web
+  /// AttendanceLogs/export_csv. Returns the raw CSV body.
+  Future<String> exportLogsCsv({
+    required String baseUrl,
+    required String token,
+    required int activityId,
+  }) async {
+    final url =
+        '${_normalize(baseUrl)}/api/mobile/attendance/export_csv/$activityId';
+    final response = await _client.get(
+      Uri.parse(url),
+      headers: _headers(token),
+    );
+    if (response.statusCode == 200) return response.body;
+    try {
+      final data = _decode(response);
+      throw ApiException((data['message'] ?? 'Export failed').toString());
+    } catch (_) {
+      throw ApiException('Export failed (${response.statusCode})');
+    }
+  }
+
   // ─── Activity management (staff) ────────────────────────────────────────
 
   /// Program choices for the activity form — same `course_table`

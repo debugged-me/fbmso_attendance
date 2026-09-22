@@ -64,6 +64,64 @@ class StudentApi {
     return FlagStatus.fromJson(const {'is_flagged': false});
   }
 
+  /// Edit own profile — web Page/studentProfile → updateStudentProfile.
+  /// Only non-null fields are sent; the server maps them to whichever of
+  /// studentsignup/studeprofile holds the record.
+  Future<StudentProfile> updateProfile({
+    required String baseUrl,
+    required String token,
+    String? firstName,
+    String? middleName,
+    String? lastName,
+    String? sex,
+    String? civilStatus,
+    String? contactNo,
+    String? birthDate,
+    String? email,
+    String? sitio,
+    String? brgy,
+    String? city,
+    String? province,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/student/update-profile';
+    final body = <String, dynamic>{
+      if (firstName != null) 'firstName': firstName,
+      if (middleName != null) 'middleName': middleName,
+      if (lastName != null) 'lastName': lastName,
+      if (sex != null) 'sex': sex,
+      if (civilStatus != null) 'civilStatus': civilStatus,
+      if (contactNo != null) 'contactNo': contactNo,
+      if (birthDate != null) 'birthDate': birthDate,
+      if (email != null) 'email': email,
+      if (sitio != null) 'sitio': sitio,
+      if (brgy != null) 'brgy': brgy,
+      if (city != null) 'city': city,
+      if (province != null) 'province': province,
+    };
+    try {
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode(body),
+      );
+      final data = _decode(response);
+      if (data['ok'] == true) {
+        final p = data['profile'];
+        if (p is Map) {
+          final profile = StudentProfile.fromJson(p.cast<String, dynamic>());
+          await OfflineStorageService.saveDoc(_cacheProfile, profile.toJson());
+          return profile;
+        }
+        return profile(baseUrl: baseUrl, token: token);
+      }
+      throw ApiException((data['message'] ?? 'Failed').toString());
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
   // ─── My QR ──────────────────────────────────────────────────────────────
 
   Future<StudentQr> myQr({

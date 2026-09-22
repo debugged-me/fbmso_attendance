@@ -620,16 +620,46 @@ class MobileAccounting extends MobileApi
 
         [$sem, $sy] = $this->currentSemSy();
 
+        // The StudentModel methods return result() rows ([{Amount: …}]) for the
+        // web views; unwrap them into scalars so mobile clients get numbers.
+        $scalar = function ($rows, $key) {
+            $row = is_array($rows) && isset($rows[0]) ? $rows[0] : null;
+            $val = is_object($row) ? ($row->$key ?? 0) : (is_array($row) ? ($row[$key] ?? 0) : 0);
+            return (float)$val;
+        };
+
+        $trend = [];
+        foreach ($this->StudentModel->collectionTrend(14) as $t) {
+            $trend[] = [
+                'date'  => (string)($t->CDate ?? ''),
+                'total' => (float)($t->Amount ?? 0),
+            ];
+        }
+
+        $recent = [];
+        foreach ($this->StudentModel->recentPayments(8) as $r) {
+            $recent[] = [
+                'id'             => (int)($r->ID ?? 0),
+                'date'           => (string)($r->PDate ?? ''),
+                'or_number'      => (string)($r->ORNumber ?? ''),
+                'student_number' => (string)($r->StudentNumber ?? ''),
+                'student_name'   => trim((string)($r->LastName ?? '') . ', ' . (string)($r->FirstName ?? '')),
+                'amount'         => (float)($r->Amount ?? 0),
+                'description'    => (string)($r->description ?? ''),
+                'cashier'        => (string)($r->Cashier ?? ''),
+            ];
+        }
+
         return $this->json([
             'ok'                => true,
             'sem'               => $sem,
             'sy'                => $sy,
-            'accounts_balance'  => $this->StudentModel->totalStudeAccountProfile($sy, $sem),
-            'collection_today'  => $this->StudentModel->collectionToday(),
-            'collection_month'  => $this->StudentModel->collectionMonth(),
-            'collection_year'   => $this->StudentModel->YearlyCollections(),
-            'trend'             => $this->StudentModel->collectionTrend(14),
-            'recent_payments'   => $this->StudentModel->recentPayments(8),
+            'accounts_balance'  => (int)$scalar($this->StudentModel->totalStudeAccountProfile($sy, $sem), 'StudeCount'),
+            'collection_today'  => $scalar($this->StudentModel->collectionToday(), 'Amount'),
+            'collection_month'  => $scalar($this->StudentModel->collectionMonth(), 'Amount'),
+            'collection_year'   => $scalar($this->StudentModel->YearlyCollections(), 'Amount'),
+            'trend'             => $trend,
+            'recent_payments'   => $recent,
         ]);
     }
 

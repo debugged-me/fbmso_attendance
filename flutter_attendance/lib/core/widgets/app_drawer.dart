@@ -114,7 +114,6 @@ class AppAppDrawer extends StatelessWidget {
                     item: DrawerItem(
                       icon: Icons.lock_outline_rounded,
                       title: 'Change Password',
-                      subtitle: 'Update your account password',
                       onTap: (ctx) {
                       Navigator.of(ctx).pop();
                       Navigator.of(ctx).push(
@@ -130,7 +129,6 @@ class AppAppDrawer extends StatelessWidget {
                     item: DrawerItem(
                       icon: Icons.photo_camera_outlined,
                       title: 'Change Avatar',
-                      subtitle: 'Update your profile picture',
                       onTap: (ctx) {
                       Navigator.of(ctx).pop();
                       Navigator.of(ctx).push(
@@ -146,7 +144,6 @@ class AppAppDrawer extends StatelessWidget {
                     item: DrawerItem(
                       icon: Icons.logout_rounded,
                       title: 'Sign out',
-                      subtitle: 'Exit the app',
                       iconColor: Colors.red,
                       onTap: (ctx) => _confirmLogout(ctx),
                     ),
@@ -194,13 +191,11 @@ class DrawerItem {
     required this.icon,
     required this.title,
     required this.onTap,
-    this.subtitle = '',
     this.iconColor = AppInk.accent,
   });
 
   final IconData icon;
   final String title;
-  final String subtitle;
   final void Function(BuildContext context) onTap;
   final Color iconColor;
 }
@@ -231,28 +226,15 @@ class _DrawerTile extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppInk.heading,
-                      ),
-                    ),
-                    if (item.subtitle.isNotEmpty)
-                      Text(
-                        item.subtitle,
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          color: AppInk.muted,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
+                child: Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppInk.heading,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const Icon(Icons.chevron_right_rounded,

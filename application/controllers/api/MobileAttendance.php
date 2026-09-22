@@ -216,7 +216,9 @@ class MobileAttendance extends MobileApi
         $oldDebug = $this->db->db_debug;
         $this->db->db_debug = false;
         $op = $this->AttendanceModel->consume_token(
-            $activityId, $token, $direction, $payload['client_submitted_at'] ?? null
+            $activityId, $token, $direction,
+            $payload['client_submitted_at'] ?? null,
+            $payload['client_scan_id'] ?? null
         );
         $this->db->db_debug = $oldDebug;
 
@@ -333,7 +335,11 @@ class MobileAttendance extends MobileApi
             $this->record_idempotent_response(404, $body);
             return $this->json(json_decode($body, true), 404);
         }
-        $state = activity_state($activity, activity_resolve_scan_time($payload['client_submitted_at'] ?? null));
+        // Self check-in runs on the student's own device, so its clock is
+        // attacker-controlled — a backdated one could claim a session the
+        // student missed. Staff-held scanners get the client time honoured
+        // (see consume()); this path is judged on server time only.
+        $state = activity_state($activity);
         if (!$state['is_open']) {
             $body = json_encode([
                 'ok' => false,
@@ -360,7 +366,8 @@ class MobileAttendance extends MobileApi
         $oldDebug = $this->db->db_debug;
         $this->db->db_debug = false;
         $res = $this->AttendanceModel->consume_token(
-            $activityId, $qr->token, $direction, $payload['client_submitted_at'] ?? null
+            $activityId, $qr->token, $direction, null,
+            $payload['client_scan_id'] ?? null
         );
         $this->db->db_debug = $oldDebug;
 
@@ -952,13 +959,37 @@ class MobileAttendance extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Committee only.'], 403);
         }
 
+        // Normalize the raw model rows (SDate/Scans, LastName/FirstName) into
+        // the lowercase keys the mobile model parses.
+        $trend = [];
+        foreach ($this->AttendanceModel->scan_trend(14) as $t) {
+            $trend[] = [
+                'date'  => (string)($t->SDate ?? $t->date ?? ''),
+                'count' => (int)($t->Scans ?? $t->count ?? 0),
+            ];
+        }
+
+        $recent = [];
+        foreach ($this->AttendanceModel->recent_scans(8) as $s) {
+            $name = trim((string)($s->LastName ?? '') . ', ' . (string)($s->FirstName ?? ''), ' ,');
+            $recent[] = [
+                'checked_in_at'  => (string)($s->checked_in_at ?? ''),
+                'session'        => (string)($s->session ?? ''),
+                'source'         => (string)($s->source ?? ''),
+                'checked_in_by'  => (string)($s->checked_in_by ?? ''),
+                'activity_title' => (string)($s->activity_title ?? ''),
+                'student_number' => (string)($s->student_number ?? ''),
+                'student_name'   => $name,
+            ];
+        }
+
         return $this->json([
             'ok'           => true,
             'open_count'   => (int)$this->ActivitiesModel->count_open(),
             'total_count'  => (int)$this->ActivitiesModel->count_all(),
             'today_scans'  => (int)$this->AttendanceModel->scan_count_on(),
-            'trend'        => $this->AttendanceModel->scan_trend(14),
-            'recent_scans' => $this->AttendanceModel->recent_scans(8),
+            'trend'        => $trend,
+            'recent_scans' => $recent,
         ]);
     }
 

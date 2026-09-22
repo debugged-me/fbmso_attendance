@@ -112,12 +112,13 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
     }
   }
 
-  void _showForm() {
+  void _showForm([Department? existing]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _DeptForm(api: _api, session: widget.session, onSaved: _load),
+      builder: (ctx) => _DeptForm(
+          api: _api, session: widget.session, onSaved: _load, existing: existing),
     );
   }
 
@@ -206,6 +207,7 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
                                 final d = _rows[i - 1];
                                 return AppSwipeActions(
                                   dismissKey: ValueKey('course-${d.id}'),
+                                  onEdit: () => _showForm(d),
                                   confirmDelete: () => _confirmDelete(d),
                                   onDeleted: () => _delete(d),
                                   child: Padding(
@@ -279,10 +281,15 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
 }
 
 class _DeptForm extends StatefulWidget {
-  const _DeptForm({required this.api, required this.session, required this.onSaved});
+  const _DeptForm(
+      {required this.api,
+      required this.session,
+      required this.onSaved,
+      this.existing});
   final MiscApi api;
   final AppSession session;
   final VoidCallback onSaved;
+  final Department? existing;
 
   @override
   State<_DeptForm> createState() => _DeptFormState();
@@ -296,13 +303,16 @@ class _DeptFormState extends State<_DeptForm> {
   bool _saving = false;
   String? _error;
 
+  bool get _isEdit => widget.existing != null;
+
   @override
   void initState() {
     super.initState();
-    _code = TextEditingController();
-    _desc = TextEditingController();
-    _major = TextEditingController();
-    _duration = TextEditingController();
+    final e = widget.existing;
+    _code = TextEditingController(text: e?.courseCode ?? '');
+    _desc = TextEditingController(text: e?.courseDescription ?? '');
+    _major = TextEditingController(text: e?.major ?? '');
+    _duration = TextEditingController(text: e?.duration ?? '');
   }
 
   @override
@@ -318,14 +328,26 @@ class _DeptFormState extends State<_DeptForm> {
     }
     setState(() { _saving = true; _error = null; });
     try {
-      await widget.api.departmentCreate(
-        baseUrl: widget.session.baseUrl,
-        token: widget.session.token,
-        courseCode: _code.text.trim(),
-        courseDescription: _desc.text.trim(),
-        major: _major.text.trim(),
-        duration: _duration.text.trim(),
-      );
+      if (_isEdit) {
+        await widget.api.departmentUpdate(
+          baseUrl: widget.session.baseUrl,
+          token: widget.session.token,
+          courseid: widget.existing!.id,
+          courseCode: _code.text.trim(),
+          courseDescription: _desc.text.trim(),
+          major: _major.text.trim(),
+          duration: _duration.text.trim(),
+        );
+      } else {
+        await widget.api.departmentCreate(
+          baseUrl: widget.session.baseUrl,
+          token: widget.session.token,
+          courseCode: _code.text.trim(),
+          courseDescription: _desc.text.trim(),
+          major: _major.text.trim(),
+          duration: _duration.text.trim(),
+        );
+      }
       if (!mounted) return;
       widget.onSaved();
       Navigator.of(context).pop();
@@ -355,8 +377,8 @@ class _DeptFormState extends State<_DeptForm> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text('Add Course',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppInk.heading)),
+            Text(_isEdit ? 'Edit Course' : 'Add Course',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppInk.heading)),
             const SizedBox(height: 20),
             if (_error != null) ...[
               Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),

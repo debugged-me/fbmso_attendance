@@ -46,7 +46,6 @@ class _StudentShellState extends State<StudentShell> {
         DrawerItem(
           icon: Icons.badge_outlined,
           title: 'My Profile',
-          subtitle: 'Personal and academic details',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -59,7 +58,6 @@ class _StudentShellState extends State<StudentShell> {
         DrawerItem(
           icon: Icons.account_balance_wallet_outlined,
           title: 'My Payment Records',
-          subtitle: 'Payment records & accounting',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -72,7 +70,6 @@ class _StudentShellState extends State<StudentShell> {
         DrawerItem(
           icon: Icons.groups_outlined,
           title: 'FBMSO Officials',
-          subtitle: 'Organization officers & staff',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(

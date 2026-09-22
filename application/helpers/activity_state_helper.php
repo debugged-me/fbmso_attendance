@@ -330,30 +330,16 @@ if (!function_exists('activity_meta_merge_autoclose')) {
     }
 }
 
-/**
- * How far back a client-supplied scan timestamp may reach. Offline scans queued
- * in the mobile outbox can sync long after the fact; without this the auto-close
- * window would reject attendance that was genuinely taken inside it.
- */
-if (!defined('ACTIVITY_CLIENT_TIME_MAX_AGE_HOURS')) {
-    define('ACTIVITY_CLIENT_TIME_MAX_AGE_HOURS', 48);
+/** Clock-skew tolerance when judging a client-supplied scan timestamp. */
+if (!defined('ACTIVITY_CLIENT_TIME_SKEW_SECONDS')) {
+    define('ACTIVITY_CLIENT_TIME_SKEW_SECONDS', 300);
 }
 
-if (!function_exists('activity_resolve_scan_time')) {
-    /**
-     * Decide which timestamp the auto-close window should be judged against.
-     *
-     * Returns the client's own scan time when it is plausible — in the past, and
-     * no older than ACTIVITY_CLIENT_TIME_MAX_AGE_HOURS — otherwise server time.
-     * NOTE: this trusts the device clock within that bound, which is what makes
-     * offline attendance work; it is not a defence against a forged timestamp.
-     *
-     * @param mixed $raw ISO-8601 string, "Y-m-d H:i:s", or epoch millis/seconds.
-     */
-    function activity_resolve_scan_time($raw, ?int $now = null): int
+if (!function_exists('activity_parse_client_time')) {
+    /** Parse an epoch (seconds or milliseconds) or date string. NULL when unusable. */
+    function activity_parse_client_time($raw): ?int
     {
-        $now = $now ?? time();
-        if ($raw === null || $raw === '' || $raw === false) return $now;
+        if ($raw === null || $raw === '' || $raw === false) return null;
 
         if (is_numeric($raw)) {
             $n = (float)$raw;
@@ -361,13 +347,72 @@ if (!function_exists('activity_resolve_scan_time')) {
             $ts = $n > 100000000000 ? (int)round($n / 1000) : (int)$n;
         } else {
             $ts = strtotime((string)$raw);
-            if ($ts === false) return $now;
+            if ($ts === false) return null;
         }
 
-        if ($ts <= 0)   return $now;
-        if ($ts > $now) return $now;  // never let a future clock widen the window
-        if ($ts < $now - (ACTIVITY_CLIENT_TIME_MAX_AGE_HOURS * 3600)) return $now;
+        return $ts > 0 ? $ts : null;
+    }
+}
 
-        return $ts;
+if (!function_exists('activity_clamp_scan_time')) {
+    /**
+     * Resolve the timestamp an offline-queued scan should be *recorded* at.
+     *
+     * Replaces activity_resolve_scan_time's rolling 48h allowance, which
+     * silently re-stamped an older scan to server now — writing a morning scan
+     * into whatever session happened to be current when the queue flushed.
+     *
+     * A backdated scan is instead validated against the activity's own window:
+     * accepted as-is inside it, rejected outside it. That is also the answer to
+     * a tampered device clock, since a forged time can only place a scan inside
+     * a window where the scan was already permitted.
+     *
+     * @return array{ts:int, source:string, ok:bool, reason:string}
+     */
+    function activity_clamp_scan_time($row, $raw, ?int $now = null): array
+    {
+        $now  = $now ?? time();
+        $skew = ACTIVITY_CLIENT_TIME_SKEW_SECONDS;
+        $ts   = activity_parse_client_time($raw);
+
+        if ($ts === null) {
+            return ['ts' => $now, 'source' => 'server', 'ok' => true, 'reason' => ''];
+        }
+
+        // A future clock means skew or tampering. The scan is reaching the
+        // server now, so now is the honest answer.
+        if ($ts > $now) {
+            return ['ts' => $now, 'source' => 'server', 'ok' => true, 'reason' => ''];
+        }
+
+        // Live scan — client and server agree. Leave the window to activity_state.
+        if ($ts >= $now - $skew) {
+            return ['ts' => $ts, 'source' => 'client', 'ok' => true, 'reason' => ''];
+        }
+
+        // Genuinely backdated: this came out of an offline queue.
+        $window = activity_checkin_window($row);
+
+        if ($window['start'] !== null && $ts < $window['start'] - $skew) {
+            return [
+                'ts'     => $ts,
+                'source' => 'client',
+                'ok'     => false,
+                'reason' => 'This queued scan is dated ' . date('M j, Y \a\t g:i A', $ts)
+                    . ', before check-in opened for this activity.',
+            ];
+        }
+
+        if ($window['end'] !== null && $ts > $window['end'] + $skew) {
+            return [
+                'ts'     => $ts,
+                'source' => 'client',
+                'ok'     => false,
+                'reason' => 'This queued scan is dated ' . date('M j, Y \a\t g:i A', $ts)
+                    . ', after check-in closed for this activity.',
+            ];
+        }
+
+        return ['ts' => $ts, 'source' => 'client', 'ok' => true, 'reason' => ''];
     }
 }

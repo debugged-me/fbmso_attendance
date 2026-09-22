@@ -617,6 +617,47 @@ class MiscApi {
     }
   }
 
+  /// Update an existing course — web Settings/updateCourse.
+  Future<void> departmentUpdate({
+    required String baseUrl,
+    required String token,
+    required int courseid,
+    String? courseCode,
+    String? courseDescription,
+    String? major,
+    String? duration,
+    String? recogNo,
+    String? seriesYear,
+    String? programHead,
+    String? idNumber,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/departments/update';
+    try {
+      final body = <String, dynamic>{'courseid': courseid};
+      if (courseCode != null) body['CourseCode'] = courseCode;
+      if (courseDescription != null) body['CourseDescription'] = courseDescription;
+      if (major != null) body['Major'] = major;
+      if (duration != null) body['Duration'] = duration;
+      if (recogNo != null) body['recogNo'] = recogNo;
+      if (seriesYear != null) body['SeriesYear'] = seriesYear;
+      if (programHead != null) body['ProgramHead'] = programHead;
+      if (idNumber != null) body['IDNumber'] = idNumber;
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode(body),
+      );
+      final data = _decode(response);
+      if (data['ok'] != true) {
+        throw ApiException((data['message'] ?? 'Failed').toString());
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
   Future<void> departmentDelete({
     required String baseUrl,
     required String token,
@@ -762,6 +803,39 @@ class MiscApi {
           'audience': audience,
           'date_expire': dateExpire,
         }),
+      );
+      final data = _decode(response);
+      if (data['ok'] != true) {
+        throw ApiException((data['message'] ?? 'Failed').toString());
+      }
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
+  /// Update an announcement — web Page/updateAnnouncement.
+  Future<void> announcementUpdate({
+    required String baseUrl,
+    required String token,
+    required int id,
+    String? title,
+    String? message,
+    String? audience,
+    String? dateExpire,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/announcements/update';
+    try {
+      final body = <String, dynamic>{'id': id};
+      if (title != null) body['title'] = title;
+      if (message != null) body['message'] = message;
+      if (audience != null) body['audience'] = audience;
+      if (dateExpire != null) body['date_expire'] = dateExpire;
+      final response = await _client.post(
+        Uri.parse(url),
+        headers: _h(token),
+        body: jsonEncode(body),
       );
       final data = _decode(response);
       if (data['ok'] != true) {

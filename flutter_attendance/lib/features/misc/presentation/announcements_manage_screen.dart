@@ -71,12 +71,13 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
     }
   }
 
-  void _showForm() {
+  void _showForm([Announcement? existing]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _AnnouncementForm(api: _api, session: widget.session, onSaved: _load),
+      builder: (ctx) => _AnnouncementForm(
+          api: _api, session: widget.session, onSaved: _load, existing: existing),
     );
   }
 
@@ -134,6 +135,7 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
                                 final a = _announcements[i - 1];
                                 return AppSwipeActions(
                                   dismissKey: ValueKey('announcement-${a.id}'),
+                                  onEdit: () => _showForm(a),
                                   confirmDelete: () => _confirmDelete(a),
                                   onDeleted: () => _delete(a),
                                   child: Padding(
@@ -210,10 +212,15 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
 }
 
 class _AnnouncementForm extends StatefulWidget {
-  const _AnnouncementForm({required this.api, required this.session, required this.onSaved});
+  const _AnnouncementForm(
+      {required this.api,
+      required this.session,
+      required this.onSaved,
+      this.existing});
   final MiscApi api;
   final AppSession session;
   final VoidCallback onSaved;
+  final Announcement? existing;
 
   @override
   State<_AnnouncementForm> createState() => _AnnouncementFormState();
@@ -227,11 +234,26 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
   bool _saving = false;
   String? _error;
 
+  bool get _isEdit => widget.existing != null;
+
   @override
   void initState() {
     super.initState();
-    _title = TextEditingController();
-    _message = TextEditingController();
+    final e = widget.existing;
+    _title = TextEditingController(text: e?.title ?? '');
+    _message = TextEditingController(text: e?.message ?? '');
+    if (e != null) {
+      if (e.audience.isNotEmpty) {
+        _audience = e.audience[0].toUpperCase() + e.audience.substring(1);
+        if (!const ['All', 'Students', 'Registrar', 'Instructors']
+            .contains(_audience)) {
+          _audience = 'All';
+        }
+      }
+      if (e.dateExpire.isNotEmpty) {
+        _expireDate = DateTime.tryParse(e.dateExpire);
+      }
+    }
   }
 
   @override
@@ -251,14 +273,26 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
     }
     setState(() { _saving = true; _error = null; });
     try {
-      await widget.api.announcementCreate(
-        baseUrl: widget.session.baseUrl,
-        token: widget.session.token,
-        title: _title.text.trim(),
-        message: _message.text.trim(),
-        audience: _audience,
-        dateExpire: _expireDate != null ? _formatDate(_expireDate!) : '',
-      );
+      if (_isEdit) {
+        await widget.api.announcementUpdate(
+          baseUrl: widget.session.baseUrl,
+          token: widget.session.token,
+          id: widget.existing!.id,
+          title: _title.text.trim(),
+          message: _message.text.trim(),
+          audience: _audience,
+          dateExpire: _expireDate != null ? _formatDate(_expireDate!) : '',
+        );
+      } else {
+        await widget.api.announcementCreate(
+          baseUrl: widget.session.baseUrl,
+          token: widget.session.token,
+          title: _title.text.trim(),
+          message: _message.text.trim(),
+          audience: _audience,
+          dateExpire: _expireDate != null ? _formatDate(_expireDate!) : '',
+        );
+      }
       if (!mounted) return;
       widget.onSaved();
       Navigator.of(context).pop();
@@ -288,8 +322,8 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text('New Announcement',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppInk.heading)),
+            Text(_isEdit ? 'Edit Announcement' : 'New Announcement',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppInk.heading)),
             const SizedBox(height: 20),
             if (_error != null) ...[
               Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),
@@ -344,7 +378,7 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
             ),
             const SizedBox(height: 20),
             AppButton(
-              label: 'Post Announcement',
+              label: _isEdit ? 'Save Changes' : 'Post Announcement',
               fullWidth: true,
               size: AppButtonSize.lg,
               loading: _saving,

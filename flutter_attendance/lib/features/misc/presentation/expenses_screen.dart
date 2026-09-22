@@ -287,7 +287,7 @@ class _ExpenseCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  expense.amount,
+                  '₱${(double.tryParse(expense.amount.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0).toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,

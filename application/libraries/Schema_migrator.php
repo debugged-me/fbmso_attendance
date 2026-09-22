@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v13.done';
+    const MARKER = 'schema_migrations_v14.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -511,6 +511,42 @@ class Schema_migrator
                           PRIMARY KEY (`id`),
                           KEY `payment_id` (`payment_id`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
+                },
+            ),
+
+            // Offline scans are recorded at the time they were taken, not the
+            // time they synced. recorded_at keeps the server's receipt time so
+            // the gap between the two stays auditable, and time_source says
+            // which clock the stored checked_in_at came from.
+            '2026_09_22_add_attendance_scan_time_source' => array(
+                'check' => function () {
+                    return $this->tableExists('activity_attendance')
+                        && !$this->columnExists('activity_attendance', 'time_source');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "ALTER TABLE `activity_attendance`
+                         ADD COLUMN `recorded_at` DATETIME NULL DEFAULT NULL,
+                         ADD COLUMN `time_source` ENUM('server','client') NOT NULL DEFAULT 'server'"
+                    );
+                },
+            ),
+
+            // Natural-key dedup for queued scans. The X-Idempotency-Key replay
+            // log expires, so a scan delivered but never acknowledged could be
+            // re-executed on a later retry. A unique client id makes the
+            // duplicate impossible at the table level rather than by TTL.
+            '2026_09_22_add_attendance_client_scan_id' => array(
+                'check' => function () {
+                    return $this->tableExists('activity_attendance')
+                        && !$this->columnExists('activity_attendance', 'client_scan_id');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "ALTER TABLE `activity_attendance`
+                         ADD COLUMN `client_scan_id` CHAR(36) NULL DEFAULT NULL,
+                         ADD UNIQUE KEY `uq_client_scan` (`client_scan_id`)"
                     );
                 },
             ),

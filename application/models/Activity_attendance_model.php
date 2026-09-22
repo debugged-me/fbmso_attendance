@@ -85,12 +85,35 @@ class Activity_attendance_model extends CI_Model
 }
 
 /**
- * @param mixed $occurred_at Client scan time for offline queued scans; the
- *                           auto-close window is judged against it when plausible.
+ * @param mixed $occurred_at     Client scan time for offline queued scans. Every
+ *                               stored timestamp derives from it, so a scan that
+ *                               syncs later still lands in the session it was
+ *                               taken in.
+ * @param mixed $client_scan_id  Client-generated id for a queued scan. Deduped
+ *                               at the table level, which outlives the
+ *                               idempotency-key replay log's TTL.
  */
-public function consume_token($activity_id, $token, $direction = 'auto', $occurred_at = null)
+public function consume_token($activity_id, $token, $direction = 'auto', $occurred_at = null, $client_scan_id = null)
 {
     $activity_id = (int)$activity_id;
+
+    // Natural-key replay: this exact queued scan already landed.
+    $client_scan_id = trim((string)$client_scan_id);
+    if ($client_scan_id !== '') {
+        $prior = $this->db->from('activity_attendance')
+                          ->where('client_scan_id', $client_scan_id)
+                          ->limit(1)->get();
+        if ($prior !== false && ($priorRow = $prior->row())) {
+            return [
+                'ok'             => true,
+                'mode'           => 'duplicate',
+                'id'             => (int)$priorRow->id,
+                'student_number' => (string)$priorRow->student_number,
+                'session'        => (string)$priorRow->session,
+                'student'        => $this->resolve_student_min((string)$priorRow->student_number),
+            ];
+        }
+    }
 
     // 0) Normalize the supported QR wrappers into the stored token. Keeping
     // this at the model boundary protects every scanner, including old apps.
@@ -108,7 +131,21 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
             ->from('activities')
             ->where('activity_id', $activity_id)->limit(1)->get()->row();
     if (!$act) return ['ok'=>false,'mode'=>'err','message'=>'Activity not found'];
-    $state = activity_state($act, activity_resolve_scan_time($occurred_at));
+
+    // An offline-queued scan carries the time it actually happened. Resolve it
+    // once here; every stored value below derives from it, so a scan that syncs
+    // hours later still lands in the session it was taken in.
+    $scan = activity_clamp_scan_time($act, $occurred_at);
+    if (!$scan['ok']) {
+        return [
+            'ok'      => false,
+            'mode'    => 'stale_scan',
+            'message' => $scan['reason'],
+        ];
+    }
+    $scanTs = $scan['ts'];
+
+    $state = activity_state($act, $scanTs);
     if (!$state['is_open']) {
         return [
             'ok'      => false,
@@ -166,9 +203,9 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
         ];
     }
 
-    $nowTs  = date('Y-m-d H:i:s');
-    $today  = date('Y-m-d');
-    $sess   = $this->classify_session($activity_id);
+    $nowTs  = date('Y-m-d H:i:s', $scanTs);
+    $today  = date('Y-m-d', $scanTs);
+    $sess   = $this->classify_session($activity_id, date('H:i', $scanTs));
 
     // 3) Normalize direction
     $direction = strtolower((string)$direction);
@@ -208,7 +245,7 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
         $tooSoon = false;
         if ($recentIn && !$openRow) {
             $last = strtotime((string)$recentIn->checked_in_at);
-            if ($last && (time() - $last) <= 5) $tooSoon = true;
+            if ($last && ($scanTs - $last) <= 5) $tooSoon = true;
         }
 
         $student_payload = $this->resolve_student_min($student_number);
@@ -241,6 +278,9 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
                 'source'         => 'qr',
                 'remarks'        => 'Scanned via QR',
                 'session'        => $sess,
+                'recorded_at'    => date('Y-m-d H:i:s'),
+                'time_source'    => $scan['source'],
+                'client_scan_id' => $client_scan_id !== '' ? $client_scan_id : null,
             ]);
             if (!$ok) {
                 $err = $this->db->error();
@@ -285,9 +325,12 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
             // from creating a bogus 2-second IN→OUT record.
             $AUTO_OUT_DEBOUNCE_SEC = 10; // configurable
             $checkedInTs = strtotime((string)$openRow->checked_in_at);
-            if ($checkedInTs && (time() - $checkedInTs) <= $AUTO_OUT_DEBOUNCE_SEC) {
+            // Compared against the scan time, not server now: a queued morning
+            // IN and afternoon OUT arrive a second apart when the outbox
+            // flushes, and wall-clock comparison silently dropped the OUT.
+            if ($checkedInTs && ($scanTs - $checkedInTs) <= $AUTO_OUT_DEBOUNCE_SEC) {
                 $this->db->trans_rollback();
-                $elapsed = time() - $checkedInTs;
+                $elapsed = $scanTs - $checkedInTs;
                 return [
                     'ok'             => false,
                     'mode'           => 'too_soon_after_in',
@@ -335,6 +378,9 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
             'source'         => 'qr',
             'remarks'        => 'Scanned via QR',
             'session'        => $sess,
+            'recorded_at'    => date('Y-m-d H:i:s'),
+            'time_source'    => $scan['source'],
+            'client_scan_id' => $client_scan_id !== '' ? $client_scan_id : null,
         ]);
         if (!$ok) {
             $err = $this->db->error();

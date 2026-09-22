@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/design/components/components.dart';
@@ -85,7 +89,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.school_outlined,
           title: 'Registered Students',
-          subtitle: 'List of registered students',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -100,7 +103,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.history_rounded,
           title: 'Attendance Logs',
-          subtitle: 'Per-activity attendance records',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -115,7 +117,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.edit_calendar_rounded,
           title: 'Manage Activities',
-          subtitle: 'Create, edit, delete activities',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -130,7 +131,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.campaign_outlined,
           title: 'Announcements',
-          subtitle: 'Post & manage announcements',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -145,7 +145,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.assessment_outlined,
           title: 'Activities Reports',
-          subtitle: 'Enrollment & attendance reports',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -163,7 +162,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.payments_outlined,
           title: 'Payment Entry',
-          subtitle: 'Record a student payment',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -178,7 +176,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.receipt_long_outlined,
           title: 'School Expenses',
-          subtitle: 'Expenses, categories & reports',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -192,7 +189,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.summarize_outlined,
           title: 'Expenses Reports',
-          subtitle: 'Filter expenses by category & date',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -207,7 +203,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.sell_outlined,
           title: 'Fees Setup',
-          subtitle: 'Payment setup — fee templates',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -222,7 +217,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.description_outlined,
           title: 'Collection Reports',
-          subtitle: 'Collections by date range & term',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -237,7 +231,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.menu_book_outlined,
           title: 'Ledger',
-          subtitle: 'Collections vs expenses, running balance',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -251,7 +244,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.hourglass_bottom_rounded,
           title: 'Partial Payments',
-          subtitle: 'Students paying in installments',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -266,7 +258,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.manage_history_rounded,
           title: 'Payment Activity Log',
-          subtitle: 'Payment edits & deletions audit',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -281,7 +272,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.school_outlined,
           title: 'Course',
-          subtitle: 'Manage courses / programs',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -295,7 +285,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.group_outlined,
           title: 'Sections',
-          subtitle: 'Manage class sections',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -309,7 +298,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.manage_accounts_rounded,
           title: 'Admin Accounts',
-          subtitle: 'Manage user accounts',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -324,7 +312,6 @@ class _AdminShellState extends State<AdminShell> {
         DrawerItem(
           icon: Icons.people_outline_rounded,
           title: 'FBMSO Officials',
-          subtitle: 'Manage officials and staff',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -701,7 +688,6 @@ class _ActivityLogPickerState extends State<_ActivityLogPicker> {
                           const AppEmptyState(
                             icon: Icons.history_rounded,
                             title: 'No activities',
-                            subtitle: 'Activities will appear here.',
                           ),
                         ])
                       : ListView.builder(
@@ -711,7 +697,6 @@ class _ActivityLogPickerState extends State<_ActivityLogPicker> {
                             if (i == 0) {
                               return const AppPageHeader(
                                 title: 'Attendance Logs',
-                                subtitle: 'Pick an activity to view its log',
                               );
                             }
                             final a = _activities[i - 1];
@@ -909,11 +894,57 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
     _load();
   }
 
+  bool _exporting = false;
+
+  /// Download the CSV export — same file the web Attendance Logs page's
+  /// export button produces.
+  Future<void> _exportCsv() async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
+    try {
+      final csv = await _api.exportLogsCsv(
+        baseUrl: widget.session.baseUrl,
+        token: widget.session.token,
+        activityId: widget.activity.activityId,
+      );
+      final dir = await getTemporaryDirectory();
+      final safe = widget.activity.title
+          .replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_')
+          .replaceAll(RegExp(r'_+'), '_');
+      final file = File('${dir.path}/attendance_${safe.isEmpty ? widget.activity.activityId : safe}.csv');
+      await file.writeAsString(csv);
+      if (!mounted) return;
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          subject: 'Attendance — ${widget.activity.title}',
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Export failed: $e')));
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
       title: widget.activity.title,
       showBackButton: true,
+      actions: [
+        IconButton(
+          tooltip: 'Export CSV',
+          onPressed: _exporting ? null : _exportCsv,
+          icon: _exporting
+              ? const SizedBox(
+                  width: 18, height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.download_rounded),
+        ),
+      ],
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -986,7 +1017,6 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
                               const AppEmptyState(
                                 icon: Icons.history_rounded,
                                 title: 'No attendance records',
-                                subtitle: 'No one has checked in yet.',
                               ),
                             ])
                           : ListView.builder(
