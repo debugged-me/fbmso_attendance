@@ -5,6 +5,7 @@ import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
+import '../../auth/domain/staff_permissions.dart';
 import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
 import '../../attendance/presentation/activity_state_style.dart';
@@ -12,8 +13,9 @@ import '../../misc/data/misc_api.dart';
 import '../../misc/domain/misc_models.dart';
 import 'activity_detail_sheet.dart';
 
-/// Student dashboard: welcome header, quick stats, announcements feed,
-/// and a link to the full activities list.
+/// Dashboard: welcome header, announcements feed, activities list.
+/// Admin-level roles additionally get the same stat cards and Student
+/// Summary breakdowns the web admin dashboard (Page/admin) shows.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key, required this.session, this.menuButton});
 
@@ -29,6 +31,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   late final AttendanceApi _attApi;
   List<Announcement> _announcements = [];
   List<Activity> _activities = [];
+  DashboardStats? _stats;
   bool _loading = true;
   String? _error;
 
@@ -54,11 +57,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
         baseUrl: widget.session.baseUrl,
         token: widget.session.token,
       );
-      final results = await Future.wait([ann, act]);
+      // Stats endpoint is admin-level only; skip the call entirely for
+      // students/committee/cashier so they never see a 403.
+      final stf = StaffPermissions.of(widget.session).canViewDashboardStats
+          ? _miscApi
+              .dashboardStats(
+                baseUrl: widget.session.baseUrl,
+                token: widget.session.token,
+              )
+              .then<DashboardStats?>((s) => s)
+              .catchError((_) => null)
+          : Future<DashboardStats?>.value(null);
+      final results = await Future.wait<Object?>([ann, act, stf]);
       if (!mounted) return;
       setState(() {
         _announcements = results[0] as List<Announcement>;
         _activities = results[1] as List<Activity>;
+        _stats = results[2] as DashboardStats?;
         _loading = false;
       });
     } catch (e) {
@@ -114,6 +129,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(height: 24),
 
+                        // ── Admin stats: one glanceable card, breakdowns
+                        // tucked behind a tap instead of a wall of KPIs.
+                        if (_stats != null) ...[
+                          _StudentOverviewCard(stats: _stats!),
+                          const SizedBox(height: 24),
+                        ],
+
                         // ── Announcements ──────────────────────────────
                         const _SectionLabel('Announcements'),
                         const SizedBox(height: 10),
@@ -128,12 +150,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               .map((a) => _AnnouncementCard(item: a)),
                         const SizedBox(height: 24),
 
-                        // ── Recent activities preview ──────────────────
+                        // ── Recent activities ─────────────────────────
                         if (_activities.isNotEmpty) ...[
                           const _SectionLabel('Recent Activities'),
                           const SizedBox(height: 10),
                           ..._activities
-                              .take(3)
                               .map((a) => _ActivityMiniCard(
                                     activity: a,
                                     session: widget.session,
@@ -455,6 +476,287 @@ class _ActivityMiniCard extends StatelessWidget {
                 size: 18, color: AppInk.muted),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Palette for dashboard breakdown bars.
+const _kSliceColors = [
+  Color(0xFF3B6EF6),
+  Color(0xFF9B51E0),
+  Color(0xFFE84393),
+  Color(0xFFF2994A),
+  Color(0xFF27AE60),
+  Color(0xFF00B8D4),
+  Color(0xFFF2C94C),
+  Color(0xFFEB5757),
+  Color(0xFF6C757D),
+];
+
+/// Native-feeling student overview: one card with the headline number and
+/// year-level chips up front; course/year/section breakdowns stay tucked
+/// behind a tap so the dashboard opens on content, not a wall of KPIs.
+/// Same numbers as the web admin dashboard (Page/admin).
+class _StudentOverviewCard extends StatefulWidget {
+  const _StudentOverviewCard({required this.stats});
+  final DashboardStats stats;
+
+  @override
+  State<_StudentOverviewCard> createState() => _StudentOverviewCardState();
+}
+
+class _StudentOverviewCardState extends State<_StudentOverviewCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final stats = widget.stats;
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'REGISTERED STUDENTS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                        color: AppInk.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${stats.registeredStudents}',
+                      style: const TextStyle(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w800,
+                        color: AppInk.heading,
+                        height: 1.05,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppInk.accent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.groups_rounded,
+                        size: 18, color: AppInk.accent),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${stats.yearCards.fold<int>(0, (s, y) => s + y.count)} enrolled',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppInk.accent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Year-level chips — one glanceable row instead of four cards.
+          Row(
+            children: [
+              for (var i = 0; i < stats.yearCards.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: _kSliceColors[i % _kSliceColors.length]
+                          .withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          '${stats.yearCards[i].count}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color:
+                                _kSliceColors[i % _kSliceColors.length],
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          stats.yearCards[i].label,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppInk.muted,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+
+          // Progressive disclosure — breakdowns on tap.
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(bottom: 10),
+              initiallyExpanded: _expanded,
+              onExpansionChanged: (v) => setState(() => _expanded = v),
+              title: const Text(
+                'Breakdowns',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppInk.accent,
+                ),
+              ),
+              subtitle: const Text(
+                'By course, year level & section',
+                style: TextStyle(fontSize: 11.5, color: AppInk.muted),
+              ),
+              trailing: Icon(
+                _expanded
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.keyboard_arrow_down_rounded,
+                color: AppInk.muted,
+              ),
+              children: [
+                _BarBreakdown(title: 'By Course', slices: stats.byCourse),
+                _BarBreakdown(title: 'By Year Level', slices: stats.byYearLevel),
+                _BarBreakdown(
+                    title: 'By Section', slices: stats.bySection, maxRows: 10),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Slim label-bar-count rows for one breakdown — more compact and readable
+/// on a phone than a donut + legend. Long tails roll into "Others".
+class _BarBreakdown extends StatelessWidget {
+  const _BarBreakdown({
+    required this.title,
+    required this.slices,
+    this.maxRows = 6,
+  });
+
+  final String title;
+  final List<StatSlice> slices;
+  final int maxRows;
+
+  @override
+  Widget build(BuildContext context) {
+    if (slices.isEmpty) return const SizedBox.shrink();
+
+    final sorted = [...slices]..sort((a, b) => b.count.compareTo(a.count));
+    final shown = sorted.take(maxRows).toList();
+    final rest = sorted.skip(maxRows).fold<int>(0, (s, e) => s + e.count);
+    if (rest > 0) shown.add(StatSlice(label: 'Others', count: rest));
+    final max = shown.fold<int>(0, (m, e) => e.count > m ? e.count : m);
+    final total = shown.fold<int>(0, (s, e) => s + e.count);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                    color: AppInk.muted,
+                  ),
+                ),
+              ),
+              Text(
+                'Total: $total',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppInk.accent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (var i = 0; i < shown.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 92,
+                    child: Text(
+                      shown[i].label.isEmpty ? 'Not Set' : shown[i].label,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppInk.heading,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: max > 0 ? shown[i].count / max : 0,
+                        minHeight: 8,
+                        backgroundColor:
+                            AppInk.rule.withValues(alpha: 0.5),
+                        valueColor: AlwaysStoppedAnimation(
+                          _kSliceColors[i % _kSliceColors.length],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 34,
+                    child: Text(
+                      '${shown[i].count}',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppInk.muted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

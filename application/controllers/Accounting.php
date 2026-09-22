@@ -32,6 +32,10 @@ class Accounting extends CI_Controller
 	public function index()
 	{
 		$this->ensureAccess();
+		if ((string)$this->session->userdata('level') === 'Cashier') {
+			redirect('Page/accounting');
+			return;
+		}
 		redirect('Accounting/Payment');
 	}
 
@@ -76,88 +80,109 @@ class Accounting extends CI_Controller
 		$this->db->query($sql);
 	}
 
+	private function ensurePaymentAuditTable()
+	{
+		if ($this->tableExists('payment_audit_log')) {
+			return;
+		}
+
+		$sql = "CREATE TABLE `payment_audit_log` (
+			`id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+			`payment_id` int(10) unsigned NOT NULL,
+			`action` enum('edit','delete') NOT NULL,
+			`or_number` varchar(20) NOT NULL DEFAULT '',
+			`student_number` varchar(45) NOT NULL DEFAULT '',
+			`description` varchar(150) NOT NULL DEFAULT '',
+			`amount` decimal(12,2) NOT NULL DEFAULT 0,
+			`old_values` text DEFAULT NULL,
+			`new_values` text DEFAULT NULL,
+			`changed_by` varchar(45) NOT NULL DEFAULT '',
+			`changed_at` datetime NOT NULL DEFAULT current_timestamp(),
+			PRIMARY KEY (`id`),
+			KEY `payment_id` (`payment_id`)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+
+		$this->db->query($sql);
+	}
+
+	// Records who edited or deleted a payment, and what it looked like
+	// before/after — so a cashier's changes are visible to Admin, not silent.
+	private function logPaymentAudit($action, $payment, $newValues = null)
+	{
+		$this->ensurePaymentAuditTable();
+
+		$changedBy = trim((string)$this->session->userdata('username'));
+		if ($changedBy === '') {
+			$changedBy = trim((string)$this->session->userdata('IDNumber'));
+		}
+
+		$oldValues = [
+			'StudentNumber' => (string)($payment->StudentNumber ?? ''),
+			'ORNumber'      => (string)($payment->ORNumber ?? ''),
+			'PDate'         => (string)($payment->PDate ?? ''),
+			'Amount'        => (string)($payment->Amount ?? ''),
+			'description'   => (string)($payment->description ?? ''),
+		];
+
+		$this->db->insert('payment_audit_log', [
+			'payment_id'     => (int)($payment->ID ?? 0),
+			'action'         => $action,
+			'or_number'      => (string)($payment->ORNumber ?? ''),
+			'student_number' => (string)($payment->StudentNumber ?? ''),
+			'description'    => (string)($payment->description ?? ''),
+			'amount'         => (float)($payment->Amount ?? 0),
+			'old_values'     => json_encode($oldValues),
+			'new_values'     => $newValues !== null ? json_encode($newValues) : null,
+			'changed_by'     => $changedBy,
+			'changed_at'     => (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s'),
+		]);
+	}
+
 	private function nextTableId($table, $idColumn)
 	{
 		$row = $this->db->select_max($idColumn, 'max_id')->get($table)->row();
 		return (int)($row->max_id ?? 0) + 1;
 	}
 
-	private function orNumberExists($orNumber, $excludeId = 0)
-	{
-		$this->db->from('paymentsaccounts')->where('ORNumber', $orNumber);
-		if ($excludeId > 0) {
-			$this->db->where('ID !=', (int)$excludeId);
-		}
-
-		return $this->db->count_all_results() > 0;
-	}
-
-	private function resolveOrYear($source = '')
+	// O.R. numbers are date-scoped: YYMMDD-0001, resetting to 0001 on the
+	// next calendar day. This makes "today's remove tomorrow" behavior on
+	// the recent-payments list line up with what the receipt number itself
+	// implies — the prefix alone tells you which day it was issued.
+	private function resolveOrDatePrefix($source = '')
 	{
 		$source = trim((string)$source);
 
-		if (preg_match('/^\d{4}$/', $source) === 1) {
-			return $source;
-		}
-
 		if ($this->isValidDate($source)) {
-			return substr($source, 0, 4);
+			return date('ymd', strtotime($source));
 		}
 
 		$now = new DateTime('now', new DateTimeZone('Asia/Manila'));
-		return $now->format('Y');
+		return $now->format('ymd');
 	}
 
-	private function formatOrNumber($year, $sequence)
+	private function formatOrNumber($datePrefix, $sequence)
 	{
-		return sprintf('%04d-%04d', (int)$year, (int)$sequence);
+		return sprintf('%s-%04d', $datePrefix, (int)$sequence);
 	}
 
-	private function normalizeOrNumber($orNumber, $paymentDate = '')
-	{
-		$orNumber = strtoupper(trim((string)$orNumber));
-		if ($orNumber === '') {
-			return '';
-		}
-
-		$orNumber = preg_replace('/\s+/', '', $orNumber);
-		$orNumber = str_replace('/', '-', $orNumber);
-
-		if (preg_match('/^(\d{4})-(\d+)$/', $orNumber, $matches) === 1) {
-			return $this->formatOrNumber($matches[1], $matches[2]);
-		}
-
-		if (preg_match('/^\d+$/', $orNumber) === 1) {
-			return $this->formatOrNumber($this->resolveOrYear($paymentDate), $orNumber);
-		}
-
-		return $orNumber;
-	}
-
-	private function isValidOrNumberFormat($orNumber)
-	{
-		if (preg_match('/^\d{4}-(\d{4,})$/', (string)$orNumber, $matches) !== 1) {
-			return false;
-		}
-
-		return (int)$matches[1] > 0;
-	}
-
+	// Sequence is scoped to the payment DATE column (not a regex over the OR
+	// text), so it stays correct even for legacy rows saved under the old
+	// YYYY-0001 format.
 	private function generateNextOrNumber($source = '')
 	{
-		$year = $this->resolveOrYear($source);
-		$pattern = '^' . $year . '-[0-9]{4,}$';
+		$date = $this->isValidDate(trim((string)$source))
+			? trim((string)$source)
+			: (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d');
+		$prefix = $this->resolveOrDatePrefix($date);
 
 		$row = $this->db->select("MAX(CAST(SUBSTRING_INDEX(ORNumber, '-', -1) AS UNSIGNED)) AS max_sequence", false)
 			->from('paymentsaccounts')
-			->where('ORNumber <>', '')
-			->where('ORNumber IS NOT NULL', null, false)
-			->where('ORNumber REGEXP ' . $this->db->escape($pattern), null, false)
+			->where('PDate', $date)
 			->get()
 			->row();
 
 		$nextSequence = (int)($row->max_sequence ?? 0) + 1;
-		return $this->formatOrNumber($year, $nextSequence);
+		return $this->formatOrNumber($prefix, $nextSequence);
 	}
 
 	private function paymentFormStateFromPost(array $overrides = [])
@@ -450,24 +475,6 @@ class Accounting extends CI_Controller
 		return $query->result_array(); // Fetches categories as an array
 	}
 
-	private function reserveOrNumber($candidate = '', $paymentDate = '')
-	{
-		$orNumber = $this->normalizeOrNumber($candidate, $paymentDate);
-		if ($orNumber === '') {
-			return $this->generateNextOrNumber($paymentDate);
-		}
-
-		if (!$this->isValidOrNumberFormat($orNumber)) {
-			return '';
-		}
-
-		if ($this->orNumberExists($orNumber)) {
-			return '';
-		}
-
-		return $orNumber;
-	}
-
 	private function getStudentsForPayment($sem, $sy)
 	{
 		// Every student must be payable, not only those enrolled in the active
@@ -671,12 +678,12 @@ class Accounting extends CI_Controller
 		return $this->db->get()->result();
 	}
 
-	private function getRecentPayments($limit = 80)
+	private function getRecentPayments($date = null, $limit = 200)
 	{
 		// Payments are tagged to the student's enrolment term, not always the
 		// active one — list the latest across all terms, otherwise a payment
 		// for another semester would look like it was never recorded.
-		$this->db->select("p.ID, p.PDate, p.ORNumber, p.StudentNumber, p.Amount, p.description, p.PaymentType, p.Cashier, p.Sem, p.SY,
+		$this->db->select("p.ID, p.PDate, p.pTime, p.ORNumber, p.StudentNumber, p.Amount, p.description, p.PaymentType, p.Cashier, p.Sem, p.SY,
 			COALESCE(NULLIF(TRIM(sp.email),''), NULLIF(TRIM(su.email),'')) AS Email,
 			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName,
 			COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName,
@@ -686,10 +693,29 @@ class Accounting extends CI_Controller
 		$this->db->join('studentsignup su', 'su.StudentNumber = p.StudentNumber', 'left');
 		$this->db->where('p.CollectionSource', "Student's Account");
 		$this->db->where('p.ORStatus', 'Valid');
+		if ($date !== null && $date !== '') {
+			$this->db->where('p.PDate', $date);
+		}
 		$this->db->order_by('p.PDate', 'DESC');
+		$this->db->order_by('p.pTime', 'DESC');
 		$this->db->order_by('p.ID', 'DESC');
 		$this->db->limit((int)$limit);
 		return $this->db->get()->result();
+	}
+
+	// Distinct dates that have at least one payment — powers the "jump to a
+	// date with activity" filter so the cashier isn't guessing at dates.
+	private function distinctPaymentDates($limit = 60)
+	{
+		return $this->db->distinct()
+			->select('PDate')
+			->from('paymentsaccounts')
+			->where('CollectionSource', "Student's Account")
+			->where('ORStatus', 'Valid')
+			->order_by('PDate', 'DESC')
+			->limit((int)$limit)
+			->get()
+			->result();
 	}
 
 	private function getPaymentById($id)
@@ -907,6 +933,100 @@ class Accounting extends CI_Controller
 		return $this->db->get()->result();
 	}
 
+	// School ledger: valid collections (credit) and recorded expenses (debit)
+	// merged into one chronological running balance for a date range.
+	private function ledgerRows($from, $to)
+	{
+		$income = $this->db->select("PDate AS EntryDate, pTime AS EntryTime, description AS EntryDesc, ORNumber AS EntryRef, Amount AS EntryAmount", false)
+			->from('paymentsaccounts')
+			->where('CollectionSource', "Student's Account")
+			->where('ORStatus', 'Valid')
+			->where('PDate >=', $from)
+			->where('PDate <=', $to)
+			->get()
+			->result();
+
+		$expenses = $this->db->select("ExpenseDate AS EntryDate, Description AS EntryDesc, Category AS EntryRef, Amount AS EntryAmount", false)
+			->from('expenses')
+			->where('ExpenseDate >=', $from)
+			->where('ExpenseDate <=', $to)
+			->get()
+			->result();
+
+		$rows = [];
+		foreach ($income as $r) {
+			$rows[] = [
+				'date'        => (string)$r->EntryDate,
+				'time'        => trim((string)($r->EntryTime ?? '')) !== '' ? (string)$r->EntryTime : '00:00:00',
+				'type'        => 'income',
+				'description' => (string)$r->EntryDesc,
+				'ref'         => (string)$r->EntryRef,
+				'amount'      => (float)$r->EntryAmount,
+			];
+		}
+		foreach ($expenses as $r) {
+			$rows[] = [
+				'date'        => (string)$r->EntryDate,
+				'time'        => '00:00:00',
+				'type'        => 'expense',
+				'description' => (string)$r->EntryDesc,
+				'ref'         => (string)$r->EntryRef,
+				'amount'      => (float)$r->EntryAmount,
+			];
+		}
+
+		// Running balance only makes sense oldest-first; sort ascending to
+		// compute it, then flip to newest-first for display.
+		usort($rows, function ($a, $b) {
+			$cmp = strcmp($a['date'], $b['date']);
+			return $cmp !== 0 ? $cmp : strcmp($a['time'], $b['time']);
+		});
+
+		$balance = 0.0;
+		foreach ($rows as &$row) {
+			$balance += $row['type'] === 'income' ? $row['amount'] : -$row['amount'];
+			$row['balance'] = $balance;
+		}
+		unset($row);
+
+		return array_reverse($rows);
+	}
+
+	// Students who paid less than a fee's configured price on at least one
+	// description — grouped per (student, fee) since a student can be fully
+	// paid on one item and partial on another in the same term.
+	private function partialPaymentRows($sem, $sy)
+	{
+		if (!$this->tableExists('fees')) {
+			return [];
+		}
+
+		$this->db->select("p.StudentNumber, p.description AS Description,
+			f.FullAmount, SUM(p.Amount) AS PaidAmount, MAX(p.PDate) AS LastPaymentDate,
+			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName,
+			COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName,
+			COALESCE(NULLIF(sp.MiddleName,''), su.MiddleName, '') AS MiddleName", false);
+		$this->db->from('paymentsaccounts p');
+		$this->db->join('(SELECT Description, MAX(Amount) AS FullAmount FROM fees GROUP BY Description) f', 'f.Description = p.description', 'inner');
+		$this->db->join('studeprofile sp', 'sp.StudentNumber = p.StudentNumber', 'left');
+		$this->db->join('studentsignup su', 'su.StudentNumber = p.StudentNumber', 'left');
+		$this->db->where('p.ORStatus', 'Valid');
+		$this->db->where('p.CollectionSource', "Student's Account");
+		if ($sem !== '') {
+			$this->db->where('p.Sem', $sem);
+		}
+		if ($sy !== '') {
+			$this->db->where('p.SY', $sy);
+		}
+		$this->db->group_by('p.StudentNumber, p.description, f.FullAmount');
+		$this->db->having('SUM(p.Amount) < f.FullAmount', null, false);
+		$this->db->order_by('LastName', 'ASC');
+		$this->db->order_by('FirstName', 'ASC');
+		$this->db->order_by('p.description', 'ASC');
+
+		return $this->db->get()->result();
+	}
+
 	private function courseList()
 	{
 		$rows = $this->db->select('CourseDescription')
@@ -1009,30 +1129,6 @@ class Accounting extends CI_Controller
 				$bank = '';
 			}
 
-			$orCandidate = trim((string)$this->input->post('ORNumber', true));
-			$orNumber = $this->reserveOrNumber($orCandidate, $pDateInput);
-			if ($orNumber === '' && $orCandidate !== '') {
-				$normalizedOrNumber = $this->normalizeOrNumber($orCandidate, $pDateInput);
-				$this->session->set_flashdata(
-					'payment_form_old',
-					$this->paymentFormStateFromPost([
-						'ORNumber' => $normalizedOrNumber !== '' ? $normalizedOrNumber : $orCandidate
-					])
-				);
-
-				if (!$this->isValidOrNumberFormat($normalizedOrNumber)) {
-					$this->session->set_flashdata('danger', 'Invalid O.R. number format. Use YYYY-0001.');
-				} else {
-					$this->session->set_flashdata(
-						'danger',
-						'O.R. number already exists. Next available is ' . $this->generateNextOrNumber($pDateInput) . '.'
-					);
-				}
-
-				redirect('Accounting/Payment');
-				return;
-			}
-
 			$student = $this->getStudentContext($studentNumber, $sem, $sy);
 			$course = trim((string)($student->Course ?? ''));
 			if ($course === '') {
@@ -1045,55 +1141,64 @@ class Accounting extends CI_Controller
 			}
 
 			$dtNow = new DateTime('now', new DateTimeZone('Asia/Manila'));
-			$paymentData = [
-				'ID'               => $this->nextTableId('paymentsaccounts', 'ID'),
-				'StudentNumber'    => $studentNumber,
-				'Course'           => $course,
-				'PDate'            => $pDateInput,
-				'ORNumber'         => $orNumber,
-				'Amount'           => $amount,
-				'description'      => $description,
-				'PaymentType'      => $paymentType,
-				'CheckNumber'      => $checkNumber,
-				'Sem'              => $sem,
-				'SY'               => $sy,
-				'CollectionSource' => "Student's Account",
-				'Bank'             => $bank,
-				'ORStatus'         => 'Valid',
-				'Cashier'          => $cashier,
-				'pTime'            => $dtNow->format('H:i:s'),
-				'refNo'            => $refNo
-			];
 
-			$this->db->trans_begin();
-			$insertOk = $this->db->insert('paymentsaccounts', $paymentData);
-			$insertError = $this->db->error();
+			// The O.R. number is read-only in the UI and always server-generated
+			// from the payment date. Retry a few times in case two cashiers hit
+			// the same date/sequence in the same instant, instead of bouncing
+			// the whole form back for something the cashier never typed.
+			$orNumber = '';
+			$insertOk = false;
+			$paymentData = [];
 
-			if ($insertOk && $sem !== '' && $sy !== '') {
-				$this->recomputeStudeAccount($studentNumber, $sem, $sy);
-			}
+			for ($attempt = 0; $attempt < 5; $attempt++) {
+				$orNumber = $this->generateNextOrNumber($pDateInput);
+				$paymentData = [
+					'ID'               => $this->nextTableId('paymentsaccounts', 'ID'),
+					'StudentNumber'    => $studentNumber,
+					'Course'           => $course,
+					'PDate'            => $pDateInput,
+					'ORNumber'         => $orNumber,
+					'Amount'           => $amount,
+					'description'      => $description,
+					'PaymentType'      => $paymentType,
+					'CheckNumber'      => $checkNumber,
+					'Sem'              => $sem,
+					'SY'               => $sy,
+					'CollectionSource' => "Student's Account",
+					'Bank'             => $bank,
+					'ORStatus'         => 'Valid',
+					'Cashier'          => $cashier,
+					'pTime'            => $dtNow->format('H:i:s'),
+					'refNo'            => $refNo
+				];
 
-			if (!$insertOk || $this->db->trans_status() === false) {
-				$this->db->trans_rollback();
-				$this->session->set_flashdata(
-					'payment_form_old',
-					$this->paymentFormStateFromPost(['ORNumber' => $orNumber])
-				);
+				$this->db->trans_begin();
+				$insertOk = $this->db->insert('paymentsaccounts', $paymentData);
+				$insertError = $this->db->error();
 
-				if ($this->isDuplicateDbError($insertError)) {
-					$this->session->set_flashdata(
-						'danger',
-						'O.R. number already exists. Next available is ' . $this->generateNextOrNumber($pDateInput) . '.'
-					);
-				} else {
-					$this->session->set_flashdata('danger', 'Unable to save payment. Please try again.');
+				if ($insertOk && $sem !== '' && $sy !== '') {
+					$this->recomputeStudeAccount($studentNumber, $sem, $sy);
 				}
 
+				if ($insertOk && $this->db->trans_status() !== false) {
+					$this->db->trans_commit();
+					break;
+				}
+
+				$this->db->trans_rollback();
+				$insertOk = false;
+
+				if (!$this->isDuplicateDbError($insertError)) {
+					break;
+				}
+			}
+
+			if (!$insertOk) {
+				$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
+				$this->session->set_flashdata('danger', 'Unable to save payment. Please try again.');
 				redirect('Accounting/Payment');
 				return;
 			}
-
-				$this->db->trans_commit();
 
 				$receiptSettings = $this->getReceiptSettings();
 				$receiptPayment = $this->buildReceiptEmailPayment($paymentData, $student);
@@ -1113,6 +1218,7 @@ class Accounting extends CI_Controller
 		}
 
 		$now = new DateTime('now', new DateTimeZone('Asia/Manila'));
+		$today = $now->format('Y-m-d');
 		$oldPaymentForm = $this->session->flashdata('payment_form_old');
 		if (!is_array($oldPaymentForm)) {
 			$oldPaymentForm = [];
@@ -1120,15 +1226,22 @@ class Accounting extends CI_Controller
 
 			$settings = $this->getReceiptSettings();
 
+		// Default to today's payments only — yesterday's list clears itself
+		// out each morning. A cashier who needs an older date picks it from
+		// the "Payments on" filter, which only lists dates that have entries.
+		$dateFilter = trim((string)$this->input->get('date', true));
+		if ($dateFilter !== 'all' && !$this->isValidDate($dateFilter)) {
+			$dateFilter = $today;
+		}
+
 		$data = [
-			'semester'             => $sem,
-			'sy'                   => $sy,
-			'default_payment_date' => $now->format('Y-m-d'),
-			'next_or_number'       => $this->generateNextOrNumber($now->format('Y-m-d')),
+			'default_payment_date' => $today,
+			'next_or_number'       => $this->generateNextOrNumber($today),
 			'students'             => $this->getStudentsForPayment($sem, $sy),
-			'recent_payments'      => $this->getRecentPayments(),
-			'term_options'         => $this->term->terms(),
-			'fee_templates'        => $this->getFeeTemplates(),
+			'recent_payments'      => $this->getRecentPayments($dateFilter === 'all' ? null : $dateFilter),
+			'payment_dates'        => $this->distinctPaymentDates(),
+			'date_filter'          => $dateFilter,
+			'today'                => $today,
 			'settings'             => $settings,
 			'payment_form_old'     => $oldPaymentForm,
 			'payment_submit_token' => $this->generatePaymentSubmitToken(),
@@ -1183,7 +1296,6 @@ class Accounting extends CI_Controller
 		$this->form_validation->set_rules('description', 'Description', 'required|trim');
 		$this->form_validation->set_rules('Amount', 'Amount', 'required|numeric|greater_than[0]');
 		$this->form_validation->set_rules('PDate', 'Payment Date', 'required|trim');
-		$this->form_validation->set_rules('ORNumber', 'O.R. Number', 'required|trim');
 
 		if ($this->form_validation->run() === false) {
 			$this->session->set_flashdata('danger', strip_tags(validation_errors(' ', ' ')));
@@ -1195,7 +1307,6 @@ class Accounting extends CI_Controller
 		$description   = trim((string)$this->input->post('description', true));
 		$amount        = (float)$this->input->post('Amount', true);
 		$pDateInput    = trim((string)$this->input->post('PDate', true));
-		$orInput       = trim((string)$this->input->post('ORNumber', true));
 
 		if (!$this->isValidDate($pDateInput)) {
 			$this->session->set_flashdata('danger', 'Invalid payment date.');
@@ -1203,18 +1314,9 @@ class Accounting extends CI_Controller
 			return;
 		}
 
-		$orNumber = $this->normalizeOrNumber($orInput, $pDateInput);
-		if (!$this->isValidOrNumberFormat($orNumber)) {
-			$this->session->set_flashdata('danger', 'Invalid O.R. number format. Use YYYY-0001.');
-			redirect('Accounting/Payment');
-			return;
-		}
-
-		if ($orNumber !== (string)$payment->ORNumber && $this->orNumberExists($orNumber, $id)) {
-			$this->session->set_flashdata('danger', 'O.R. number already exists.');
-			redirect('Accounting/Payment');
-			return;
-		}
+		// The O.R. number is read-only once issued — editing a payment never
+		// changes it, so a printed receipt always matches its ledger row.
+		$orNumber = (string)$payment->ORNumber;
 
 		$oldStudentNumber = trim((string)$payment->StudentNumber);
 		$sem = trim((string)$payment->Sem);
@@ -1225,7 +1327,6 @@ class Accounting extends CI_Controller
 		$this->db->trans_begin();
 		$this->db->where('ID', $id)->update('paymentsaccounts', [
 			'StudentNumber' => $studentNumber,
-			'ORNumber'      => $orNumber,
 			'PDate'         => $pDateInput,
 			'Amount'        => $amount,
 			'description'   => $description,
@@ -1244,47 +1345,30 @@ class Accounting extends CI_Controller
 		}
 
 		$this->db->trans_commit();
+
+		$this->logPaymentAudit('edit', $payment, [
+			'StudentNumber' => $studentNumber,
+			'PDate'         => $pDateInput,
+			'Amount'        => $amount,
+			'description'   => $description,
+		]);
+
 		$this->session->set_flashdata('success', 'Payment updated successfully. O.R. #' . $orNumber . '.');
 		redirect('Accounting/Payment');
 	}
 
+	// The O.R. field is read-only; this only refreshes the preview shown to
+	// the cashier when they change the payment date, before they save.
 	public function ajaxOrNumberStatus()
 	{
 		$this->ensureAccess();
 
 		$paymentDate = trim((string)$this->input->get('payment_date', true));
-		$orInput = trim((string)$this->input->get('or_number', true));
-		$normalized = $this->normalizeOrNumber($orInput, $paymentDate);
 		$suggested = $this->generateNextOrNumber($paymentDate);
-
-		$response = [
-			'input'          => $orInput,
-			'normalized'     => $normalized,
-			'normalized_new' => ($normalized !== '' && $normalized !== $orInput),
-			'suggested'      => $suggested,
-			'valid_format'   => true,
-			'available'      => true,
-			'exists'         => false,
-			'message'        => '',
-		];
-
-		if ($orInput === '') {
-			$response['message'] = 'Next available O.R. number: ' . $suggested . '.';
-		} elseif (!$this->isValidOrNumberFormat($normalized)) {
-			$response['valid_format'] = false;
-			$response['available'] = false;
-			$response['message'] = 'Use the O.R. number format YYYY-0001.';
-		} elseif ($this->orNumberExists($normalized)) {
-			$response['available'] = false;
-			$response['exists'] = true;
-			$response['message'] = 'O.R. number already exists. Next available is ' . $suggested . '.';
-		} else {
-			$response['message'] = 'O.R. number is available.';
-		}
 
 		$this->output
 			->set_content_type('application/json')
-			->set_output(json_encode($response));
+			->set_output(json_encode(['suggested' => $suggested]));
 	}
 
 	public function receipt($id = null)
@@ -1591,8 +1675,8 @@ class Accounting extends CI_Controller
 			return;
 		}
 
-		// Fetch payment first (needed for recompute)
-		$payment = $this->db->select('ID, StudentNumber, Amount, Sem, SY, ORStatus, CollectionSource')
+		// Fetch payment first (needed for recompute, and for the audit log)
+		$payment = $this->db->select('ID, StudentNumber, ORNumber, PDate, Amount, description, Sem, SY, ORStatus, CollectionSource')
 			->from('paymentsaccounts')
 			->where('ID', $id)
 			->limit(1)
@@ -1638,7 +1722,98 @@ class Accounting extends CI_Controller
 			return;
 		}
 
+		$this->logPaymentAudit('delete', $payment);
+
 		$this->session->set_flashdata('success', 'Payment deleted successfully.');
 		redirect('Accounting/Payment');
+	}
+
+	// Visible to both Cashier (their own activity) and Admin (everyone's) —
+	// ensureAccess() already allows both roles into this controller.
+	public function paymentAuditLog()
+	{
+		$this->ensureAccess();
+		$this->ensurePaymentAuditTable();
+
+		$this->db->select("l.*,
+			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName,
+			COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName", false);
+		$this->db->from('payment_audit_log l');
+		$this->db->join('studeprofile sp', 'sp.StudentNumber = l.student_number', 'left');
+		$this->db->join('studentsignup su', 'su.StudentNumber = l.student_number', 'left');
+		$this->db->order_by('l.changed_at', 'DESC');
+		$this->db->limit(300);
+		$rows = $this->db->get()->result();
+
+		$this->load->view('accounting_payment_log', ['rows' => $rows]);
+	}
+
+	// Cashier ledger: collections vs. expenses with a running balance, so
+	// "what's the gross, what did we spend, what's left" is one screen.
+	public function ledger()
+	{
+		$this->ensureAccess();
+
+		$from = trim((string)$this->input->get('from', true));
+		$to   = trim((string)$this->input->get('to', true));
+		if (!$this->isValidDate($from)) {
+			$from = date('Y-m-01');
+		}
+		if (!$this->isValidDate($to)) {
+			$to = date('Y-m-d');
+		}
+
+		$rows = $this->ledgerRows($from, $to);
+
+		$gross = 0.0;
+		$spent = 0.0;
+		foreach ($rows as $row) {
+			if ($row['type'] === 'income') {
+				$gross += $row['amount'];
+			} else {
+				$spent += $row['amount'];
+			}
+		}
+
+		$data = [
+			'from'  => $from,
+			'to'    => $to,
+			'rows'  => $rows,
+			'gross' => $gross,
+			'spent' => $spent,
+			'net'   => $gross - $spent,
+		];
+
+		$this->load->view('accounting_ledger', $data);
+	}
+
+	// Students paying in installments: per (student, fee) balance remaining
+	// after their payments so far this term, for follow-up and printing.
+	public function partialPayments()
+	{
+		$this->ensureAccess();
+
+		[$sem, $sy] = $this->currentSemSy();
+		$rows = $this->partialPaymentRows($sem, $sy);
+
+		$totalOutstanding = 0.0;
+		$students = [];
+		foreach ($rows as $row) {
+			$row->FullAmount = (float)$row->FullAmount;
+			$row->PaidAmount = (float)$row->PaidAmount;
+			$row->Outstanding = $row->FullAmount - $row->PaidAmount;
+			$totalOutstanding += $row->Outstanding;
+			$students[(string)$row->StudentNumber] = true;
+		}
+
+		$data = [
+			'rows'             => $rows,
+			'sem'              => $sem,
+			'sy'               => $sy,
+			'totalOutstanding' => $totalOutstanding,
+			'studentCount'     => count($students),
+		];
+
+		$this->load->view('accounting_partial_payments', $data);
 	}
 }

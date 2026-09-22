@@ -477,15 +477,33 @@ class Page extends CI_Controller
 			$sy = $this->session->userdata('sy');
 			$sem = $this->session->userdata('semester');
 
-			$result['data4'] = $this->StudentModel->forPaymentVerCount($sy, $sem);
-			// $data['pendingCount'] = $this->StudentModel->forPaymentVerCount($sy, $sem);
+			$result['data18'] = $this->SettingsModel->getSchoolInfo();
 			$result['data7'] = $this->StudentModel->totalStudeAccountProfile($sy, $sem);
-			$result['data11'] = $this->StudentModel->paymentSummary($sem, $sy);
 			$result['data12'] = $this->StudentModel->collectionToday();
 			$result['data13'] = $this->StudentModel->collectionMonth();
 			$result['data14'] = $this->StudentModel->YearlyCollections();
+			$result['trend'] = $this->StudentModel->collectionTrend(14);
+			$result['recentPayments'] = $this->StudentModel->recentPayments(8);
 
 			$this->load->view('dashboard_accounting', $result);
+		} else {
+			echo "Access Denied";
+		}
+	}
+	function committee()
+	{
+		if ($this->session->userdata('level') === 'Committee') {
+			$this->load->model('Activities_model', 'ActivitiesModel');
+			$this->load->model('Activity_attendance_model', 'ActAttModel');
+
+			$result['data18']       = $this->SettingsModel->getSchoolInfo();
+			$result['openCount']    = $this->ActivitiesModel->count_open();
+			$result['totalCount']   = $this->ActivitiesModel->count_all();
+			$result['todayScans']   = $this->ActAttModel->scan_count_on();
+			$result['trend']        = $this->ActAttModel->scan_trend(14);
+			$result['recentScans']  = $this->ActAttModel->recent_scans(8);
+
+			$this->load->view('dashboard_committee', $result);
 		} else {
 			echo "Access Denied";
 		}

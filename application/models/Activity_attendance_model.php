@@ -522,6 +522,46 @@ private function resolve_student_min(string $student_number): array
 }
 
 
+// Committee dashboard: total scans on a given date (default today)
+public function scan_count_on($date = null)
+{
+    $date = $date ?: date('Y-m-d');
+    return (int)$this->db->where('scan_date', $date)
+        ->count_all_results('activity_attendance');
+}
+
+// Committee dashboard: daily scan totals for the last N days (trend chart)
+public function scan_trend($days = 14)
+{
+    $days = max(1, (int)$days);
+    return $this->db->query(
+        "SELECT scan_date AS SDate, COUNT(*) AS Scans
+         FROM activity_attendance
+         WHERE scan_date >= (CURDATE() - INTERVAL ? DAY)
+         GROUP BY scan_date
+         ORDER BY scan_date ASC",
+        [$days - 1]
+    )->result();
+}
+
+// Committee dashboard: latest scans across all activities
+public function recent_scans($limit = 8)
+{
+    return $this->db->select("
+            aa.checked_in_at, aa.session, aa.source, aa.checked_in_by,
+            a.title AS activity_title,
+            aa.student_number,
+            COALESCE(NULLIF(sp.LastName,''), '') AS LastName,
+            COALESCE(NULLIF(sp.FirstName,''), '') AS FirstName
+        ", false)
+        ->from('activity_attendance aa')
+        ->join('activities a', 'a.activity_id = aa.activity_id', 'left')
+        ->join('studeprofile sp', 'sp.StudentNumber = aa.student_number', 'left')
+        ->order_by('aa.checked_in_at', 'DESC')
+        ->limit((int)$limit)
+        ->get()->result();
+}
+
 public function list_student_attendance($student_number, $limit=100, $offset=0)
 {
     // Join activities to bring back the title and date shown on the student page

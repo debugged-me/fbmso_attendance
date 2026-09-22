@@ -9,6 +9,12 @@ import '../domain/attendance_models.dart';
 import 'activity_state_style.dart';
 
 /// Create or edit an activity. Staff only.
+///
+/// Field-for-field parity with the web create/edit form
+/// (activities_create.php): title, description, date, program (+custom
+/// +" — major"), location, am/pm/eve session windows, manual status,
+/// auto-close + grace minutes. Sessions are stored in meta.sessions and the
+/// overall start/end is derived server-side, exactly like the web.
 class ActivityFormScreen extends StatefulWidget {
   const ActivityFormScreen({
     super.key,
@@ -26,14 +32,29 @@ class ActivityFormScreen extends StatefulWidget {
 }
 
 class _ActivityFormScreenState extends State<ActivityFormScreen> {
+  static const _kCustomProgram = '__custom__';
+
   late final AttendanceApi _api;
   late final TextEditingController _title;
   late final TextEditingController _description;
   late final TextEditingController _location;
-  late final TextEditingController _program;
+  late final TextEditingController _programCustom;
   late final TextEditingController _date;
-  late final TextEditingController _startTime;
-  late final TextEditingController _endTime;
+
+  // Session window controllers — web ids am_in/am_out, pm_in/pm_out, eve_in/eve_out.
+  late final TextEditingController _amIn;
+  late final TextEditingController _amOut;
+  late final TextEditingController _pmIn;
+  late final TextEditingController _pmOut;
+  late final TextEditingController _eveIn;
+  late final TextEditingController _eveOut;
+
+  List<String> _programs = [];
+  List<String> _majors = [];
+  bool _programsLoading = true;
+  bool _majorsLoading = false;
+  String? _programChoice; // program name or _kCustomProgram
+  String? _major;
 
   ActivityStatus _status = ActivityStatus.open;
   bool _autoClose = false;
@@ -42,6 +63,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
   String? _error;
 
   bool get _isEdit => widget.activity != null;
+  bool get _isCustomProgram => _programChoice == _kCustomProgram;
 
   @override
   void initState() {
@@ -51,33 +73,122 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
     _title = TextEditingController(text: a?.title ?? '');
     _description = TextEditingController(text: a?.description ?? '');
     _location = TextEditingController(text: a?.location ?? '');
-    _program = TextEditingController(text: a?.program ?? '');
+    _programCustom = TextEditingController();
     _date = TextEditingController(text: a?.activityDate ?? '');
-    // Extract HH:MM from start_time / end_time
-    _startTime = TextEditingController(text: _hhmm(a?.startTime));
-    _endTime = TextEditingController(text: _hhmm(a?.endTime));
+
+    final s = a?.sessions ?? ActivitySessions.empty;
+    _amIn = TextEditingController(text: s.amIn ?? '');
+    _amOut = TextEditingController(text: s.amOut ?? '');
+    _pmIn = TextEditingController(text: s.pmIn ?? '');
+    _pmOut = TextEditingController(text: s.pmOut ?? '');
+    _eveIn = TextEditingController(text: s.eveIn ?? '');
+    _eveOut = TextEditingController(text: s.eveOut ?? '');
+
     _status = a?.manualStatus ?? ActivityStatus.open;
     _autoClose = a?.autoClose ?? false;
     _graceMinutes = a?.graceMinutes ?? 15;
+
+    // Stored `program` is "Program — Major" — split it the same way the
+    // web edit page does before deciding the dropdown/custom selection.
+    final stored = a?.program ?? '';
+    String storedProgram = stored;
+    String? storedMajor;
+    final sep = stored.indexOf(' — ');
+    if (sep > 0) {
+      storedProgram = stored.substring(0, sep);
+      storedMajor = stored.substring(sep + 3);
+    }
+    _loadPrograms(
+        storedProgram: storedProgram,
+        storedMajor: storedMajor,
+        storedFull: stored);
   }
 
-  String _hhmm(String? t) {
-    if (t == null || t.isEmpty) return '';
-    // "09:00:00" → "09:00"
-    final parts = t.split(':');
-    if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
-    return t;
+  Future<void> _loadPrograms({
+    required String storedProgram,
+    String? storedMajor,
+    required String storedFull,
+  }) async {
+    try {
+      final list = await _api.activityPrograms(
+        baseUrl: widget.session.baseUrl,
+        token: widget.session.token,
+      );
+      if (!mounted) return;
+      setState(() {
+        _programs = list;
+        _programsLoading = false;
+        if (storedProgram.isNotEmpty) {
+          if (list.contains(storedProgram)) {
+            _programChoice = storedProgram;
+            _loadMajors(storedProgram, initial: storedMajor);
+          } else {
+            // Unknown program on web = the "Add New" custom path.
+            _programChoice = _kCustomProgram;
+            _programCustom.text = storedFull;
+          }
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() => _programsLoading = false);
+    }
   }
+
+  Future<void> _loadMajors(String program, {String? initial}) async {
+    setState(() {
+      _majorsLoading = true;
+      _majors = [];
+      if (initial == null) _major = null;
+    });
+    try {
+      final list = await _api.activityMajors(
+        baseUrl: widget.session.baseUrl,
+        token: widget.session.token,
+        program: program,
+      );
+      if (!mounted) return;
+      setState(() {
+        _majors = list;
+        _majorsLoading = false;
+        _major = (initial != null && list.contains(initial)) ? initial : _major;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _majorsLoading = false);
+    }
+  }
+
+  /// The `program` value the server stores: "Program — Major" or the custom
+  /// text — identical to the web form's hidden-field combine.
+  String get _programPayload {
+    if (_isCustomProgram) return _programCustom.text.trim();
+    final p = _programChoice ?? '';
+    if (p.isEmpty) return '';
+    final m = _major;
+    return (m != null && m.isNotEmpty) ? '$p — $m' : p;
+  }
+
+  ActivitySessions get _sessions => ActivitySessions(
+        amIn: _amIn.text.trim(),
+        amOut: _amOut.text.trim(),
+        pmIn: _pmIn.text.trim(),
+        pmOut: _pmOut.text.trim(),
+        eveIn: _eveIn.text.trim(),
+        eveOut: _eveOut.text.trim(),
+      );
 
   @override
   void dispose() {
     _title.dispose();
     _description.dispose();
     _location.dispose();
-    _program.dispose();
+    _programCustom.dispose();
     _date.dispose();
-    _startTime.dispose();
-    _endTime.dispose();
+    _amIn.dispose();
+    _amOut.dispose();
+    _pmIn.dispose();
+    _pmOut.dispose();
+    _eveIn.dispose();
+    _eveOut.dispose();
     super.dispose();
   }
 
@@ -133,6 +244,10 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
       setState(() => _error = 'Title and date are required.');
       return;
     }
+    if (_isCustomProgram && _programCustom.text.trim().isEmpty) {
+      setState(() => _error = 'Please type a program name.');
+      return;
+    }
 
     setState(() {
       _saving = true;
@@ -148,10 +263,9 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
               'title': _title.text.trim(),
               'description': _description.text.trim(),
               'location': _location.text.trim(),
-              'program': _program.text.trim(),
+              'program': _programPayload,
               'activity_date': _date.text.trim(),
-              'start_time': _startTime.text.trim(),
-              'end_time': _endTime.text.trim(),
+              'sessions': _sessions.toJson(),
               'status': _status.value,
               'auto_close': _autoClose,
               'grace_minutes': _graceMinutes,
@@ -162,14 +276,13 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
             token: widget.session.token,
             title: _title.text.trim(),
             activityDate: _date.text.trim(),
-            startTime: _startTime.text.trim(),
-            endTime: _endTime.text.trim(),
             location: _location.text.trim(),
-            program: _program.text.trim(),
+            program: _programPayload,
             description: _description.text.trim(),
             status: _status,
             autoClose: _autoClose,
             graceMinutes: _graceMinutes,
+            sessions: _sessions,
           );
 
     if (!mounted) return;
@@ -252,44 +365,29 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                     onTap: _pickDate,
                   ),
                   const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AppInput(
-                          controller: _startTime,
-                          label: 'Start',
-                          hint: 'HH:MM',
-                          prefixIcon: Icons.play_arrow_rounded,
-                          readOnly: true,
-                          onTap: () => _pickTime(_startTime, 'Start time'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AppInput(
-                          controller: _endTime,
-                          label: 'End',
-                          hint: 'HH:MM',
-                          prefixIcon: Icons.stop_rounded,
-                          readOnly: true,
-                          onTap: () => _pickTime(_endTime, 'End time'),
-                        ),
-                      ),
-                    ],
-                  ),
+
+                  // ── Program (web: dropdown + Add New + Major) ──────
+                  _buildProgramField(),
+                  if (_isCustomProgram) ...[
+                    const SizedBox(height: 10),
+                    AppInput(
+                      controller: _programCustom,
+                      label: 'Custom program',
+                      hint: 'Type program name',
+                      prefixIcon: Icons.edit_outlined,
+                    ),
+                  ] else if (_programChoice != null &&
+                      _programChoice!.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    _buildMajorField(),
+                  ],
                   const SizedBox(height: 14),
+
                   AppInput(
                     controller: _location,
                     label: 'Location',
                     hint: 'Where is it held?',
                     prefixIcon: Icons.place_outlined,
-                  ),
-                  const SizedBox(height: 14),
-                  AppInput(
-                    controller: _program,
-                    label: 'Program',
-                    hint: 'e.g. YFD, YES-O, BKDC',
-                    prefixIcon: Icons.school_outlined,
                   ),
                   const SizedBox(height: 14),
                   AppInput(
@@ -300,6 +398,63 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                     maxLines: 3,
                   ),
                   const SizedBox(height: 14),
+
+                  // ── Session windows (web: Morning/Afternoon/Evening) ──
+                  AppCard(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.schedule_rounded,
+                                color: AppInk.accent, size: 22),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Session windows',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppInk.heading,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Start/End are derived from the earliest in and latest out.',
+                          style: TextStyle(fontSize: 12, color: AppInk.muted),
+                        ),
+                        const SizedBox(height: 14),
+                        _SessionRow(
+                          label: 'Morning',
+                          icon: Icons.wb_sunny_outlined,
+                          inCtrl: _amIn,
+                          outCtrl: _amOut,
+                          onPick: _pickTime,
+                        ),
+                        _SessionRow(
+                          label: 'Afternoon',
+                          icon: Icons.wb_twilight_rounded,
+                          inCtrl: _pmIn,
+                          outCtrl: _pmOut,
+                          onPick: _pickTime,
+                        ),
+                        _SessionRow(
+                          label: 'Evening',
+                          icon: Icons.nightlight_round,
+                          inCtrl: _eveIn,
+                          outCtrl: _eveOut,
+                          onPick: _pickTime,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // ── Check-in availability ──────────────────────────
                   AppCard(
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                     child: Column(
@@ -325,8 +480,6 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                           ],
                         ),
                         const SizedBox(height: 14),
-
-                        // ── Manual override ──────────────────────────
                         DropdownButtonFormField<ActivityStatus>(
                           initialValue: _status,
                           isExpanded: true,
@@ -347,8 +500,6 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                               () => _status = v ?? ActivityStatus.open),
                         ),
                         const SizedBox(height: 14),
-
-                        // ── Auto-close ───────────────────────────────
                         Row(
                           children: [
                             const Expanded(
@@ -365,7 +516,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                                   ),
                                   SizedBox(height: 3),
                                   Text(
-                                    'Block check-ins outside the activity time.',
+                                    'Block check-ins outside the session windows.',
                                     style: TextStyle(
                                         fontSize: 12.5, color: AppInk.muted),
                                   ),
@@ -378,8 +529,6 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                             ),
                           ],
                         ),
-
-                        // ── Grace period ─────────────────────────────
                         if (_autoClose) ...[
                           const SizedBox(height: 10),
                           Row(
@@ -413,10 +562,9 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                             onChanged: (v) =>
                                 setState(() => _graceMinutes = v.round()),
                           ),
-                          Text(
+                          const Text(
                             'Extra time allowed before the start and after the end.',
-                            style: const TextStyle(
-                                fontSize: 12, color: AppInk.muted),
+                            style: TextStyle(fontSize: 12, color: AppInk.muted),
                           ),
                         ],
                       ],
@@ -473,6 +621,133 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                   loading: _saving,
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgramField() {
+    return DropdownButtonFormField<String>(
+      initialValue: _programChoice,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Program',
+        border: OutlineInputBorder(),
+        isDense: true,
+      ),
+      hint: Text(_programsLoading ? 'Loading programs…' : 'Select Program'),
+      items: [
+        const DropdownMenuItem(value: _kCustomProgram, child: Text('Add New')),
+        for (final p in _programs)
+          DropdownMenuItem(
+            value: p,
+            child: Text(p, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: (v) {
+        setState(() {
+          _programChoice = v;
+          _major = null;
+          _majors = [];
+        });
+        if (v != null && v != _kCustomProgram) {
+          _loadMajors(v);
+        }
+      },
+    );
+  }
+
+  Widget _buildMajorField() {
+    return DropdownButtonFormField<String>(
+      initialValue: _major,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'Major',
+        helperText: _majors.isEmpty && !_majorsLoading
+            ? 'No majors for this program'
+            : null,
+        border: const OutlineInputBorder(),
+        isDense: true,
+      ),
+      hint: Text(_majorsLoading ? 'Loading majors…' : '—'),
+      items: [
+        for (final m in _majors)
+          DropdownMenuItem(
+            value: m,
+            child: Text(m, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: _majors.isEmpty ? null : (v) => setState(() => _major = v),
+    );
+  }
+}
+
+/// One session window row — label + In/Out time fields, matching the web
+/// form's Morning/Afternoon/Evening rows.
+class _SessionRow extends StatelessWidget {
+  const _SessionRow({
+    required this.label,
+    required this.icon,
+    required this.inCtrl,
+    required this.outCtrl,
+    required this.onPick,
+  });
+
+  final String label;
+  final IconData icon;
+  final TextEditingController inCtrl;
+  final TextEditingController outCtrl;
+  final Future<void> Function(TextEditingController, String) onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 86,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: Row(
+                children: [
+                  Icon(icon, size: 16, color: AppInk.muted),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppInk.body,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: AppInput(
+              controller: inCtrl,
+              label: 'In',
+              hint: 'HH:MM',
+              readOnly: true,
+              onTap: () => onPick(inCtrl, '$label check-in'),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: AppInput(
+              controller: outCtrl,
+              label: 'Out',
+              hint: 'HH:MM',
+              readOnly: true,
+              onTap: () => onPick(outCtrl, '$label check-out'),
             ),
           ),
         ],

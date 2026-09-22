@@ -18,59 +18,109 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
     }
 
     /* Sticky logout button */
-    .left-side-menu { display:flex; flex-direction:column; }
-    .left-side-menu > .slimscroll-menu {
-        flex:1 1 auto;
-        overflow-y:auto !important;
-        -webkit-overflow-scrolling:touch;
+    .left-side-menu {
+        display: flex;
+        flex-direction: column;
     }
+
+    .left-side-menu>.slimscroll-menu {
+        flex: 1 1 auto;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
     /* Override slimScroll when it breaks — allow native scroll */
-    .left-side-menu > .slimscroll-menu .slimScrollDiv {
-        overflow-y:auto !important;
-        height:auto !important;
+    .left-side-menu>.slimscroll-menu .slimScrollDiv {
+        overflow-y: auto !important;
+        height: auto !important;
     }
-    .left-side-menu > .slimscroll-menu .slimScrollBar { display:none !important; }
+
+    .left-side-menu>.slimscroll-menu .slimScrollBar {
+        display: none !important;
+    }
+
     /* When collapsed (enlarged), don't force scroll — let it auto-size */
-    body.enlarged .left-side-menu > .slimscroll-menu,
-    body.enlarged .left-side-menu > .slimscroll-menu .slimScrollDiv {
-        overflow:visible !important;
-        height:auto !important;
+    body.enlarged .left-side-menu>.slimscroll-menu,
+    body.enlarged .left-side-menu>.slimscroll-menu .slimScrollDiv {
+        overflow: visible !important;
+        height: auto !important;
     }
+
     .sidebar-logout {
-        flex-shrink:0;
-        padding:14px 18px;
-        border-top:1px solid rgba(255,255,255,.06);
-        background:#1a2942;
+        flex-shrink: 0;
+        padding: 14px 18px;
+        border-top: 1px solid rgba(255, 255, 255, .06);
+        background: #1a2942;
     }
+
     .sidebar-logout-btn {
-        display:flex; align-items:center; justify-content:center; gap:8px;
-        width:100%; padding:11px 16px;
-        border-radius:12px; border:none;
-        background:linear-gradient(135deg,#991b1b,#b91c1c);
-        color:#fff; font-weight:700; font-size:.86rem; letter-spacing:.02em;
-        cursor:pointer; transition:transform .15s ease, box-shadow .15s ease;
-        text-decoration:none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 11px 16px;
+        border-radius: 12px;
+        border: none;
+        background: linear-gradient(135deg, #991b1b, #b91c1c);
+        color: #fff;
+        font-weight: 700;
+        font-size: .86rem;
+        letter-spacing: .02em;
+        cursor: pointer;
+        transition: transform .15s ease, box-shadow .15s ease;
+        text-decoration: none;
     }
+
     .sidebar-logout-btn:hover {
-        color:#fff; text-decoration:none; transform:translateY(-1px);
-        box-shadow:0 8px 20px rgba(153,27,27,.35);
+        color: #fff;
+        text-decoration: none;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(153, 27, 27, .35);
     }
-    .sidebar-logout-btn i { font-size:18px; }
-    .sidebar-logout-btn .logout-label { display:inline; }
+
+    .sidebar-logout-btn i {
+        font-size: 18px;
+    }
+
+    .sidebar-logout-btn .logout-label {
+        display: inline;
+    }
 
     /* Collapsed sidebar (body.enlarged) — icon only */
-    body.enlarged .sidebar-logout { padding:10px; }
-    body.enlarged .sidebar-logout-btn {
-        padding:11px; gap:0; border-radius:10px;
+    body.enlarged .sidebar-logout {
+        padding: 10px;
     }
-    body.enlarged .sidebar-logout-btn .logout-label { display:none; }
-    body.enlarged .sidebar-logout-btn i { font-size:20px; margin:0; }
+
+    body.enlarged .sidebar-logout-btn {
+        padding: 11px;
+        gap: 0;
+        border-radius: 10px;
+    }
+
+    body.enlarged .sidebar-logout-btn .logout-label {
+        display: none;
+    }
+
+    body.enlarged .sidebar-logout-btn i {
+        font-size: 20px;
+        margin: 0;
+    }
 
     /* Mobile (sidebar slides in as overlay) */
     @media (max-width: 767.98px) {
-        .sidebar-logout { padding:14px 18px; }
-        .sidebar-logout-btn .logout-label { display:inline; }
-        .sidebar-logout-btn { padding:11px 16px; gap:8px; }
+        .sidebar-logout {
+            padding: 14px 18px;
+        }
+
+        .sidebar-logout-btn .logout-label {
+            display: inline;
+        }
+
+        .sidebar-logout-btn {
+            padding: 11px 16px;
+            gap: 8px;
+        }
     }
 </style>
 
@@ -305,6 +355,13 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                                 <a href="<?= base_url('Accounting/expensesReport'); ?>">Expenses Reports</a>
                             </li>
                         </ul>
+                    </li>
+
+                    <li class="<?= $active('Accounting/paymentAuditLog'); ?>">
+                        <a href="<?= base_url('Accounting/paymentAuditLog'); ?>" class="waves-effect">
+                            <i class="mdi mdi-history"></i>
+                            <span> Payment Activity Log </span>
+                        </a>
                     </li>
                     <!-- To Do (keep visible) -->
                     <!-- <li>
@@ -1011,6 +1068,12 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
             <div id="sidebar-menu">
                 <ul class="metismenu" id="side-menu">
                     <li class="menu-title">COMMITTEE</li>
+                    <li class="<?= strpos($committeeUri, 'page/committee') === 0 ? 'mm-active active' : ''; ?>">
+                        <a href="<?= base_url('Page/committee'); ?>" class="waves-effect">
+                            <i class="ion-md-speedometer"></i>
+                            <span> Dashboard </span>
+                        </a>
+                    </li>
                     <li class="<?= strpos($committeeUri, 'activities') === 0 ? 'mm-active active' : ''; ?>">
                         <a href="<?= base_url('activities'); ?>" class="waves-effect">
                             <i class="ion ion-ios-qr-scanner"></i>
@@ -1028,7 +1091,6 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
 
         <?php elseif ($this->session->userdata('level') === 'Cashier'): ?>
             <?php
-            $isCashier = true;
             // Active/open helpers
             $uri = trim(uri_string(), '/');
             $is = function ($prefix) use ($uri) {
@@ -1045,99 +1107,37 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
             };
 
             // Expand states per group
-            list($paymentsExpanded, $paymentsShow) = $open([
-                'Accounting/Payment',
-                'Accounting/receipt',
-                'Accounting/services',
-                'Page/proof_payment_view',
-                'Page/onlinePaymentsAll',
-                'Page/deniedPayments',
-                'Page/voidORs'
-            ]);
-
             list($expensesExpanded, $expensesShow) = $open([
                 'Accounting/expenses',
                 'Accounting/expensescategory',
                 'Accounting/expensesReport'
             ]);
 
-            list($voidExpanded, $voidShow) = $open([
-                'Accounting/VoidPayment'
-            ]);
-
-            list($docsExpanded, $docsShow) = $open([
-                'Request/document_types',
-                'Request'
-            ]);
-
             list($configsExpanded, $configsShow) = $open([
                 'Accounting/course_setUp'
             ]);
 
-            list($acctRptExpanded, $acctRptShow) = $open([
-                'Accounting/studeAccountsWithBalance',
-                'Accounting/collectionMonthly',
-                'Accounting/collectionYear',
-                'Accounting/collectionDateRange'
-            ]);
-
-            list($todoExpanded, $todoShow) = $open([
-                'ToDo'
-            ]);
-
-            // Online payments toggle (safe default = show)
-            $showOnline = isset($online_settings->show_online_payments)
-                ? (int)$online_settings->show_online_payments
-                : 1;
+            $acctRptActive = ($is('Accounting/collectionMonthly') || $is('Accounting/collectionYear') || $is('Accounting/collectionDateRange') || $is('Accounting/collectionReport'))
+                ? 'mm-active active'
+                : '';
             ?>
             <div id="sidebar-menu">
                 <ul class="metismenu" id="side-menu">
 
                     <li class="menu-title">Navigation</li>
 
-                    <li class="<?= $active($isCashier ? 'Accounting/Payment' : 'Page/accounting'); ?>">
-                        <a href="<?= base_url($isCashier ? 'Accounting/Payment' : 'Page/accounting'); ?>" class="waves-effect">
+                    <li class="<?= $active('Page/accounting'); ?>">
+                        <a href="<?= base_url('Page/accounting'); ?>" class="waves-effect">
                             <i class="ion bi bi-house-door"></i>
-                            <span> <?= $isCashier ? 'Payment Entry' : 'Dashboard'; ?> </span>
+                            <span> Dashboard </span>
                         </a>
                     </li>
 
-                    <li class="<?= $active('Accounting/studeAccounts'); ?>">
-                        <a href="<?= base_url('Accounting/studeAccounts'); ?>" class="waves-effect">
-                            <i class="ion ion-md-analytics"></i>
-                            <span> Student's Accounts </span>
-                        </a>
-                    </li>
-
-                    <!-- Payments -->
-                    <li class="<?= $paymentsShow ? 'mm-active' : '' ?>">
-                        <a href="javascript:void(0);" class="waves-effect" aria-expanded="<?= $paymentsExpanded; ?>">
+                    <li class="<?= $active('Accounting/Payment'); ?>">
+                        <a href="<?= base_url('Accounting/Payment'); ?>" class="waves-effect">
                             <i class="ion ion-ios-cash"></i>
-                            <span> Payments </span>
-                            <span class="menu-arrow"></span>
+                            <span> Payment Entry </span>
                         </a>
-                        <ul class="nav-second-level nav <?= $paymentsShow; ?>" aria-expanded="<?= $paymentsExpanded; ?>">
-                            <li class="<?= $active('Accounting/Payment'); ?>">
-                                <a href="<?= base_url('Accounting/Payment'); ?>">School Fees</a>
-                            </li>
-                            <li class="<?= $active('Accounting/services'); ?>">
-                                <a href="<?= base_url('Accounting/services'); ?>">Other Fees/Services</a>
-                            </li>
-
-
-
-                            <li class="<?= $active('Page/onlinePaymentsAll'); ?>">
-                                <a href="<?= base_url('Page/onlinePaymentsAll'); ?>">Verified Online Payments</a>
-                            </li>
-                            <li class="<?= $active('Page/deniedPayments'); ?>">
-                                <a href="<?= base_url('Page/deniedPayments'); ?>">Denied Online Payments</a>
-                            </li>
-
-
-                            <li class="<?= $active('Page/voidORs'); ?>">
-                                <a href="<?= base_url('Page/voidORs'); ?>">Void O.R.</a>
-                            </li>
-                        </ul>
                     </li>
 
                     <!-- School Expenses -->
@@ -1160,44 +1160,11 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         </ul>
                     </li>
 
-                    <!-- Void -->
-                    <li class="<?= $voidShow ? 'mm-active' : '' ?>">
-                        <a href="javascript:void(0);" class="waves-effect" aria-expanded="<?= $voidExpanded; ?>">
-                            <i class="ion ion-md-paper"></i>
-                            <span> Void </span>
-                            <span class="menu-arrow"></span>
-                        </a>
-                        <ul class="nav-second-level nav <?= $voidShow; ?>" aria-expanded="<?= $voidExpanded; ?>">
-                            <li class="<?= $active('Accounting/VoidPayment'); ?>">
-                                <a href="<?= base_url('Accounting/VoidPayment'); ?>">Void Receipts</a>
-                            </li>
-                        </ul>
-                    </li>
-
-                    <?php if (!$isCashier): ?>
-                    <!-- Document Request -->
-                    <li class="<?= $docsShow ? 'mm-active' : '' ?>">
-                        <a href="javascript:void(0);" class="waves-effect" aria-expanded="<?= $docsExpanded; ?>">
-                            <i class="mdi mdi-update"></i>
-                            <span> Document Request </span>
-                            <span class="menu-arrow"></span>
-                        </a>
-                        <ul class="nav-second-level nav <?= $docsShow; ?>" aria-expanded="<?= $docsExpanded; ?>">
-                            <li class="<?= $active('Request/document_types'); ?>">
-                                <a href="<?= base_url('Request/document_types'); ?>">Docs for Request</a>
-                            </li>
-                            <li class="<?= $active('Request'); ?>">
-                                <a href="<?= base_url('Request'); ?>">Requests</a>
-                            </li>
-                        </ul>
-                    </li>
-                    <?php endif; ?>
-
                     <!-- Configurations -->
                     <li class="<?= $configsShow ? 'mm-active' : '' ?>">
                         <a href="javascript:void(0);" class="waves-effect" aria-expanded="<?= $configsExpanded; ?>">
                             <i class="ion ion-md-settings"></i>
-                            <span> Configurations </span>
+                            <span> Payment Setup </span>
                             <span class="menu-arrow"></span>
                         </a>
                         <ul class="nav-second-level nav <?= $configsShow; ?>" aria-expanded="<?= $configsExpanded; ?>">
@@ -1207,86 +1174,35 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         </ul>
                     </li>
 
-                    <li class="menu-title">Reports</li>
 
-                    <!-- Accounting Reports -->
-                    <li class="<?= $acctRptShow ? 'mm-active' : '' ?>">
-                        <a href="javascript:void(0);" class="waves-effect" aria-expanded="<?= $acctRptExpanded; ?>">
+                    <!-- Collection Reports: one page, with its own Filter/Monthly/Yearly buttons -->
+                    <li class="<?= $acctRptActive; ?>">
+                        <a href="<?= base_url('Accounting/collectionReport'); ?>" class="waves-effect">
                             <i class="ion ion-md-paper"></i>
-                            <span> Accounting Reports </span>
-                            <span class="menu-arrow"></span>
-                        </a>
-                        <ul class="nav-second-level nav <?= $acctRptShow; ?>" aria-expanded="<?= $acctRptExpanded; ?>">
-                            <li>
-                                <a href="<?= base_url('Accounting/studeAccountsWithBalance'); ?>">Students With Outstanding Balance</a>
-                            </li>
-
-                            <li>
-                                <a href="<?= base_url('Accounting/fullyPaid'); ?>">Fully Paid Students</a>
-                            </li>
-
-                            <li>
-                                <a href="javascript:void(0);" aria-expanded="<?= $acctRptExpanded; ?>">Collection Reports
-                                    <span class="menu-arrow"></span>
-                                </a>
-                                <ul class="nav-third-level nav <?= $acctRptShow; ?>">
-                                    <li>
-                                        <a href="<?= base_url('Accounting/collectionMonthly'); ?>">Monthly</a>
-                                    </li>
-                                    <li>
-                                        <a href="<?= base_url('Accounting/collectionYear'); ?>">Yearly</a>
-                                    </li>
-                                    <li>
-                                        <a href="<?= base_url('Accounting/collectionDateRange'); ?>">By Date Range</a>
-                                    </li>
-                                </ul>
-                            </li>
-                        </ul>
-                    </li>
-
-                    <!-- Students' Reports -->
-                    <li class="<?= $active('Accounting/accountingStudeReports'); ?>">
-                        <a href="<?= base_url('Accounting/accountingStudeReports'); ?>" class="waves-effect">
-                            <i class="ion ion-md-folder"></i>
-                            <span> Students' Reports </span>
-                        </a>
-                    </li>
-                    <!-- <li class="<?= $active('activities'); ?>">
-    <a href="<?= base_url('activities'); ?>" class="waves-effect">
-        <i class="ion ion-ios-qr-scanner"></i>
-        <span> Activities (QR) </span>
-    </a>
-</li> -->
-
-                    <?php if (!$isCashier): ?>
-                    <!-- Personal productivity links retained for Accounting. -->
-                    <li class="<?= $todoShow ? 'mm-active' : '' ?>">
-                        <a href="javascript:void(0);" class="waves-effect" aria-expanded="<?= $todoExpanded; ?>">
-                            <i class="ion ion-md-paper"></i>
-                            <span> To Do </span>
-                            <span class="menu-arrow"></span>
-                        </a>
-                        <ul class="nav-second-level nav <?= $todoShow; ?>" aria-expanded="<?= $todoExpanded; ?>">
-                            <li class="<?= $active('ToDo'); ?>">
-                                <a href="<?= base_url('ToDo'); ?>">ToDo</a>
-                            </li>
-                        </ul>
-                    </li>
-
-                    <li class="<?= $active('Note'); ?>">
-                        <a href="<?= base_url('Note'); ?>" class="waves-effect">
-                            <i class="ion ion-md-paper"></i>
-                            <span> Notes </span>
+                            <span> Collection Reports </span>
                         </a>
                     </li>
 
-                    <li>
-                        <a href="<?= base_url('FAQ'); ?>" target="_blank" class="waves-effect">
-                            <i class="ion ion-md-help"></i>
-                            <span> SRMS FAQ </span>
+                    <li class="<?= $active('Accounting/ledger'); ?>">
+                        <a href="<?= base_url('Accounting/ledger'); ?>" class="waves-effect">
+                            <i class="mdi mdi-book-open-variant"></i>
+                            <span> Ledger </span>
                         </a>
                     </li>
-                    <?php endif; ?>
+
+                    <li class="<?= $active('Accounting/partialPayments'); ?>">
+                        <a href="<?= base_url('Accounting/partialPayments'); ?>" class="waves-effect">
+                            <i class="mdi mdi-account-clock-outline"></i>
+                            <span> Partial Payments </span>
+                        </a>
+                    </li>
+
+                    <li class="<?= $active('Accounting/paymentAuditLog'); ?>">
+                        <a href="<?= base_url('Accounting/paymentAuditLog'); ?>" class="waves-effect">
+                            <i class="mdi mdi-history"></i>
+                            <span> Payment Activity Log </span>
+                        </a>
+                    </li>
 
                 </ul>
             </div>

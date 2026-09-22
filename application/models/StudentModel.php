@@ -1607,6 +1607,37 @@ class StudentModel extends CI_Model
 		$query = $this->db->query("SELECT sum(Amount) as Amount FROM paymentsaccounts where ORStatus='Valid' and YEAR(PDate)=YEAR(NOW())");
 		return $query->result();
 	}
+
+	//Daily collection totals for the last N days (cashier dashboard trend chart)
+	function collectionTrend($days = 14)
+	{
+		$days = max(1, (int)$days);
+		$query = $this->db->query(
+			"SELECT DATE(PDate) as CDate, SUM(Amount) as Amount
+			 FROM paymentsaccounts
+			 WHERE ORStatus = 'Valid' AND PDate >= (CURDATE() - INTERVAL ? DAY)
+			 GROUP BY DATE(PDate)
+			 ORDER BY CDate ASC",
+			[$days - 1]
+		);
+		return $query->result();
+	}
+
+	//Latest valid payments across all students (cashier dashboard activity feed)
+	function recentPayments($limit = 8)
+	{
+		$this->db->select("p.ID, p.PDate, p.ORNumber, p.StudentNumber, p.Amount, p.description, p.CollectionSource, p.Cashier,
+			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName,
+			COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName", false);
+		$this->db->from('paymentsaccounts p');
+		$this->db->join('studeprofile sp', 'sp.StudentNumber = p.StudentNumber', 'left');
+		$this->db->join('studentsignup su', 'su.StudentNumber = p.StudentNumber', 'left');
+		$this->db->where('p.ORStatus', 'Valid');
+		$this->db->order_by('p.PDate', 'DESC');
+		$this->db->order_by('p.ID', 'DESC');
+		$this->db->limit((int)$limit);
+		return $this->db->get()->result();
+	}
 	//Course Count Summary Per Semester
 	function CourseCount($sem, $sy)
 	{

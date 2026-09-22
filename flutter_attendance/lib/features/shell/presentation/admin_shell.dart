@@ -21,10 +21,8 @@ import '../../misc/presentation/departments_screen.dart';
 import '../../misc/presentation/reports_screen.dart';
 import '../../misc/presentation/sections_screen.dart';
 import '../../misc/presentation/expenses_screen.dart';
-import '../../misc/presentation/notes_screen.dart';
 import '../../misc/presentation/personnel_manage_screen.dart';
 import '../../misc/presentation/registered_students_screen.dart';
-import '../../misc/presentation/todos_screen.dart';
 import '../../misc/presentation/user_accounts_screen.dart';
 
 /// Admin shell: Dashboard + Activities + Scan in the bottom nav.
@@ -66,20 +64,25 @@ class _AdminShellState extends State<AdminShell> {
     );
   }
 
+  /// Mirrors the web admin sidebar (application/views/includes/sidebar.php),
+  /// in the same order: Registered Students, Attendance Logs, Activities (QR),
+  /// Announcement, Activities Reports, School Expenses, Manage (Course,
+  /// Sections, Admin Accounts), FBMSO Officials. Notes and To-Do are
+  /// commented out on the web sidebar, so they are not shown here.
   List<DrawerItem> get _drawerItems {
     final p = _perms;
     return [
-      if (p.canManageActivities)
+      if (p.canViewStaffLists)
         DrawerItem(
-          icon: Icons.edit_calendar_rounded,
-          title: 'Manage Activities',
-          subtitle: 'Create, edit, delete activities',
+          icon: Icons.school_outlined,
+          title: 'Registered Students',
+          subtitle: 'List of registered students',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
               MaterialPageRoute(
                 builder: (_) =>
-                    ManageActivitiesScreen(session: widget.session),
+                    RegisteredStudentsScreen(session: widget.session),
               ),
             );
           },
@@ -99,47 +102,46 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canManagePersonnel)
+      if (p.canManageActivities)
         DrawerItem(
-          icon: Icons.people_outline_rounded,
-          title: 'Personnel',
-          subtitle: 'Manage officials and staff',
+          icon: Icons.edit_calendar_rounded,
+          title: 'Manage Activities',
+          subtitle: 'Create, edit, delete activities',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
               MaterialPageRoute(
                 builder: (_) =>
-                    PersonnelManageScreen(session: widget.session),
+                    ManageActivitiesScreen(session: widget.session),
+              ),
+            );
+          },
+        ),
+      if (p.canManageAnnouncements)
+        DrawerItem(
+          icon: Icons.campaign_outlined,
+          title: 'Announcements',
+          subtitle: 'Post & manage announcements',
+          onTap: (ctx) {
+            Navigator.of(ctx).pop();
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    AnnouncementsManageScreen(session: widget.session),
               ),
             );
           },
         ),
       if (p.canViewStaffLists)
         DrawerItem(
-          icon: Icons.school_outlined,
-          title: 'Registered Students',
-          subtitle: 'List of registered students',
+          icon: Icons.assessment_outlined,
+          title: 'Activities Reports',
+          subtitle: 'Enrollment & attendance reports',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
               MaterialPageRoute(
-                builder: (_) =>
-                    RegisteredStudentsScreen(session: widget.session),
-              ),
-            );
-          },
-        ),
-      if (p.canManageUsers)
-        DrawerItem(
-          icon: Icons.manage_accounts_rounded,
-          title: 'Manage Users',
-          subtitle: 'Admin accounts',
-          onTap: (ctx) {
-            Navigator.of(ctx).pop();
-            Navigator.of(ctx).push(
-              MaterialPageRoute(
-                builder: (_) =>
-                    UserAccountsScreen(session: widget.session),
+                builder: (_) => ReportsScreen(session: widget.session),
               ),
             );
           },
@@ -147,8 +149,8 @@ class _AdminShellState extends State<AdminShell> {
       if (p.canUseAccounting)
         DrawerItem(
           icon: Icons.receipt_long_outlined,
-          title: 'Expenses',
-          subtitle: 'Accounting expenses & categories',
+          title: 'School Expenses',
+          subtitle: 'Expenses, categories & reports',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -161,7 +163,7 @@ class _AdminShellState extends State<AdminShell> {
       if (p.canManageDepartments)
         DrawerItem(
           icon: Icons.school_outlined,
-          title: 'Departments',
+          title: 'Course',
           subtitle: 'Manage courses / programs',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
@@ -186,61 +188,36 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canViewStaffLists)
+      if (p.canManageUsers)
         DrawerItem(
-          icon: Icons.assessment_outlined,
-          title: 'Reports',
-          subtitle: 'Enrollment & attendance reports',
-          onTap: (ctx) {
-            Navigator.of(ctx).pop();
-            Navigator.of(ctx).push(
-              MaterialPageRoute(
-                builder: (_) => ReportsScreen(session: widget.session),
-              ),
-            );
-          },
-        ),
-      if (p.canManageAnnouncements)
-        DrawerItem(
-          icon: Icons.campaign_outlined,
-          title: 'Announcements',
-          subtitle: 'Post & manage announcements',
+          icon: Icons.manage_accounts_rounded,
+          title: 'Admin Accounts',
+          subtitle: 'Manage user accounts',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
               MaterialPageRoute(
                 builder: (_) =>
-                    AnnouncementsManageScreen(session: widget.session),
+                    UserAccountsScreen(session: widget.session),
               ),
             );
           },
         ),
-      DrawerItem(
-        icon: Icons.sticky_note_2_outlined,
-        title: 'Notes',
-        subtitle: 'Your personal notes',
-        onTap: (ctx) {
-          Navigator.of(ctx).pop();
-          Navigator.of(ctx).push(
-            MaterialPageRoute(
-              builder: (_) => NotesScreen(session: widget.session),
-            ),
-          );
-        },
-      ),
-      DrawerItem(
-        icon: Icons.check_circle_outline,
-        title: 'To-Do',
-        subtitle: 'Tasks and reminders',
-        onTap: (ctx) {
-          Navigator.of(ctx).pop();
-          Navigator.of(ctx).push(
-            MaterialPageRoute(
-              builder: (_) => TodosScreen(session: widget.session),
-            ),
-          );
-        },
-      ),
+      if (p.canManagePersonnel)
+        DrawerItem(
+          icon: Icons.people_outline_rounded,
+          title: 'FBMSO Officials',
+          subtitle: 'Manage officials and staff',
+          onTap: (ctx) {
+            Navigator.of(ctx).pop();
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    PersonnelManageScreen(session: widget.session),
+              ),
+            );
+          },
+        ),
     ];
   }
 
@@ -252,8 +229,31 @@ class _AdminShellState extends State<AdminShell> {
     // Bottom nav mirrors each role's web landing pages:
     //   Cashier   → Dashboard + Expenses (web lands on Accounting/Payment)
     //   others    → Dashboard + Activities + Scan
-    final tabs = <Widget>[];
-    final destinations = <NavigationDestination>[];
+    final destinations = <NavigationDestination>[
+      const NavigationDestination(
+        icon: Icon(Icons.dashboard_outlined),
+        selectedIcon: Icon(Icons.dashboard),
+        label: 'Dashboard',
+      ),
+      if (p.isCashier)
+        const NavigationDestination(
+          icon: Icon(Icons.receipt_long_outlined),
+          selectedIcon: Icon(Icons.receipt_long_rounded),
+          label: 'Expenses',
+        )
+      else ...[
+        const NavigationDestination(
+          icon: Icon(AppIcons.home_outlined),
+          selectedIcon: Icon(AppIcons.home_rounded),
+          label: 'Activities',
+        ),
+        const NavigationDestination(
+          icon: Icon(Icons.qr_code_scanner_outlined),
+          selectedIcon: Icon(Icons.qr_code_scanner),
+          label: 'Scan',
+        ),
+      ],
+    ];
 
     return Scaffold(
       drawer: AppAppDrawer(
@@ -264,42 +264,15 @@ class _AdminShellState extends State<AdminShell> {
       body: Builder(
         builder: (context) {
           final menu = _menuButton(context);
-
-          tabs
-            ..clear()
-            ..add(DashboardScreen(session: session, menuButton: menu));
-          destinations
-            ..clear()
-            ..add(const NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined),
-              selectedIcon: Icon(Icons.dashboard),
-              label: 'Dashboard',
-            ));
-
-          if (p.isCashier) {
-            tabs.add(ExpensesScreen(session: session, menuButton: menu));
-            destinations.add(const NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(Icons.receipt_long_rounded),
-              label: 'Expenses',
-            ));
-          } else {
-            tabs
-              ..add(ActivitiesScreen(session: session, menuButton: menu))
-              ..add(_ScanPicker(session: session, menuButton: menu));
-            destinations
-              ..add(const NavigationDestination(
-                icon: Icon(AppIcons.home_outlined),
-                selectedIcon: Icon(AppIcons.home_rounded),
-                label: 'Activities',
-              ))
-              ..add(const NavigationDestination(
-                icon: Icon(Icons.qr_code_scanner_outlined),
-                selectedIcon: Icon(Icons.qr_code_scanner),
-                label: 'Scan',
-              ));
-          }
-
+          final tabs = <Widget>[
+            DashboardScreen(session: session, menuButton: menu),
+            if (p.isCashier)
+              ExpensesScreen(session: session, menuButton: menu)
+            else ...[
+              ActivitiesScreen(session: session, menuButton: menu),
+              _ScanPicker(session: session, menuButton: menu),
+            ],
+          ];
           return tabs[_index.clamp(0, tabs.length - 1)];
         },
       ),

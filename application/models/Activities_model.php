@@ -83,6 +83,18 @@ public function list_all()
         return $this->db->affected_rows() > 0;
     }
 
+    // Committee dashboard: count of activities currently open for scanning
+    public function count_open()
+    {
+        return (int)$this->db->where('status', 'open')->count_all_results($this->table);
+    }
+
+    // Committee dashboard: count of all activities on record
+    public function count_all()
+    {
+        return (int)$this->db->count_all_results($this->table);
+    }
+
     public function update($id, $data)
     {
         return $this->db->where('activity_id', (int)$id)->update($this->table, $this->onlyFillable($data));

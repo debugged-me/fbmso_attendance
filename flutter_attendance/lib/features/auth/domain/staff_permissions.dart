@@ -90,4 +90,10 @@ class StaffPermissions {
 
   /// Announcement management — unrestricted staff on the web.
   bool get canManageAnnouncements => _isStaff;
+
+  /// Enrollment dashboard stats — Page/admin is Admin-only on the web and
+  /// Page/school_admin shows the same panels to School Admin. Super Admin
+  /// keeps a stats dashboard too.
+  bool get canViewDashboardStats =>
+      const {'admin', 'super admin', 'school admin'}.contains(position);
 }

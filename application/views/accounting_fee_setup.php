@@ -4,6 +4,34 @@
 <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
 <link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
 
+<style>
+    .kpi {
+        border: 1px solid var(--up-line, #e6ebf5);
+        border-radius: 18px;
+        background: var(--up-card, #fff);
+        box-shadow: 0 6px 18px rgba(13, 27, 75, .05);
+        margin-bottom: 0;
+    }
+    .kpi .card-body { display: flex; align-items: center; justify-content: space-between; padding: 20px 22px; gap: 12px; }
+    .kpi .count { font-size: 1.6rem; font-weight: 800; color: var(--up-ink, #0d1b4b); margin: 0; line-height: 1; letter-spacing: -.01em; }
+    .kpi .label { margin: 6px 0 0; color: var(--up-muted, #6b7a99); font-weight: 700; font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; }
+    .kpi .icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex: 0 0 auto; }
+    .kpi.blue .icon { background: #eef2ff; color: #4266d4; }
+    .kpi.green .icon { background: #dcfce7; color: #16a34a; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+
+    #feesTable.dataTable { table-layout: fixed; }
+    #feesTable td, #feesTable th { vertical-align: middle; }
+    #feesTable td[data-label="Description"] { font-size: .92rem; }
+    #feesTable .fee-icon { width: 34px; height: 34px; border-radius: 10px; background: #eef2ff; color: #4266d4; display: inline-flex; align-items: center; justify-content: center; margin-right: 10px; flex: 0 0 auto; }
+    #feesTable .fee-desc-wrap { display: flex; align-items: center; }
+
+    /* ACTION BUTTONS: keep Edit + Delete on one line — the Delete form is a
+       block element by default and would otherwise stack under Edit. */
+    .action-wrap { display: inline-flex; align-items: center; gap: 8px; flex-wrap: nowrap; white-space: nowrap; }
+    .action-wrap form { margin: 0; }
+</style>
+
 <body>
     <div id="wrapper">
         <?php include('includes/top-nav-bar.php'); ?>
@@ -25,7 +53,7 @@
                             <hr class="up-divider" />
                         </div>
                         <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
+                            <a href="<?= base_url($this->session->userdata('level') === 'Cashier' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
                             <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#addFeeModal">
@@ -47,6 +75,33 @@
                         </div>
                     <?php endif; ?>
 
+                    <?php
+                    $feeTotal = 0.0;
+                    foreach ($fees as $fee) {
+                        $feeTotal += (float)$fee->Amount;
+                    }
+                    ?>
+                    <div class="kpi-grid">
+                        <div class="card kpi blue">
+                            <div class="card-body">
+                                <div>
+                                    <h2 class="count mb-1"><?= number_format(count($fees)); ?></h2>
+                                    <p class="label mb-0">Configured Fees</p>
+                                </div>
+                                <div class="icon"><i class="mdi mdi-format-list-bulleted"></i></div>
+                            </div>
+                        </div>
+                        <div class="card kpi green">
+                            <div class="card-body">
+                                <div>
+                                    <h2 class="count mb-1">&#8369;<?= number_format($feeTotal, 2); ?></h2>
+                                    <p class="label mb-0">Combined Value</p>
+                                </div>
+                                <div class="icon"><i class="mdi mdi-currency-usd"></i></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Configured Fees -->
                     <div class="row">
                         <div class="col-12">
@@ -61,36 +116,40 @@
                                             <thead>
                                                 <tr>
                                                     <th>Description</th>
-                                                    <th class="text-right">Amount</th>
-                                                    <th>Action</th>
+                                                    <th class="text-right" style="width:180px;">Amount</th>
+                                                    <th style="width:220px;">Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <?php foreach ($fees as $fee): ?>
                                                     <tr>
-                                                        <td data-label="Description" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars((string)$fee->Description, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Description" style="font-weight:600;color:var(--up-ink);">
+                                                            <span class="fee-desc-wrap"><span class="fee-icon"><i class="mdi mdi-cash"></i></span><?= htmlspecialchars((string)$fee->Description, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        </td>
                                                         <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-blue);">₱ <?= number_format((float)$fee->Amount, 2); ?></td>
                                                         <td data-label="Action" class="up-rt-actions">
-                                                            <button type="button"
-                                                                class="up-btn up-btn-ghost edit-fee-btn"
-                                                                style="padding:8px 14px;font-size:.8rem;"
-                                                                data-feesid="<?= (int)$fee->feesid; ?>"
-                                                                data-description="<?= htmlspecialchars((string)$fee->Description, ENT_QUOTES, 'UTF-8'); ?>"
-                                                                data-amount="<?= htmlspecialchars((string)$fee->Amount, ENT_QUOTES, 'UTF-8'); ?>">
-                                                                <i class="mdi mdi-pencil"></i> Edit
-                                                            </button>
-                                                            <form method="post"
-                                                                action="<?= base_url('Accounting/course_setUp'); ?>"
-                                                                class="delete-fee-form mb-0"
-                                                                data-ui-confirm="Assessments already computed with this fee are not recalculated."
-                                                                data-ui-confirm-title="Delete this fee item?"
-                                                                data-ui-confirm-ok="Delete fee">
-                                                                <input type="hidden" name="action" value="delete">
-                                                                <input type="hidden" name="feesid" value="<?= (int)$fee->feesid; ?>">
-                                                                <button type="submit" class="up-btn up-btn-danger" style="padding:8px 14px;font-size:.8rem;">
-                                                                    <i class="mdi mdi-delete"></i> Delete
+                                                            <div class="action-wrap">
+                                                                <button type="button"
+                                                                    class="up-btn up-btn-ghost edit-fee-btn"
+                                                                    style="padding:8px 14px;font-size:.8rem;"
+                                                                    data-feesid="<?= (int)$fee->feesid; ?>"
+                                                                    data-description="<?= htmlspecialchars((string)$fee->Description, ENT_QUOTES, 'UTF-8'); ?>"
+                                                                    data-amount="<?= htmlspecialchars((string)$fee->Amount, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                    <i class="mdi mdi-pencil"></i> Edit
                                                                 </button>
-                                                            </form>
+                                                                <form method="post"
+                                                                    action="<?= base_url('Accounting/course_setUp'); ?>"
+                                                                    class="delete-fee-form d-inline"
+                                                                    data-ui-confirm="Assessments already computed with this fee are not recalculated."
+                                                                    data-ui-confirm-title="Delete this fee item?"
+                                                                    data-ui-confirm-ok="Delete fee">
+                                                                    <input type="hidden" name="action" value="delete">
+                                                                    <input type="hidden" name="feesid" value="<?= (int)$fee->feesid; ?>">
+                                                                    <button type="submit" class="up-btn up-btn-danger" style="padding:8px 14px;font-size:.8rem;">
+                                                                        <i class="mdi mdi-delete"></i> Delete
+                                                                    </button>
+                                                                </form>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 <?php endforeach; ?>
@@ -194,6 +253,7 @@
                 // DataTable
                 $('#feesTable').DataTable({
                     pageLength: 10,
+                    autoWidth: false,
                     order: [
                         [0, 'asc']
                     ]

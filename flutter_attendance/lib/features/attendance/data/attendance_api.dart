@@ -309,7 +309,43 @@ class AttendanceApi {
 
   // ─── Activity management (staff) ────────────────────────────────────────
 
+  /// Program choices for the activity form — same `course_table`
+  /// CourseDescription list the web create page shows.
+  Future<List<String>> activityPrograms({
+    required String baseUrl,
+    required String token,
+  }) async {
+    final url = '${_normalize(baseUrl)}/api/mobile/activities/programs';
+    final response = await _client.get(Uri.parse(url), headers: _headers(token));
+    final data = _decode(response);
+    if (data['ok'] == true) {
+      return (data['programs'] as List? ?? []).map((e) => e.toString()).toList();
+    }
+    throw ApiException((data['message'] ?? 'Failed to load programs').toString());
+  }
+
+  /// Majors for a program — mirrors web `activities/majors?program=…`.
+  Future<List<String>> activityMajors({
+    required String baseUrl,
+    required String token,
+    required String program,
+  }) async {
+    final url =
+        '${_normalize(baseUrl)}/api/mobile/activities/majors?program=${Uri.encodeComponent(program)}';
+    final response = await _client.get(Uri.parse(url), headers: _headers(token));
+    final data = _decode(response);
+    if (data['ok'] == true) {
+      return (data['majors'] as List? ?? []).map((e) => e.toString()).toList();
+    }
+    throw ApiException((data['message'] ?? 'Failed to load majors').toString());
+  }
+
   /// Create a new activity. Staff only.
+  ///
+  /// [sessions] carries the am/pm/eve windows exactly like the web form —
+  /// the server stores them in meta.sessions and derives start/end from
+  /// earliest-in / latest-out. When [sessions] is empty, [startTime]/[endTime]
+  /// are used directly (all-day style, same as web with no windows filled).
   Future<({bool ok, String message, Activity? activity})> createActivity({
     required String baseUrl,
     required String token,
@@ -323,6 +359,7 @@ class AttendanceApi {
     ActivityStatus status = ActivityStatus.open,
     bool autoClose = true,
     int graceMinutes = 15,
+    ActivitySessions sessions = ActivitySessions.empty,
   }) async {
     final url = '${_normalize(baseUrl)}/api/mobile/activities/create';
     final idemKey = _uuid.v4();
@@ -341,6 +378,7 @@ class AttendanceApi {
           'status': status.value,
           'auto_close': autoClose,
           'grace_minutes': graceMinutes,
+          if (sessions.isNotEmpty) 'sessions': sessions.toJson(),
         }),
       );
       final data = _decode(response);

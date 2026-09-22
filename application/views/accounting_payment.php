@@ -28,7 +28,7 @@
                             <hr class="up-divider" />
                         </div>
                         <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
+                            <a href="<?= base_url($this->session->userdata('level') === 'Cashier' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
                             <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#paymentModal">
@@ -63,12 +63,22 @@
                                 <div class="up-card-head" style="flex-wrap:wrap;gap:8px;">
                                     <h4><i class="mdi mdi-cash-multiple"></i> Recent Student Payments</h4>
                                     <div class="d-flex align-items-center" style="gap:8px;">
-                                        <select id="termFilter" class="form-control form-control-sm" style="max-width:220px;" title="Filter by term">
-                                            <option value="">All terms</option>
-                                            <?php foreach (($term_options ?? []) as $t): ?>
-                                                <?php $termLabel = trim((string)$t->Semester . ' ' . (string)$t->SY); ?>
-                                                <option value="<?= htmlspecialchars($termLabel, ENT_QUOTES, 'UTF-8'); ?>"><?= htmlspecialchars($termLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                        <select id="dateFilter" class="form-control form-control-sm" style="max-width:220px;" title="Payments on">
+                                            <option value="all" <?= ($date_filter ?? '') === 'all' ? 'selected' : ''; ?>>All dates</option>
+                                            <?php
+                                            $todayVal = (string)($today ?? '');
+                                            $selectedDate = (string)($date_filter ?? '');
+                                            $hasToday = false;
+                                            foreach (($payment_dates ?? []) as $d):
+                                                $dateVal = (string)($d->PDate ?? '');
+                                                if ($dateVal === $todayVal) $hasToday = true;
+                                                $label = date('M d, Y', strtotime($dateVal)) . ($dateVal === $todayVal ? ' (Today)' : '');
+                                            ?>
+                                                <option value="<?= htmlspecialchars($dateVal, ENT_QUOTES, 'UTF-8'); ?>" <?= $dateVal === $selectedDate ? 'selected' : ''; ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?></option>
                                             <?php endforeach; ?>
+                                            <?php if (!$hasToday): ?>
+                                                <option value="<?= htmlspecialchars($todayVal, ENT_QUOTES, 'UTF-8'); ?>" <?= $todayVal === $selectedDate ? 'selected' : ''; ?>><?= htmlspecialchars(date('M d, Y', strtotime($todayVal)), ENT_QUOTES, 'UTF-8'); ?> (Today)</option>
+                                            <?php endif; ?>
                                         </select>
                                         <span class="badge badge-purple"><?= count($recent_payments); ?> entries</span>
                                     </div>
@@ -78,11 +88,10 @@
                                         <table id="recentPaymentsTable" class="table table-bordered table-sm up-rt ms-rt-keep" style="width:100%">
                                             <thead>
                                                 <tr>
-                                                    <th>Date</th>
+                                                    <th>Date &amp; Time</th>
                                                     <th>O.R.</th>
                                                     <th>Student</th>
                                                     <th>Description</th>
-                                                    <th>Sem/SY</th>
                                                     <th class="text-right" style="white-space:nowrap;">Amount</th>
                                                     <th>Actions</th>
                                                 </tr>
@@ -95,13 +104,16 @@
                                                     $studentName .= trim((string)(($row->FirstName ?? '') . ' ' . ($row->MiddleName ?? '')));
                                                     if (trim($studentName) === '') $studentName = (string)($row->StudentNumber ?? '');
                                                     $rowId = (int)($row->ID ?? 0);
+                                                    $pDate = (string)($row->PDate ?? '');
+                                                    $pTime = (string)($row->pTime ?? '');
+                                                    $dateTimeLabel = $pDate !== '' ? date('M d, Y', strtotime($pDate)) : '';
+                                                    if ($pTime !== '') $dateTimeLabel .= ' ' . date('h:i A', strtotime($pTime));
                                                     ?>
                                                     <tr>
-                                                        <td data-label="Date" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Date & Time" style="color:var(--up-muted);white-space:nowrap;"><?= htmlspecialchars($dateTimeLabel, ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="O.R." style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:var(--up-blue);"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Student" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Description" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td data-label="Sem/SY" style="color:var(--up-muted);"><?= htmlspecialchars(trim((string)($row->Sem ?? '') . ' ' . (string)($row->SY ?? '')), ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-ink);white-space:nowrap;">₱ <?= number_format((float)($row->Amount ?? 0), 2); ?></td>
                                                         <td data-label="Actions" class="up-rt-actions">
                                                             <div class="action-wrap">
@@ -177,13 +189,6 @@
                     <div class="modal-body">
                         <input type="hidden" name="payment_submit_token" value="<?= htmlspecialchars((string)($payment_submit_token ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
 
-                        <div class="alert alert-info py-2 px-3 mb-3" style="font-size:.82rem;">
-                            <i class="mdi mdi-calendar-check"></i>
-                            Recorded under the active term:
-                            <b><?= htmlspecialchars(trim((string)$semester . ' ' . (string)$sy), ENT_QUOTES, 'UTF-8'); ?></b>
-                            <span id="studentTermHint" class="d-block mt-1" style="display:none;"></span>
-                        </div>
-
                         <!-- keep description for controller, but hidden -->
                         <input type="hidden" name="description" id="descriptionHidden" value="">
 
@@ -218,6 +223,7 @@
                                     </option>
                                 <?php endforeach; ?>
                             </select>
+                            <span id="studentTermHint" class="form-text text-muted" style="display:none;"></span>
                         </div>
 
                         <div class="form-row">
@@ -225,14 +231,9 @@
                                 <label for="orNumber">O.R. Number</label>
                                 <input type="text" class="form-control" id="orNumber" name="ORNumber"
                                     value="<?= htmlspecialchars((string)$next_or_number, ENT_QUOTES, 'UTF-8'); ?>"
-                                    placeholder="2026-0001"
-                                    pattern="\d{4}-\d{4,}"
-                                    inputmode="numeric"
-                                    autocomplete="off"
-                                    spellcheck="false"
-                                    aria-describedby="orNumberStatus">
+                                    readonly>
                                 <small id="orNumberStatus" class="form-text text-muted">
-                                    Format: YYYY-0001. Default uses the payment date year.
+                                    Auto-generated from the payment date. Not editable.
                                 </small>
                             </div>
                             <div class="form-group col-md-6">
@@ -251,7 +252,15 @@
 
                         <div class="form-group">
                             <label for="amount">Amount</label>
-                            <input type="number" class="form-control" id="amount" name="Amount" min="0" step="0.01" required>
+                            <input type="number" class="form-control" id="amount" name="Amount" min="0" step="0.01" readonly required>
+                            <small class="form-text text-muted" id="amountHint">Set by the selected Description's configured fee.</small>
+                        </div>
+
+                        <div class="form-group custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" id="partialPayment" name="IsPartial" value="1">
+                            <label class="custom-control-label" for="partialPayment">
+                                Partial payment — student is paying less than the full fee amount
+                            </label>
                         </div>
 
                         <div class="alert alert-warning mt-2 mb-0" id="feeWarning" style="display:none;">
@@ -301,7 +310,8 @@
                         <div class="form-row">
                             <div class="form-group col-md-6">
                                 <label for="editOrNumber">O.R. Number</label>
-                                <input type="text" class="form-control" id="editOrNumber" name="ORNumber" required>
+                                <input type="text" class="form-control" id="editOrNumber" name="ORNumber" readonly>
+                                <small class="form-text text-muted">Not editable — kept as originally issued.</small>
                             </div>
                             <div class="form-group col-md-6">
                                 <label for="editPaymentDate">Payment Date</label>
@@ -316,9 +326,17 @@
                             </select>
                         </div>
 
-                        <div class="form-group mb-0">
+                        <div class="form-group">
                             <label for="editAmount">Amount</label>
-                            <input type="number" class="form-control" id="editAmount" name="Amount" min="0" step="0.01" required>
+                            <input type="number" class="form-control" id="editAmount" name="Amount" min="0" step="0.01" readonly required>
+                            <small class="form-text text-muted" id="editAmountHint">Set by the selected Description's configured fee.</small>
+                        </div>
+
+                        <div class="form-group mb-0 custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" id="editPartialPayment" name="IsPartial" value="1">
+                            <label class="custom-control-label" for="editPartialPayment">
+                                Partial payment — student is paying less than the full fee amount
+                            </label>
                         </div>
 
                         <div class="alert alert-warning mt-2 mb-0" id="editFeeWarning" style="display:none;">
@@ -346,12 +364,8 @@
             var defaultPaymentDate = <?= json_encode((string)$default_payment_date); ?>;
             var restoredPaymentForm = <?= json_encode($paymentFormOld); ?>;
             var autoOpenPaymentModal = <?= $openPaymentModal ? 'true' : 'false'; ?>;
-            var defaultOrHelp = 'Format: YYYY-0001. Default uses the payment date year.';
-            var lastSuggestedOrNumber = defaultOrNumber;
             var useRestoredPaymentState = autoOpenPaymentModal;
-            var orNumberEditedManually = false;
-            var orCheckTimer = null;
-            var orCheckRequest = null;
+            var orRefreshRequest = null;
             var paymentFormSubmitting = false;
             var paymentSubmitDefaultHtml = '';
 
@@ -437,7 +451,7 @@
                 $submitBtn.prop('disabled', false).html(paymentSubmitDefaultHtml);
             }
 
-            function applyDescriptionSelection($select, $hidden, $amount, $warn) {
+            function applyDescriptionSelection($select, $hidden, $amount, $warn, $partialCheckbox) {
                 var val = ($select.val() || '').trim();
                 var $opt = $select.find('option:selected');
                 var amt = $opt.attr('data-amount') || '';
@@ -449,9 +463,31 @@
                     $hidden.val('');
                 }
 
+                // Changing the fee resets any partial amount already typed —
+                // the old partial amount belonged to a different fee.
+                if ($partialCheckbox && $partialCheckbox.prop('checked')) {
+                    $partialCheckbox.prop('checked', false).trigger('change');
+                }
+
                 if (amt !== '') {
+                    $amount.data('full-amount', amt);
                     $amount.val(Number(amt).toFixed(2));
                 }
+            }
+
+            function bindPartialToggle($checkbox, $amount, $hint) {
+                $checkbox.on('change', function() {
+                    var full = parseFloat($amount.data('full-amount'));
+                    if (isNaN(full)) full = 0;
+
+                    if (this.checked) {
+                        $amount.prop('readonly', false).attr('max', full || null).focus();
+                        $hint.text('Enter the amount actually being paid now (less than ₱' + full.toFixed(2) + ').');
+                    } else {
+                        $amount.prop('readonly', true).removeAttr('max').val(full.toFixed(2));
+                        $hint.text("Set by the selected Description's configured fee.");
+                    }
+                });
             }
 
             function validateDesc($hidden, $warn) {
@@ -490,137 +526,22 @@
                 $select.val(normalized).trigger('change');
             }
 
-            function setOrNumberStatus(state, message) {
-                var $input = $('#orNumber');
-                var $status = $('#orNumberStatus');
-
-                $input.removeClass('is-invalid is-valid');
-                $status.removeClass('text-danger text-success text-muted');
-
-                if (state === 'error') {
-                    $input.addClass('is-invalid');
-                    $status.addClass('text-danger').text(message || 'Invalid O.R. number.');
-                    return;
-                }
-
-                if (state === 'success') {
-                    $input.addClass('is-valid');
-                    $status.addClass('text-success').text(message || 'O.R. number is available.');
-                    return;
-                }
-
-                $status.addClass('text-muted').text(message || defaultOrHelp);
-            }
-
-            function applySuggestedOrNumber(orNumber) {
-                if (!orNumber) {
-                    return;
-                }
-
-                $('#orNumber').val(orNumber);
-                lastSuggestedOrNumber = orNumber;
-                orNumberEditedManually = false;
-            }
-
-            function shouldCheckOrNumber(orNumber) {
-                return orNumber === '' || /^\d+$/.test(orNumber) || /^\d{4}-\d+$/.test(orNumber);
-            }
-
-            function fetchOrNumberStatus(orNumber, paymentDate) {
-                if (orCheckRequest && orCheckRequest.readyState !== 4) {
-                    orCheckRequest.abort();
-                }
-
-                orCheckRequest = $.ajax({
-                    url: baseUrl + 'Accounting/ajaxOrNumberStatus',
-                    dataType: 'json',
-                    data: {
-                        or_number: orNumber,
-                        payment_date: paymentDate
-                    }
-                });
-
-                return orCheckRequest;
-            }
-
-            function validateOrNumber(options) {
-                var deferred = $.Deferred();
-                var settings = options || {};
-                var normalizeField = settings.normalizeField !== false;
-                var orNumber = $.trim($('#orNumber').val() || '');
-                var paymentDate = $.trim($('#paymentDate').val() || '');
-
-                if (orNumber !== '' && !shouldCheckOrNumber(orNumber)) {
-                    setOrNumberStatus('error', 'Use the O.R. number format YYYY-0001.');
-                    deferred.resolve(false);
-                    return deferred.promise();
-                }
-
-                fetchOrNumberStatus(orNumber, paymentDate)
-                    .done(function(resp) {
-                        resp = resp || {};
-
-                        if (normalizeField && resp.normalized_new && resp.normalized) {
-                            $('#orNumber').val(resp.normalized);
-                            orNumber = resp.normalized;
-                        }
-
-                        if (!orNumber && resp.suggested) {
-                            applySuggestedOrNumber(resp.suggested);
-                            setOrNumberStatus('neutral', resp.message || defaultOrHelp);
-                            deferred.resolve(true);
-                            return;
-                        }
-
-                        if (resp.valid_format === false) {
-                            setOrNumberStatus('error', resp.message || 'Use the O.R. number format YYYY-0001.');
-                            deferred.resolve(false);
-                            return;
-                        }
-
-                        if (resp.available === false) {
-                            setOrNumberStatus('error', resp.message || 'O.R. number already exists.');
-                            deferred.resolve(false);
-                            return;
-                        }
-
-                        if (resp.suggested) {
-                            lastSuggestedOrNumber = resp.suggested;
-                        }
-
-                        var successMessage = resp.message || 'O.R. number is available.';
-                        if (resp.normalized_new && resp.normalized) {
-                            successMessage = 'Will be saved as ' + resp.normalized + '. ' + successMessage;
-                        }
-
-                        setOrNumberStatus('success', successMessage);
-                        deferred.resolve(true);
-                    })
-                    .fail(function(xhr, textStatus) {
-                        if (textStatus !== 'abort') {
-                            setOrNumberStatus('neutral', defaultOrHelp);
-                        }
-                        deferred.resolve(false);
-                    });
-
-                return deferred.promise();
-            }
-
+            // The O.R. field is read-only — this just refreshes the preview
+            // shown to the cashier when they change the payment date.
             function refreshSuggestedOrNumber() {
                 var paymentDate = $.trim($('#paymentDate').val() || '');
 
-                fetchOrNumberStatus('', paymentDate)
-                    .done(function(resp) {
-                        if (resp && resp.suggested) {
-                            applySuggestedOrNumber(resp.suggested);
-                            setOrNumberStatus('neutral', resp.message || defaultOrHelp);
-                        }
-                    })
-                    .fail(function(xhr, textStatus) {
-                        if (textStatus !== 'abort') {
-                            setOrNumberStatus('neutral', defaultOrHelp);
-                        }
-                    });
+                if (orRefreshRequest && orRefreshRequest.readyState !== 4) {
+                    orRefreshRequest.abort();
+                }
+
+                orRefreshRequest = $.getJSON(baseUrl + 'Accounting/ajaxOrNumberStatus', {
+                    payment_date: paymentDate
+                }).done(function(resp) {
+                    if (resp && resp.suggested) {
+                        $('#orNumber').val(resp.suggested);
+                    }
+                });
             }
 
             function resetPaymentForm() {
@@ -630,7 +551,9 @@
 
                 $('#orNumber').val(defaultOrNumber);
                 $('#paymentDate').val(defaultPaymentDate);
-                $('#amount').val('');
+                $('#amount').val('').prop('readonly', true).removeAttr('max').removeData('full-amount');
+                $('#partialPayment').prop('checked', false);
+                $('#amountHint').text("Set by the selected Description's configured fee.");
                 $('#descriptionHidden').val('');
                 $('#feeWarning').hide();
 
@@ -642,29 +565,16 @@
                     setSelectValue($('#descriptionField'), '');
                 }
 
-                if (orCheckTimer) {
-                    window.clearTimeout(orCheckTimer);
-                    orCheckTimer = null;
-                }
-
-                if (orCheckRequest && orCheckRequest.readyState !== 4) {
-                    orCheckRequest.abort();
-                }
-
                 paymentFormSubmitting = false;
                 setPaymentSubmitState(false);
-                lastSuggestedOrNumber = defaultOrNumber;
-                orNumberEditedManually = false;
-                setOrNumberStatus('neutral', defaultOrHelp);
             }
 
             function restorePaymentForm() {
                 var state = restoredPaymentForm || {};
-                var restoredOrNumber = $.trim(state.ORNumber || '') || defaultOrNumber;
                 var restoredPaymentDate = $.trim(state.PDate || '') || defaultPaymentDate;
 
                 $('#paymentDate').val(restoredPaymentDate);
-                $('#orNumber').val(restoredOrNumber);
+                $('#orNumber').val(defaultOrNumber);
                 $('#amount').val($.trim(state.Amount || ''));
                 $('#descriptionHidden').val($.trim(state.description || ''));
                 $('#feeWarning').hide();
@@ -681,17 +591,12 @@
 
                 paymentFormSubmitting = false;
                 setPaymentSubmitState(false);
-                lastSuggestedOrNumber = defaultOrNumber;
-                orNumberEditedManually = restoredOrNumber !== '' && restoredOrNumber !== defaultOrNumber;
-                setOrNumberStatus('neutral', defaultOrHelp);
-                validateOrNumber({
-                    normalizeField: true
-                });
+                refreshSuggestedOrNumber();
             }
 
             $(function() {
                 // DataTable
-                var dt = $('#recentPaymentsTable').DataTable({
+                $('#recentPaymentsTable').DataTable({
                     pageLength: 10,
                     order: [
                         [0, 'desc']
@@ -701,13 +606,10 @@
                     }
                 });
 
-                // Term filter — exact-match on the Sem/SY column (index 4)
-                $('#termFilter').on('change', function() {
-                    var v = this.value;
-                    dt.column(4).search(
-                        v === '' ? '' : '^' + $.fn.dataTable.util.escapeRegex(v) + '$',
-                        true, false
-                    ).draw();
+                // Date filter — the list is scoped server-side (default: today),
+                // so changing it just reloads with the chosen date.
+                $('#dateFilter').on('change', function() {
+                    window.location = baseUrl + 'Accounting/Payment?date=' + encodeURIComponent(this.value);
                 });
 
                 // tooltips first run
@@ -753,57 +655,16 @@
                 });
 
                 $(document).on('change', '#descriptionField', function() {
-                    applyDescriptionSelection($('#descriptionField'), $('#descriptionHidden'), $('#amount'), $('#feeWarning'));
+                    applyDescriptionSelection($('#descriptionField'), $('#descriptionHidden'), $('#amount'), $('#feeWarning'), $('#partialPayment'));
                 });
 
-                $('#orNumber').on('input', function() {
-                    var value = $.trim($(this).val() || '');
-                    orNumberEditedManually = value !== '' && value !== lastSuggestedOrNumber;
-
-                    if (orCheckTimer) {
-                        window.clearTimeout(orCheckTimer);
-                        orCheckTimer = null;
-                    }
-
-                    if (value === '') {
-                        setOrNumberStatus('neutral', defaultOrHelp);
-                        return;
-                    }
-
-                    if (!shouldCheckOrNumber(value)) {
-                        setOrNumberStatus('neutral', 'Use the O.R. number format YYYY-0001.');
-                        return;
-                    }
-
-                    orCheckTimer = window.setTimeout(function() {
-                        validateOrNumber({
-                            normalizeField: false
-                        });
-                    }, 350);
-                });
-
-                $('#orNumber').on('blur', function() {
-                    validateOrNumber({
-                        normalizeField: true
-                    });
-                });
+                bindPartialToggle($('#partialPayment'), $('#amount'), $('#amountHint'));
 
                 $('#paymentDate').on('change', function() {
-                    var currentOrNumber = $.trim($('#orNumber').val() || '');
-
-                    if (!currentOrNumber || !orNumberEditedManually || currentOrNumber === lastSuggestedOrNumber) {
-                        refreshSuggestedOrNumber();
-                        return;
-                    }
-
-                    validateOrNumber({
-                        normalizeField: true
-                    });
+                    refreshSuggestedOrNumber();
                 });
 
                 $('#paymentForm').on('submit', function(e) {
-                    var $form = $(this);
-
                     if (paymentFormSubmitting) {
                         e.preventDefault();
                         return;
@@ -814,20 +675,8 @@
                         return;
                     }
 
-                    e.preventDefault();
                     paymentFormSubmitting = true;
                     setPaymentSubmitState(true);
-                    validateOrNumber({
-                        normalizeField: true
-                    }).done(function(isValid) {
-                        if (!isValid) {
-                            paymentFormSubmitting = false;
-                            setPaymentSubmitState(false);
-                            return;
-                        }
-
-                        $form[0].submit();
-                    });
                 });
 
                 // EDIT open
@@ -870,14 +719,30 @@
 
                         loadFeesToBothSelects().then(function() {
                             $('#editStudentSelect').val(studentNo).trigger('change');
+                            // Selecting the description resets Amount to the fee's
+                            // full price and unchecks Partial — restore what was
+                            // actually paid afterwards, and flag it as partial if
+                            // it's less than the full fee.
                             $('#editDescriptionField').val(desc).trigger('change');
                             $('#editDescriptionHidden').val(desc);
+
+                            var storedAmount = parseFloat(amount);
+                            var fullAmount = parseFloat($('#editAmount').data('full-amount'));
+                            if (!isNaN(storedAmount)) {
+                                if (!isNaN(fullAmount) && storedAmount < fullAmount - 0.004) {
+                                    $('#editPartialPayment').prop('checked', true).trigger('change');
+                                }
+                                $('#editAmount').val(storedAmount.toFixed(2));
+                            }
                         });
                     });
                 });
 
                 $('#editPaymentModal').on('hidden.bs.modal', function() {
                     $('#editPaymentForm')[0].reset();
+                    $('#editAmount').prop('readonly', true).removeAttr('max').removeData('full-amount');
+                    $('#editPartialPayment').prop('checked', false);
+                    $('#editAmountHint').text("Set by the selected Description's configured fee.");
                     if ($.fn.select2) {
                         try {
                             $('#editStudentSelect').select2('destroy');
@@ -891,8 +756,10 @@
                 });
 
                 $(document).on('change', '#editDescriptionField', function() {
-                    applyDescriptionSelection($('#editDescriptionField'), $('#editDescriptionHidden'), $('#editAmount'), $('#editFeeWarning'));
+                    applyDescriptionSelection($('#editDescriptionField'), $('#editDescriptionHidden'), $('#editAmount'), $('#editFeeWarning'), $('#editPartialPayment'));
                 });
+
+                bindPartialToggle($('#editPartialPayment'), $('#editAmount'), $('#editAmountHint'));
 
                 $('#editPaymentForm').on('submit', function(e) {
                     if (!validateDesc($('#editDescriptionHidden'), $('#editFeeWarning'))) e.preventDefault();

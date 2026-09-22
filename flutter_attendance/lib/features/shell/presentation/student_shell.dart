@@ -1,23 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_icons.dart';
 import '../../../core/widgets/app_drawer.dart';
-import '../../activities/presentation/activities_screen.dart';
 import '../../activities/presentation/dashboard_screen.dart';
-import '../../attendance/presentation/my_logs_screen.dart';
 import '../../auth/domain/app_session.dart';
 import '../../auth/presentation/auth_controller.dart';
-import '../../misc/presentation/announcements_screen.dart';
-import '../../misc/presentation/notes_screen.dart';
-import '../../misc/presentation/todos_screen.dart';
+import '../../misc/presentation/personnel_screen.dart';
 import '../../student/presentation/finance_screen.dart';
 import '../../student/presentation/my_qr_screen.dart';
 import '../../student/presentation/profile_screen.dart';
 
-/// Student shell: Dashboard + Activities + My QR in the bottom nav.
-/// A consistent drawer sidebar is available on every page with all
-/// secondary features (My Logs, Finance, Announcements, Notes, To-Do,
-/// Profile, Change Password, Change Avatar, Sign out).
+/// Student shell: Dashboard + My QR in the bottom nav, matching the web
+/// student sidebar (Dashboard, My Profile, My Payment Records, My QR Code,
+/// FBMSO Officials). Announcements appear on the dashboard itself, as on web.
 class StudentShell extends StatefulWidget {
   const StudentShell({
     super.key,
@@ -50,21 +44,21 @@ class _StudentShellState extends State<StudentShell> {
 
   List<DrawerItem> get _drawerItems => [
         DrawerItem(
-          icon: Icons.history_rounded,
-          title: 'My Logs',
-          subtitle: 'Attendance check-in/out history',
+          icon: Icons.badge_outlined,
+          title: 'My Profile',
+          subtitle: 'Personal and academic details',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
               MaterialPageRoute(
-                builder: (_) => MyLogsScreen(session: widget.session),
+                builder: (_) => ProfileScreen(session: widget.session),
               ),
             );
           },
         ),
         DrawerItem(
           icon: Icons.account_balance_wallet_outlined,
-          title: 'Finance',
+          title: 'My Payment Records',
           subtitle: 'Payment records & accounting',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
@@ -76,54 +70,14 @@ class _StudentShellState extends State<StudentShell> {
           },
         ),
         DrawerItem(
-          icon: Icons.campaign_outlined,
-          title: 'Announcements',
-          subtitle: 'School-wide notices',
+          icon: Icons.groups_outlined,
+          title: 'FBMSO Officials',
+          subtitle: 'Organization officers & staff',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
               MaterialPageRoute(
-                builder: (_) =>
-                    AnnouncementsScreen(session: widget.session),
-              ),
-            );
-          },
-        ),
-        DrawerItem(
-          icon: Icons.sticky_note_2_outlined,
-          title: 'Notes',
-          subtitle: 'Your personal notes',
-          onTap: (ctx) {
-            Navigator.of(ctx).pop();
-            Navigator.of(ctx).push(
-              MaterialPageRoute(
-                builder: (_) => NotesScreen(session: widget.session),
-              ),
-            );
-          },
-        ),
-        DrawerItem(
-          icon: Icons.check_circle_outline,
-          title: 'To-Do',
-          subtitle: 'Tasks and reminders',
-          onTap: (ctx) {
-            Navigator.of(ctx).pop();
-            Navigator.of(ctx).push(
-              MaterialPageRoute(
-                builder: (_) => TodosScreen(session: widget.session),
-              ),
-            );
-          },
-        ),
-        DrawerItem(
-          icon: Icons.badge_outlined,
-          title: 'My Profile',
-          subtitle: 'Personal and academic details',
-          onTap: (ctx) {
-            Navigator.of(ctx).pop();
-            Navigator.of(ctx).push(
-              MaterialPageRoute(
-                builder: (_) => ProfileScreen(session: widget.session),
+                builder: (_) => PersonnelScreen(session: widget.session),
               ),
             );
           },
@@ -148,10 +102,6 @@ class _StudentShellState extends State<StudentShell> {
               session: session,
               menuButton: menu,
             ),
-            ActivitiesScreen(
-              session: session,
-              menuButton: menu,
-            ),
             MyQrScreen(
               session: session,
               menuButton: menu,
@@ -167,11 +117,6 @@ class _StudentShellState extends State<StudentShell> {
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard),
             label: 'Dashboard',
-          ),
-          NavigationDestination(
-            icon: Icon(AppIcons.home_outlined),
-            selectedIcon: Icon(AppIcons.home_rounded),
-            label: 'Activities',
           ),
           NavigationDestination(
             icon: Icon(Icons.qr_code_2_outlined),

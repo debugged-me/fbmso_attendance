@@ -27,7 +27,6 @@ class MobileStudent extends MobileApi
         $this->load->helper('url');
         $this->load->model('Student_qr_model', 'StudentQR');
         $this->load->model('StudentModel');
-		$this->load->library('term');
     }
 
     // ─── Profile ───────────────────────────────────────────────────────────
@@ -236,103 +235,6 @@ class MobileStudent extends MobileApi
         return $this->json(json_decode($body, true), 200);
     }
 
-    // ─── Grades ────────────────────────────────────────────────────────────
-
-    /** All grades for the student, newest SY/Sem first. */
-    public function grades()
-    {
-        if ($this->input->method(true) !== 'GET') {
-            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
-        }
-        $tokenRow = $this->require_token();
-        if ($tokenRow === null) return;
-
-        $username = (string)$tokenRow['username'];
-        $rows = $this->StudentModel->get_grades($username);
-
-        $out = [];
-        foreach ($rows as $r) {
-            $out[] = [
-                'subject_code' => (string)($r->SubjectCode ?? ''),
-                'description'  => (string)($r->Description ?? ''),
-                'course'       => (string)($r->Course ?? ''),
-                'major'        => (string)($r->Major ?? ''),
-                'year_level'   => (string)($r->YearLevel ?? ''),
-                'section'      => (string)($r->Section ?? ''),
-                'lec_unit'     => (string)($r->LecUnit ?? ''),
-                'lab_unit'     => (string)($r->LabUnit ?? ''),
-                'prelim'       => $this->num($r->Prelim ?? null),
-                'midterm'      => $this->num($r->Midterm ?? null),
-                'pre_final'    => $this->num($r->PreFinal ?? null),
-                'final'        => $this->num($r->Final ?? null),
-                'average'      => $this->num($r->Average ?? null),
-                'sy'           => (string)($r->SY ?? ''),
-                'semester'     => (string)($r->Semester ?? ''),
-            ];
-        }
-
-        return $this->json(['ok' => true, 'grades' => $out]);
-    }
-
-    // ─── Enrolled subjects (COR) ───────────────────────────────────────────
-
-    /** Currently enrolled subjects for the active SY/Sem (the COR data). */
-    public function enrolled_subjects()
-    {
-        if ($this->input->method(true) !== 'GET') {
-            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
-        }
-        $tokenRow = $this->require_token();
-        if ($tokenRow === null) return;
-
-        $username = (string)$tokenRow['username'];
-		// COR is a current-term screen. Historical grades remain available from
-		// the grades endpoint, but callers cannot override the active enrolment
-		// term with query parameters.
-		list($sem, $sy) = $this->term->current();
-
-        $this->db->select('r.SubjectCode, r.Description, r.LecUnit, r.LabUnit, r.Section, r.SchedTime, r.Room, r.Instructor, r.Course, r.YearLevel, r.Major, r.Sem, r.SY, r.totalUnits, r.schedType');
-        $this->db->from('registration r');
-        $this->db->where('r.StudentNumber', $username);
-        if ($sy !== '')  $this->db->where('r.SY', $sy);
-        if ($sem !== '') $this->db->where('r.Sem', $sem);
-        $rows = $this->db->get()->result();
-
-        $out = [];
-        $totalUnits = 0.0;
-        foreach ($rows as $r) {
-            $lec = (float)($r->LecUnit ?? 0);
-            $lab = (float)($r->LabUnit ?? 0);
-            $units = $lec + $lab;
-            $totalUnits += $units;
-            $out[] = [
-                'subject_code' => (string)($r->SubjectCode ?? ''),
-                'description'  => (string)($r->Description ?? ''),
-                'lec_unit'     => (string)($r->LecUnit ?? ''),
-                'lab_unit'     => (string)($r->LabUnit ?? ''),
-                'units'        => $units,
-                'section'      => (string)($r->Section ?? ''),
-                'schedule'     => (string)($r->SchedTime ?? ''),
-                'room'         => (string)($r->Room ?? ''),
-                'instructor'   => (string)($r->Instructor ?? ''),
-                'course'       => (string)($r->Course ?? ''),
-                'year_level'   => (string)($r->YearLevel ?? ''),
-                'major'        => (string)($r->Major ?? ''),
-                'sem'          => (string)($r->Sem ?? ''),
-                'sy'           => (string)($r->SY ?? ''),
-                'sched_type'   => (string)($r->schedType ?? ''),
-            ];
-        }
-
-        return $this->json([
-            'ok' => true,
-            'sy' => $sy,
-            'sem' => $sem,
-            'total_units' => $totalUnits,
-            'subjects' => $out,
-        ]);
-    }
-
     // ─── Helpers ───────────────────────────────────────────────────────────
 
     /** Resolve a student profile across the three possible tables. */
@@ -480,11 +382,5 @@ class MobileStudent extends MobileApi
         $scheme  = $xfProto ?: ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http');
         $host    = $xfHost  ?: ($_SERVER['HTTP_HOST'] ?? parse_url(base_url(), PHP_URL_HOST) ?? '');
         return rtrim($scheme . '://' . $host, '/');
-    }
-
-    private function num($v): ?float
-    {
-        if ($v === null || $v === '') return null;
-        return (float)$v;
     }
 }

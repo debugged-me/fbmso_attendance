@@ -4,8 +4,10 @@ import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
+import '../../auth/domain/staff_permissions.dart';
 import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
+import '../../attendance/presentation/activity_form_screen.dart';
 import '../../attendance/presentation/activity_state_style.dart';
 import 'activity_detail_sheet.dart';
 
@@ -69,15 +71,35 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
     showActivityDetailSheet(context, activity, widget.session);
   }
 
+  /// Web parity: the activities page has a "Create Activity" button for
+  /// roles allowed to manage activities (see StaffPermissions).
+  Future<void> _createActivity() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ActivityFormScreen(session: widget.session),
+      ),
+    );
+    if (result == true) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final open = _activities.where((a) => a.isOpen).toList();
     final closed = _activities.where((a) => !a.isOpen).toList();
+    final canManage =
+        StaffPermissions.of(widget.session).canManageActivities;
 
     return AppScaffold(
       title: 'Activities',
       showBackButton: false,
       leading: widget.menuButton,
+      floatingActionButton: canManage
+          ? FloatingActionButton.extended(
+              onPressed: _createActivity,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('New Activity'),
+            )
+          : null,
       body: Column(
         children: [
           const SyncStatusBanner(),

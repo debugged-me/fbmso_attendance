@@ -26,6 +26,7 @@ class MiscApi {
   static const _cacheNotes = 'notes';
   static const _cacheTodos = 'todos';
   static const _cachePersonnel = 'personnel';
+  static const _cacheDashboardStats = 'dashboard_stats';
 
   // ─── Announcements ──────────────────────────────────────────────────────
 
@@ -49,6 +50,30 @@ class MiscApi {
     } catch (_) {
       final cached = await OfflineStorageService.getList(_cacheAnnouncements);
       return cached.map((m) => Announcement.fromJson(m)).toList();
+    }
+  }
+
+  // ─── Dashboard stats (admin roles) ───────────────────────────────────────
+
+  /// Mirrors the web admin dashboard numbers (Page/admin). 403 for roles
+  /// that do not have a stats dashboard on the web.
+  Future<DashboardStats> dashboardStats({
+    required String baseUrl,
+    required String token,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/dashboard/stats';
+    try {
+      final response = await _client.get(Uri.parse(url), headers: _h(token));
+      final data = _decode(response);
+      if (data['ok'] == true) {
+        await OfflineStorageService.saveDoc(_cacheDashboardStats, data);
+        return DashboardStats.fromJson(data);
+      }
+      throw ApiException((data['message'] ?? 'Failed').toString());
+    } catch (_) {
+      final cached = await OfflineStorageService.getDoc(_cacheDashboardStats);
+      if (cached != null) return DashboardStats.fromJson(cached);
+      rethrow;
     }
   }
 

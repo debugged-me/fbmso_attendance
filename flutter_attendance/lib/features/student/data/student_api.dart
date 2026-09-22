@@ -11,7 +11,7 @@ import '../../../core/services/offline_storage_service.dart';
 import '../../../core/services/outbox_service.dart';
 import '../domain/student_models.dart';
 
-/// Student module API: profile, my QR, requirements, grades, enrolled subjects.
+/// Student module API: profile, my QR, requirements, payments.
 ///
 /// Reads are cache-first. QR issue/revoke and requirement uploads route
 /// through the outbox when offline.
@@ -26,8 +26,6 @@ class StudentApi {
   static const _cacheProfile = 'student_profile';
   static const _cacheQr = 'student_qr';
   static const _cacheRequirements = 'student_requirements';
-  static const _cacheGrades = 'student_grades';
-  static const _cacheEnrolled = 'student_enrolled';
   static const _cachePayments = 'student_payments';
 
   // ─── Profile ────────────────────────────────────────────────────────────
@@ -175,72 +173,6 @@ class StudentApi {
     final response = await http.Response.fromStream(streamed);
     final data = _decode(response);
     return data['ok'] == true;
-  }
-
-  // ─── Grades ─────────────────────────────────────────────────────────────
-
-  Future<List<Grade>> grades({
-    required String baseUrl,
-    required String token,
-  }) async {
-    final url = '${_n(baseUrl)}/api/mobile/student/grades';
-    try {
-      final response = await _client.get(Uri.parse(url), headers: _h(token));
-      final data = _decode(response);
-      if (data['ok'] == true) {
-        final list = (data['grades'] as List? ?? [])
-            .map((e) => Grade.fromJson(e as Map<String, dynamic>))
-            .toList();
-        await OfflineStorageService.saveList(
-            _cacheGrades, list.map((g) => g.toJson()).toList());
-        return list;
-      }
-      throw ApiException((data['message'] ?? 'Failed').toString());
-    } catch (_) {
-      final cached = await OfflineStorageService.getList(_cacheGrades);
-      return cached.map((m) => Grade.fromJson(m)).toList();
-    }
-  }
-
-  // ─── Enrolled subjects (COR) ────────────────────────────────────────────
-
-  Future<({List<EnrolledSubject> subjects, double totalUnits, String sy, String sem})>
-      enrolledSubjects({
-    required String baseUrl,
-    required String token,
-  }) async {
-    final url = '${_n(baseUrl)}/api/mobile/student/enrolled_subjects';
-    try {
-      final response = await _client.get(Uri.parse(url), headers: _h(token));
-      final data = _decode(response);
-      if (data['ok'] == true) {
-        final list = (data['subjects'] as List? ?? [])
-            .map((e) => EnrolledSubject.fromJson(e as Map<String, dynamic>))
-            .toList();
-        await OfflineStorageService.saveDoc(_cacheEnrolled, data);
-        return (
-          subjects: list,
-          totalUnits: (data['total_units'] as num?)?.toDouble() ?? 0,
-          sy: (data['sy'] ?? '').toString(),
-          sem: (data['sem'] ?? '').toString(),
-        );
-      }
-      throw ApiException((data['message'] ?? 'Failed').toString());
-    } catch (_) {
-      final cached = await OfflineStorageService.getDoc(_cacheEnrolled);
-      if (cached != null) {
-        final list = (cached['subjects'] as List? ?? [])
-            .map((e) => EnrolledSubject.fromJson(e as Map<String, dynamic>))
-            .toList();
-        return (
-          subjects: list,
-          totalUnits: (cached['total_units'] as num?)?.toDouble() ?? 0,
-          sy: (cached['sy'] ?? '').toString(),
-          sem: (cached['sem'] ?? '').toString(),
-        );
-      }
-      rethrow;
-    }
   }
 
   // ─── Payments ───────────────────────────────────────────────────────────

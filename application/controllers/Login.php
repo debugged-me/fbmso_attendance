@@ -342,10 +342,10 @@ class Login extends CI_Controller
                         redirect('page/student');
                         break;   // <— changed
                     case 'Cashier':
-                        redirect('Accounting/Payment');
+                        redirect('Page/accounting');
                         break;
                     case 'Committee':
-                        redirect('activities');
+                        redirect('Page/committee');
                         break;
                     case 'Instructor':
                         redirect('page/Instructor');

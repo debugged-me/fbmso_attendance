@@ -570,6 +570,74 @@ class MobileAttendance extends MobileApi
     // ─── Activity management (staff only) ──────────────────────────────────
 
     /** Create a new activity. Staff only. */
+    /**
+     * Program list for the activity form's dropdown — same source the web
+     * create page uses (course_table.CourseDescription).
+     */
+    public function programs()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $rows = $this->db->select('DISTINCT CourseDescription AS name', false)
+            ->from('course_table')
+            ->where("CourseDescription IS NOT NULL AND TRIM(CourseDescription) <> ''", null, false)
+            ->order_by('name')
+            ->get()->result();
+
+        $programs = array_map(static function ($r) { return (string)$r->name; }, $rows);
+        if (!$programs) {
+            $programs = ['YFD', 'YES-O', 'BKDC'];   // same fallback as the web view
+        }
+        return $this->json(['ok' => true, 'programs' => $programs]);
+    }
+
+    /** Majors for a program — mirrors web Activities::majors_by_program. */
+    public function majors()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
+        $programRaw = trim((string)$this->input->get('program', true));
+        if ($programRaw === '') {
+            return $this->json(['ok' => true, 'majors' => []]);
+        }
+
+        // "Description — Major" → strip the right side, same as the web endpoint.
+        $base = $programRaw;
+        if (preg_match('/\s+[—-]\s+/u', $programRaw)) {
+            $parts = preg_split('/\s+[—-]\s+/u', $programRaw, 2);
+            $base  = trim($parts[0]);
+        }
+
+        $rows = $this->db->select('DISTINCT TRIM(Major) AS major', false)
+            ->from('course_table')
+            ->group_start()
+                ->where('TRIM(CourseDescription) =', $base)
+                ->or_where('TRIM(CourseCode) =',       $base)
+                ->or_where('TRIM(CourseDescription) =', $programRaw)
+                ->or_where('TRIM(CourseCode) =',        $programRaw)
+            ->group_end()
+            ->where("(Major IS NOT NULL AND TRIM(Major) <> '')", null, false)
+            ->order_by('major', 'ASC')
+            ->get()->result();
+
+        $majors = array_map(static function ($r) { return (string)$r->major; }, $rows);
+        return $this->json(['ok' => true, 'majors' => $majors]);
+    }
+
     public function create_activity()
     {
         if ($this->input->method(true) !== 'POST') {
@@ -609,6 +677,25 @@ class MobileAttendance extends MobileApi
             ? activity_normalize_grace($payload['grace_minutes'])
             : ACTIVITY_DEFAULT_GRACE_MINUTES;
 
+        // Web parity: the web form posts session windows inside the hidden
+        // `meta` JSON; mobile clients may also send a top-level `sessions`
+        // object — either way it lands in meta.sessions with am/pm/eve keys.
+        $metaArr = activity_meta_decode($payload['meta'] ?? '');
+        if (array_key_exists('sessions', $payload) && is_array($payload['sessions'])) {
+            $metaArr['sessions'] = $this->normalize_sessions($payload['sessions']);
+        }
+        $metaStr = activity_meta_merge_autoclose($metaArr, $autoClose, $grace);
+
+        // Web parity: when session windows are given (meta.sessions am/pm/eve),
+        // the overall Start/End are derived from earliest-in / latest-out —
+        // same thing the web create form's JS does before posting.
+        $sessions = $metaArr['sessions'] ?? [];
+        if (is_array($sessions) && $sessions !== []) {
+            [$dStart, $dEnd] = $this->derive_window($sessions);
+            $startTime = $dStart;
+            $endTime   = $dEnd;
+        }
+
         if ($title === '' || $activityDate === '') {
             $body = json_encode(['ok' => false, 'message' => 'Title and date are required.']);
             $this->record_idempotent_response(422, $body);
@@ -640,7 +727,7 @@ class MobileAttendance extends MobileApi
             'end_at'        => $endAt,
             'status'        => $status,
             'is_open'       => $status === 'open' ? 1 : 0,   // mirrored — see activity_state_helper
-            'meta'          => activity_meta_merge_autoclose($payload['meta'] ?? '', $autoClose, $grace),
+            'meta'          => $metaStr,
             'sy'            => $sy,
             'semester'      => $sem,
             'created_by_str'=> $username,
@@ -728,11 +815,23 @@ class MobileAttendance extends MobileApi
             $data['is_open'] = $newStatus === 'open' ? 1 : 0;
         }
 
-        // Auto-close knobs live in meta; merge so `sessions` survives.
-        if (array_key_exists('auto_close', $payload) || array_key_exists('grace_minutes', $payload)) {
-            $cur = activity_auto_close_settings($existing->meta ?? '');
+        // Sessions and the auto-close knobs all live in `meta`. When the
+        // payload carries a `meta` document it becomes the base; a top-level
+        // `sessions` object replaces meta.sessions (same as the web form,
+        // which re-serializes all three windows on every save);
+        // auto_close/grace_minutes merge on top.
+        $metaIn = $payload['meta'] ?? null;
+        $hasSessions = array_key_exists('sessions', $payload) && is_array($payload['sessions']);
+        if ($metaIn !== null || $hasSessions || array_key_exists('auto_close', $payload) || array_key_exists('grace_minutes', $payload)) {
+            $cur  = activity_auto_close_settings($existing->meta ?? '');
+            $metaArr = $metaIn !== null
+                ? activity_meta_decode($metaIn)
+                : activity_meta_decode($existing->meta ?? '');
+            if ($hasSessions) {
+                $metaArr['sessions'] = $this->normalize_sessions($payload['sessions']);
+            }
             $data['meta'] = activity_meta_merge_autoclose(
-                $existing->meta ?? '',
+                $metaArr,
                 array_key_exists('auto_close', $payload)
                     ? filter_var($payload['auto_close'], FILTER_VALIDATE_BOOLEAN)
                     : $cur['auto_close'],
@@ -740,6 +839,21 @@ class MobileAttendance extends MobileApi
                     ? $payload['grace_minutes']
                     : $cur['grace_minutes']
             );
+
+            // Web parity: session windows drive the overall Start/End
+            // (earliest in / latest out), like the web form's JS.
+            $sessions = $metaArr['sessions'] ?? [];
+            if (is_array($sessions) && $sessions !== []) {
+                [$dStart, $dEnd] = $this->derive_window($sessions);
+                $date = (string)($data['activity_date'] ?? $existing->activity_date ?? '');
+                if ($date === '') {
+                    $date = substr((string)($existing->start_at ?? ''), 0, 10);
+                }
+                $data['start_time'] = $dStart !== '' ? $dStart . ':00' : null;
+                $data['end_time']   = $dEnd   !== '' ? $dEnd   . ':00' : null;
+                $data['start_at']   = $date . ' ' . ($dStart !== '' ? $dStart . ':00' : '00:00:00');
+                $data['end_at']     = $dEnd !== '' ? ($date . ' ' . $dEnd . ':00') : null;
+            }
         }
 
         if (empty($data)) {
@@ -884,6 +998,87 @@ class MobileAttendance extends MobileApi
             'grace_minutes' => $st['grace_minutes'],
             'window_start'  => $st['window_start'],
             'window_end'    => $st['window_end'],
+
+            // Session windows (am/pm/eve) the web create form writes into meta.
+            'sessions'      => $this->sessions_of($r),
+        ];
+    }
+
+    /** meta.sessions as a plain array; always an object-shaped map in JSON. */
+    private function sessions_of($r): array
+    {
+        $meta = activity_meta_decode(is_object($r) ? ($r->meta ?? '') : ($r['meta'] ?? ''));
+        $sessions = $meta['sessions'] ?? [];
+        if (!is_array($sessions)) return [];
+        $map = [];
+        foreach (['am', 'pm', 'eve'] as $k) {
+            $s = $sessions[$k] ?? null;
+            if (!is_array($s)) continue;
+            $in  = trim((string)($s['in'] ?? ''));
+            $out = trim((string)($s['out'] ?? ''));
+            if ($in === '' && $out === '') continue;
+            $map[$k] = [
+                'in'  => $in  !== '' ? substr($in, 0, 5)  : '',
+                'out' => $out !== '' ? substr($out, 0, 5) : '',
+            ];
+        }
+        return $map;
+    }
+
+    /**
+     * Normalize a client-supplied sessions object to the web's meta.sessions
+     * shape: only am/pm/eve keys, only in/out subkeys, HH:MM values or null
+     * for empty fields (web stores `in: am_in || null`), windows with both
+     * fields empty are dropped entirely — exactly like the web form's JS.
+     */
+    private function normalize_sessions(array $sessions): array
+    {
+        $out = [];
+        foreach (['am', 'pm', 'eve'] as $k) {
+            $s = $sessions[$k] ?? null;
+            if (!is_array($s)) continue;
+            $in  = $this->norm_hhmm($s['in'] ?? null);
+            $end = $this->norm_hhmm($s['out'] ?? null);
+            if ($in === null && $end === null) continue;
+            $out[$k] = ['in' => $in, 'out' => $end];
+        }
+        return $out;
+    }
+
+    /** HH:MM (24h) or null. Accepts HH:MM:SS by trimming seconds. */
+    private function norm_hhmm($v): ?string
+    {
+        $v = trim((string)($v ?? ''));
+        if ($v === '') return null;
+        if (preg_match('/^([01]?\d|2[0-3]):[0-5]\d/', $v, $m)) {
+            return sprintf('%02d:%02d', (int)$m[1], (int)substr($v, strpos($v, ':') + 1, 2));
+        }
+        return null;
+    }
+
+    /**
+     * Earliest session "in" and latest session "out" — the same derivation the
+     * web create form's JS applies before posting start_time/end_time.
+     *
+     * @return array{0:string,1:string}
+     */
+    private function derive_window(array $sessions): array
+    {
+        $ins  = [];
+        $outs = [];
+        foreach (['am', 'pm', 'eve'] as $k) {
+            $s = $sessions[$k] ?? null;
+            if (!is_array($s)) continue;
+            $in  = trim((string)($s['in'] ?? ''));
+            $out = trim((string)($s['out'] ?? ''));
+            if ($in  !== '') $ins[]  = $in;
+            if ($out !== '') $outs[] = $out;
+        }
+        sort($ins);
+        sort($outs);
+        return [
+            $ins  ? $ins[0]           : '',
+            $outs ? $outs[count($outs) - 1] : '',
         ];
     }
 

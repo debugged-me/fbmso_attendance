@@ -72,6 +72,74 @@ class MobileMisc extends MobileApi
         return $this->json(['ok' => true, 'announcements' => $out]);
     }
 
+    // ─── Dashboard stats ────────────────────────────────────────────────────
+
+    /**
+     * Admin dashboard stats — the same numbers Page/admin renders on the web:
+     * registered students, per-year enrolled cards, and the Student Summary
+     * breakdowns (course / year level / section / major / sex).
+     *
+     * Web parity: Page/admin requires level === 'Admin' and Page/school_admin
+     * shows the same panels to 'School Admin'. Super Admin has its own
+     * dashboard on the web but is allowed here so the app is not emptier
+     * for the highest-privilege account.
+     */
+    public function dashboard_stats()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+
+        $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
+        if (!in_array($pos, ['admin', 'super admin', 'school admin'], true)) {
+            return $this->json(['ok' => false, 'message' => 'Admins only.'], 403);
+        }
+
+        $this->load->model('StudentModel');
+
+        // Same term source as activity creation: the global active term.
+        $settings = $this->db->select('active_sy, active_sem')
+            ->from('o_srms_settings')->limit(1)->get()->row();
+        $sy  = trim((string)($settings->active_sy ?? ''));
+        $sem = trim((string)($settings->active_sem ?? ''));
+
+        $countOf = function ($rows) {
+            $r = is_array($rows) && isset($rows[0]) ? $rows[0] : null;
+            return (int)($r->StudeCount ?? 0);
+        };
+
+        $slices = function ($rows, $labelField) {
+            $out = [];
+            foreach ((array)$rows as $r) {
+                $out[] = [
+                    'label' => (string)($r->{$labelField} ?? ''),
+                    'count' => (int)($r->Counts ?? 0),
+                ];
+            }
+            return $out;
+        };
+
+        return $this->json([
+            'ok' => true,
+            'sy'  => $sy,
+            'sem' => $sem,
+            'registered_students' => $countOf($this->StudentModel->totalSignups()),
+            'year_cards' => [
+                ['label' => '1st Year', 'count' => $countOf($this->StudentModel->enrolledFirst($sy, $sem))],
+                ['label' => '2nd Year', 'count' => $countOf($this->StudentModel->enrolledSecond($sy, $sem))],
+                ['label' => '3rd Year', 'count' => $countOf($this->StudentModel->enrolledThird($sy, $sem))],
+                ['label' => '4th Year', 'count' => $countOf($this->StudentModel->enrolledFourth($sy, $sem))],
+            ],
+            'by_course'     => $slices($this->StudentModel->CourseCount($sem, $sy), 'Course'),
+            'by_year_level' => $slices($this->StudentModel->YearLevelCount($sem, $sy), 'YearLevel'),
+            'by_section'    => $slices($this->StudentModel->SectionCounts($sy, $sem), 'Section'),
+            'by_major'      => $slices($this->StudentModel->MajorCount($sem, $sy), 'Major'),
+            'by_sex'        => $slices($this->StudentModel->SexCount($sem, $sy), 'Sex'),
+        ]);
+    }
+
     // ─── Notes ─────────────────────────────────────────────────────────────
 
     /** List the current user's notes. */
@@ -82,6 +150,10 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
+
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
 
         $username = (string)$tokenRow['username'];
         $rows = $this->NoteModel->get_notes_by_user($username);
@@ -101,6 +173,10 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
+
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
         if ($this->replay_if_duplicate()) return;
 
         $payload = $this->read_payload();
@@ -151,6 +227,10 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
+
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
         if ($this->replay_if_duplicate()) return;
 
         $payload = $this->read_payload();
@@ -179,6 +259,10 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
+
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
         if ($this->replay_if_duplicate()) return;
 
         $username = (string)$tokenRow['username'];
@@ -199,6 +283,10 @@ class MobileMisc extends MobileApi
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
 
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
+
         $username = (string)$tokenRow['username'];
         $rows = $this->ToDoModel->get_all($username);
 
@@ -217,6 +305,10 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
+
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
         if ($this->replay_if_duplicate()) return;
 
         $payload = $this->read_payload();
@@ -263,6 +355,10 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
+
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
         if ($this->replay_if_duplicate()) return;
 
         $username = (string)$tokenRow['username'];
@@ -288,6 +384,10 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
+
+        if (!$this->is_staff($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        }
         if ($this->replay_if_duplicate()) return;
 
         $username = (string)$tokenRow['username'];

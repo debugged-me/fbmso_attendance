@@ -31,9 +31,12 @@
                             <hr class="up-divider" />
                         </div>
                         <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
+                            <a href="<?= base_url('Page/accounting'); ?>" class="up-btn up-btn-ghost">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
+                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#filterModal">
+                                <i class="mdi mdi-filter-outline"></i> Filter
+                            </button>
                             <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#monthlyModal">
                                 <i class="mdi mdi-calendar-month-outline"></i> Monthly View
                             </button>
@@ -43,63 +46,21 @@
                         </div>
                     </div>
 
-                    <!-- Date range + stats -->
+                    <!-- Stats -->
                     <div class="row mb-3 no-print">
-                        <div class="col-lg-7 mb-3 mb-lg-0">
+                        <div class="col-6 col-md-3">
                             <div class="up-card mb-0">
                                 <div class="up-card-body py-3">
-                                    <form method="get" action="<?= base_url('Accounting/collectionReport'); ?>" class="form-row align-items-end">
-                                        <div class="col-md-3 mb-2">
-                                            <label for="from" class="mb-1">From</label>
-                                            <input type="date" id="from" name="from" class="form-control"
-                                                value="<?= htmlspecialchars((string)$from, ENT_QUOTES, 'UTF-8'); ?>" required>
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <label for="to" class="mb-1">To</label>
-                                            <input type="date" id="to" name="to" class="form-control"
-                                                value="<?= htmlspecialchars((string)$to, ENT_QUOTES, 'UTF-8'); ?>" required>
-                                        </div>
-                                        <div class="col-md-3 mb-2">
-                                            <label for="term" class="mb-1">Term</label>
-                                            <select id="term" name="term" class="form-control">
-                                                <option value="">All terms</option>
-                                                <?php
-                                                $selectedTerm = trim((string)($filter_sem ?? '') . '|' . (string)($filter_sy ?? ''), '|');
-                                                foreach (($term_options ?? []) as $t):
-                                                    $termVal = (string)$t->Semester . '|' . (string)$t->SY;
-                                                    $termLabel = trim((string)$t->Semester . ' ' . (string)$t->SY);
-                                                ?>
-                                                    <option value="<?= htmlspecialchars($termVal, ENT_QUOTES, 'UTF-8'); ?>" <?= $termVal === $selectedTerm ? 'selected' : ''; ?>><?= htmlspecialchars($termLabel, ENT_QUOTES, 'UTF-8'); ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3 mb-2 text-right">
-                                            <button class="up-btn up-btn-primary btn-block" type="submit">
-                                                <i class="mdi mdi-filter-outline"></i> Apply Filters
-                                            </button>
-                                        </div>
-                                    </form>
+                                    <h6 class="text-muted mb-1">Transactions</h6>
+                                    <h4 class="mb-0" style="font-weight:800;color:var(--up-ink);"><?= (int)$total_count; ?></h4>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="col-lg-5">
-                            <div class="row">
-                                <div class="col-6">
-                                    <div class="up-card mb-0">
-                                        <div class="up-card-body py-3">
-                                            <h6 class="text-muted mb-1">Transactions</h6>
-                                            <h4 class="mb-0" style="font-weight:800;color:var(--up-ink);"><?= (int)$total_count; ?></h4>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="up-card mb-0">
-                                        <div class="up-card-body py-3">
-                                            <h6 class="text-muted mb-1">Total Collection</h6>
-                                            <h4 class="mb-0" style="font-weight:800;color:var(--up-blue);">₱<?= number_format((float)$total_amount, 2); ?></h4>
-                                        </div>
-                                    </div>
+                        <div class="col-6 col-md-3">
+                            <div class="up-card mb-0">
+                                <div class="up-card-body py-3">
+                                    <h6 class="text-muted mb-1">Total Collection</h6>
+                                    <h4 class="mb-0" style="font-weight:800;color:var(--up-blue);">₱<?= number_format((float)$total_amount, 2); ?></h4>
                                 </div>
                             </div>
                         </div>
@@ -169,6 +130,58 @@
 
     <?php include('includes/footer_plugins.php'); ?>
     <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
+
+    <!-- FILTER MODAL -->
+    <div class="modal fade" id="filterModal" tabindex="-1" role="dialog" aria-labelledby="filterModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form method="get" action="<?= base_url('Accounting/collectionReport'); ?>">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="filterModalLabel">
+                            <i class="mdi mdi-filter-outline"></i> Filter Collection Report
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="from" class="mb-1">From</label>
+                            <input type="date" id="from" name="from" class="form-control"
+                                value="<?= htmlspecialchars((string)$from, ENT_QUOTES, 'UTF-8'); ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="to" class="mb-1">To</label>
+                            <input type="date" id="to" name="to" class="form-control"
+                                value="<?= htmlspecialchars((string)$to, ENT_QUOTES, 'UTF-8'); ?>" required>
+                        </div>
+                        <div class="form-group mb-0">
+                            <label for="term" class="mb-1">Term</label>
+                            <select id="term" name="term" class="form-control">
+                                <option value="">All terms</option>
+                                <?php
+                                $selectedTerm = trim((string)($filter_sem ?? '') . '|' . (string)($filter_sy ?? ''), '|');
+                                foreach (($term_options ?? []) as $t):
+                                    $termVal = (string)$t->Semester . '|' . (string)$t->SY;
+                                    $termLabel = trim((string)$t->Semester . ' ' . (string)$t->SY);
+                                ?>
+                                    <option value="<?= htmlspecialchars($termVal, ENT_QUOTES, 'UTF-8'); ?>" <?= $termVal === $selectedTerm ? 'selected' : ''; ?>><?= htmlspecialchars($termLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="up-btn up-btn-primary">
+                            <i class="mdi mdi-filter-outline"></i> Apply Filters
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- MONTHLY MODAL -->
     <div class="modal fade" id="monthlyModal" tabindex="-1" role="dialog" aria-labelledby="monthlyModalLabel" aria-hidden="true">

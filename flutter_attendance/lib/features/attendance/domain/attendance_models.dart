@@ -17,6 +17,76 @@ enum ActivityStatus {
       );
 }
 
+/// The three check-in windows the web create form writes into
+/// `activities.meta.sessions` (am/pm/eve, each with in/out "HH:MM").
+/// Empty fields are null — same shape the web serializes.
+class ActivitySessions {
+  const ActivitySessions({
+    this.amIn,
+    this.amOut,
+    this.pmIn,
+    this.pmOut,
+    this.eveIn,
+    this.eveOut,
+  });
+
+  final String? amIn;
+  final String? amOut;
+  final String? pmIn;
+  final String? pmOut;
+  final String? eveIn;
+  final String? eveOut;
+
+  static const empty = ActivitySessions();
+
+  bool get isEmpty =>
+      _blank(amIn) &&
+      _blank(amOut) &&
+      _blank(pmIn) &&
+      _blank(pmOut) &&
+      _blank(eveIn) &&
+      _blank(eveOut);
+
+  bool get isNotEmpty => !isEmpty;
+
+  static bool _blank(String? v) => v == null || v.trim().isEmpty;
+
+  static String? _read(Map<String, dynamic> j, String session, String key) {
+    final s = j[session];
+    if (s is! Map) return null;
+    final v = s[key];
+    if (v == null) return null;
+    final str = v.toString().trim();
+    return str.isEmpty ? null : str.substring(0, str.length >= 5 ? 5 : str.length);
+  }
+
+  factory ActivitySessions.fromJson(Map<String, dynamic>? j) {
+    if (j == null) return empty;
+    return ActivitySessions(
+      amIn: _read(j, 'am', 'in'),
+      amOut: _read(j, 'am', 'out'),
+      pmIn: _read(j, 'pm', 'in'),
+      pmOut: _read(j, 'pm', 'out'),
+      eveIn: _read(j, 'eve', 'in'),
+      eveOut: _read(j, 'eve', 'out'),
+    );
+  }
+
+  /// Serialize for the API. Sessions with both fields empty are dropped —
+  /// same rule the web form's JS applies.
+  Map<String, dynamic> toJson() {
+    String? orNull(String? v) => _blank(v) ? null : v;
+    return {
+      if (!_blank(amIn) || !_blank(amOut))
+        'am': {'in': orNull(amIn), 'out': orNull(amOut)},
+      if (!_blank(pmIn) || !_blank(pmOut))
+        'pm': {'in': orNull(pmIn), 'out': orNull(pmOut)},
+      if (!_blank(eveIn) || !_blank(eveOut))
+        'eve': {'in': orNull(eveIn), 'out': orNull(eveOut)},
+    };
+  }
+}
+
 /// One activity row from `GET /api/mobile/activities`.
 ///
 /// `isOpen` is the EFFECTIVE answer from the server: the manual [status] and the
@@ -46,6 +116,7 @@ class Activity {
     this.graceMinutes = 15,
     this.windowStart,
     this.windowEnd,
+    this.sessions = ActivitySessions.empty,
   });
 
   final int activityId;
@@ -79,6 +150,9 @@ class Activity {
   final int graceMinutes;
   final String? windowStart;
   final String? windowEnd;
+
+  /// Per-session check-in windows from meta.sessions (am/pm/eve in/out).
+  final ActivitySessions sessions;
 
   ActivityStatus get manualStatus => ActivityStatus.fromValue(status);
 
@@ -117,6 +191,8 @@ class Activity {
       graceMinutes: (j['grace_minutes'] as num?)?.toInt() ?? 15,
       windowStart: j['window_start'] as String?,
       windowEnd: j['window_end'] as String?,
+      sessions:
+          ActivitySessions.fromJson(j['sessions'] as Map<String, dynamic>?),
     );
   }
 
@@ -143,6 +219,7 @@ class Activity {
         'grace_minutes': graceMinutes,
         'window_start': windowStart,
         'window_end': windowEnd,
+        'sessions': sessions.toJson(),
       };
 }
 

@@ -573,3 +573,73 @@ class RecentAttendanceRow {
         source: (j['source'] ?? '').toString(),
       );
 }
+
+/// One labeled count inside a dashboard breakdown (course, year level, etc).
+class StatSlice {
+  const StatSlice({required this.label, required this.count});
+
+  final String label;
+  final int count;
+
+  factory StatSlice.fromJson(Map<String, dynamic> j) => StatSlice(
+        label: (j['label'] ?? '').toString(),
+        count: (j['count'] as num?)?.toInt() ?? 0,
+      );
+
+  Map<String, dynamic> toJson() => {'label': label, 'count': count};
+}
+
+/// Admin dashboard stats from `GET /api/mobile/dashboard/stats` — mirrors the
+/// web admin dashboard (registered count, per-year cards, Student Summary
+/// breakdowns).
+class DashboardStats {
+  const DashboardStats({
+    required this.sy,
+    required this.sem,
+    required this.registeredStudents,
+    required this.yearCards,
+    required this.byCourse,
+    required this.byYearLevel,
+    required this.bySection,
+    required this.byMajor,
+    required this.bySex,
+  });
+
+  final String sy;
+  final String sem;
+  final int registeredStudents;
+  final List<StatSlice> yearCards;
+  final List<StatSlice> byCourse;
+  final List<StatSlice> byYearLevel;
+  final List<StatSlice> bySection;
+  final List<StatSlice> byMajor;
+  final List<StatSlice> bySex;
+
+  static List<StatSlice> _slices(dynamic v) => (v as List? ?? [])
+      .map((e) => StatSlice.fromJson(e as Map<String, dynamic>))
+      .toList();
+
+  factory DashboardStats.fromJson(Map<String, dynamic> j) => DashboardStats(
+        sy: (j['sy'] ?? '').toString(),
+        sem: (j['sem'] ?? '').toString(),
+        registeredStudents: (j['registered_students'] as num?)?.toInt() ?? 0,
+        yearCards: _slices(j['year_cards']),
+        byCourse: _slices(j['by_course']),
+        byYearLevel: _slices(j['by_year_level']),
+        bySection: _slices(j['by_section']),
+        byMajor: _slices(j['by_major']),
+        bySex: _slices(j['by_sex']),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'sy': sy,
+        'sem': sem,
+        'registered_students': registeredStudents,
+        'year_cards': yearCards.map((s) => s.toJson()).toList(),
+        'by_course': byCourse.map((s) => s.toJson()).toList(),
+        'by_year_level': byYearLevel.map((s) => s.toJson()).toList(),
+        'by_section': bySection.map((s) => s.toJson()).toList(),
+        'by_major': byMajor.map((s) => s.toJson()).toList(),
+        'by_sex': bySex.map((s) => s.toJson()).toList(),
+      };
+}

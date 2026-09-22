@@ -171,6 +171,7 @@ $config['authguard_roles'] = array(
 */
 $config['authguard_restricted_role_routes'] = array(
     'Committee' => array(
+        'page/committee',
         'activities/index',
         'attendance/scan',
         'attendance/consume',
