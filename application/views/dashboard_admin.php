@@ -7,13 +7,6 @@
 <style>
   a.text-decoration-none:hover { text-decoration: none; }
 
-  /* Tighten the dead space above the page title (theme default is 25px top padding) */
-  .content-page > .content > .container-fluid > .row:first-child .page-title-box {
-    padding-top: 6px;
-    padding-bottom: 0;
-  }
-  .page-title-box .up-divider { margin: 10px 0 20px; }
-
   /* ===== KPI stat cards (match student accounting stat cards) ===== */
   .kpi {
     border: 1px solid var(--up-line, #e6ebf5);

@@ -124,7 +124,7 @@
            </div>
 
            <!-- ===== Change Profile Pic Modal ===== -->
-           <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+           <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260922'); ?>">
            <style>
              /* ===== Shared modal styles ===== */
              #changeProfilePicModal .modal-content,

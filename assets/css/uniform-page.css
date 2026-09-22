@@ -37,6 +37,14 @@
   margin: 14px 0 22px;
 }
 
+/* Tighten dead space above page titles (theme default adds 25px top padding
+   on top of the 70px navbar offset — nearly 100px of empty space) */
+.page-title-box {
+  padding-top: 6px;
+  padding-bottom: 0;
+}
+.page-title-box .up-divider { margin: 10px 0 20px; }
+
 /* Header actions */
 .up-header-actions {
   display: flex;
