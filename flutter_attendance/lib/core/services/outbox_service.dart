@@ -5,11 +5,10 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'connectivity_service.dart';
+import 'local_db.dart';
 
 /// Queues write operations when offline and flushes them when connectivity
 /// returns. SQLite-backed so queued items survive app kills and reboots.
@@ -22,8 +21,6 @@ import 'connectivity_service.dart';
 /// retry: the server records each key in `o_mobile_outbox` and replays the
 /// first response for any retry with the same key.
 class OutboxService {
-  static Database? _db;
-  static const _dbName = 'fbmsO_outbox.db';
   static const _table = 'outbox';
   static StreamSubscription<bool>? _connectivitySub;
   static bool _flushing = false;
@@ -76,47 +73,7 @@ class OutboxService {
 
   // ─── Schema ─────────────────────────────────────────────────────────────
 
-  static Future<Database> _database() async {
-    if (_db != null) return _db!;
-    final dir = await getApplicationDocumentsDirectory();
-    final path = p.join(dir.path, _dbName);
-    _db = await openDatabase(
-      path,
-      version: 2,
-      onCreate: (db, _) async {
-        await db.execute('''
-          CREATE TABLE $_table (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            operation TEXT NOT NULL,
-            url TEXT NOT NULL,
-            method TEXT NOT NULL DEFAULT 'POST',
-            payload TEXT NOT NULL,
-            idem_key TEXT NOT NULL,
-            token TEXT NOT NULL,
-            content_type TEXT NOT NULL DEFAULT 'application/json',
-            client_submitted_at INTEGER NOT NULL,
-            queued_at INTEGER NOT NULL,
-            retry_count INTEGER DEFAULT 0,
-            last_error TEXT,
-            last_attempt_at INTEGER,
-            next_attempt_at INTEGER NOT NULL DEFAULT 0,
-            ref_id TEXT,
-            status TEXT NOT NULL DEFAULT 'queued'
-          )
-        ''');
-        await db.execute(
-            'CREATE INDEX idx_outbox_status ON $_table (status)');
-      },
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          await db.execute(
-              'ALTER TABLE $_table ADD COLUMN next_attempt_at INTEGER NOT NULL DEFAULT 0');
-          await db.execute('ALTER TABLE $_table ADD COLUMN ref_id TEXT');
-        }
-      },
-    );
-    return _db!;
-  }
+  static Future<Database> _database() => LocalDb.instance();
 
   // ─── Enqueue ────────────────────────────────────────────────────────────
 
@@ -441,8 +398,7 @@ class OutboxService {
 
   static Future<void> dispose() async {
     await _connectivitySub?.cancel();
-    await _db?.close();
-    _db = null;
+    await LocalDb.close();
   }
 }
 

@@ -122,21 +122,28 @@ class MobileAccounting extends MobileApi
         return sprintf('%s-%04d', $datePrefix, (int)$sequence);
     }
 
+    /**
+     * Draws from the shared counter rather than scanning paymentsaccounts, so
+     * a number reserved by an offline device is never handed out again here.
+     */
     private function generateNextOrNumber($source = '')
     {
-        $date = $this->isValidDate(trim((string)$source))
+        $this->load->library('or_sequence');
+        return $this->or_sequence->next($this->orNumberDate($source));
+    }
+
+    /** The upcoming O.R. number for display, without consuming it. */
+    private function peekNextOrNumber($source = '')
+    {
+        $this->load->library('or_sequence');
+        return $this->or_sequence->peek($this->orNumberDate($source));
+    }
+
+    private function orNumberDate($source = '')
+    {
+        return $this->isValidDate(trim((string)$source))
             ? trim((string)$source)
             : (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d');
-        $prefix = $this->resolveOrDatePrefix($date);
-
-        $row = $this->db->select("MAX(CAST(SUBSTRING_INDEX(ORNumber, '-', -1) AS UNSIGNED)) AS max_sequence", false)
-            ->from('paymentsaccounts')
-            ->where('PDate', $date)
-            ->get()
-            ->row();
-
-        $nextSequence = (int)($row->max_sequence ?? 0) + 1;
-        return $this->formatOrNumber($prefix, $nextSequence);
     }
 
     private function isDuplicateDbError($dbError)
@@ -715,7 +722,7 @@ class MobileAccounting extends MobileApi
             'today'             => $today,
             'sem'               => $sem,
             'sy'                => $sy,
-            'next_or_number'    => $this->generateNextOrNumber($today),
+            'next_or_number'    => $this->peekNextOrNumber($today),
             'students'          => $students,
             'fees'              => $fees,
             'payment_dates'     => $dates,
@@ -792,6 +799,28 @@ class MobileAccounting extends MobileApi
         $checkNumber   = trim((string)($p['CheckNumber'] ?? $p['check_number'] ?? ''));
         $bank          = trim((string)($p['Bank'] ?? $p['bank'] ?? ''));
         $refNo         = trim((string)($p['refNo'] ?? $p['ref_no'] ?? ''));
+        $clientId      = trim((string)($p['client_payment_id'] ?? ''));
+        $deviceId      = trim((string)($p['device_id'] ?? ''));
+        $claimedOr     = trim((string)($p['or_number'] ?? ''));
+
+        // Natural-key replay. The idempotency-key log expires; a payment that
+        // was recorded but whose response never reached the device must not be
+        // charged to the student twice on a later retry.
+        if ($clientId !== '') {
+            $prior = $this->db->from('paymentsaccounts')
+                ->where('client_payment_id', $clientId)->limit(1)->get();
+            if ($prior !== false && ($priorRow = $prior->row())) {
+                $result = [
+                    'ok'         => true,
+                    'message'    => 'Payment already recorded.',
+                    'or_number'  => (string)$priorRow->ORNumber,
+                    'payment_id' => (int)$priorRow->ID,
+                    'duplicate'  => true,
+                ];
+                $this->record_idempotent_response(200, json_encode($result));
+                return $this->json($result);
+            }
+        }
 
         $errors = [];
         if ($studentNumber === '') $errors[] = 'Student is required.';
@@ -827,10 +856,30 @@ class MobileAccounting extends MobileApi
         $insertOk = false;
         $paymentData = [];
 
+        // A payment taken offline already handed the student a receipt number
+        // from this device's reserved block, so that number is authoritative —
+        // but only if the device really holds it.
+        $this->load->library('or_sequence');
+        $useReservedOr = $claimedOr !== ''
+            && $deviceId !== ''
+            && $this->or_sequence->owns($deviceId, $claimedOr);
+
+        if ($claimedOr !== '' && !$useReservedOr) {
+            $body = json_encode([
+                'ok'      => false,
+                'message' => 'That O.R. number is not reserved to this device.',
+            ]);
+            $this->record_idempotent_response(409, $body);
+            return $this->json(json_decode($body, true), 409);
+        }
+
         for ($attempt = 0; $attempt < 5; $attempt++) {
-            $orNumber = $this->generateNextOrNumber($pDateInput);
+            $orNumber = $useReservedOr
+                ? $claimedOr
+                : $this->generateNextOrNumber($pDateInput);
             $paymentData = [
                 'ID'               => $this->nextTableId('paymentsaccounts', 'ID'),
+                'client_payment_id' => $clientId !== '' ? $clientId : null,
                 'StudentNumber'    => $studentNumber,
                 'Course'           => $course,
                 'PDate'            => $pDateInput,
@@ -876,6 +925,10 @@ class MobileAccounting extends MobileApi
             return $this->json(json_decode($body, true), 500);
         }
 
+        if ($useReservedOr) {
+            $this->or_sequence->mark_consumed($deviceId, $orNumber);
+        }
+
         // Queue the receipt email exactly like the web flow — non-fatal.
         $emailResult = ['attempted' => false, 'sent' => false];
         try {
@@ -901,6 +954,69 @@ class MobileAccounting extends MobileApi
         ];
         $body = json_encode($result);
         $this->record_idempotent_response(200, $body);
+        return $this->json($result);
+    }
+
+    /**
+     * Reserve a block of O.R. numbers for this device.
+     *
+     * A cashier with no signal still has to hand a real receipt number across
+     * the desk, so the device claims a contiguous range while it is online and
+     * spends it offline. The shared counter means the web cashier can never
+     * issue the same numbers in the meantime.
+     *
+     * POST {device_id, date, count} → {prefix, start, end, or_numbers[]}
+     */
+    public function or_block_reserve()
+    {
+        if ($this->input->method(true) !== 'POST') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_accounting();
+        if ($tokenRow === null) return;
+        if ($this->replay_if_duplicate()) return;
+
+        $p        = $this->read_payload();
+        $deviceId = trim((string)($p['device_id'] ?? ''));
+        $count    = (int)($p['count'] ?? 50);
+        $date     = trim((string)($p['date'] ?? ''));
+
+        if ($deviceId === '') {
+            $body = json_encode(['ok' => false, 'message' => 'device_id is required.']);
+            $this->record_idempotent_response(422, $body);
+            return $this->json(json_decode($body, true), 422);
+        }
+        // Bounded so a misbehaving client cannot burn a day's whole sequence.
+        if ($count < 1)   $count = 1;
+        if ($count > 200) $count = 200;
+
+        $this->load->library('or_sequence');
+        try {
+            $block = $this->or_sequence->reserve(
+                $date, $count, $deviceId, (string)$tokenRow['username']
+            );
+        } catch (Throwable $e) {
+            log_message('error', 'O.R. block reserve failed: ' . $e->getMessage());
+            $body = json_encode(['ok' => false, 'message' => 'Could not reserve O.R. numbers.']);
+            $this->record_idempotent_response(500, $body);
+            return $this->json(json_decode($body, true), 500);
+        }
+
+        $numbers = [];
+        for ($seq = $block['start']; $seq <= $block['end']; $seq++) {
+            $numbers[] = $this->or_sequence->format($block['prefix'], $seq);
+        }
+
+        $result = [
+            'ok'           => true,
+            'device_id'    => $deviceId,
+            'date'         => $block['date'],
+            'prefix'       => $block['prefix'],
+            'seq_start'    => $block['start'],
+            'seq_end'      => $block['end'],
+            'or_numbers'   => $numbers,
+        ];
+        $this->record_idempotent_response(200, json_encode($result));
         return $this->json($result);
     }
 

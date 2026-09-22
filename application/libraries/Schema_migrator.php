@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v14.done';
+    const MARKER = 'schema_migrations_v15.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -547,6 +547,24 @@ class Schema_migrator
                         "ALTER TABLE `activity_attendance`
                          ADD COLUMN `client_scan_id` CHAR(36) NULL DEFAULT NULL,
                          ADD UNIQUE KEY `uq_client_scan` (`client_scan_id`)"
+                    );
+                },
+            ),
+
+            // Natural-key dedup for payments queued offline. Payment IDs and
+            // O.R. numbers are assigned server-side, so a payment that was
+            // recorded but whose response never reached the device would
+            // otherwise be charged to the student twice on retry.
+            '2026_09_22_add_payment_client_id' => array(
+                'check' => function () {
+                    return $this->tableExists('paymentsaccounts')
+                        && !$this->columnExists('paymentsaccounts', 'client_payment_id');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "ALTER TABLE `paymentsaccounts`
+                         ADD COLUMN `client_payment_id` CHAR(36) NULL DEFAULT NULL,
+                         ADD UNIQUE KEY `uq_client_payment` (`client_payment_id`)"
                     );
                 },
             ),

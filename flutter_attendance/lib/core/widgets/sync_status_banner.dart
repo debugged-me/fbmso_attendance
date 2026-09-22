@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../features/misc/presentation/sync_report_screen.dart';
 import '../services/sync_orchestrator.dart';
 
 /// Persistent offline/sync banner shown at the top of every authenticated
@@ -22,35 +23,45 @@ class SyncStatusBanner extends StatelessWidget {
 
         return Material(
           color: color,
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Icon(icon, size: 16, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+          child: InkWell(
+            // The banner is the only thing on screen that knows work is
+            // pending, so it is also the way in to see what that work is.
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SyncReportScreen()),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(icon, size: 16, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                  if (s.status == SyncStatus.syncing)
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    ),
-                ],
+                    if (s.status == SyncStatus.syncing)
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    else
+                      const Icon(Icons.chevron_right_rounded,
+                          size: 18, color: Colors.white),
+                  ],
+                ),
               ),
             ),
           ),

@@ -104,6 +104,10 @@ $route['api/mobile/attendance/my_logs']           = 'api/MobileAttendance/my_log
 $route['api/mobile/attendance/logs/(:num)']       = 'api/MobileAttendance/logs/$1';
 $route['api/mobile/attendance/export_csv/(:num)'] = 'api/MobileAttendance/export_csv/$1';
 
+// Offline roster snapshot for the scanner
+$route['api/mobile/roster/manifest']              = 'api/MobileRoster/manifest';
+$route['api/mobile/roster/chunk']                 = 'api/MobileRoster/chunk';
+
 // Mobile student module
 $route['api/mobile/student/profile']              = 'api/MobileStudent/profile';
 $route['api/mobile/student/status']               = 'api/MobileStudent/status';
@@ -144,6 +148,7 @@ $route['api/mobile/accounting/dashboard']             = 'api/MobileAccounting/da
 $route['api/mobile/accounting/payment/context']       = 'api/MobileAccounting/payment_context';
 $route['api/mobile/accounting/payments']              = 'api/MobileAccounting/payments';
 $route['api/mobile/accounting/payment/create']        = 'api/MobileAccounting/payment_create';
+$route['api/mobile/accounting/or_block/reserve']      = 'api/MobileAccounting/or_block_reserve';
 $route['api/mobile/accounting/payment/delete']        = 'api/MobileAccounting/payment_delete';
 $route['api/mobile/accounting/payment/audit-log']     = 'api/MobileAccounting/payment_audit_log';
 $route['api/mobile/accounting/partial-payments']      = 'api/MobileAccounting/partial_payments';

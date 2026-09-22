@@ -120,21 +120,31 @@ class Accounting extends CI_Controller
 	// Sequence is scoped to the payment DATE column (not a regex over the OR
 	// text), so it stays correct even for legacy rows saved under the old
 	// YYYY-0001 format.
+	/**
+	 * Take the next O.R. number from the shared counter.
+	 *
+	 * A MAX() scan over paymentsaccounts cannot see numbers an offline mobile
+	 * cashier has already reserved, so the two would hand out the same
+	 * receipt. Both paths now draw from Or_sequence instead.
+	 */
 	private function generateNextOrNumber($source = '')
 	{
-		$date = $this->isValidDate(trim((string)$source))
+		$this->load->library('or_sequence');
+		return $this->or_sequence->next($this->orNumberDate($source));
+	}
+
+	/** The upcoming O.R. number for display, without consuming it. */
+	private function peekNextOrNumber($source = '')
+	{
+		$this->load->library('or_sequence');
+		return $this->or_sequence->peek($this->orNumberDate($source));
+	}
+
+	private function orNumberDate($source = '')
+	{
+		return $this->isValidDate(trim((string)$source))
 			? trim((string)$source)
 			: (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d');
-		$prefix = $this->resolveOrDatePrefix($date);
-
-		$row = $this->db->select("MAX(CAST(SUBSTRING_INDEX(ORNumber, '-', -1) AS UNSIGNED)) AS max_sequence", false)
-			->from('paymentsaccounts')
-			->where('PDate', $date)
-			->get()
-			->row();
-
-		$nextSequence = (int)($row->max_sequence ?? 0) + 1;
-		return $this->formatOrNumber($prefix, $nextSequence);
 	}
 
 	private function paymentFormStateFromPost(array $overrides = [])
@@ -1247,7 +1257,7 @@ class Accounting extends CI_Controller
 
 		$data = [
 			'default_payment_date' => $today,
-			'next_or_number'       => $this->generateNextOrNumber($today),
+			'next_or_number'       => $this->peekNextOrNumber($today),
 			'students'             => $this->getStudentsForPayment($sem, $sy),
 			'recent_payments'      => $this->getRecentPayments($dateFilter === 'all' ? null : $dateFilter),
 			'payment_dates'        => $this->distinctPaymentDates(),
@@ -1375,7 +1385,7 @@ class Accounting extends CI_Controller
 		$this->ensureAccess();
 
 		$paymentDate = trim((string)$this->input->get('payment_date', true));
-		$suggested = $this->generateNextOrNumber($paymentDate);
+		$suggested = $this->peekNextOrNumber($paymentDate);
 
 		$this->output
 			->set_content_type('application/json')

@@ -5,6 +5,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
+import '../../../core/services/connectivity_service.dart';
+import '../../../core/services/roster_service.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
@@ -48,6 +50,12 @@ class _ScanScreenState extends State<ScanScreen> {
   // borrowed/shared QR shows the real owner's face. Auto-dismisses.
   CheckResult? _verifyResult;
   int _verifyToken = 0; // bumps per scan so stale timers can't hide a new card
+
+  // Offline roster download state, surfaced so the operator knows whether the
+  // scanner can name students before they walk out of signal.
+  bool _rosterLoading = false;
+  int _rosterCount = 0;
+  (int, int)? _rosterProgress;
 
   static const _verifyModes = {
     'checked_in',
@@ -113,6 +121,74 @@ class _ScanScreenState extends State<ScanScreen> {
       // Higher capture resolution keeps small/distant codes decodable —
       // default resolution requires holding the QR close to the lens.
       cameraResolution: const Size(1920, 1080),
+    );
+    _prepareOfflineRoster();
+  }
+
+  /// Pull the roster while there is still signal, so the scanner can name
+  /// students and catch repeats once the connection drops. Best effort —
+  /// scanning still works without it, just without local identity.
+  Future<void> _prepareOfflineRoster() async {
+    if (!await ConnectivityService.isReachable()) return;
+    if (!mounted) return;
+
+    setState(() => _rosterLoading = true);
+    try {
+      final count = await RosterService.download(
+        baseUrl: widget.session.baseUrl,
+        token: widget.session.token,
+        activityId: widget.activityId,
+        onProgress: (done, total) {
+          if (mounted) setState(() => _rosterProgress = (done, total));
+        },
+      );
+      if (mounted) setState(() => _rosterCount = count);
+    } catch (_) {
+      // Leave whatever snapshot is already on the device in place.
+    } finally {
+      if (mounted) setState(() => _rosterLoading = false);
+    }
+  }
+
+  /// Tells the operator whether this phone can still name students once the
+  /// signal goes — the difference between a useful offline scan and a blind one.
+  Widget _rosterBanner() {
+    if (!_rosterLoading && _rosterCount == 0) return const SizedBox.shrink();
+
+    final (done, total) = _rosterProgress ?? (0, 0);
+    final label = _rosterLoading
+        ? (total > 0
+            ? 'Preparing offline roster… $done of $total'
+            : 'Preparing offline roster…')
+        : 'Offline roster ready — $_rosterCount student(s)';
+    final tint = _rosterLoading ? AppInk.accent : AppInk.positive;
+
+    return Container(
+      width: double.infinity,
+      color: tint.withValues(alpha: 0.12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        children: [
+          Icon(
+            _rosterLoading
+                ? Icons.download_rounded
+                : Icons.offline_pin_rounded,
+            size: 16,
+            color: tint,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: tint,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -214,6 +290,7 @@ class _ScanScreenState extends State<ScanScreen> {
           return Column(
             children: [
               const SyncStatusBanner(),
+              _rosterBanner(),
               Expanded(
                 child: wide
                     ? Row(
@@ -442,8 +519,12 @@ class _ScanRecordTile extends StatelessWidget {
         return ('Duplicate', AppInk.caution, Icons.block_rounded);
       case 'queued':
         return ('Saved offline', AppInk.caution, Icons.cloud_upload_rounded);
+      case 'unknown_qr':
+        return ('Not on this roster', AppInk.critical, Icons.person_off_rounded);
       case 'invalid_qr':
         return ('Wrong QR code', AppInk.critical, Icons.qr_code_2_rounded);
+      case 'stale_scan':
+        return ('Outside activity hours', AppInk.critical, Icons.history_rounded);
       case 'expired_qr':
         return ('Expired QR', AppInk.critical, Icons.timer_off_rounded);
       case 'activity_ended':
@@ -474,22 +555,25 @@ class _VerifyCard extends StatelessWidget {
   final VoidCallback onDismiss;
 
   (String, Color, IconData) _status() {
-    switch (result.mode) {
-      case 'checked_in':
-        return ('Checked in', AppInk.positive, Icons.login_rounded);
-      case 'checked_out':
-        return ('Checked out', AppInk.accent, Icons.logout_rounded);
-      case 'already_in':
-        return ('Already in', AppInk.caution, Icons.info_outline_rounded);
-      case 'duplicate':
-        return ('Duplicate scan', AppInk.caution, Icons.block_rounded);
-      case 'queued':
-        return ('Saved offline', AppInk.caution, Icons.cloud_upload_rounded);
-      case 'inactive_student':
-        return ('Inactive account', AppInk.critical, Icons.person_off_rounded);
-      default:
-        return ('Scanned', AppInk.accent, Icons.qr_code_rounded);
+    final (label, color, icon) = switch (result.mode) {
+      'checked_in' => ('Checked in', AppInk.positive, Icons.login_rounded),
+      'checked_out' => ('Checked out', AppInk.accent, Icons.logout_rounded),
+      'already_in' =>
+        ('Already in', AppInk.caution, Icons.info_outline_rounded),
+      'duplicate' => ('Duplicate scan', AppInk.caution, Icons.block_rounded),
+      'queued' =>
+        ('Saved offline', AppInk.caution, Icons.cloud_upload_rounded),
+      'inactive_student' =>
+        ('Inactive account', AppInk.critical, Icons.person_off_rounded),
+      _ => ('Scanned', AppInk.accent, Icons.qr_code_rounded),
+    };
+
+    // The server has not seen this yet and can still reject it, so never let
+    // the card imply the attendance is final.
+    if (result.provisional) {
+      return ('$label · offline', color, Icons.cloud_upload_rounded);
     }
+    return (label, color, icon);
   }
 
   @override

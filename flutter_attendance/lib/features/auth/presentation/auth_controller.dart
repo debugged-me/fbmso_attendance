@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/connectivity_service.dart';
 import '../../../core/services/outbox_service.dart';
+import '../../../core/services/roster_service.dart';
+import '../../../core/services/scan_ledger_service.dart';
 import '../data/auth_api.dart';
 import '../data/session_store.dart';
 import '../domain/app_session.dart';
@@ -245,8 +247,22 @@ class AuthController extends ChangeNotifier {
       await _api.logout(baseUrl: s.baseUrl, token: s.token);
     }
     await _store.clearSession();
+    _clearOfflineScanData();
     _session = null;
     notifyListeners();
+  }
+
+  /// A scanner phone is not necessarily the same operator's next time, so the
+  /// cached roster (names, photos, student numbers) must not outlive the
+  /// session that downloaded it.
+  ///
+  /// Deliberately not awaited: the wipe still runs, but a slow or stuck local
+  /// database must never leave the user stranded on a half-finished sign-out.
+  void _clearOfflineScanData() {
+    unawaited(Future(() async {
+      await RosterService.clearAll();
+      await ScanLedgerService.clearAll();
+    }).catchError((_) {}));
   }
 
   /// Forget the paired school: clears the session, base URL and cached config
@@ -265,6 +281,7 @@ class AuthController extends ChangeNotifier {
       }
     }
     await _store.clearPairing();
+    _clearOfflineScanData();
     _session = null;
     _config = null;
     _baseUrl = '';

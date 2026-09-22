@@ -106,6 +106,35 @@ class EmailQueue extends CI_Controller
 		redirect('EmailQueue/key?msg=' . $msg);
 	}
 
+	public function delete_failed()
+	{
+		$level = trim((string) $this->session->userdata('level'));
+		if (!in_array($level, ['Admin', 'IT', 'Super Admin'], true)) {
+			show_error('Forbidden', 403);
+			return;
+		}
+
+		fbmso_mailqueue_ensure_table($this);
+
+		// Optional single-row delete — handy for dropping one poisoned
+		// address without clearing the rest of the failures.
+		$id = (int) $this->input->get('id', true);
+
+		$this->db->where('status', 'failed');
+		if ($id > 0) {
+			$this->db->where('id', $id);
+		}
+		$this->db->delete('fbmso_email_queue');
+
+		$affected = $this->db->affected_rows();
+
+		$msg = $affected > 0
+			? 'deleted_' . $affected
+			: 'deleted_none';
+
+		redirect('EmailQueue/key?msg=' . $msg);
+	}
+
 
 	private function _render_page(array $counts, $level, $isAdmin, $suspended, $flash, $showCron)
 	{
@@ -126,6 +155,11 @@ class EmailQueue extends CI_Controller
 					. ' — the next cron tick (within ~2 min) will retry.'];
 			} elseif ($flash === 'retried_none') {
 				$flashMap[$flash] = ['info', 'No failed messages to re-queue.'];
+			} elseif (preg_match('/^deleted_(\d+)$/', $flash, $m)) {
+				$n = (int) $m[1];
+				$flashMap[$flash] = ['ok', 'Deleted ' . $n . ' failed message' . ($n === 1 ? '' : 's') . '.'];
+			} elseif ($flash === 'deleted_none') {
+				$flashMap[$flash] = ['info', 'No failed messages to delete.'];
 			}
 
 			if (isset($flashMap[$flash])) {
@@ -164,6 +198,12 @@ class EmailQueue extends CI_Controller
 				$label = 'Retry Failed (' . (int) $counts['failed'] . ')';
 				$actionsHtml .= '<a class="btn btn-primary" href="' . site_url('EmailQueue/retry') . '">'
 					. $esc($label) . '</a>';
+
+				$delLabel = 'Delete Failed (' . (int) $counts['failed'] . ')';
+				$actionsHtml .= '<a class="btn btn-danger" href="' . site_url('EmailQueue/delete_failed') . '"'
+					. ' onclick="return confirm(\'Delete all ' . (int) $counts['failed']
+					. ' failed message(s)? This cannot be undone.\');">'
+					. $esc($delLabel) . '</a>';
 			}
 		}
 		$actionsHtml = $actionsHtml !== ''
@@ -239,6 +279,7 @@ class EmailQueue extends CI_Controller
   .btn:hover{opacity:.85}
   .btn-primary{background:var(--blue);color:#fff}
   .btn-warm{background:var(--amber);color:#fff}
+  .btn-danger{background:var(--red);color:#fff}
 
   /* sections */
   .section{background:var(--card);border:1px solid var(--border);border-radius:10px;
@@ -258,6 +299,8 @@ class EmailQueue extends CI_Controller
           max-width:520px;display:block;margin-top:2px}
   .retry-one{font-size:.8rem;color:var(--blue);text-decoration:none;margin-left:8px}
   .retry-one:hover{text-decoration:underline}
+  .delete-one{font-size:.8rem;color:var(--red);text-decoration:none;margin-left:8px}
+  .delete-one:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -309,7 +352,10 @@ class EmailQueue extends CI_Controller
 			if ($isAdmin && $r->status === 'failed') {
 				$retryLink = ' <a class="retry-one" href="'
 					. site_url('EmailQueue/retry?id=' . (int) $r->id)
-					. '">retry this</a>';
+					. '">retry this</a>'
+					. ' <a class="delete-one" href="'
+					. site_url('EmailQueue/delete_failed?id=' . (int) $r->id)
+					. '" onclick="return confirm(\'Delete this failed message?\');">delete</a>';
 			}
 
 			$body .= '<tr>'

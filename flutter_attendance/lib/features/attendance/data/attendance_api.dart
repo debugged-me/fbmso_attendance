@@ -8,6 +8,8 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/services/connectivity_service.dart';
 import '../../../core/services/offline_storage_service.dart';
 import '../../../core/services/outbox_service.dart';
+import '../../../core/services/roster_service.dart';
+import '../../../core/services/scan_ledger_service.dart';
 import '../domain/attendance_models.dart';
 
 /// Attendance + activities API.
@@ -231,7 +233,11 @@ class AttendanceApi {
     );
   }
 
-  /// Scanner consumes a student QR token. Queues when offline.
+  /// Scanner consumes a student QR token.
+  ///
+  /// The QR is resolved against the on-device roster first, so with no signal
+  /// the operator still sees who was scanned and whether it is a repeat. The
+  /// server stays authoritative: a local answer is provisional until it syncs.
   Future<CheckResult> consume({
     required String baseUrl,
     required String token,
@@ -242,22 +248,68 @@ class AttendanceApi {
   }) async {
     final url = '${_normalize(baseUrl)}/api/mobile/attendance/consume';
     final idemKey = _uuid.v4();
-    final occurredAt = DateTime.now().toUtc().toIso8601String();
+    final scannedAt = DateTime.now();
+    final occurredAt = scannedAt.toUtc().toIso8601String();
 
-    if (await _isOnline()) {
+    final match = await RosterService.resolve(activityId, qrToken);
+    final meta = await RosterService.metaFor(activityId);
+    final online = await _isOnline();
+
+    // Only a COMPLETE snapshot can prove a code is not a student QR. With a
+    // partial one, an unmatched code may simply not have downloaded yet, so
+    // the scan is queued instead of the student being turned away.
+    if (match == null && meta != null && meta.complete) {
+      return const CheckResult(
+        ok: false,
+        mode: 'unknown_qr',
+        message: 'Not a student QR for this activity.',
+      );
+    }
+
+    LocalScanDecision? decision;
+    if (match != null) {
+      decision = await ScanLedgerService.record(
+        activityId: activityId,
+        studentNumber: match.studentNumber,
+        clientScanId: idemKey,
+        sessions: meta?.sessions ?? const {},
+        at: scannedAt,
+      );
+
+      if (decision.isDuplicate) {
+        return CheckResult(
+          ok: true,
+          mode: 'duplicate',
+          studentNumber: match.studentNumber,
+          session: decision.session,
+          student: match.toStudentPayload(),
+          message: decision.previousAt == null
+              ? 'Already scanned.'
+              : 'Already scanned at ${_clock(decision.previousAt!)}.',
+        );
+      }
+    }
+
+    // Resolved locally so a queued in/out pair replays in the right order.
+    final effectiveDirection = decision?.direction ?? direction;
+    final payload = {
+      'activity_id': activityId,
+      'token': qrToken,
+      'direction': effectiveDirection,
+      'client_submitted_at': occurredAt,
+      'client_scan_id': idemKey,
+      if (remarks.isNotEmpty) 'remarks': remarks,
+    };
+
+    if (online) {
       try {
         final response = await _client.post(
           Uri.parse(url),
           headers: {..._headers(token), 'X-Idempotency-Key': idemKey},
-          body: jsonEncode({
-            'activity_id': activityId,
-            'token': qrToken,
-            'direction': direction,
-            'client_submitted_at': occurredAt,
-            if (remarks.isNotEmpty) 'remarks': remarks,
-          }),
+          body: jsonEncode(payload),
         );
         final data = _decode(response);
+        await ScanLedgerService.markSynced(idemKey, data);
         return CheckResult.fromJson(data);
       } catch (_) {
         // Fall through to queue.
@@ -269,19 +321,25 @@ class AttendanceApi {
       url: url,
       idemKey: idemKey,
       token: token,
-      payload: {
-        'activity_id': activityId,
-        'token': qrToken,
-        'direction': direction,
-        'client_submitted_at': occurredAt,
-        if (remarks.isNotEmpty) 'remarks': remarks,
-      },
+      payload: payload,
+      refId: idemKey,
     );
+
     return CheckResult(
       ok: true,
-      mode: 'queued',
+      mode: decision?.mode ?? 'queued',
+      provisional: true,
+      studentNumber: match?.studentNumber,
+      session: decision?.session,
+      student: match?.toStudentPayload(),
       message: 'Saved offline — will sync when you reconnect.',
     );
+  }
+
+  static String _clock(DateTime t) {
+    final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
+    final m = t.minute.toString().padLeft(2, '0');
+    return '$h:$m ${t.hour < 12 ? 'AM' : 'PM'}';
   }
 
   /// Per-activity attendance log (staff). Returns raw rows.
@@ -404,38 +462,59 @@ class AttendanceApi {
   }) async {
     final url = '${_normalize(baseUrl)}/api/mobile/activities/create';
     final idemKey = _uuid.v4();
-    try {
-      final response = await _client.post(
-        Uri.parse(url),
-        headers: {..._headers(token), 'X-Idempotency-Key': idemKey},
-        body: jsonEncode({
-          'title': title,
-          'activity_date': activityDate,
-          if (startTime.isNotEmpty) 'start_time': startTime,
-          if (endTime.isNotEmpty) 'end_time': endTime,
-          if (location.isNotEmpty) 'location': location,
-          if (program.isNotEmpty) 'program': program,
-          if (description.isNotEmpty) 'description': description,
-          'status': status.value,
-          'auto_close': autoClose,
-          'grace_minutes': graceMinutes,
-          if (sessions.isNotEmpty) 'sessions': sessions.toJson(),
-        }),
-      );
-      final data = _decode(response);
-      final act = data['activity'] != null
-          ? Activity.fromJson(data['activity'] as Map<String, dynamic>)
-          : null;
-      return (
-        ok: data['ok'] == true,
-        message: (data['message'] ?? '').toString(),
-        activity: act,
-      );
-    } on ApiException catch (e) {
-      return (ok: false, message: e.message, activity: null);
-    } catch (e) {
-      return (ok: false, message: e.toString(), activity: null);
+    final payload = {
+      'title': title,
+      'activity_date': activityDate,
+      if (startTime.isNotEmpty) 'start_time': startTime,
+      if (endTime.isNotEmpty) 'end_time': endTime,
+      if (location.isNotEmpty) 'location': location,
+      if (program.isNotEmpty) 'program': program,
+      if (description.isNotEmpty) 'description': description,
+      'status': status.value,
+      'auto_close': autoClose,
+      'grace_minutes': graceMinutes,
+      if (sessions.isNotEmpty) 'sessions': sessions.toJson(),
+    };
+
+    if (await _isOnline()) {
+      try {
+        final response = await _client.post(
+          Uri.parse(url),
+          headers: {..._headers(token), 'X-Idempotency-Key': idemKey},
+          body: jsonEncode(payload),
+        );
+        final data = _decode(response);
+        final act = data['activity'] != null
+            ? Activity.fromJson(data['activity'] as Map<String, dynamic>)
+            : null;
+        return (
+          ok: data['ok'] == true,
+          message: (data['message'] ?? '').toString(),
+          activity: act,
+        );
+      } on ApiException catch (e) {
+        return (ok: false, message: e.message, activity: null);
+      } catch (_) {
+        // Fall through to queue.
+      }
     }
+
+    await OutboxService.enqueue(
+      operation: 'activity_create',
+      url: url,
+      idemKey: idemKey,
+      token: token,
+      payload: payload,
+    );
+
+    // The activity id is assigned by the server, so there is nothing to scan
+    // against until this syncs — say so plainly rather than implying it exists.
+    return (
+      ok: true,
+      message: 'Saved offline. The activity will appear — and become '
+          'scannable — once you reconnect.',
+      activity: null,
+    );
   }
 
   /// Update an existing activity. Staff only.
@@ -448,26 +527,42 @@ class AttendanceApi {
     final url =
         '${_normalize(baseUrl)}/api/mobile/activities/update/$activityId';
     final idemKey = _uuid.v4();
-    try {
-      final response = await _client.post(
-        Uri.parse(url),
-        headers: {..._headers(token), 'X-Idempotency-Key': idemKey},
-        body: jsonEncode(fields),
-      );
-      final data = _decode(response);
-      final act = data['activity'] != null
-          ? Activity.fromJson(data['activity'] as Map<String, dynamic>)
-          : null;
-      return (
-        ok: data['ok'] == true,
-        message: (data['message'] ?? '').toString(),
-        activity: act,
-      );
-    } on ApiException catch (e) {
-      return (ok: false, message: e.message, activity: null);
-    } catch (e) {
-      return (ok: false, message: e.toString(), activity: null);
+
+    if (await _isOnline()) {
+      try {
+        final response = await _client.post(
+          Uri.parse(url),
+          headers: {..._headers(token), 'X-Idempotency-Key': idemKey},
+          body: jsonEncode(fields),
+        );
+        final data = _decode(response);
+        final act = data['activity'] != null
+            ? Activity.fromJson(data['activity'] as Map<String, dynamic>)
+            : null;
+        return (
+          ok: data['ok'] == true,
+          message: (data['message'] ?? '').toString(),
+          activity: act,
+        );
+      } on ApiException catch (e) {
+        return (ok: false, message: e.message, activity: null);
+      } catch (_) {
+        // Fall through to queue.
+      }
     }
+
+    await OutboxService.enqueue(
+      operation: 'activity_update',
+      url: url,
+      idemKey: idemKey,
+      token: token,
+      payload: fields,
+    );
+    return (
+      ok: true,
+      message: 'Saved offline — will sync when you reconnect.',
+      activity: null,
+    );
   }
 
   /// Flip an activity's manual open/closed override without opening the form.
@@ -501,6 +596,20 @@ class AttendanceApi {
     final url =
         '${_normalize(baseUrl)}/api/mobile/activities/delete/$activityId';
     final idemKey = _uuid.v4();
+
+    if (!await _isOnline()) {
+      await OutboxService.enqueue(
+        operation: 'activity_delete',
+        url: url,
+        idemKey: idemKey,
+        token: token,
+      );
+      return (
+        ok: true,
+        message: 'Deletion saved offline — will sync when you reconnect.',
+      );
+    }
+
     try {
       final response = await _client.post(
         Uri.parse(url),

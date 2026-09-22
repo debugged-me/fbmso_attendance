@@ -288,13 +288,18 @@ class CheckResult {
     this.session,
     this.message,
     this.student,
+    this.provisional = false,
   });
 
   final bool ok;
 
   /// checked_in | checked_out | already_in | duplicate | queued |
-  /// invalid_qr | expired_qr | activity_* | err
+  /// invalid_qr | unknown_qr | expired_qr | activity_* | stale_scan | err
   final String mode;
+
+  /// Decided on the device while offline and not yet confirmed by the server.
+  /// The UI must say so — the server can still reject it at sync.
+  final bool provisional;
   final int? id;
   final String? studentNumber;
   final String? session;

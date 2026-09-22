@@ -487,7 +487,10 @@
           return UI.fire(config).then(function(result) {
             if ((result.value === true || result.isConfirmed === true) && typeof opts.onConfirm === 'function') {
               // Only a real confirmation leads somewhere; a plain notice does not.
-              if (config.showCancelButton && window.UI && UI.navBusy) {
+              // opts.busy === false skips the overlay for non-navigating
+              // confirms (e.g. the edit modal) — otherwise it would sit on
+              // top of the modal until the 20s navBusy timeout expires.
+              if (opts.busy !== false && config.showCancelButton && window.UI && UI.navBusy) {
                 UI.navBusy(opts.busyText || 'Working…');
               }
               opts.onConfirm();
@@ -593,6 +596,7 @@
             icon: 'question',
             confirmText: 'Edit',
             confirmColor: '#10b981',
+            busy: false,
             onConfirm: function() {
               var modal = $('#editUserModal');
               modal.find('#modalUsername').val(username);

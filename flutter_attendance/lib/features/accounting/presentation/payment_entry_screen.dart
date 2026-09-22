@@ -378,6 +378,9 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
   List<FeeTemplate> _fees = [];
   String _nextOr = '';
 
+  /// Receipt numbers reserved to this device for offline use.
+  int _orReserved = 0;
+
   PayableStudent? _student;
   FeeTemplate? _fee;
   bool _isPartial = false;
@@ -408,6 +411,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
         _dateCtrl.text = ctx.today;
         _loading = false;
       });
+      await _stockOrNumbers(ctx.today);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -415,6 +419,23 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
         _loading = false;
       });
     }
+  }
+
+  /// Claim receipt numbers while there is signal. Without a reserved block a
+  /// cashier who loses connection cannot issue an O.R. number at all.
+  Future<void> _stockOrNumbers(String date) async {
+    try {
+      await widget.api.ensureOrNumbers(
+        baseUrl: widget.session.baseUrl,
+        token: widget.session.token,
+        date: date,
+      );
+    } catch (_) {
+      // Non-fatal: online payments still get their number from the server.
+    }
+    if (!mounted) return;
+    final left = await widget.api.remainingOrNumbers(date);
+    if (mounted) setState(() => _orReserved = left);
   }
 
   Future<void> _pickStudent() async {
@@ -495,10 +516,23 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          icon: const Icon(Icons.check_circle_rounded,
-              color: AppInk.positive, size: 40),
-          title: const Text('Payment saved'),
-          content: Text('O.R. #${result.orNumber}'),
+          icon: Icon(
+            result.queued
+                ? Icons.cloud_upload_rounded
+                : Icons.check_circle_rounded,
+            color: result.queued ? AppInk.caution : AppInk.positive,
+            size: 40,
+          ),
+          title: Text(result.queued ? 'Payment saved offline' : 'Payment saved'),
+          content: Text(
+            result.queued
+                // The number is real and reserved to this device, so the
+                // receipt can be handed over now; only the upload is pending.
+                ? 'O.R. #${result.orNumber}\n\n'
+                    'This receipt number is reserved for this device. '
+                    'The payment will sync when you reconnect.'
+                : 'O.R. #${result.orNumber}',
+          ),
           actions: [
             FilledButton(
               onPressed: () => Navigator.pop(ctx),
@@ -580,6 +614,35 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
                         ],
                       ),
                     ),
+                    // How many receipts this device can still issue with no
+                    // signal — the cashier needs to know before walking out.
+                    if (_orReserved > 0) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            _orReserved <= 10
+                                ? Icons.warning_amber_rounded
+                                : Icons.offline_pin_rounded,
+                            size: 15,
+                            color: _orReserved <= 10
+                                ? AppInk.caution
+                                : AppInk.positive,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$_orReserved reserved for offline use',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _orReserved <= 10
+                                  ? AppInk.caution
+                                  : AppInk.positive,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 16),
 
                     // Student picker

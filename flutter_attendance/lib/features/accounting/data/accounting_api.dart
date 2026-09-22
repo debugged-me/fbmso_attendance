@@ -4,6 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../core/services/connectivity_service.dart';
+import '../../../core/services/device_identity.dart';
+import '../../../core/services/or_block_service.dart';
+import '../../../core/services/outbox_service.dart';
 import '../domain/accounting_models.dart';
 
 /// Cashier accounting API — mirrors the web Accounting controller
@@ -81,9 +85,12 @@ class AccountingApi {
         .toList();
   }
 
-  /// Record a payment — same fields as the web Payment form. Returns the
-  /// server-generated O.R. number.
-  Future<({String orNumber, int paymentId})> paymentCreate({
+  /// Record a payment — same fields as the web Payment form.
+  ///
+  /// Offline, the O.R. number comes from the block this device reserved while
+  /// it still had signal, so the cashier can hand over a real receipt number
+  /// at the window. [queued] says the payment has not reached the server yet.
+  Future<({String orNumber, int paymentId, bool queued})> paymentCreate({
     required String baseUrl,
     required String token,
     required String studentNumber,
@@ -95,26 +102,74 @@ class AccountingApi {
     String bank = '',
     String refNo = '',
   }) async {
-    final data = await _post(
-      baseUrl,
-      token,
-      'accounting/payment/create',
-      {
-        'StudentNumber': studentNumber,
-        'description': description,
-        'Amount': amount,
-        'PDate': pDate,
-        'PaymentType': paymentType,
-        'CheckNumber': checkNumber,
-        'Bank': bank,
-        'refNo': refNo,
-      },
+    final clientPaymentId = _uuid.v4();
+    final deviceId = await DeviceIdentity.id();
+
+    final payload = <String, dynamic>{
+      'StudentNumber': studentNumber,
+      'description': description,
+      'Amount': amount,
+      'PDate': pDate,
+      'PaymentType': paymentType,
+      'CheckNumber': checkNumber,
+      'Bank': bank,
+      'refNo': refNo,
+      'client_payment_id': clientPaymentId,
+      'device_id': deviceId,
+    };
+
+    if (await ConnectivityService.isConnected()) {
+      try {
+        final data = await _post(
+            baseUrl, token, 'accounting/payment/create', payload,
+            idemKey: clientPaymentId);
+        return (
+          orNumber: (data['or_number'] ?? '').toString(),
+          paymentId: (data['payment_id'] as num?)?.toInt() ?? 0,
+          queued: false,
+        );
+      } on ApiException {
+        // A refusal from the server (validation, permissions) is a real
+        // answer, not a connectivity problem — do not queue it.
+        rethrow;
+      } catch (_) {
+        // Network failure: fall through and queue.
+      }
+    }
+
+    final reserved = await OrBlockService.take(pDate);
+    if (reserved == null) {
+      throw ApiException(
+          'No signal and no reserved O.R. numbers left for $pDate. '
+          'Reconnect once to reserve more before taking payments offline.');
+    }
+    payload['or_number'] = reserved;
+
+    await OutboxService.enqueue(
+      operation: 'payment_create',
+      url: '${_n(baseUrl)}/api/mobile/accounting/payment/create',
+      idemKey: clientPaymentId,
+      token: token,
+      payload: payload,
+      refId: clientPaymentId,
     );
-    return (
-      orNumber: (data['or_number'] ?? '').toString(),
-      paymentId: (data['payment_id'] as num?)?.toInt() ?? 0,
-    );
+
+    return (orNumber: reserved, paymentId: 0, queued: true);
   }
+
+  /// Claim receipt numbers for offline use. Call while the cashier screen is
+  /// open and online; it is a no-op when the device still has plenty.
+  Future<void> ensureOrNumbers({
+    required String baseUrl,
+    required String token,
+    required String date,
+  }) =>
+      OrBlockService.ensureStocked(
+          baseUrl: baseUrl, token: token, date: date);
+
+  /// Reserved receipt numbers still available offline for [date].
+  Future<int> remainingOrNumbers(String date) =>
+      OrBlockService.remaining(date);
 
   /// Void a payment — web deletePayment: VALID Student's-Account rows only,
   /// ledger recompute + audit row on the server.
@@ -354,10 +409,10 @@ class AccountingApi {
   }
 
   Future<Map<String, dynamic>> _post(String baseUrl, String token, String path,
-      Map<String, dynamic> payload) async {
+      Map<String, dynamic> payload, {String? idemKey}) async {
     final response = await _client.post(
       Uri.parse('${_n(baseUrl)}/api/mobile/$path'),
-      headers: {..._h(token), 'X-Idempotency-Key': _uuid.v4()},
+      headers: {..._h(token), 'X-Idempotency-Key': idemKey ?? _uuid.v4()},
       body: jsonEncode(payload),
     );
     final data = _decode(response);
