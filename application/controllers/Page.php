@@ -1694,18 +1694,21 @@ class Page extends CI_Controller
 			$existingMiddleName = $existingRow ? strtoupper(trim((string)$existingRow->MiddleName)) : '';
 			$existingLastName   = $existingRow ? strtoupper(trim((string)$existingRow->LastName))   : '';
 			$existingNameExtn   = $existingRow ? strtoupper(trim((string)$existingRow->nameExtn))   : '';
+			$existingEmail      = trim((string)($bundle->account->email ?? ($existingRow->email ?? '')));
 
 			$postedFirstName  = strtoupper(trim((string)($form['FirstName'] ?? '')));
 			$postedMiddleName = strtoupper(trim((string)($form['MiddleName'] ?? '')));
 			$postedLastName   = strtoupper(trim((string)($form['LastName'] ?? '')));
 			$postedNameExtn   = strtoupper(trim((string)($form['nameExtn'] ?? '')));
 			$postedStudentNo  = strtoupper(trim((string)($form['StudentNumber'] ?? $studentNumber)));
+			$postedEmail      = trim((string)($form['email'] ?? ''));
 
 			if ($postedFirstName  !== $existingFirstName
 				|| $postedMiddleName !== $existingMiddleName
 				|| $postedLastName   !== $existingLastName
 				|| $postedNameExtn   !== $existingNameExtn
 				|| $postedStudentNo  !== strtoupper($studentNumber)
+				|| ($existingEmail !== '' && strcasecmp($postedEmail, $existingEmail) !== 0)
 			) {
 				$this->load->library('securityaudit');
 				$this->securityaudit->event('PROFILE_BLOCKED', [
@@ -1714,10 +1717,10 @@ class Page extends CI_Controller
 					'record_pk'=> $studentNumber,
 					'target'   => $studentNumber,
 					'status'   => 'blocked',
-					'description' => 'Blocked student attempt to change identity fields (name/student no) via myProfile',
+					'description' => 'Blocked student attempt to change identity fields (name/student no/email) via myProfile',
 				]);
 				$this->session->set_flashdata('danger',
-					'You cannot change your Student Number or name. Contact the registrar if this needs updating.');
+					'You cannot change your Student Number, name, or email. Contact the registrar if this needs updating.');
 				redirect('Page/myProfile');
 				return;
 			}
@@ -1728,10 +1731,19 @@ class Page extends CI_Controller
 			$lastName   = $existingLastName;
 			$nameExtn   = $existingNameExtn;
 
-			$email      = trim((string)($form['email'] ?? ''));
-			$contactNo  = trim((string)($form['contactNo'] ?? ''));
+			// Email is locked once set — an empty one may be filled in once
+			$email      = ($existingEmail !== '') ? $existingEmail : $postedEmail;
+			// Store mobile numbers consistently as 11 digits (09XXXXXXXXX),
+			// same normalization the registration form applies.
+			$contactNo  = preg_replace('/\D+/', '', (string)($form['contactNo'] ?? ''));
 			$birthDate  = trim((string)($form['birthDate'] ?? ''));
 			$age        = trim((string)($form['age'] ?? ''));
+
+			if (!preg_match('/^09[0-9]{9}$/', $contactNo)) {
+				$this->session->set_flashdata('danger', 'Mobile number must contain 11 digits and start with 09.');
+				redirect('Page/myProfile');
+				return;
+			}
 
 			// StudentNumber is locked — no rename allowed through this endpoint
 			$oldStudentNo = $studentNumber;
