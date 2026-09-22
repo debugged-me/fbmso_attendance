@@ -55,8 +55,8 @@ class _SectionsScreenState extends State<SectionsScreen> {
 
   void _onSearchChanged(String v) { _search = v; _load(); }
 
-  Future<void> _delete(Section s) async {
-    final confirmed = await showDialog<bool>(
+  Future<bool> _confirmDelete(Section s) {
+    return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Section'),
@@ -66,8 +66,10 @@ class _SectionsScreenState extends State<SectionsScreen> {
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
         ],
       ),
-    );
-    if (confirmed != true) return;
+    ).then((v) => v == true);
+  }
+
+  Future<void> _delete(Section s) async {
     try {
       await _api.sectionDelete(
         baseUrl: widget.session.baseUrl,
@@ -94,9 +96,11 @@ class _SectionsScreenState extends State<SectionsScreen> {
     return AppScaffold(
       title: 'Sections',
       showBackButton: true,
-      actions: [
-        IconButton(icon: const Icon(Icons.add_rounded), onPressed: _showForm),
-      ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showForm,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Section'),
+      ),
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -144,15 +148,25 @@ class _SectionsScreenState extends State<SectionsScreen> {
                               const AppEmptyState(
                                 icon: Icons.group_outlined,
                                 title: 'No sections found',
-                                subtitle: 'Tap + to add a section.',
+                                subtitle: 'Tap Add Section to create one.',
                               ),
                             ])
                           : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                              itemCount: _rows.length,
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
+                              itemCount: _rows.length + 1,
                               itemBuilder: (context, i) {
-                                final s = _rows[i];
-                                return Padding(
+                                if (i == 0) {
+                                  return AppPageHeader(
+                                    title: 'Sections',
+                                    subtitle: '${_rows.length} sections',
+                                  );
+                                }
+                                final s = _rows[i - 1];
+                                return AppSwipeActions(
+                                  dismissKey: ValueKey('section-${s.id}'),
+                                  confirmDelete: () => _confirmDelete(s),
+                                  onDeleted: () => _delete(s),
+                                  child: Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: AppCard(
                                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -207,12 +221,9 @@ class _SectionsScreenState extends State<SectionsScreen> {
                                             ],
                                           ),
                                         ),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete_outline_rounded, color: AppInk.critical, size: 20),
-                                          onPressed: () => _delete(s),
-                                        ),
                                       ],
                                     ),
+                                  ),
                                   ),
                                 );
                               },

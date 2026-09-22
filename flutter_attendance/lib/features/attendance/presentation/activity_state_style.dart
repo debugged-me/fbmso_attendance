@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/design/tokens/app_tokens.dart';
-import '../../../core/theme/app_theme.dart';
 import '../domain/attendance_models.dart';
 
 /// How each activity state is drawn. Kept in one place so the student list,
@@ -18,11 +17,11 @@ class ActivityStateStyle {
   static Color colorForState(String state) {
     switch (state) {
       case 'open':
-        return AppTheme.success;
+        return AppInk.positive;
       case 'scheduled':
-        return AppTheme.info;
+        return AppInk.info;
       case 'ended':
-        return AppTheme.warning;
+        return AppInk.caution;
       case 'closed':
       case 'draft':
       case 'archived':

@@ -59,58 +59,10 @@ class Accounting extends CI_Controller
 		return $this->db->table_exists($table);
 	}
 
-	private function ensureFeesTable()
-	{
-		if ($this->tableExists('fees')) {
-			return;
-		}
-
-		$sql = "CREATE TABLE `fees` (
-			`feesid` int(10) unsigned NOT NULL,
-			`Description` varchar(100) NOT NULL DEFAULT '',
-			`Amount` double NOT NULL DEFAULT 0,
-			`Course` varchar(200) NOT NULL DEFAULT '',
-			`Major` varchar(65) DEFAULT NULL,
-			`YearLevel` varchar(45) NOT NULL DEFAULT '',
-			`Semester` varchar(45) NOT NULL DEFAULT '',
-			`feesType` varchar(45) NOT NULL DEFAULT '',
-			PRIMARY KEY (`feesid`)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-
-		$this->db->query($sql);
-	}
-
-	private function ensurePaymentAuditTable()
-	{
-		if ($this->tableExists('payment_audit_log')) {
-			return;
-		}
-
-		$sql = "CREATE TABLE `payment_audit_log` (
-			`id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-			`payment_id` int(10) unsigned NOT NULL,
-			`action` enum('edit','delete') NOT NULL,
-			`or_number` varchar(20) NOT NULL DEFAULT '',
-			`student_number` varchar(45) NOT NULL DEFAULT '',
-			`description` varchar(150) NOT NULL DEFAULT '',
-			`amount` decimal(12,2) NOT NULL DEFAULT 0,
-			`old_values` text DEFAULT NULL,
-			`new_values` text DEFAULT NULL,
-			`changed_by` varchar(45) NOT NULL DEFAULT '',
-			`changed_at` datetime NOT NULL DEFAULT current_timestamp(),
-			PRIMARY KEY (`id`),
-			KEY `payment_id` (`payment_id`)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-
-		$this->db->query($sql);
-	}
-
 	// Records who edited or deleted a payment, and what it looked like
 	// before/after — so a cashier's changes are visible to Admin, not silent.
 	private function logPaymentAudit($action, $payment, $newValues = null)
 	{
-		$this->ensurePaymentAuditTable();
-
 		$changedBy = trim((string)$this->session->userdata('username'));
 		if ($changedBy === '') {
 			$changedBy = trim((string)$this->session->userdata('IDNumber'));
@@ -406,6 +358,43 @@ class Accounting extends CI_Controller
 		$query = $this->db->get();
 		$result = $query->result();
 
+		if ($this->input->get('print', true) === '1') {
+			$printRows = [];
+			$total = 0.0;
+			foreach ($result as $row) {
+				$total += (float)$row->Amount;
+				$printRows[] = [
+					(string)$row->Description,
+					(string)$row->Responsible,
+					(string)$row->ExpenseDate,
+					(string)$row->Category,
+					'₱ ' . number_format((float)$row->Amount, 2),
+				];
+			}
+
+			$meta = [
+				['label' => 'Category', 'value' => $category ?: 'All Categories'],
+			];
+			if ($fromDate || $toDate) {
+				$meta[] = ['label' => 'Date Range', 'value' => ($fromDate ?: '...') . ' to ' . ($toDate ?: '...')];
+			}
+			$meta[] = ['label' => 'Printed', 'value' => date('F d, Y \a\t g:i A')];
+			$meta[] = ['label' => 'Total Amount', 'value' => '₱ ' . number_format($total, 2)];
+
+			$this->renderReportPrint(
+				'Expenses Report',
+				$meta,
+				['Description', 'Responsible', 'Expense Date', 'Category', 'Amount'],
+				$printRows,
+				['left', 'left', 'left', 'left', 'right'],
+				null,
+				base_url('Accounting/expensesReport'),
+				'landscape',
+				'No expenses matched the selected filters.'
+			);
+			return;
+		}
+
 		// Pass the data to the view
 		$data['category'] = $category;
 		$data['fromDate'] = $fromDate;
@@ -684,6 +673,7 @@ class Accounting extends CI_Controller
 		// active one — list the latest across all terms, otherwise a payment
 		// for another semester would look like it was never recorded.
 		$this->db->select("p.ID, p.PDate, p.pTime, p.ORNumber, p.StudentNumber, p.Amount, p.description, p.PaymentType, p.Cashier, p.Sem, p.SY,
+			f.FullAmount,
 			COALESCE(NULLIF(TRIM(sp.email),''), NULLIF(TRIM(su.email),'')) AS Email,
 			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName,
 			COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName,
@@ -691,6 +681,7 @@ class Accounting extends CI_Controller
 		$this->db->from('paymentsaccounts p');
 		$this->db->join('studeprofile sp', 'sp.StudentNumber = p.StudentNumber', 'left');
 		$this->db->join('studentsignup su', 'su.StudentNumber = p.StudentNumber', 'left');
+		$this->db->join('(SELECT Description, MAX(Amount) AS FullAmount FROM fees GROUP BY Description) f', 'f.Description = p.description', 'left');
 		$this->db->where('p.CollectionSource', "Student's Account");
 		$this->db->where('p.ORStatus', 'Valid');
 		if ($date !== null && $date !== '') {
@@ -837,6 +828,27 @@ class Accounting extends CI_Controller
 			->row();
 
 		return $this->receiptSettingsCache;
+	}
+
+	// Shared letterhead-style print document (logo, title, meta line, table)
+	// used by every accounting report's "Print" button — same look as the
+	// Attendance Logs report so printed paperwork is consistent app-wide.
+	private function renderReportPrint($title, array $meta, array $columns, array $rows, array $aligns = [], $totals = null, $backUrl = '', $orientation = 'landscape', $emptyMessage = 'No records matched.')
+	{
+		$settings = $this->getReceiptSettings();
+
+		$this->load->view('accounting_report_print', [
+			'report_title'  => $title,
+			'school_name'   => trim((string)($settings->SchoolName ?? 'FBMSO')),
+			'meta'          => $meta,
+			'columns'       => $columns,
+			'rows'          => $rows,
+			'aligns'        => $aligns,
+			'totals'        => $totals,
+			'back_url'      => $backUrl,
+			'orientation'   => $orientation,
+			'empty_message' => $emptyMessage,
+		]);
 	}
 
 	private function buildReceiptEmailPayment(array $paymentData, $student)
@@ -1076,7 +1088,6 @@ class Accounting extends CI_Controller
 	public function Payment()
 	{
 		$this->ensureAccess();
-		$this->ensureFeesTable();
 		[$sem, $sy] = $this->currentSemSy();
 
 		if (strtoupper((string)$this->input->method()) === 'POST') {
@@ -1445,7 +1456,6 @@ class Accounting extends CI_Controller
 	public function ajaxFees()
 	{
 		$this->ensureAccess();
-		$this->ensureFeesTable();
 
 		$rows = $this->getFeeTemplates();
 		$fees = [];
@@ -1466,7 +1476,6 @@ class Accounting extends CI_Controller
 	public function course_setUp()
 	{
 		$this->ensureAccess();
-		$this->ensureFeesTable();
 		[$sem] = $this->currentSemSy();
 
 		if (strtoupper((string)$this->input->method()) === 'POST') {
@@ -1579,6 +1588,45 @@ class Accounting extends CI_Controller
 			$reportPeriod .= ' — ' . trim($sem . ' ' . $sy);
 		}
 		$generatedAt = (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('F d, Y h:i A');
+
+		if ($this->input->get('print', true) === '1') {
+			$printRows = [];
+			foreach ($rows as $row) {
+				$studentName = trim((string)($row->StudentName ?? ''));
+				if (trim($studentName, ', ') === '') {
+					$studentName = (string)($row->StudentNumber ?? '');
+				}
+				$printRows[] = [
+					(string)$row->PDate,
+					(string)$row->ORNumber,
+					(string)$row->StudentNumber,
+					$studentName,
+					(string)$row->description,
+					(string)$row->PaymentType,
+					trim((string)$row->Sem . ' ' . (string)$row->SY),
+					'₱ ' . number_format((float)$row->Amount, 2),
+					(string)$row->Cashier,
+				];
+			}
+
+			$this->renderReportPrint(
+				$title,
+				[
+					['label' => 'Coverage', 'value' => $reportPeriod],
+					['label' => 'Printed', 'value' => $generatedAt],
+					['label' => 'Transactions', 'value' => number_format(count($rows))],
+					['label' => 'Total Collection', 'value' => '₱ ' . number_format($total, 2)],
+				],
+				['Date', 'O.R.', 'Student No.', 'Student', 'Description', 'Payment Type', 'Sem/SY', 'Amount', 'Cashier'],
+				$printRows,
+				['left', 'left', 'left', 'left', 'left', 'left', 'left', 'right', 'left'],
+				null,
+				base_url('Accounting/collectionReport?from=' . urlencode($from) . '&to=' . urlencode($to)),
+				'landscape',
+				'No payments in this period.'
+			);
+			return;
+		}
 
 		$data = [
 			'report_title'   => $title,
@@ -1733,7 +1781,6 @@ class Accounting extends CI_Controller
 	public function paymentAuditLog()
 	{
 		$this->ensureAccess();
-		$this->ensurePaymentAuditTable();
 
 		$this->db->select("l.*,
 			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName,
@@ -1744,6 +1791,42 @@ class Accounting extends CI_Controller
 		$this->db->order_by('l.changed_at', 'DESC');
 		$this->db->limit(300);
 		$rows = $this->db->get()->result();
+
+		if ($this->input->get('print', true) === '1') {
+			$printRows = [];
+			foreach ($rows as $row) {
+				$studentName = trim((string)($row->LastName ?? ''));
+				if ($studentName !== '') $studentName .= ', ';
+				$studentName .= trim((string)($row->FirstName ?? ''));
+				if (trim($studentName) === '') $studentName = (string)($row->student_number ?? '');
+
+				$printRows[] = [
+					date('M d, Y h:i A', strtotime((string)$row->changed_at)),
+					ucfirst((string)$row->action),
+					(string)$row->or_number,
+					$studentName,
+					(string)$row->description,
+					'₱ ' . number_format((float)$row->amount, 2),
+					(string)$row->changed_by,
+				];
+			}
+
+			$this->renderReportPrint(
+				'Payment Activity Log',
+				[
+					['label' => 'Printed', 'value' => date('F d, Y \a\t g:i A')],
+					['label' => 'Total Entries', 'value' => number_format(count($rows))],
+				],
+				['Date & Time', 'Action', 'O.R.', 'Student', 'Description', 'Amount', 'Changed By'],
+				$printRows,
+				['left', 'left', 'left', 'left', 'left', 'right', 'left'],
+				null,
+				base_url('Accounting/paymentAuditLog'),
+				'landscape',
+				'No edits or deletions recorded yet.'
+			);
+			return;
+		}
 
 		$this->load->view('accounting_payment_log', ['rows' => $rows]);
 	}
@@ -1775,6 +1858,39 @@ class Accounting extends CI_Controller
 			}
 		}
 
+		if ($this->input->get('print', true) === '1') {
+			$printRows = [];
+			foreach ($rows as $row) {
+				$printRows[] = [
+					date('M d, Y', strtotime($row['date'])),
+					$row['type'] === 'income' ? 'Collection' : 'Expense',
+					$row['description'],
+					$row['ref'],
+					($row['type'] === 'income' ? '+ ' : '- ') . '₱ ' . number_format($row['amount'], 2),
+					'₱ ' . number_format($row['balance'], 2),
+				];
+			}
+
+			$this->renderReportPrint(
+				'Ledger Report',
+				[
+					['label' => 'Period', 'value' => date('M d, Y', strtotime($from)) . ' to ' . date('M d, Y', strtotime($to))],
+					['label' => 'Printed', 'value' => date('F d, Y \a\t g:i A')],
+					['label' => 'Gross Collections', 'value' => '₱ ' . number_format($gross, 2)],
+					['label' => 'Total Expenses', 'value' => '₱ ' . number_format($spent, 2)],
+					['label' => 'Net', 'value' => '₱ ' . number_format($gross - $spent, 2)],
+				],
+				['Date', 'Type', 'Description', 'Reference', 'Amount', 'Balance'],
+				$printRows,
+				['left', 'left', 'left', 'left', 'right', 'right'],
+				null,
+				base_url('Accounting/ledger?from=' . urlencode($from) . '&to=' . urlencode($to)),
+				'landscape',
+				'No collections or expenses in this period.'
+			);
+			return;
+		}
+
 		$data = [
 			'from'  => $from,
 			'to'    => $to,
@@ -1804,6 +1920,44 @@ class Accounting extends CI_Controller
 			$row->Outstanding = $row->FullAmount - $row->PaidAmount;
 			$totalOutstanding += $row->Outstanding;
 			$students[(string)$row->StudentNumber] = true;
+		}
+
+		if ($this->input->get('print', true) === '1') {
+			$printRows = [];
+			foreach ($rows as $row) {
+				$studentName = trim((string)($row->LastName ?? ''));
+				if ($studentName !== '') $studentName .= ', ';
+				$studentName .= trim((string)(($row->FirstName ?? '') . ' ' . ($row->MiddleName ?? '')));
+				if (trim($studentName) === '') $studentName = (string)$row->StudentNumber;
+
+				$printRows[] = [
+					(string)$row->StudentNumber,
+					$studentName,
+					(string)$row->Description,
+					'₱ ' . number_format($row->FullAmount, 2),
+					'₱ ' . number_format($row->PaidAmount, 2),
+					'₱ ' . number_format($row->Outstanding, 2),
+					date('M d, Y', strtotime((string)$row->LastPaymentDate)),
+				];
+			}
+
+			$this->renderReportPrint(
+				'Students with Partial Payments',
+				[
+					['label' => 'Term', 'value' => trim($sem . ' ' . $sy)],
+					['label' => 'Printed', 'value' => date('F d, Y \a\t g:i A')],
+					['label' => 'Students With Balance', 'value' => number_format(count($students))],
+					['label' => 'Total Outstanding', 'value' => '₱ ' . number_format($totalOutstanding, 2)],
+				],
+				['Student No.', 'Student Name', 'Description', 'Full Amount', 'Paid', 'Outstanding', 'Last Payment'],
+				$printRows,
+				['left', 'left', 'left', 'right', 'right', 'right', 'left'],
+				null,
+				base_url('Accounting/partialPayments'),
+				'landscape',
+				'No outstanding partial payments for this term.'
+			);
+			return;
 		}
 
 		$data = [

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/misc_api.dart';
@@ -107,8 +106,7 @@ class _AnnouncementCard extends StatelessWidget {
                 child: Text(
                   item.title,
                   style: const TextStyle(
-                    fontFamily: AppTheme.fontFamily,
-                    fontSize: 16,
+                                        fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: AppInk.heading,
                     height: 1.3,
@@ -125,8 +123,7 @@ class _AnnouncementCard extends StatelessWidget {
           Text(
             item.message,
             style: const TextStyle(
-              fontFamily: AppTheme.fontFamily,
-              fontSize: 14,
+                            fontSize: 14,
               fontWeight: FontWeight.w400,
               color: AppInk.body,
               height: 1.5,

@@ -106,11 +106,10 @@ $route['api/mobile/attendance/export_csv/(:num)'] = 'api/MobileAttendance/export
 
 // Mobile student module
 $route['api/mobile/student/profile']              = 'api/MobileStudent/profile';
+$route['api/mobile/student/status']               = 'api/MobileStudent/status';
 $route['api/mobile/student/my_qr']                = 'api/MobileStudent/my_qr';
 $route['api/mobile/student/my_qr/issue']          = 'api/MobileStudent/issue_qr';
 $route['api/mobile/student/my_qr/revoke']         = 'api/MobileStudent/revoke_qr';
-$route['api/mobile/student/requirements']         = 'api/MobileStudent/requirements';
-$route['api/mobile/student/requirements/upload']  = 'api/MobileStudent/upload_requirement';
 $route['api/mobile/dashboard/stats']               = 'api/MobileMisc/dashboard_stats';
 $route['api/mobile/student/payments']              = 'api/MobileMisc/student_payments';
 $route['api/mobile/student/edit-profile']          = 'api/MobileMisc/student_edit_profile';
@@ -139,6 +138,26 @@ $route['api/mobile/accounting/expenses/delete']       = 'api/MobileMisc/expenses
 $route['api/mobile/accounting/expenses/categories']   = 'api/MobileMisc/expenses_categories';
 $route['api/mobile/accounting/expenses/categories/create']  = 'api/MobileMisc/expenses_categories_create';
 $route['api/mobile/accounting/expenses/categories/delete']  = 'api/MobileMisc/expenses_categories_delete';
+
+// Accounting — cashier parity with the web Accounting controller
+$route['api/mobile/accounting/dashboard']             = 'api/MobileAccounting/dashboard';
+$route['api/mobile/accounting/payment/context']       = 'api/MobileAccounting/payment_context';
+$route['api/mobile/accounting/payments']              = 'api/MobileAccounting/payments';
+$route['api/mobile/accounting/payment/create']        = 'api/MobileAccounting/payment_create';
+$route['api/mobile/accounting/payment/delete']        = 'api/MobileAccounting/payment_delete';
+$route['api/mobile/accounting/payment/audit-log']     = 'api/MobileAccounting/payment_audit_log';
+$route['api/mobile/accounting/partial-payments']      = 'api/MobileAccounting/partial_payments';
+$route['api/mobile/accounting/collection-report']     = 'api/MobileAccounting/collection_report';
+$route['api/mobile/accounting/terms']                 = 'api/MobileAccounting/terms';
+$route['api/mobile/accounting/ledger']                = 'api/MobileAccounting/ledger';
+$route['api/mobile/accounting/expenses-report']       = 'api/MobileAccounting/expenses_report';
+$route['api/mobile/accounting/fees']                  = 'api/MobileAccounting/fees';
+$route['api/mobile/accounting/fees/create']           = 'api/MobileAccounting/fees_create';
+$route['api/mobile/accounting/fees/update']           = 'api/MobileAccounting/fees_update';
+$route['api/mobile/accounting/fees/delete']           = 'api/MobileAccounting/fees_delete';
+
+// Committee dashboard stats (Page::committee)
+$route['api/mobile/committee/dashboard']              = 'api/MobileAttendance/committee_dashboard';
 $route['api/mobile/users']                        = 'api/MobileMisc/user_accounts';
 $route['api/mobile/users/create']                 = 'api/MobileMisc/user_accounts_create';
 $route['api/mobile/users/delete']                 = 'api/MobileMisc/user_accounts_delete';

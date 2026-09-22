@@ -245,10 +245,17 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-                          itemCount: _activities.length,
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
+                          itemCount: _activities.length + 1,
                           itemBuilder: (context, i) {
-                            final a = _activities[i];
+                            if (i == 0) {
+                              return AppPageHeader(
+                                title: 'Manage Activities',
+                                subtitle:
+                                    '${_activities.length} activities · tap a card to manage',
+                              );
+                            }
+                            final a = _activities[i - 1];
                             return _ActivityManageCard(
                               activity: a,
                               posterMode: _posterMode,
@@ -262,11 +269,10 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openForm(),
-        backgroundColor: AppInk.accent,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add_rounded),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('New Activity'),
       ),
     );
   }

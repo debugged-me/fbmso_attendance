@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v12.done';
+    const MARKER = 'schema_migrations_v13.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -458,6 +458,60 @@ class Schema_migrator
                             "ALTER TABLE `student_qr` ADD COLUMN `revoked_at` DATETIME NULL AFTER `expires_at`"
                         );
                     }
+                },
+            ),
+
+            // Fee schedule the Payment and Fee Setup screens read from.
+            // feesid has no AUTO_INCREMENT because the controller allocates
+            // ids itself (nextTableId) -- kept as-is so an existing prod
+            // table and a freshly created one behave identically.
+            '2026_09_22_create_fees' => array(
+                'check' => function () {
+                    return !$this->tableExists('fees');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "CREATE TABLE `fees` (
+                          `feesid` INT(10) UNSIGNED NOT NULL,
+                          `Description` VARCHAR(100) NOT NULL DEFAULT '',
+                          `Amount` DOUBLE NOT NULL DEFAULT 0,
+                          `Course` VARCHAR(200) NOT NULL DEFAULT '',
+                          `Major` VARCHAR(65) DEFAULT NULL,
+                          `YearLevel` VARCHAR(45) NOT NULL DEFAULT '',
+                          `Semester` VARCHAR(45) NOT NULL DEFAULT '',
+                          `feesType` VARCHAR(45) NOT NULL DEFAULT '',
+                          PRIMARY KEY (`feesid`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
+                },
+            ),
+
+            // Who edited or deleted a payment, and what it looked like before
+            // and after. Must exist before the first edit, not be created by
+            // it -- an install that has never edited a payment would otherwise
+            // 500 on the Payment Activity Log page.
+            '2026_09_22_create_payment_audit_log' => array(
+                'check' => function () {
+                    return !$this->tableExists('payment_audit_log');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "CREATE TABLE `payment_audit_log` (
+                          `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+                          `payment_id` INT(10) UNSIGNED NOT NULL,
+                          `action` ENUM('edit','delete') NOT NULL,
+                          `or_number` VARCHAR(20) NOT NULL DEFAULT '',
+                          `student_number` VARCHAR(45) NOT NULL DEFAULT '',
+                          `description` VARCHAR(150) NOT NULL DEFAULT '',
+                          `amount` DECIMAL(12,2) NOT NULL DEFAULT 0,
+                          `old_values` TEXT DEFAULT NULL,
+                          `new_values` TEXT DEFAULT NULL,
+                          `changed_by` VARCHAR(45) NOT NULL DEFAULT '',
+                          `changed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          PRIMARY KEY (`id`),
+                          KEY `payment_id` (`payment_id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
                 },
             ),
         );

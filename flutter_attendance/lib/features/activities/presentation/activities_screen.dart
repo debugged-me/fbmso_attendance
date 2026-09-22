@@ -112,7 +112,7 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
                       ? _ErrorView(message: _error!, onRetry: _load)
                       : ListView(
                           padding:
-                              const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                              const EdgeInsets.fromLTRB(16, 8, 16, 88),
                           children: [
                             if (widget.showWelcomeHeader) ...[
                               _WelcomeHeader(
@@ -362,22 +362,6 @@ class _ActivityCard extends StatelessWidget {
                   if (activity.location.isNotEmpty)
                     _Meta(
                         icon: Icons.place_rounded, text: activity.location),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Text(
-                    'Tap for actions',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppInk.accent.withValues(alpha: 0.8),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(Icons.chevron_right_rounded,
-                      size: 16, color: AppInk.accent.withValues(alpha: 0.8)),
                 ],
               ),
             ],

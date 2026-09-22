@@ -6,20 +6,23 @@ import '../../../core/utils/time_format.dart';
 import '../../auth/domain/app_session.dart';
 import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
+import '../../attendance/presentation/activity_form_screen.dart';
 import '../../attendance/presentation/activity_state_style.dart';
 import '../../attendance/presentation/poster_scan_screen.dart';
 import '../../attendance/presentation/scan_screen.dart';
+import '../../auth/domain/staff_permissions.dart';
 import '../../student/presentation/my_qr_screen.dart';
 
 /// Shows the activity detail bottom sheet with role-based actions.
 /// - Students: "Scan Poster QR" + "Show My QR"
-/// - Admins: "Scan Students" + "View Attendance Logs"
+/// - Admins: "Scan Students" + "View Attendance Logs" (+ "Edit" for managers)
 void showActivityDetailSheet(
   BuildContext context,
   Activity activity,
   AppSession session,
 ) {
   final isStudent = session.role.isStudentLike;
+  final canManage = StaffPermissions.of(session).canManageActivities;
 
   showModalBottomSheet(
     context: context,
@@ -28,6 +31,7 @@ void showActivityDetailSheet(
     builder: (ctx) => ActivityDetailSheet(
       activity: activity,
       isStudent: isStudent,
+      canManage: canManage,
       session: session,
     ),
   );
@@ -38,11 +42,13 @@ class ActivityDetailSheet extends StatelessWidget {
     super.key,
     required this.activity,
     required this.isStudent,
+    required this.canManage,
     required this.session,
   });
 
   final Activity activity;
   final bool isStudent;
+  final bool canManage;
   final AppSession session;
 
   String _timeRange(Activity a) {
@@ -242,6 +248,29 @@ class ActivityDetailSheet extends StatelessWidget {
                     );
                   },
                 ),
+                // Edit — same action the web activities list exposes to
+                // managers (activities/edit/<id>).
+                if (canManage) ...[
+                  const SizedBox(height: 10),
+                  AppButton(
+                    label: 'Edit Activity',
+                    icon: Icons.edit_outlined,
+                    fullWidth: true,
+                    size: AppButtonSize.lg,
+                    style: AppButtonStyle.outline,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ActivityFormScreen(
+                            session: session,
+                            activity: activity,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ],
               const SizedBox(height: 8),
             ],

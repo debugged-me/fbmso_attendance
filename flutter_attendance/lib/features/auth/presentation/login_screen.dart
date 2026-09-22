@@ -5,7 +5,6 @@ import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_brand.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_icons.dart';
-import '../../../core/theme/app_theme.dart';
 import '../domain/mobile_config.dart';
 import 'auth_controller.dart';
 import 'forgot_password_screen.dart';
@@ -414,7 +413,7 @@ class _Logo extends StatelessWidget {
         border: Border.all(color: AppInk.rule),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.midBlue.withValues(alpha: 0.06),
+            color: AppInk.accent.withValues(alpha: 0.06),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),

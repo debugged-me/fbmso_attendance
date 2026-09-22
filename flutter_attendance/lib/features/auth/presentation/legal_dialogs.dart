@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/design/tokens/app_brand.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_icons.dart';
-import '../../../core/theme/app_theme.dart';
 
 /// Inline legal dialogs that mirror the modals in the web's
 /// `application/views/home_page.php` (Data Privacy, Terms of Use, About).
@@ -217,7 +216,7 @@ class LegalDialogs {
             vertical: 40,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
@@ -275,8 +274,8 @@ class _LegalHeader extends StatelessWidget {
           colors: [Color(0xFF1A2A6C), Color(0xFF2A4090)],
         ),
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(AppTheme.radiusLg),
-          topRight: Radius.circular(AppTheme.radiusLg),
+          topLeft: Radius.circular(AppRadius.lg),
+          topRight: Radius.circular(AppRadius.lg),
         ),
       ),
       child: Row(
@@ -405,9 +404,9 @@ class _AboutBody extends StatelessWidget {
           width: 64,
           height: 64,
           decoration: BoxDecoration(
-            color: AppTheme.surface,
+            color: AppInk.subtle,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.cardBorder),
+            border: Border.all(color: AppInk.rule),
           ),
           alignment: Alignment.center,
           child: const Icon(AppIcons.security_rounded,
@@ -505,7 +504,7 @@ class _LegalFooter extends StatelessWidget {
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
           ),
           child: Text(actionLabel),

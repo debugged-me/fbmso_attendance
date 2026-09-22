@@ -67,6 +67,29 @@ class AppInk {
   static const Color positive = AppTheme.success;
   static const Color caution = AppTheme.warning;
   static const Color critical = AppTheme.error;
+
+  /// Informational (scheduled states, sync notices).
+  static const Color info = AppTheme.info;
+}
+
+/// Ordered palette for charts and breakdown bars — pick by index, never a
+/// raw hex in a screen.
+class AppChart {
+  const AppChart._();
+
+  static const List<Color> slices = [
+    Color(0xFF3B6EF6),
+    Color(0xFF9B51E0),
+    Color(0xFFE84393),
+    Color(0xFFF2994A),
+    Color(0xFF27AE60),
+    Color(0xFF00B8D4),
+    Color(0xFFF2C94C),
+    Color(0xFFEB5757),
+    Color(0xFF6C757D),
+  ];
+
+  static Color at(int i) => slices[i % slices.length];
 }
 
 /// Typography roles. Hierarchy in a flat layout is carried by type and space,

@@ -23,8 +23,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   late final MiscApi _api;
   List<ExpenseEntry> _expenses = [];
   List<ExpenseCategory> _categories = [];
+  int _selectedCategory = 0; // 0 = All
   bool _loading = true;
   String? _error;
+
+  List<ExpenseEntry> get _visible {
+    if (_selectedCategory == 0) return _expenses;
+    final cat = _categories[_selectedCategory - 1].category;
+    return _expenses.where((e) => e.category == cat).toList();
+  }
+
+  double get _total => _visible.fold(
+      0,
+      (s, e) =>
+          s + (double.tryParse(e.amount.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0));
 
   @override
   void initState() {
@@ -58,8 +70,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     }
   }
 
-  Future<void> _delete(ExpenseEntry e) async {
-    final confirmed = await showDialog<bool>(
+  /// Left-swipe confirm — dismisses the row only when the user confirms.
+  Future<bool> _confirmDelete(ExpenseEntry e) {
+    return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Expense'),
@@ -69,9 +82,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
         ],
       ),
-    );
-    if (confirmed != true) return;
+    ).then((v) => v == true);
+  }
 
+  Future<void> _delete(ExpenseEntry e) async {
     try {
       await _api.expenseDelete(
         baseUrl: widget.session.baseUrl,
@@ -119,22 +133,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final visible = _visible;
+    final chips = ['All', ..._categories.map((c) => c.category)];
+
     return AppScaffold(
       title: 'Expenses',
       showBackButton: widget.menuButton == null,
       leading: widget.menuButton,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.category_outlined),
-          onPressed: _showCategories,
-          tooltip: 'Categories',
-        ),
-        IconButton(
-          icon: const Icon(Icons.add_rounded),
-          onPressed: () => _showForm(),
-          tooltip: 'Add Expense',
-        ),
-      ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showForm(),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Expense'),
+      ),
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -154,28 +164,47 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             onAction: _load,
                           ),
                         ])
-                      : _expenses.isEmpty
-                          ? ListView(children: [
-                              const SizedBox(height: 80),
-                              const AppEmptyState(
+                      : ListView.builder(
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 4, 16, 88),
+                          itemCount: (visible.isEmpty ? 1 : visible.length) + 2,
+                          itemBuilder: (context, i) {
+                            if (i == 0) {
+                              return AppPageHeader(
+                                title: 'Expenses',
+                                subtitle:
+                                    '₱${_total.toStringAsFixed(2)} · ${visible.length} record${visible.length == 1 ? '' : 's'}',
+                              );
+                            }
+                            if (i == 1) {
+                              return AppFilterChips(
+                                labels: chips,
+                                selected: _selectedCategory
+                                    .clamp(0, chips.length - 1),
+                                onSelected: (v) =>
+                                    setState(() => _selectedCategory = v),
+                                manageLabel: 'Manage',
+                                onManage: _showCategories,
+                                padding: const EdgeInsets.only(bottom: 12),
+                              );
+                            }
+                            if (visible.isEmpty) {
+                              return const AppEmptyState(
                                 icon: Icons.receipt_long_outlined,
                                 title: 'No expenses yet',
-                                subtitle: 'Tap + to add an expense.',
-                              ),
-                            ])
-                          : ListView.builder(
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                              itemCount: _expenses.length,
-                              itemBuilder: (context, i) {
-                                final e = _expenses[i];
-                                return _ExpenseCard(
-                                  expense: e,
-                                  onEdit: () => _showForm(e),
-                                  onDelete: () => _delete(e),
-                                );
-                              },
-                            ),
+                                subtitle: 'Tap Add Expense to record one.',
+                              );
+                            }
+                            final e = visible[i - 2];
+                            return AppSwipeActions(
+                              dismissKey: ValueKey('expense-${e.id}'),
+                              onEdit: () => _showForm(e),
+                              confirmDelete: () => _confirmDelete(e),
+                              onDeleted: () => _delete(e),
+                              child: _ExpenseCard(expense: e),
+                            );
+                          },
+                        ),
             ),
           ),
         ],
@@ -185,14 +214,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 }
 
 class _ExpenseCard extends StatelessWidget {
-  const _ExpenseCard({
-    required this.expense,
-    required this.onEdit,
-    required this.onDelete,
-  });
+  const _ExpenseCard({required this.expense});
   final ExpenseEntry expense;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -261,6 +284,7 @@ class _ExpenseCard extends StatelessWidget {
             const SizedBox(width: 8),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   expense.amount,
@@ -269,18 +293,6 @@ class _ExpenseCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     color: AppInk.heading,
                   ),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (v) {
-                    if (v == 'edit') onEdit();
-                    if (v == 'delete') onDelete();
-                  },
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
-                  icon: const Icon(Icons.more_vert_rounded,
-                      size: 18, color: AppInk.muted),
                 ),
               ],
             ),

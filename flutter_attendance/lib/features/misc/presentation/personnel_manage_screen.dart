@@ -86,8 +86,8 @@ class _PersonnelManageScreenState extends State<PersonnelManageScreen> {
 
   void _onSearchChanged(String v) { _search = v; _load(); }
 
-  Future<void> _delete(Personnel p) async {
-    final confirmed = await showDialog<bool>(
+  Future<bool> _confirmDelete(Personnel p) {
+    return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Personnel'),
@@ -97,8 +97,10 @@ class _PersonnelManageScreenState extends State<PersonnelManageScreen> {
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
         ],
       ),
-    );
-    if (confirmed != true) return;
+    ).then((v) => v == true);
+  }
+
+  Future<void> _delete(Personnel p) async {
     try {
       await _api.personnelDelete(
         baseUrl: widget.session.baseUrl,
@@ -127,9 +129,11 @@ class _PersonnelManageScreenState extends State<PersonnelManageScreen> {
     return AppScaffold(
       title: 'Manage Personnel',
       showBackButton: true,
-      actions: [
-        IconButton(icon: const Icon(Icons.person_add_rounded), onPressed: () => _showForm()),
-      ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showForm(),
+        icon: const Icon(Icons.person_add_rounded),
+        label: const Text('Add Personnel'),
+      ),
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -190,15 +194,21 @@ class _PersonnelManageScreenState extends State<PersonnelManageScreen> {
                               const AppEmptyState(
                                 icon: Icons.people_outline_rounded,
                                 title: 'No personnel found',
-                                subtitle: 'Tap + to add a new personnel.',
+                                subtitle: 'Tap Add Personnel to register one.',
                               ),
                             ])
                           : ListView.builder(
                               controller: _scrollController,
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                              itemCount: _rows.length + (_loadingMore ? 1 : 0),
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
+                              itemCount: _rows.length + 1 + (_loadingMore ? 1 : 0),
                               itemBuilder: (context, i) {
-                                if (i >= _rows.length) {
+                                if (i == 0) {
+                                  return AppPageHeader(
+                                    title: 'Personnel',
+                                    subtitle: '$_total people',
+                                  );
+                                }
+                                if (i > _rows.length) {
                                   return const Padding(
                                     padding: EdgeInsets.all(16),
                                     child: Center(
@@ -207,11 +217,13 @@ class _PersonnelManageScreenState extends State<PersonnelManageScreen> {
                                     ),
                                   );
                                 }
-                                final p = _rows[i];
-                                return _PersonnelCard(
-                                  personnel: p,
+                                final p = _rows[i - 1];
+                                return AppSwipeActions(
+                                  dismissKey: ValueKey('personnel-${p.id}'),
                                   onEdit: () => _showForm(existing: p),
-                                  onDelete: () => _delete(p),
+                                  confirmDelete: () => _confirmDelete(p),
+                                  onDeleted: () => _delete(p),
+                                  child: _PersonnelCard(personnel: p),
                                 );
                               },
                             ),
@@ -224,10 +236,8 @@ class _PersonnelManageScreenState extends State<PersonnelManageScreen> {
 }
 
 class _PersonnelCard extends StatelessWidget {
-  const _PersonnelCard({required this.personnel, required this.onEdit, required this.onDelete});
+  const _PersonnelCard({required this.personnel});
   final Personnel personnel;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -286,8 +296,6 @@ class _PersonnelCard extends StatelessWidget {
                 ],
               ),
             ),
-            IconButton(icon: const Icon(Icons.edit_outlined, size: 20, color: AppInk.muted), onPressed: onEdit),
-            IconButton(icon: const Icon(Icons.delete_outline_rounded, color: AppInk.critical, size: 20), onPressed: onDelete),
           ],
         ),
       ),

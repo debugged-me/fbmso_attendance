@@ -44,8 +44,8 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
     }
   }
 
-  Future<void> _delete(Announcement a) async {
-    final confirmed = await showDialog<bool>(
+  Future<bool> _confirmDelete(Announcement a) {
+    return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Announcement'),
@@ -55,8 +55,10 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
         ],
       ),
-    );
-    if (confirmed != true) return;
+    ).then((v) => v == true);
+  }
+
+  Future<void> _delete(Announcement a) async {
     try {
       await _api.announcementDelete(
         baseUrl: widget.session.baseUrl,
@@ -82,9 +84,13 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Announcements',
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showForm,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('New Announcement'),
+      ),
       showBackButton: true,
       actions: [
-        IconButton(icon: const Icon(Icons.add_rounded), onPressed: _showForm),
       ],
       body: Column(
         children: [
@@ -111,15 +117,26 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
                               const AppEmptyState(
                                 icon: Icons.campaign_outlined,
                                 title: 'No announcements yet',
-                                subtitle: 'Tap + to post an announcement.',
+                                subtitle: 'Tap New Announcement to post one.',
                               ),
                             ])
                           : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                              itemCount: _announcements.length,
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
+                              itemCount: _announcements.length + 1,
                               itemBuilder: (context, i) {
-                                final a = _announcements[i];
-                                return Padding(
+                                if (i == 0) {
+                                  return AppPageHeader(
+                                    title: 'Announcements',
+                                    subtitle:
+                                        '${_announcements.length} posted',
+                                  );
+                                }
+                                final a = _announcements[i - 1];
+                                return AppSwipeActions(
+                                  dismissKey: ValueKey('announcement-${a.id}'),
+                                  confirmDelete: () => _confirmDelete(a),
+                                  onDeleted: () => _delete(a),
+                                  child: Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: AppCard(
                                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -177,12 +194,9 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
                                             ],
                                           ),
                                         ),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete_outline_rounded, color: AppInk.critical, size: 20),
-                                          onPressed: () => _delete(a),
-                                        ),
                                       ],
                                     ),
+                                  ),
                                   ),
                                 );
                               },

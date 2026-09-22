@@ -6,6 +6,7 @@ class Reports extends CI_Controller
     {
         parent::__construct();
         $this->load->model('ReportsModel');
+        $this->load->model('SettingsModel');
         $this->load->helper(['url', 'form']);
         $this->load->library('session');
     }
@@ -22,6 +23,7 @@ class Reports extends CI_Controller
 
         $data['sy']  = $sy;
         $data['sem'] = $sem;
+        $data['school'] = $this->SettingsModel->getSchoolInfo();
 
         // Enrollment aggregates (semesterstude)
         $data['by_yearlevel']   = $this->ReportsModel->students_by_yearlevel($sy, $sem);

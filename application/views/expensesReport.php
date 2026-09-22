@@ -405,16 +405,18 @@
                                 }
                             },
                             {
-                                extend: 'print',
                                 text: 'Print',
                                 className: 'btn btn-secondary btn-sm',
-                                title: 'Expenses Report',
-                                exportOptions: {
-                                    columns: [0, 1, 2, 3, 4],
-                                    modifier: {
-                                        search: 'applied',
-                                        order: 'applied'
-                                    }
+                                action: function() {
+                                    var selectedCategory = String($category.val() || '').trim();
+                                    var fromDate = normalizeDate($from.val());
+                                    var toDate = normalizeDate($to.val());
+                                    var url = "<?= base_url('Accounting/expenseSGenerate'); ?>" +
+                                        "?category=" + encodeURIComponent(selectedCategory) +
+                                        "&from=" + encodeURIComponent(fromDate) +
+                                        "&to=" + encodeURIComponent(toDate) +
+                                        "&print=1";
+                                    window.open(url, '_blank');
                                 }
                             }
                         ]

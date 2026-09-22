@@ -45,14 +45,10 @@
                             <a href="<?= base_url('Page/accounting'); ?>" class="up-btn up-btn-ghost">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
-                            <button type="button" class="up-btn up-btn-primary" onclick="window.print()">
+                            <button type="button" class="up-btn up-btn-primary" onclick="window.open('<?= base_url('Accounting/partialPayments'); ?>?print=1', '_blank')">
                                 <i class="mdi mdi-printer"></i> Print
                             </button>
                         </div>
-                    </div>
-
-                    <div class="report-sheet-print-title" style="display:none;">
-                        Students with Partial Payments &mdash; <?= htmlspecialchars(trim((string)$sem . ' ' . (string)$sy), ENT_QUOTES, 'UTF-8'); ?>
                     </div>
 
                     <div class="kpi-grid no-print">
@@ -71,7 +67,7 @@
                                     <h2 class="count mb-1">&#8369;<?= number_format((float)$totalOutstanding, 2); ?></h2>
                                     <p class="label mb-0">Total Outstanding</p>
                                 </div>
-                                <div class="icon"><i class="mdi mdi-cash-remove"></i></div>
+                                <div class="icon"><i class="mdi mdi-cash-refund"></i></div>
                             </div>
                         </div>
                     </div>
@@ -155,30 +151,6 @@
         });
     </script>
 
-    <style>
-        @media print {
-            #wrapper .topbar,
-            #wrapper .left-side-menu,
-            .footer,
-            .themecustomizer,
-            .no-print,
-            .dataTables_length,
-            .dataTables_filter,
-            .dataTables_info,
-            .dataTables_paginate {
-                display: none !important;
-            }
-
-            body { background: #ffffff !important; }
-            .content-page { margin-left: 0 !important; }
-            .content { padding-top: 0 !important; }
-            .container-fluid, .card { margin: 0 !important; border: 0 !important; box-shadow: none !important; }
-            .report-sheet-print-title { display: block !important; margin-bottom: 14px; font-size: 16px; font-weight: 700; color: #1e293b !important; }
-            .table-responsive { overflow: visible !important; }
-            #partialTable { width: 100% !important; font-size: 11px; }
-            #partialTable th, #partialTable td { padding: 6px !important; border-color: #cbd5e1 !important; }
-        }
-    </style>
 </body>
 
 </html>

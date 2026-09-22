@@ -23,8 +23,11 @@
                             <a href="<?= base_url($this->session->userdata('level') === 'Cashier' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
+                            <button type="button" class="up-btn up-btn-primary" onclick="window.open('<?= base_url('Accounting/paymentAuditLog'); ?>?print=1', '_blank')">
+                                <i class="mdi mdi-printer"></i> Print
+                            </button>
                             <?php if ($this->session->userdata('level') === 'Cashier'): ?>
-                                <a href="<?= base_url('Accounting/Payment'); ?>" class="up-btn up-btn-primary">
+                                <a href="<?= base_url('Accounting/Payment'); ?>" class="up-btn up-btn-ghost">
                                     <i class="mdi mdi-cash-multiple"></i> Payment Entry
                                 </a>
                             <?php endif; ?>

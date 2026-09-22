@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_icons.dart';
-import '../../../core/theme/app_theme.dart';
 import 'auth_controller.dart';
 
 /// First-run / unpaired screen: the user types their school's URL.
@@ -98,7 +97,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           border: Border.all(color: AppInk.rule),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.midBlue.withValues(alpha: 0.08),
+                              color: AppInk.accent.withValues(alpha: 0.08),
                               blurRadius: 28,
                               offset: const Offset(0, 10),
                             ),

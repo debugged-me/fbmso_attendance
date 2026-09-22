@@ -459,6 +459,9 @@
 
   <!-- Print-only document header (hidden on screen) -->
   <div id="printHeader" style="display:none;">
+    <div class="ph-letterhead">
+      <img src="<?= base_url('assets/images/srms-logo-1.png') ?>" alt="School Logo">
+    </div>
     <div class="ph-school"><?= isset($school[0]->SchoolName) ? htmlspecialchars($school[0]->SchoolName, ENT_QUOTES, 'UTF-8') : 'FBMSO Attendance'; ?></div>
     <div class="ph-address"><?= isset($school[0]->SchoolAddress) ? htmlspecialchars($school[0]->SchoolAddress, ENT_QUOTES, 'UTF-8') : ''; ?></div>
     <div class="ph-title">Registered Students</div>
@@ -500,6 +503,23 @@
       #printHeader {
         text-align: center;
         margin-bottom: 20px;
+      }
+      #printHeader .ph-letterhead {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 22mm;
+        padding: 3mm 8mm;
+        margin-bottom: 8px;
+        background: #1a2942;
+        border-radius: 4px;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      #printHeader .ph-letterhead img {
+        display: block;
+        width: 80mm;
+        height: auto;
       }
       #printHeader .ph-school {
         font-size: 16pt;

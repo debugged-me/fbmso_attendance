@@ -55,6 +55,25 @@ class AttendanceApi {
     }
   }
 
+  /// Committee dashboard stats — mirrors Page::committee on the web
+  /// (open/total activities, today's scans, 14-day trend, recent scans).
+  /// Committee-only on the server; other roles get 403.
+  Future<CommitteeDashboard> committeeDashboard({
+    required String baseUrl,
+    required String token,
+  }) async {
+    final url = '${_normalize(baseUrl)}/api/mobile/committee/dashboard';
+    final response = await _client.get(
+      Uri.parse(url),
+      headers: _headers(token),
+    );
+    final data = _decode(response);
+    if (data['ok'] == true) {
+      return CommitteeDashboard.fromJson(data);
+    }
+    throw ApiException((data['message'] ?? 'Failed to load').toString());
+  }
+
   /// Get the current poster mode state (on/off).
   Future<bool> posterMode({
     required String baseUrl,

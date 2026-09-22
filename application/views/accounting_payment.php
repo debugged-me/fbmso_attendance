@@ -31,6 +31,9 @@
                             <a href="<?= base_url($this->session->userdata('level') === 'Cashier' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
+                            <a href="<?= base_url('Accounting/partialPayments'); ?>" class="up-btn up-btn-ghost">
+                                <i class="mdi mdi-account-clock-outline"></i> View Partial Payments
+                            </a>
                             <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#paymentModal">
                                 <i class="mdi mdi-plus-circle"></i> Add Payment
                             </button>
@@ -93,6 +96,7 @@
                                                     <th>Student</th>
                                                     <th>Description</th>
                                                     <th class="text-right" style="white-space:nowrap;">Amount</th>
+                                                    <th>Status</th>
                                                     <th>Actions</th>
                                                 </tr>
                                             </thead>
@@ -108,48 +112,58 @@
                                                     $pTime = (string)($row->pTime ?? '');
                                                     $dateTimeLabel = $pDate !== '' ? date('M d, Y', strtotime($pDate)) : '';
                                                     if ($pTime !== '') $dateTimeLabel .= ' ' . date('h:i A', strtotime($pTime));
+
+                                                    $amount = (float)($row->Amount ?? 0);
+                                                    $fullAmount = $row->FullAmount !== null ? (float)$row->FullAmount : null;
+                                                    if ($fullAmount === null) {
+                                                        $statusLabel = 'N/A';
+                                                        $statusClass = 'badge-secondary';
+                                                    } elseif ($amount + 0.004 < $fullAmount) {
+                                                        $statusLabel = 'Partial';
+                                                        $statusClass = 'badge-warning';
+                                                    } else {
+                                                        $statusLabel = 'Fully Paid';
+                                                        $statusClass = 'badge-success';
+                                                    }
+                                                    $dropdownId = 'paymentActions' . $rowId;
                                                     ?>
                                                     <tr>
                                                         <td data-label="Date & Time" style="color:var(--up-muted);white-space:nowrap;"><?= htmlspecialchars($dateTimeLabel, ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="O.R." style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:var(--up-blue);"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Student" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Description" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-ink);white-space:nowrap;">₱ <?= number_format((float)($row->Amount ?? 0), 2); ?></td>
+                                                        <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-ink);white-space:nowrap;">₱ <?= number_format($amount, 2); ?></td>
+                                                        <td data-label="Status"><span class="badge <?= $statusClass; ?>" style="border-radius:6px;font-size:.72rem;font-weight:700;"><?= $statusLabel; ?></span></td>
                                                         <td data-label="Actions" class="up-rt-actions">
-                                                            <div class="action-wrap">
-                                                                <button type="button"
-                                                                    class="up-btn up-btn-ghost print-receipt-btn"
-                                                                    style="padding:8px 12px;font-size:.78rem;"
-                                                                    data-toggle="tooltip" data-placement="top" title="Print Receipt"
-                                                                    data-id="<?= $rowId; ?>">
-                                                                    <i class="mdi mdi-printer"></i> Receipt
+                                                            <div class="row-actions-menu">
+                                                                <button type="button" class="up-btn up-btn-ghost row-actions-toggle" style="padding:8px 12px;font-size:.78rem;"
+                                                                    id="<?= $dropdownId; ?>" aria-haspopup="true" aria-expanded="false">
+                                                                    <i class="mdi mdi-dots-vertical"></i> Actions
                                                                 </button>
-
-                                                                <button type="button"
-                                                                    class="up-btn up-btn-ghost edit-payment-btn"
-                                                                    style="padding:8px 12px;font-size:.78rem;"
-                                                                    data-toggle="tooltip" data-placement="top" title="Edit Payment"
-                                                                    data-id="<?= $rowId; ?>"
-                                                                    data-studentno="<?= htmlspecialchars((string)($row->StudentNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-ornumber="<?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-date="<?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-description="<?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                    data-amount="<?= htmlspecialchars((string)($row->Amount ?? 0), ENT_QUOTES, 'UTF-8'); ?>">
-                                                                    <i class="mdi mdi-pencil"></i> Edit
-                                                                </button>
-
-                                                                <form method="post" action="<?= base_url('Accounting/deletePayment'); ?>" class="delete-payment-form d-inline"
-                                                                    data-ui-confirm="The payment is removed from the student's ledger and their balance is recomputed."
-                                                                    data-ui-confirm-title="Delete this payment entry?"
-                                                                    data-ui-confirm-ok="Delete payment">
-                                                                    <input type="hidden" name="id" value="<?= $rowId; ?>">
-                                                                    <button type="submit"
-                                                                        class="up-btn up-btn-danger"
-                                                                        style="padding:8px 12px;font-size:.78rem;"
-                                                                        data-toggle="tooltip" data-placement="top" title="Delete Payment">
-                                                                        <i class="mdi mdi-delete"></i> Delete
-                                                                    </button>
-                                                                </form>
+                                                                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="<?= $dropdownId; ?>">
+                                                                    <a class="dropdown-item print-receipt-btn" href="javascript:void(0);" data-id="<?= $rowId; ?>">
+                                                                        <i class="mdi mdi-printer"></i> Print Receipt
+                                                                    </a>
+                                                                    <a class="dropdown-item edit-payment-btn" href="javascript:void(0);"
+                                                                        data-id="<?= $rowId; ?>"
+                                                                        data-studentno="<?= htmlspecialchars((string)($row->StudentNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                                        data-ornumber="<?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                                        data-date="<?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                                        data-description="<?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                                                        data-amount="<?= htmlspecialchars((string)($row->Amount ?? 0), ENT_QUOTES, 'UTF-8'); ?>">
+                                                                        <i class="mdi mdi-pencil"></i> Edit Payment
+                                                                    </a>
+                                                                    <div class="dropdown-divider"></div>
+                                                                    <form method="post" action="<?= base_url('Accounting/deletePayment'); ?>" class="delete-payment-form"
+                                                                        data-ui-confirm="The payment is removed from the student's ledger and their balance is recomputed."
+                                                                        data-ui-confirm-title="Delete this payment entry?"
+                                                                        data-ui-confirm-ok="Delete payment">
+                                                                        <input type="hidden" name="id" value="<?= $rowId; ?>">
+                                                                        <button type="submit" class="dropdown-item text-danger">
+                                                                            <i class="mdi mdi-delete"></i> Delete Payment
+                                                                        </button>
+                                                                    </form>
+                                                                </div>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -179,7 +193,7 @@
                 <form method="post" action="<?= base_url('Accounting/Payment'); ?>" id="paymentForm">
                     <div class="modal-header">
                         <h5 class="modal-title" id="paymentModalLabel">
-                            <i class="mdi mdi-cash-plus"></i> Add Student Payment
+                            <i class="mdi mdi-cash-multiple"></i> Add Student Payment
                         </h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
@@ -598,6 +612,7 @@
                 // DataTable
                 $('#recentPaymentsTable').DataTable({
                     pageLength: 10,
+                    autoWidth: false,
                     order: [
                         [0, 'desc']
                     ],
@@ -611,6 +626,62 @@
                 $('#dateFilter').on('change', function() {
                     window.location = baseUrl + 'Accounting/Payment?date=' + encodeURIComponent(this.value);
                 });
+
+                // Row actions menu — hand-rolled instead of Bootstrap's
+                // dropdown/Popper, which mis-positioned it inside this
+                // horizontally-scrollable table wrapper. Toggling a `.show`
+                // class still uses Bootstrap's own CSS for the menu's look;
+                // only the open/close and placement logic is custom.
+                function closeRowActionMenus() {
+                    $('.row-actions-menu .dropdown-menu.show').removeClass('show');
+                }
+
+                $(document).on('click', '.row-actions-toggle', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    var $menu = $(this).siblings('.dropdown-menu');
+                    var wasOpen = $menu.hasClass('show');
+                    closeRowActionMenus();
+                    if (wasOpen) {
+                        return;
+                    }
+
+                    var rect = this.getBoundingClientRect();
+                    var menuWidth = 220;
+                    var left = Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8);
+                    var el = $menu[0];
+
+                    // Placement goes through custom properties: the theme's
+                    // `.dropdown-menu.show { top: 100% !important }` beats a
+                    // plain inline top, and on a fixed menu that resolves
+                    // against the viewport, parking it off the bottom edge.
+                    el.style.setProperty('--ra-left', Math.max(8, left) + 'px');
+                    el.style.setProperty('--ra-top', (rect.bottom + 4) + 'px');
+                    $menu.addClass('show');
+
+                    // Flip above the button when the row sits near the
+                    // viewport bottom and the menu would hang off-screen.
+                    var menuHeight = el.offsetHeight;
+                    if (rect.bottom + 4 + menuHeight > window.innerHeight - 8 && rect.top - menuHeight - 4 > 8) {
+                        el.style.setProperty('--ra-top', (rect.top - menuHeight - 4) + 'px');
+                    }
+                });
+
+                // Picking an item closes the menu — without Bootstrap's
+                // dropdown JS nothing else does, so it would otherwise linger
+                // at a stale position behind the modal it just opened.
+                $(document).on('click', '.row-actions-menu .dropdown-item', closeRowActionMenus);
+
+                // Close on outside click, and on scroll since a fixed-position
+                // menu won't track the button if the page moves.
+                $(document).on('click', function(e) {
+                    if (!$(e.target).closest('.row-actions-menu').length) {
+                        closeRowActionMenus();
+                    }
+                });
+                $(document).on('scroll', '.up-rt-host', closeRowActionMenus);
+                $(window).on('scroll', closeRowActionMenus);
 
                 // tooltips first run
                 initTooltips();
@@ -804,6 +875,37 @@
 
         .action-wrap form {
             margin: 0;
+        }
+
+        /* ROW ACTIONS DROPDOWN: placement comes from --ra-top/--ra-left, set
+           by JS in viewport coords. Needs !important + extra specificity to
+           beat the theme's `.dropdown-menu.show { top: 100% !important }`. */
+        .row-actions-menu {
+            display: inline-block;
+            position: relative;
+        }
+
+        .row-actions-menu .dropdown-menu {
+            min-width: 220px;
+        }
+
+        .row-actions-menu .dropdown-menu.show {
+            position: fixed !important;
+            top: var(--ra-top, 100%) !important;
+            left: var(--ra-left, auto) !important;
+            right: auto !important;
+            margin: 0 !important;
+            z-index: 1080;
+        }
+
+        .row-actions-menu .dropdown-menu form {
+            margin: 0;
+        }
+
+        /* The card-mode rules in uniform-page.css centre every control in an
+           actions cell; menu items still need to read as a left-aligned list. */
+        .row-actions-menu .dropdown-menu .dropdown-item {
+            text-align: left;
         }
     </style>
 </body>

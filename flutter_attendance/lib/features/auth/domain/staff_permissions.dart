@@ -40,6 +40,9 @@ class StaffPermissions {
         'stude applicant',
       }.contains(position);
 
+  /// Student / Stude Applicant — the roles Page::student serves.
+  bool get isStudent => _isStudentLike;
+
   bool get isCommittee => position == 'committee';
   bool get isCashier => position == 'cashier';
 

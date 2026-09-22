@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../core/design/components/components.dart';
@@ -36,6 +37,26 @@ class _ScanScreenState extends State<ScanScreen> {
   String? _lastPayload;
   DateTime? _lastDetectedAt;
 
+  // Result flash overlay — brief green/red tint over the camera so the
+  // operator gets confirmation without looking at the history list.
+  Color _flashColor = Colors.transparent;
+  double _flashOpacity = 0;
+
+  void _flash(bool ok) {
+    if (ok) {
+      HapticFeedback.mediumImpact();
+    } else {
+      HapticFeedback.heavyImpact();
+    }
+    setState(() {
+      _flashColor = ok ? AppInk.positive : AppInk.critical;
+      _flashOpacity = 0.28;
+    });
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) setState(() => _flashOpacity = 0);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +91,7 @@ class _ScanScreenState extends State<ScanScreen> {
 
     final qrToken = QrPayloadParser.studentToken(raw);
     if (qrToken.isEmpty) {
+      _flash(false);
       setState(() {
         _recent.insert(
           0,
@@ -107,6 +129,7 @@ class _ScanScreenState extends State<ScanScreen> {
     }
 
     if (!mounted) return;
+    _flash(result.ok || result.mode == 'queued' || result.mode == 'already_in');
     setState(() {
       _recent.insert(
           0, _ScanRecord(raw: raw, result: result, at: DateTime.now()));
@@ -177,6 +200,14 @@ class _ScanScreenState extends State<ScanScreen> {
                     border: Border.all(color: Colors.white, width: 3),
                     borderRadius: BorderRadius.circular(22),
                   ),
+                ),
+              ),
+              // Result flash — covers the camera briefly on each scan.
+              IgnorePointer(
+                child: AnimatedOpacity(
+                  opacity: _flashOpacity,
+                  duration: const Duration(milliseconds: 220),
+                  child: ColoredBox(color: _flashColor),
                 ),
               ),
               if (_processing)

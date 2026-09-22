@@ -44,7 +44,15 @@ class MobileAttendance extends MobileApi
         if ($this->input->method(true) !== 'GET') {
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
-        if ($this->require_token() === null) return;
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+
+        // The web cashier allowlist is strictly accounting/* — activities
+        // (and the scanner built on it) are denied there, so deny here too.
+        $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
+        if ($pos === 'cashier') {
+            return $this->json(['ok' => false, 'message' => 'Accounting access only.'], 403);
+        }
 
         $rows = $this->ActivitiesModel->list_all();
         $out = [];
@@ -925,15 +933,46 @@ class MobileAttendance extends MobileApi
         return false;
     }
 
+    // ─── Committee dashboard ────────────────────────────────────────────────
+
     /**
-     * Scanner capability. On the web attendance/scan and attendance/consume
-     * are PUBLIC routes — even Committee and Cashier can reach them — so the
-     * only mobile restriction is that student accounts must use checkin().
+     * Committee dashboard — the same numbers Page::committee renders on the
+     * web: open/total activity counts, today's scan count, the 14-day scan
+     * trend, and the 8 most recent scans. Committee only on the web.
+     */
+    public function committee_dashboard()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+
+        if (strtolower(trim($this->position_of((string)$tokenRow['username']))) !== 'committee') {
+            return $this->json(['ok' => false, 'message' => 'Committee only.'], 403);
+        }
+
+        return $this->json([
+            'ok'           => true,
+            'open_count'   => (int)$this->ActivitiesModel->count_open(),
+            'total_count'  => (int)$this->ActivitiesModel->count_all(),
+            'today_scans'  => (int)$this->AttendanceModel->scan_count_on(),
+            'trend'        => $this->AttendanceModel->scan_trend(14),
+            'recent_scans' => $this->AttendanceModel->recent_scans(8),
+        ]);
+    }
+
+    /**
+     * Scanner capability. The web cashier sidebar offers only accounting
+     * routes and its allowlist is deny-by-default, so Cashier is excluded
+     * here too — every other non-student role may operate the scanner
+     * (students use checkin() instead).
      */
     private function is_nonstudent(array $tokenRow): bool
     {
         $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
         return $pos !== ''
+            && $pos !== 'cashier'
             && !in_array($pos, ['student', 'student applicant', 'stude', 'stude applicant'], true);
     }
 

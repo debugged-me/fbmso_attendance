@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/notification_bell.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../../core/widgets/sync_status_banner.dart';
+import '../../accounting/data/accounting_api.dart';
+import '../../accounting/domain/accounting_models.dart';
 import '../../auth/domain/app_session.dart';
 import '../../auth/domain/staff_permissions.dart';
 import '../../attendance/data/attendance_api.dart';
@@ -11,6 +14,8 @@ import '../../attendance/domain/attendance_models.dart';
 import '../../attendance/presentation/activity_state_style.dart';
 import '../../misc/data/misc_api.dart';
 import '../../misc/domain/misc_models.dart';
+import '../../student/data/student_api.dart';
+import '../../student/domain/student_models.dart';
 import 'activity_detail_sheet.dart';
 
 /// Dashboard: welcome header, announcements feed, activities list.
@@ -29,9 +34,14 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   late final MiscApi _miscApi;
   late final AttendanceApi _attApi;
+  late final StudentApi _studentApi;
+  late final AccountingApi _acctApi;
   List<Announcement> _announcements = [];
   List<Activity> _activities = [];
   DashboardStats? _stats;
+  FlagStatus? _flag;
+  AccountingDashboard? _cashierStats;
+  CommitteeDashboard? _committeeStats;
   bool _loading = true;
   String? _error;
 
@@ -40,6 +50,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _miscApi = MiscApi();
     _attApi = AttendanceApi();
+    _studentApi = StudentApi();
+    _acctApi = AccountingApi();
     _load();
   }
 
@@ -49,17 +61,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _error = null;
     });
     try {
+      final perms = StaffPermissions.of(widget.session);
       final ann = _miscApi.announcements(
         baseUrl: widget.session.baseUrl,
         token: widget.session.token,
       );
-      final act = _attApi.activities(
-        baseUrl: widget.session.baseUrl,
-        token: widget.session.token,
-      );
+      // Cashier is denied /activities (web allowlist is accounting-only) —
+      // skip the call so their dashboard doesn't trip a 403.
+      final act = perms.isCashier
+          ? Future<List<Activity>>.value(const [])
+          : _attApi.activities(
+              baseUrl: widget.session.baseUrl,
+              token: widget.session.token,
+            );
       // Stats endpoint is admin-level only; skip the call entirely for
       // students/committee/cashier so they never see a 403.
-      final stf = StaffPermissions.of(widget.session).canViewDashboardStats
+      final stf = perms.canViewDashboardStats
           ? _miscApi
               .dashboardStats(
                 baseUrl: widget.session.baseUrl,
@@ -68,12 +85,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
               .then<DashboardStats?>((s) => s)
               .catchError((_) => null)
           : Future<DashboardStats?>.value(null);
-      final results = await Future.wait<Object?>([ann, act, stf]);
+      // Flagged-account state — students only, same as the web dashboard's
+      // "pending concern" warning.
+      final flag = perms.isStudent
+          ? _studentApi.flagStatus(
+              baseUrl: widget.session.baseUrl,
+              token: widget.session.token,
+            )
+          : Future<FlagStatus?>.value(null);
+      // Cashier: the web Page::accounting collection stats.
+      final cashier = perms.isCashier
+          ? _acctApi
+              .dashboard(
+                baseUrl: widget.session.baseUrl,
+                token: widget.session.token,
+              )
+              .then<AccountingDashboard?>((s) => s)
+              .catchError((_) => null)
+          : Future<AccountingDashboard?>.value(null);
+      // Committee: the web Page::committee scan-ops stats.
+      final committee = perms.isCommittee
+          ? _attApi
+              .committeeDashboard(
+                baseUrl: widget.session.baseUrl,
+                token: widget.session.token,
+              )
+              .then<CommitteeDashboard?>((s) => s)
+              .catchError((_) => null)
+          : Future<CommitteeDashboard?>.value(null);
+      final results =
+          await Future.wait<Object?>([ann, act, stf, flag, cashier, committee]);
       if (!mounted) return;
       setState(() {
         _announcements = results[0] as List<Announcement>;
         _activities = results[1] as List<Activity>;
         _stats = results[2] as DashboardStats?;
+        _flag = results[3] as FlagStatus?;
+        _cashierStats = results[4] as AccountingDashboard?;
+        _committeeStats = results[5] as CommitteeDashboard?;
         _loading = false;
       });
     } catch (e) {
@@ -99,7 +148,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ListSkeleton(itemCount: 5)
                   : _error != null
                       ? Center(
                           child: Padding(
@@ -129,10 +178,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(height: 24),
 
+                        // ── Flagged account warning (web parity: the
+                        // "pending concern" banner + details modal) ─────
+                        if (_flag?.isFlagged == true) ...[
+                          _FlagBanner(flag: _flag!),
+                          const SizedBox(height: 24),
+                        ],
+
                         // ── Admin stats: one glanceable card, breakdowns
                         // tucked behind a tap instead of a wall of KPIs.
                         if (_stats != null) ...[
                           _StudentOverviewCard(stats: _stats!),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // ── Cashier: the web Page::accounting dashboard —
+                        // collections today/month/year + recent payments.
+                        if (_cashierStats != null) ...[
+                          _CashierOverviewCard(stats: _cashierStats!),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // ── Committee: the web Page::committee scan-ops
+                        // dashboard — today's scans + 14-day trend.
+                        if (_committeeStats != null) ...[
+                          _CommitteeOverviewCard(stats: _committeeStats!),
                           const SizedBox(height: 24),
                         ],
 
@@ -481,37 +551,105 @@ class _ActivityMiniCard extends StatelessWidget {
   }
 }
 
-/// Palette for dashboard breakdown bars.
-const _kSliceColors = [
-  Color(0xFF3B6EF6),
-  Color(0xFF9B51E0),
-  Color(0xFFE84393),
-  Color(0xFFF2994A),
-  Color(0xFF27AE60),
-  Color(0xFF00B8D4),
-  Color(0xFFF2C94C),
-  Color(0xFFEB5757),
-  Color(0xFF6C757D),
-];
+/// Flagged-account warning — same content as the web student dashboard's
+/// amber alert + flag details modal (dashboard_student.php).
+class _FlagBanner extends StatelessWidget {
+  const _FlagBanner({required this.flag});
+  final FlagStatus flag;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFFFF8E1),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _showDetails(context),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFFFC107)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded,
+                  size: 22, color: Color(0xFF856404)),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Your account has a pending concern. Tap for details.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF856404),
+                    height: 1.35,
+                  ),
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded,
+                  size: 18, color: Color(0xFF856404)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDetails(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Flagged Account Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final row in [
+              ('Reason', flag.reason),
+              ('Flagged By', flag.flaggedBy),
+              ('Office', flag.office),
+              ('School Year', flag.sy),
+              ('Semester', flag.semester),
+            ])
+              if (row.$2.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '${row.$1}: ',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        TextSpan(text: row.$2),
+                      ],
+                    ),
+                  ),
+                ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// Native-feeling student overview: one card with the headline number and
 /// year-level chips up front; course/year/section breakdowns stay tucked
 /// behind a tap so the dashboard opens on content, not a wall of KPIs.
 /// Same numbers as the web admin dashboard (Page/admin).
-class _StudentOverviewCard extends StatefulWidget {
+class _StudentOverviewCard extends StatelessWidget {
   const _StudentOverviewCard({required this.stats});
   final DashboardStats stats;
 
   @override
-  State<_StudentOverviewCard> createState() => _StudentOverviewCardState();
-}
-
-class _StudentOverviewCardState extends State<_StudentOverviewCard> {
-  bool _expanded = false;
-
-  @override
   Widget build(BuildContext context) {
-    final stats = widget.stats;
     return AppCard(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
       child: Column(
@@ -583,7 +721,7 @@ class _StudentOverviewCardState extends State<_StudentOverviewCard> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
-                      color: _kSliceColors[i % _kSliceColors.length]
+                      color: AppChart.at(i)
                           .withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -595,7 +733,7 @@ class _StudentOverviewCardState extends State<_StudentOverviewCard> {
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             color:
-                                _kSliceColors[i % _kSliceColors.length],
+                                AppChart.at(i),
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -622,8 +760,6 @@ class _StudentOverviewCardState extends State<_StudentOverviewCard> {
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
               childrenPadding: const EdgeInsets.only(bottom: 10),
-              initiallyExpanded: _expanded,
-              onExpansionChanged: (v) => setState(() => _expanded = v),
               title: const Text(
                 'Breakdowns',
                 style: TextStyle(
@@ -636,15 +772,11 @@ class _StudentOverviewCardState extends State<_StudentOverviewCard> {
                 'By course, year level & section',
                 style: TextStyle(fontSize: 11.5, color: AppInk.muted),
               ),
-              trailing: Icon(
-                _expanded
-                    ? Icons.keyboard_arrow_up_rounded
-                    : Icons.keyboard_arrow_down_rounded,
-                color: AppInk.muted,
-              ),
               children: [
                 _BarBreakdown(title: 'By Course', slices: stats.byCourse),
+                _BarBreakdown(title: 'By Major', slices: stats.byMajor),
                 _BarBreakdown(title: 'By Year Level', slices: stats.byYearLevel),
+                _BarBreakdown(title: 'By Sex', slices: stats.bySex),
                 _BarBreakdown(
                     title: 'By Section', slices: stats.bySection, maxRows: 10),
               ],
@@ -735,7 +867,7 @@ class _BarBreakdown extends StatelessWidget {
                         backgroundColor:
                             AppInk.rule.withValues(alpha: 0.5),
                         valueColor: AlwaysStoppedAnimation(
-                          _kSliceColors[i % _kSliceColors.length],
+                          AppChart.at(i),
                         ),
                       ),
                     ),
@@ -756,6 +888,301 @@ class _BarBreakdown extends StatelessWidget {
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Cashier overview — the web Page::accounting dashboard as one glanceable
+/// card: today's collection headline, month/year totals, accounts with
+/// balance, and the most recent payments. Same numbers, disclosed
+/// progressively instead of a KPI grid.
+class _CashierOverviewCard extends StatelessWidget {
+  const _CashierOverviewCard({required this.stats});
+  final AccountingDashboard stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'COLLECTIONS TODAY',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.7,
+              color: AppInk.muted,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '₱${stats.collectionToday.toStringAsFixed(2)}',
+            style: const TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+              color: AppInk.heading,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _CashierMiniStat(
+                label: 'This month',
+                value: '₱${_compact(stats.collectionMonth)}',
+              ),
+              const SizedBox(width: 10),
+              _CashierMiniStat(
+                label: 'This year',
+                value: '₱${_compact(stats.collectionYear)}',
+              ),
+              const SizedBox(width: 10),
+              _CashierMiniStat(
+                label: 'With balance',
+                value: '${stats.accountsBalance}',
+              ),
+            ],
+          ),
+          if (stats.recentPayments.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const AppRule(),
+            const SizedBox(height: 10),
+            const Text(
+              'RECENT PAYMENTS',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.6,
+                color: AppInk.muted,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...stats.recentPayments.take(5).map((p) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${p.studentName.isNotEmpty ? p.studentName : p.studentNumber} · ${p.description}',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            color: AppInk.body,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '₱${p.amount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppInk.positive,
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _compact(double v) {
+    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}k';
+    return v.toStringAsFixed(0);
+  }
+}
+
+class _CashierMiniStat extends StatelessWidget {
+  const _CashierMiniStat({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: AppInk.accent.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+                color: AppInk.muted,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: AppInk.heading,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Committee overview — the web Page::committee dashboard: open activities,
+/// today's scan count, and the 14-day scan trend as slim bars. Scan-ops
+/// first, since scanning is the committee's job.
+class _CommitteeOverviewCard extends StatelessWidget {
+  const _CommitteeOverviewCard({required this.stats});
+  final CommitteeDashboard stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxTrend = stats.trend.fold<int>(
+        0, (m, t) => t.count > m ? t.count : m);
+
+    return AppCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'SCANS TODAY',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.7,
+              color: AppInk.muted,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${stats.todayScans}',
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  color: AppInk.heading,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '${stats.openCount} open · ${stats.totalCount} activities',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppInk.muted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (stats.trend.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const AppRule(),
+            const SizedBox(height: 10),
+            const Text(
+              'LAST 14 DAYS',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.6,
+                color: AppInk.muted,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Slim bar strip — same trend the web committee dashboard draws.
+            SizedBox(
+              height: 48,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  for (final t in stats.trend)
+                    Expanded(
+                      child: Padding(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 1.5),
+                        child: Container(
+                          height: maxTrend > 0
+                              ? (t.count / maxTrend) * 44 + 4
+                              : 4,
+                          decoration: BoxDecoration(
+                            color: t.count > 0
+                                ? AppInk.accent
+                                : AppInk.rule,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+          if (stats.recentScans.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const AppRule(),
+            const SizedBox(height: 10),
+            const Text(
+              'RECENT SCANS',
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.6,
+                color: AppInk.muted,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...stats.recentScans.take(5).map((s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.qr_code_scanner_rounded,
+                          size: 14, color: AppInk.accent),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${s['student_name'] ?? s['student_number'] ?? ''}'
+                          '${s['activity_title'] != null ? ' · ${s['activity_title']}' : ''}',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            color: AppInk.body,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        (s['checked_in_at'] ?? s['scanned_at'] ?? '')
+                            .toString(),
+                        style: const TextStyle(
+                            fontSize: 11, color: AppInk.muted),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
         ],
       ),
     );

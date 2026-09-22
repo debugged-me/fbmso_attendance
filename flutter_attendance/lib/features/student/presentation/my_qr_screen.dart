@@ -4,8 +4,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_brand.dart';
 import '../../../core/design/tokens/app_tokens.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/sync_status_banner.dart';
+import '../../attendance/presentation/my_logs_screen.dart';
 import '../../attendance/presentation/poster_scan_screen.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/student_api.dart';
@@ -94,7 +94,7 @@ class _MyQrScreenState extends State<MyQrScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('New QR issued.'),
-            backgroundColor: AppTheme.success,
+            backgroundColor: AppInk.positive,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -252,6 +252,29 @@ class _QrView extends StatelessWidget {
             fontSize: 12.5,
             color: AppInk.muted,
             height: 1.45,
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // Mirrors the "My Logs" link on the web student_my_qr page.
+        Center(
+          child: TextButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => MyLogsScreen(session: session),
+                ),
+              );
+            },
+            icon: const Icon(Icons.history_rounded, size: 18),
+            label: const Text('My attendance logs'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppInk.accent,
+              textStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ),
       ],

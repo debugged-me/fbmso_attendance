@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/network/api_exception.dart';
@@ -11,10 +10,10 @@ import '../../../core/services/offline_storage_service.dart';
 import '../../../core/services/outbox_service.dart';
 import '../domain/student_models.dart';
 
-/// Student module API: profile, my QR, requirements, payments.
+/// Student module API: profile, my QR, payments.
 ///
-/// Reads are cache-first. QR issue/revoke and requirement uploads route
-/// through the outbox when offline.
+/// Reads are cache-first. QR issue/revoke routes through the outbox when
+/// offline.
 class StudentApi {
   StudentApi({http.Client? client, Uuid? uuid})
       : _client = client ?? http.Client(),
@@ -25,7 +24,6 @@ class StudentApi {
 
   static const _cacheProfile = 'student_profile';
   static const _cacheQr = 'student_qr';
-  static const _cacheRequirements = 'student_requirements';
   static const _cachePayments = 'student_payments';
 
   // ─── Profile ────────────────────────────────────────────────────────────
@@ -49,6 +47,21 @@ class StudentApi {
       if (cached != null) return StudentProfile.fromJson(cached);
       rethrow;
     }
+  }
+
+  /// Flagged-account state — never cached, fails soft to "not flagged" so a
+  /// hiccup never hides or fabricates a hold.
+  Future<FlagStatus> flagStatus({
+    required String baseUrl,
+    required String token,
+  }) async {
+    final url = '${_n(baseUrl)}/api/mobile/student/status';
+    try {
+      final response = await _client.get(Uri.parse(url), headers: _h(token));
+      final data = _decode(response);
+      if (data['ok'] == true) return FlagStatus.fromJson(data);
+    } catch (_) {}
+    return FlagStatus.fromJson(const {'is_flagged': false});
   }
 
   // ─── My QR ──────────────────────────────────────────────────────────────
@@ -118,61 +131,6 @@ class StudentApi {
       idemKey: idem,
       token: token,
     );
-  }
-
-  // ─── Requirements ───────────────────────────────────────────────────────
-
-  Future<List<Requirement>> requirements({
-    required String baseUrl,
-    required String token,
-  }) async {
-    final url = '${_n(baseUrl)}/api/mobile/student/requirements';
-    try {
-      final response = await _client.get(Uri.parse(url), headers: _h(token));
-      final data = _decode(response);
-      if (data['ok'] == true) {
-        final list = (data['requirements'] as List? ?? [])
-            .map((e) => Requirement.fromJson(e as Map<String, dynamic>))
-            .toList();
-        await OfflineStorageService.saveList(
-            _cacheRequirements, list.map((r) => r.toJson()).toList());
-        return list;
-      }
-      throw ApiException((data['message'] ?? 'Failed').toString());
-    } catch (_) {
-      final cached = await OfflineStorageService.getList(_cacheRequirements);
-      return cached.map((m) => Requirement.fromJson(m)).toList();
-    }
-  }
-
-  /// Upload a requirement file. Uses multipart form-data.
-  /// When offline, the upload is NOT queued (file uploads can't be serialized
-  /// to the outbox easily); the user is told to retry when online.
-  Future<bool> uploadRequirement({
-    required String baseUrl,
-    required String token,
-    required int requirementId,
-    required XFile file,
-  }) async {
-    if (!await ConnectivityService.isConnected()) {
-      throw ApiException('You are offline. Please reconnect to upload.');
-    }
-
-    final url = '${_n(baseUrl)}/api/mobile/student/requirements/upload';
-    final idem = _uuid.v4();
-
-    final request = http.MultipartRequest('POST', Uri.parse(url))
-      ..headers.addAll({
-        HttpHeaders.authorizationHeader: 'Bearer $token',
-        'X-Idempotency-Key': idem,
-      })
-      ..fields['requirement_id'] = requirementId.toString()
-      ..files.add(await http.MultipartFile.fromPath('requirement_file', file.path));
-
-    final streamed = await _client.send(request);
-    final response = await http.Response.fromStream(streamed);
-    final data = _decode(response);
-    return data['ok'] == true;
   }
 
   // ─── Payments ───────────────────────────────────────────────────────────

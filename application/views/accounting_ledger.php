@@ -52,8 +52,11 @@
                             <a href="<?= base_url('Page/accounting'); ?>" class="up-btn up-btn-ghost">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
-                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#filterModal">
+                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#filterModal">
                                 <i class="mdi mdi-filter-outline"></i> Filter
+                            </button>
+                            <button type="button" class="up-btn up-btn-primary" onclick="window.open('<?= base_url('Accounting/ledger'); ?>?from=<?= urlencode((string)$from); ?>&to=<?= urlencode((string)$to); ?>&print=1', '_blank')">
+                                <i class="mdi mdi-printer"></i> Print
                             </button>
                         </div>
                     </div>
@@ -73,7 +76,7 @@
                                     <h2 class="count mb-1">&#8369;<?= number_format((float)$gross, 2); ?></h2>
                                     <p class="label mb-0">Gross Collections</p>
                                 </div>
-                                <div class="icon"><i class="mdi mdi-cash-plus"></i></div>
+                                <div class="icon"><i class="mdi mdi-trending-up"></i></div>
                             </div>
                         </div>
                         <div class="card kpi red">
@@ -82,7 +85,7 @@
                                     <h2 class="count mb-1">&#8369;<?= number_format((float)$spent, 2); ?></h2>
                                     <p class="label mb-0">Total Expenses</p>
                                 </div>
-                                <div class="icon"><i class="mdi mdi-cash-minus"></i></div>
+                                <div class="icon"><i class="mdi mdi-trending-down"></i></div>
                             </div>
                         </div>
                         <div class="card kpi blue<?= (float)$net < 0 ? ' net-negative' : ''; ?>">
@@ -133,7 +136,7 @@
                                                 <?php else: ?>
                                                     <tr>
                                                         <td colspan="6" style="text-align:center;padding:32px 16px;color:var(--up-muted);">
-                                                            <i class="mdi mdi-database-off-outline" style="font-size:32px;display:block;margin-bottom:8px;opacity:.5;"></i>
+                                                            <i class="mdi mdi-file-search-outline" style="font-size:32px;display:block;margin-bottom:8px;opacity:.5;"></i>
                                                             No collections or expenses in this period.
                                                         </td>
                                                     </tr>

@@ -111,8 +111,8 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
     _load();
   }
 
-  Future<void> _delete(UserAccount u) async {
-    final confirmed = await showDialog<bool>(
+  Future<bool> _confirmDelete(UserAccount u) {
+    return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete User'),
@@ -122,9 +122,10 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
         ],
       ),
-    );
-    if (confirmed != true) return;
+    ).then((v) => v == true);
+  }
 
+  Future<void> _delete(UserAccount u) async {
     try {
       await _api.userAccountDelete(
         baseUrl: widget.session.baseUrl,
@@ -159,12 +160,11 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
     return AppScaffold(
       title: 'Manage Users',
       showBackButton: true,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.person_add_rounded),
-          onPressed: _showCreateForm,
-        ),
-      ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showCreateForm,
+        icon: const Icon(Icons.person_add_rounded),
+        label: const Text('New Account'),
+      ),
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -237,15 +237,21 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
                               const AppEmptyState(
                                 icon: Icons.people_outline_rounded,
                                 title: 'No users found',
-                                subtitle: 'Tap + to create a new user.',
+                                subtitle: 'Tap New Account to create one.',
                               ),
                             ])
                           : ListView.builder(
                               controller: _scrollController,
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                              itemCount: _rows.length + (_loadingMore ? 1 : 0),
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
+                              itemCount: _rows.length + 1 + (_loadingMore ? 1 : 0),
                               itemBuilder: (context, i) {
-                                if (i >= _rows.length) {
+                                if (i == 0) {
+                                  return AppPageHeader(
+                                    title: 'Admin Accounts',
+                                    subtitle: '$_total accounts',
+                                  );
+                                }
+                                if (i > _rows.length) {
                                   return const Padding(
                                     padding: EdgeInsets.all(16),
                                     child: Center(
@@ -256,11 +262,18 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
                                     ),
                                   );
                                 }
-                                final u = _rows[i];
-                                return _UserCard(
-                                  user: u,
-                                  currentUser: widget.session.username,
-                                  onDelete: () => _delete(u),
+                                final u = _rows[i - 1];
+                                final card = _UserCard(user: u);
+                                // You can't delete your own account on web
+                                // either — no swipe on the self row.
+                                if (u.username == widget.session.username) {
+                                  return card;
+                                }
+                                return AppSwipeActions(
+                                  dismissKey: ValueKey('user-${u.username}'),
+                                  confirmDelete: () => _confirmDelete(u),
+                                  onDeleted: () => _delete(u),
+                                  child: card,
                                 );
                               },
                             ),
@@ -273,18 +286,11 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
 }
 
 class _UserCard extends StatelessWidget {
-  const _UserCard({
-    required this.user,
-    required this.currentUser,
-    required this.onDelete,
-  });
+  const _UserCard({required this.user});
   final UserAccount user;
-  final String currentUser;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final isSelf = user.username == currentUser;
     final initials = _initials(user.fullName);
 
     return Padding(
@@ -352,11 +358,6 @@ class _UserCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (!isSelf)
-              IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, color: AppInk.critical, size: 20),
-                onPressed: onDelete,
-              ),
           ],
         ),
       ),

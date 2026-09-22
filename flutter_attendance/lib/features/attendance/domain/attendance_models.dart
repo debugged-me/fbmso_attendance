@@ -317,3 +317,42 @@ class CheckResult {
         student: (j['student'] as Map?)?.cast<String, dynamic>(),
       );
 }
+
+/// Committee dashboard stats — mirrors Page::committee on the web:
+/// open/total activity counts, today's scan count, a 14-day scan trend,
+/// and the 8 most recent scans.
+class CommitteeDashboard {
+  const CommitteeDashboard({
+    required this.openCount,
+    required this.totalCount,
+    required this.todayScans,
+    required this.trend,
+    required this.recentScans,
+  });
+
+  final int openCount;
+  final int totalCount;
+  final int todayScans;
+
+  /// [{date, count}] — 14-day scan trend.
+  final List<({String date, int count})> trend;
+  final List<Map<String, dynamic>> recentScans;
+
+  factory CommitteeDashboard.fromJson(Map<String, dynamic> j) {
+    int toInt(dynamic v) => (v is num) ? v.toInt() : int.tryParse('$v') ?? 0;
+    return CommitteeDashboard(
+      openCount: toInt(j['open_count']),
+      totalCount: toInt(j['total_count']),
+      todayScans: toInt(j['today_scans']),
+      trend: ((j['trend'] as List?) ?? [])
+          .map((e) => (
+                date: (e['date'] ?? e['day'] ?? '').toString(),
+                count: toInt(e['count'] ?? e['total'] ?? e['scans'] ?? 0),
+              ))
+          .toList(),
+      recentScans: ((j['recent_scans'] as List?) ?? [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList(),
+    );
+  }
+}

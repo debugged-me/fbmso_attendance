@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/utils/time_format.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
@@ -55,7 +56,7 @@ class _MyLogsScreenState extends State<MyLogsScreen> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ListSkeleton(itemCount: 5)
                   : _logs.isEmpty
                       ? ListView(
                           children: [
@@ -71,9 +72,17 @@ class _MyLogsScreenState extends State<MyLogsScreen> {
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                          itemCount: _logs.length,
-                          itemBuilder: (context, i) =>
-                              _LogTile(log: _logs[i]),
+                          itemCount: _logs.length + 1,
+                          itemBuilder: (context, i) {
+                            if (i == 0) {
+                              return AppPageHeader(
+                                title: 'My Attendance',
+                                subtitle:
+                                    '${_logs.length} record${_logs.length == 1 ? '' : 's'}',
+                              );
+                            }
+                            return _LogTile(log: _logs[i - 1]);
+                          },
                         ),
             ),
           ),

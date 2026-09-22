@@ -115,7 +115,7 @@
                     <h2 class="count mb-1"><span data-plugin="counterup">&#8369;<?= number_format($todayAmt, 2); ?></span></h2>
                     <p class="label mb-0">Today's Collection</p>
                   </div>
-                  <div class="icon"><i class="mdi mdi-cash-plus"></i></div>
+                  <div class="icon"><i class="mdi mdi-trending-up"></i></div>
                 </div>
               </div>
             </a>
@@ -204,7 +204,7 @@
                         <?php endforeach; ?>
                       <?php else: ?>
                         <tr>
-                          <td colspan="5" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-off-outline"></i></span><span class="sum-empty-text">No payments recorded yet</span></td>
+                          <td colspan="5" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-file-search-outline"></i></span><span class="sum-empty-text">No payments recorded yet</span></td>
                         </tr>
                       <?php endif; ?>
                     </tbody>

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/student_api.dart';
@@ -71,12 +72,17 @@ class _FinanceScreenState extends State<FinanceScreen> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ListSkeleton(itemCount: 4)
                   : _error != null
                       ? _ErrorView(message: _error!, onRetry: _load)
                       : ListView(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                           children: [
+                            AppPageHeader(
+                              title: 'Finance',
+                              subtitle:
+                                  '${_payments.length} payment${_payments.length == 1 ? '' : 's'} on record',
+                            ),
                             // ── Single summary card ─────────────────────
                             _SummaryCard(
                               label: 'Total Valid Payments',

@@ -231,13 +231,28 @@ class _DrawerTile extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  item.title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppInk.heading,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppInk.heading,
+                      ),
+                    ),
+                    if (item.subtitle.isNotEmpty)
+                      Text(
+                        item.subtitle,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: AppInk.muted,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
                 ),
               ),
               const Icon(Icons.chevron_right_rounded,

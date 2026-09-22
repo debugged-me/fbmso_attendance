@@ -5,19 +5,15 @@ defined('BASEPATH') or exit('No direct script access allowed');
 require_once APPPATH . 'libraries/MobileApi.php';
 
 /**
- * Mobile student API: profile, my QR, requirements, grades, enrolled
- * subjects (COR). All endpoints are bearer-token authenticated and reuse
- * the same models as the web Student controller.
+ * Mobile student API: profile, my QR. All endpoints are bearer-token
+ * authenticated and reuse the same models as the web Student controller.
  *
  * Endpoints (see application/config/routes.php):
  *   GET  api/mobile/student/profile
+ *   GET  api/mobile/student/status   (flagged-account state — mirrors Page::student)
  *   GET  api/mobile/student/my_qr
  *   POST api/mobile/student/my_qr/issue
  *   POST api/mobile/student/my_qr/revoke
- *   GET  api/mobile/student/requirements
- *   POST api/mobile/student/requirements/upload
- *   GET  api/mobile/student/grades
- *   GET  api/mobile/student/enrolled_subjects
  */
 class MobileStudent extends MobileApi
 {
@@ -46,6 +42,34 @@ class MobileStudent extends MobileApi
         return $this->json([
             'ok' => true,
             'profile' => $profile,
+        ]);
+    }
+
+    /**
+     * Flagged-account state — same queries the web student dashboard runs
+     * (Page::student → StudentModel::isFlagged / getFlagDetails).
+     */
+    public function status()
+    {
+        if ($this->input->method(true) !== 'GET') {
+            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
+        }
+        $tokenRow = $this->require_token();
+        if ($tokenRow === null) return;
+
+        $username = (string)$tokenRow['username'];
+        $flag = $this->StudentModel->getFlagDetails($username);
+
+        return $this->json([
+            'ok' => true,
+            'is_flagged' => $flag !== null,
+            'flag' => $flag === null ? null : [
+                'reason'     => (string)($flag->flaggedReason ?? ''),
+                'flagged_by' => (string)($flag->flaggedBy ?? ''),
+                'office'     => (string)($flag->Office ?? ''),
+                'sy'         => (string)($flag->SY ?? ''),
+                'semester'   => (string)($flag->Semester ?? ''),
+            ],
         ]);
     }
 
@@ -133,104 +157,6 @@ class MobileStudent extends MobileApi
             ]);
 
         $body = json_encode(['ok' => true, 'message' => 'QR token revoked.']);
-        $this->record_idempotent_response(200, $body);
-        return $this->json(json_decode($body, true), 200);
-    }
-
-    // ─── Requirements ──────────────────────────────────────────────────────
-
-    /** List requirement types + the student's submission status for each. */
-    public function requirements()
-    {
-        if ($this->input->method(true) !== 'GET') {
-            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
-        }
-        $tokenRow = $this->require_token();
-        if ($tokenRow === null) return;
-
-        $username = (string)$tokenRow['username'];
-        $rows = $this->StudentModel->getStudentRequirements($username);
-
-        $out = [];
-        foreach ($rows as $r) {
-            $out[] = [
-                'req_id'        => (int)$r->req_id,
-                'name'          => (string)$r->name,
-                'description'   => (string)($r->description ?? ''),
-                'date_submitted'=> (string)($r->date_submitted ?? ''),
-                'file_path'     => (string)($r->file_path ?? ''),
-                'file_url'      => $this->file_url((string)($r->file_path ?? '')),
-                'is_verified'   => (int)($r->is_verified ?? 0) === 1,
-                'comment'       => (string)($r->comment ?? ''),
-            ];
-        }
-
-        return $this->json(['ok' => true, 'requirements' => $out]);
-    }
-
-    /** Upload a requirement file (multipart form-data). */
-    public function upload_requirement()
-    {
-        if ($this->input->method(true) !== 'POST') {
-            return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
-        }
-        $tokenRow = $this->require_token();
-        if ($tokenRow === null) return;
-        if ($this->replay_if_duplicate()) return;
-
-        $username = (string)$tokenRow['username'];
-        $requirementId = (int)$this->input->post('requirement_id');
-
-        if ($requirementId <= 0 || empty($_FILES['requirement_file']['name'])) {
-            $body = json_encode(['ok' => false, 'message' => 'Requirement ID and file are required.']);
-            $this->record_idempotent_response(422, $body);
-            return $this->json(json_decode($body, true), 422);
-        }
-
-        $config['upload_path']   = './upload/requirements/';
-        $config['allowed_types'] = 'pdf|doc|docx|jpg|jpeg|png';
-        $config['max_size']      = 2048;
-        $config['encrypt_name']  = TRUE;
-        $config['remove_spaces'] = TRUE;
-
-        $this->load->library('upload', $config);
-
-        if (!$this->upload->do_upload('requirement_file')) {
-            $body = json_encode(['ok' => false, 'message' => $this->upload->display_errors('', '')]);
-            $this->record_idempotent_response(400, $body);
-            return $this->json(json_decode($body, true), 400);
-        }
-
-        $uploadData = $this->upload->data();
-        $filePath = 'upload/requirements/' . $uploadData['file_name'];
-
-        $data = [
-            'StudentNumber'  => $username,
-            'requirement_id' => $requirementId,
-            'date_submitted' => date('Y-m-d'),
-            'file_path'      => $filePath,
-            'is_verified'    => 0,
-            'verified_by'    => null,
-            'verified_at'    => null,
-            'comment'        => 'Uploaded by ' . $username . ' (mobile)',
-        ];
-
-        $existing = $this->db->get_where('student_requirements', [
-            'StudentNumber' => $username,
-            'requirement_id' => $requirementId,
-        ])->row();
-
-        if ($existing) {
-            $this->db->where('id', $existing->id)->update('student_requirements', $data);
-        } else {
-            $this->db->insert('student_requirements', $data);
-        }
-
-        $body = json_encode([
-            'ok' => true,
-            'message' => 'Requirement uploaded successfully.',
-            'file_url' => $this->file_url($filePath),
-        ]);
         $this->record_idempotent_response(200, $body);
         return $this->json(json_decode($body, true), 200);
     }

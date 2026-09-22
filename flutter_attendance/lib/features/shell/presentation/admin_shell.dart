@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_icons.dart';
 import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/app_drawer.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../../core/widgets/sync_status_banner.dart';
+import '../../accounting/presentation/collection_report_screen.dart';
+import '../../accounting/presentation/expenses_report_screen.dart';
+import '../../accounting/presentation/fees_setup_screen.dart';
+import '../../accounting/presentation/ledger_screen.dart';
+import '../../accounting/presentation/partial_payments_screen.dart';
+import '../../accounting/presentation/payment_audit_log_screen.dart';
+import '../../accounting/presentation/payment_entry_screen.dart';
 import '../../activities/presentation/activities_screen.dart';
 import '../../activities/presentation/dashboard_screen.dart';
 import '../../attendance/data/attendance_api.dart';
@@ -28,8 +37,8 @@ import '../../misc/presentation/user_accounts_screen.dart';
 /// Admin shell: Dashboard + Activities + Scan in the bottom nav.
 /// A consistent drawer sidebar is available on every page with all
 /// admin features (Manage Activities, Attendance Logs, Personnel,
-/// Registered Students, Manage Users, Expenses, Announcements, Notes,
-/// To-Do, Profile, Change Password, Change Avatar, Sign out).
+/// Registered Students, Admin Accounts, Expenses, Announcements,
+/// Change Password, Change Avatar, Sign out).
 class AdminShell extends StatefulWidget {
   const AdminShell({
     super.key,
@@ -146,6 +155,25 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
+      // Accounting block — mirrors the web Cashier sidebar in order:
+      // Payment Entry, School Expenses (+reports), Payment Setup (fees),
+      // Collection Reports, Ledger, Partial Payments, Payment Activity Log.
+      // Admin sees the same set (Accounting allows Admin + Cashier).
+      if (p.canUseAccounting)
+        DrawerItem(
+          icon: Icons.payments_outlined,
+          title: 'Payment Entry',
+          subtitle: 'Record a student payment',
+          onTap: (ctx) {
+            Navigator.of(ctx).pop();
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    PaymentEntryScreen(session: widget.session),
+              ),
+            );
+          },
+        ),
       if (p.canUseAccounting)
         DrawerItem(
           icon: Icons.receipt_long_outlined,
@@ -156,6 +184,95 @@ class _AdminShellState extends State<AdminShell> {
             Navigator.of(ctx).push(
               MaterialPageRoute(
                 builder: (_) => ExpensesScreen(session: widget.session),
+              ),
+            );
+          },
+        ),
+      if (p.canUseAccounting)
+        DrawerItem(
+          icon: Icons.summarize_outlined,
+          title: 'Expenses Reports',
+          subtitle: 'Filter expenses by category & date',
+          onTap: (ctx) {
+            Navigator.of(ctx).pop();
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    ExpensesReportScreen(session: widget.session),
+              ),
+            );
+          },
+        ),
+      if (p.canUseAccounting)
+        DrawerItem(
+          icon: Icons.sell_outlined,
+          title: 'Fees Setup',
+          subtitle: 'Payment setup — fee templates',
+          onTap: (ctx) {
+            Navigator.of(ctx).pop();
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    FeesSetupScreen(session: widget.session),
+              ),
+            );
+          },
+        ),
+      if (p.canUseAccounting)
+        DrawerItem(
+          icon: Icons.description_outlined,
+          title: 'Collection Reports',
+          subtitle: 'Collections by date range & term',
+          onTap: (ctx) {
+            Navigator.of(ctx).pop();
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    CollectionReportScreen(session: widget.session),
+              ),
+            );
+          },
+        ),
+      if (p.canUseAccounting)
+        DrawerItem(
+          icon: Icons.menu_book_outlined,
+          title: 'Ledger',
+          subtitle: 'Collections vs expenses, running balance',
+          onTap: (ctx) {
+            Navigator.of(ctx).pop();
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (_) => LedgerScreen(session: widget.session),
+              ),
+            );
+          },
+        ),
+      if (p.canUseAccounting)
+        DrawerItem(
+          icon: Icons.hourglass_bottom_rounded,
+          title: 'Partial Payments',
+          subtitle: 'Students paying in installments',
+          onTap: (ctx) {
+            Navigator.of(ctx).pop();
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    PartialPaymentsScreen(session: widget.session),
+              ),
+            );
+          },
+        ),
+      if (p.canUseAccounting)
+        DrawerItem(
+          icon: Icons.manage_history_rounded,
+          title: 'Payment Activity Log',
+          subtitle: 'Payment edits & deletions audit',
+          onTap: (ctx) {
+            Navigator.of(ctx).pop();
+            Navigator.of(ctx).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    PaymentAuditLogScreen(session: widget.session),
               ),
             );
           },
@@ -296,8 +413,11 @@ class _ScanPicker extends StatefulWidget {
 }
 
 class _ScanPickerState extends State<_ScanPicker> {
+  static const _kLastActivityKey = 'last_scan_activity_id';
+
   late final AttendanceApi _api;
   List<Activity> _activities = [];
+  int? _lastActivityId;
   bool _loading = true;
   bool _posterMode = false;
 
@@ -318,9 +438,19 @@ class _ScanPickerState extends State<_ScanPicker> {
       baseUrl: widget.session.baseUrl,
       token: widget.session.token,
     );
+    final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
+
+    // Surface the last-used activity first — scanners usually run the same
+    // event repeatedly across a session.
+    _lastActivityId = prefs.getInt(_kLastActivityKey);
+    final open = list.where((a) => a.isOpen).toList();
+    final lastIdx =
+        open.indexWhere((a) => a.activityId == _lastActivityId);
+    if (lastIdx > 0) open.insert(0, open.removeAt(lastIdx));
+
     setState(() {
-      _activities = list.where((a) => a.isOpen).toList();
+      _activities = open;
       _posterMode = pm;
       _loading = false;
     });
@@ -367,7 +497,7 @@ class _ScanPickerState extends State<_ScanPicker> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ListSkeleton(itemCount: 4)
                   : _activities.isEmpty
                       ? ListView(
                           children: [
@@ -387,10 +517,20 @@ class _ScanPickerState extends State<_ScanPicker> {
                           ],
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                          itemCount: _activities.length,
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                          itemCount: _activities.length + 1,
                           itemBuilder: (context, i) {
-                            final a = _activities[i];
+                            if (i == 0) {
+                              return AppPageHeader(
+                                title: _posterMode
+                                    ? 'Poster Mode'
+                                    : 'Select Activity',
+                                subtitle: _posterMode
+                                    ? 'Tap to show the check-in QR poster'
+                                    : 'Open activities you can scan for',
+                              );
+                            }
+                            final a = _activities[i - 1];
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 10),
                               child: AppCard(
@@ -398,6 +538,9 @@ class _ScanPickerState extends State<_ScanPicker> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 14),
                                 onTap: () {
+                                  SharedPreferences.getInstance().then(
+                                      (p) => p.setInt(_kLastActivityKey,
+                                          a.activityId));
                                   if (_posterMode) {
                                     Navigator.of(context).push(
                                       MaterialPageRoute(
@@ -460,6 +603,32 @@ class _ScanPickerState extends State<_ScanPicker> {
                                               color: AppInk.muted,
                                             ),
                                           ),
+                                          if (a.activityId ==
+                                              _lastActivityId) ...[
+                                            const SizedBox(height: 4),
+                                            Container(
+                                              padding: const EdgeInsets
+                                                  .symmetric(
+                                                  horizontal: 7,
+                                                  vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppInk.accent
+                                                    .withValues(alpha: 0.10),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: const Text(
+                                                'LAST USED',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight:
+                                                      FontWeight.w800,
+                                                  letterSpacing: 0.6,
+                                                  color: AppInk.accent,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     ),
@@ -536,10 +705,16 @@ class _ActivityLogPickerState extends State<_ActivityLogPicker> {
                           ),
                         ])
                       : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                          itemCount: _activities.length,
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                          itemCount: _activities.length + 1,
                           itemBuilder: (context, i) {
-                            final a = _activities[i];
+                            if (i == 0) {
+                              return const AppPageHeader(
+                                title: 'Attendance Logs',
+                                subtitle: 'Pick an activity to view its log',
+                              );
+                            }
+                            final a = _activities[i - 1];
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 8),
                               child: AppCard(

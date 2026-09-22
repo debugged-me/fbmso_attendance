@@ -11,6 +11,16 @@
         <div class="content-page">
             <div class="content">
                 <div class="container-fluid section-gutters">
+                    <div class="only-print" id="printLetterhead" style="text-align:center;margin-bottom:16px;">
+                        <div style="display:flex;align-items:center;justify-content:center;min-height:22mm;padding:3mm 8mm;margin-bottom:8px;background:#1a2942;border-radius:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+                            <img src="<?= base_url('assets/images/srms-logo-1.png') ?>" alt="School Logo" style="display:block;width:80mm;height:auto;">
+                        </div>
+                        <div style="font-size:16pt;font-weight:800;color:#0d1b4b;"><?= isset($school[0]->SchoolName) ? htmlspecialchars($school[0]->SchoolName, ENT_QUOTES, 'UTF-8') : 'FBMSO'; ?></div>
+                        <div style="font-size:10pt;color:#555;margin:2px 0 10px;"><?= isset($school[0]->SchoolAddress) ? htmlspecialchars($school[0]->SchoolAddress, ENT_QUOTES, 'UTF-8') : ''; ?></div>
+                        <div style="font-size:13pt;font-weight:700;color:#2a4090;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Activities Report</div>
+                        <div style="font-size:9pt;color:#777;">Printed: <?= date('F d, Y \a\t h:i A'); ?></div>
+                        <div style="height:2px;background:linear-gradient(to right,#2a4090,#4266d4,#2a4090);margin:10px 0 16px;border-radius:1px;"></div>
+                    </div>
                     <div class="row">
                         <div class="col-12">
                             <div class="d-flex align-items-center justify-content-between mb-2">

@@ -112,8 +112,8 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
     _load();
   }
 
-  Future<void> _delete(RegisteredStudent s) async {
-    final confirmed = await showDialog<bool>(
+  Future<bool> _confirmDelete(RegisteredStudent s) {
+    return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Student'),
@@ -124,9 +124,10 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
         ],
       ),
-    );
-    if (confirmed != true) return;
+    ).then((v) => v == true);
+  }
 
+  Future<void> _delete(RegisteredStudent s) async {
     try {
       await _api.registeredStudentDelete(
         baseUrl: widget.session.baseUrl,
@@ -182,22 +183,6 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
               ),
             ),
           ),
-          if (!_loading && _error == null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-              child: Row(
-                children: [
-                  Text(
-                    '${_rows.length} of $_total students',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppInk.muted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _load,
@@ -226,9 +211,16 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
                           : ListView.builder(
                               controller: _scrollController,
                               padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                              itemCount: _rows.length + (_loadingMore ? 1 : 0),
+                              itemCount: _rows.length + 1 + (_loadingMore ? 1 : 0),
                               itemBuilder: (context, i) {
-                                if (i >= _rows.length) {
+                                if (i == 0) {
+                                  return AppPageHeader(
+                                    title: 'Registered Students',
+                                    subtitle:
+                                        '${_rows.length} of $_total students',
+                                  );
+                                }
+                                if (i > _rows.length) {
                                   return const Padding(
                                     padding: EdgeInsets.all(16),
                                     child: Center(
@@ -239,10 +231,13 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
                                     ),
                                   );
                                 }
-                                final r = _rows[i];
-                                return _StudentCard(
-                                  student: r,
-                                  onDelete: () => _delete(r),
+                                final r = _rows[i - 1];
+                                return AppSwipeActions(
+                                  dismissKey:
+                                      ValueKey('student-${r.studentNumber}'),
+                                  confirmDelete: () => _confirmDelete(r),
+                                  onDeleted: () => _delete(r),
+                                  child: _StudentCard(student: r),
                                 );
                               },
                             ),
@@ -255,9 +250,8 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
 }
 
 class _StudentCard extends StatelessWidget {
-  const _StudentCard({required this.student, required this.onDelete});
+  const _StudentCard({required this.student});
   final RegisteredStudent student;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -347,10 +341,6 @@ class _StudentCard extends StatelessWidget {
                           : AppInk.muted,
                     )),
               ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline_rounded, color: AppInk.critical, size: 20),
-              onPressed: onDelete,
-            ),
           ],
         ),
       ),

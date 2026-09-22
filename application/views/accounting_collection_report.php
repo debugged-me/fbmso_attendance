@@ -43,6 +43,9 @@
                             <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#yearlyModal">
                                 <i class="mdi mdi-calendar-range-outline"></i> Yearly View
                             </button>
+                            <button type="button" class="up-btn up-btn-primary" onclick="window.open('<?= base_url('Accounting/collectionReport'); ?>?from=<?= urlencode((string)$from); ?>&to=<?= urlencode((string)$to); ?>&print=1', '_blank')">
+                                <i class="mdi mdi-printer"></i> Print
+                            </button>
                         </div>
                     </div>
 

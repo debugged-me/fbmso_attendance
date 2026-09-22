@@ -119,51 +119,36 @@ class StudentQr {
       );
 }
 
-/// One requirement row from `GET /api/mobile/student/requirements`.
-class Requirement {
-  const Requirement({
-    required this.reqId,
-    required this.name,
-    required this.description,
-    required this.dateSubmitted,
-    required this.filePath,
-    required this.fileUrl,
-    required this.isVerified,
-    required this.comment,
+/// Flagged-account state from `GET /api/mobile/student/status` — mirrors the
+/// web student dashboard's `is_flagged`/`flag_details` (Page::student).
+class FlagStatus {
+  const FlagStatus({
+    required this.isFlagged,
+    required this.reason,
+    required this.flaggedBy,
+    required this.office,
+    required this.sy,
+    required this.semester,
   });
 
-  final int reqId;
-  final String name;
-  final String description;
-  final String dateSubmitted;
-  final String filePath;
-  final String fileUrl;
-  final bool isVerified;
-  final String comment;
+  final bool isFlagged;
+  final String reason;
+  final String flaggedBy;
+  final String office;
+  final String sy;
+  final String semester;
 
-  bool get isSubmitted => dateSubmitted.isNotEmpty && filePath.isNotEmpty;
-
-  factory Requirement.fromJson(Map<String, dynamic> j) => Requirement(
-        reqId: (j['req_id'] as num?)?.toInt() ?? 0,
-        name: (j['name'] ?? '').toString(),
-        description: (j['description'] ?? '').toString(),
-        dateSubmitted: (j['date_submitted'] ?? '').toString(),
-        filePath: (j['file_path'] ?? '').toString(),
-        fileUrl: (j['file_url'] ?? '').toString(),
-        isVerified: j['is_verified'] == true,
-        comment: (j['comment'] ?? '').toString(),
-      );
-
-  Map<String, dynamic> toJson() => {
-        'req_id': reqId,
-        'name': name,
-        'description': description,
-        'date_submitted': dateSubmitted,
-        'file_path': filePath,
-        'file_url': fileUrl,
-        'is_verified': isVerified,
-        'comment': comment,
-      };
+  factory FlagStatus.fromJson(Map<String, dynamic> j) {
+    final flag = j['flag'] as Map<String, dynamic>?;
+    return FlagStatus(
+      isFlagged: j['is_flagged'] == true,
+      reason: (flag?['reason'] ?? '').toString(),
+      flaggedBy: (flag?['flagged_by'] ?? '').toString(),
+      office: (flag?['office'] ?? '').toString(),
+      sy: (flag?['sy'] ?? '').toString(),
+      semester: (flag?['semester'] ?? '').toString(),
+    );
+  }
 }
 
 /// One payment record from `GET /api/mobile/student/payments`.

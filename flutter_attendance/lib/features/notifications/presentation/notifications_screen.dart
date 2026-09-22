@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/services/notification_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 
 /// In-app notifications list. Shows sync results, offline-queue events,
@@ -51,10 +51,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.notifications_none,
-                            size: 48, color: AppTheme.textMuted),
+                            size: 48, color: AppInk.muted),
                         SizedBox(height: 12),
                         Text('No notifications.',
-                            style: TextStyle(color: AppTheme.textMuted)),
+                            style: TextStyle(color: AppInk.muted)),
                       ],
                     ),
                   )
@@ -93,7 +93,7 @@ class _NotificationTile extends StatelessWidget {
             Text(
               _formatDate(notification.createdAt),
               style: const TextStyle(
-                  fontSize: 11, color: AppTheme.textMuted),
+                  fontSize: 11, color: AppInk.muted),
             ),
           ],
         ),
@@ -104,15 +104,15 @@ class _NotificationTile extends StatelessWidget {
   (IconData, Color) _typeStyle(String type) {
     switch (type) {
       case 'success':
-        return (Icons.check_circle, AppTheme.success);
+        return (Icons.check_circle, AppInk.positive);
       case 'warning':
-        return (Icons.warning_amber, AppTheme.warning);
+        return (Icons.warning_amber, AppInk.caution);
       case 'error':
-        return (Icons.error_outline, AppTheme.error);
+        return (Icons.error_outline, AppInk.critical);
       case 'sync':
-        return (Icons.sync, AppTheme.midBlue);
+        return (Icons.sync, AppInk.accent);
       default:
-        return (Icons.info_outline, AppTheme.midBlue);
+        return (Icons.info_outline, AppInk.accent);
     }
   }
 
