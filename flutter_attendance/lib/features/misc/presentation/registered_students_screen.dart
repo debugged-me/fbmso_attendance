@@ -147,7 +147,7 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Registered Students',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: true,
       body: Column(
         children: [
@@ -216,6 +216,7 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
                                 if (i == 0) {
                                   return AppPageHeader(
                                     title: 'Registered Students',
+                                  icon: Icons.groups_outlined,
                                     subtitle:
                                         '${_rows.length} of $_total students',
                                   );

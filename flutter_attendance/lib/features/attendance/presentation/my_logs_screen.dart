@@ -47,7 +47,7 @@ class _MyLogsScreenState extends State<MyLogsScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'My Attendance',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: true,
       body: Column(
         children: [
@@ -77,6 +77,7 @@ class _MyLogsScreenState extends State<MyLogsScreen> {
                             if (i == 0) {
                               return AppPageHeader(
                                 title: 'My Attendance',
+                              icon: Icons.fact_check_outlined,
                                 subtitle:
                                     '${_logs.length} record${_logs.length == 1 ? '' : 's'}',
                               );

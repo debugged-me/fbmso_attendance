@@ -173,7 +173,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     AppInput(
                       controller: _usernameController,
                       label: 'Username',
-                      hint: 'Student number or username',
                       textInputAction: TextInputAction.next,
                       prefixIcon: AppIcons.person_outline_rounded,
                       autofillHints: const ['username'],
@@ -182,7 +181,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     AppInput(
                       controller: _passwordController,
                       label: 'Password',
-                      hint: 'Enter your password',
                       obscureText: _obscurePassword,
                       textInputAction: TextInputAction.done,
                       prefixIcon: AppIcons.lock_outline_rounded,

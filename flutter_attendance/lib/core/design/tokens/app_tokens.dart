@@ -48,9 +48,9 @@ class AppRadius {
 class AppInk {
   const AppInk._();
 
-  /// Page background. Flat layouts sit on white — a tinted page only reads
-  /// correctly when white cards float on top of it.
-  static const Color page = Colors.white;
+  /// Page background. A soft blue-grey canvas lets white cards float — the
+  /// single change that makes flat lists read as layered, modern surfaces.
+  static const Color page = AppTheme.surface;
 
   /// Grouped-row background when a group needs to be set apart.
   static const Color subtle = AppTheme.surface;

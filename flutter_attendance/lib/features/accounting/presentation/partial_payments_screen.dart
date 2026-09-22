@@ -67,7 +67,7 @@ class _PartialPaymentsScreenState extends State<PartialPaymentsScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Partial Payments',
+      titleWidget: const SizedBox.shrink(),
       body: _loading
           ? const ListSkeleton(itemCount: 6)
           : _error != null
@@ -93,6 +93,8 @@ class _PartialPaymentsScreenState extends State<PartialPaymentsScreen> {
                       if (i == 0) {
                         return AppPageHeader(
                           title: 'Partial Payments',
+                          icon: Icons.pie_chart_outline_rounded,
+                          iconColor: AppInk.caution,
                           subtitle:
                               '₱${_totalOutstanding.toStringAsFixed(2)} outstanding · $_studentCount students · $_sem $_sy',
                         );

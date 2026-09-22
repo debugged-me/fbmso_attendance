@@ -114,7 +114,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               AppInput(
                 controller: _emailController,
                 label: 'Email address',
-                hint: 'Enter Email',
                 prefixIcon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.done,

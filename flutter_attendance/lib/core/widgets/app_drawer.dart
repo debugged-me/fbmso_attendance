@@ -80,13 +80,21 @@ class AppAppDrawer extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          session.position,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppInk.muted,
-                            fontWeight: FontWeight.w600,
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppInk.accent.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            session.position,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppInk.accent,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],
@@ -162,20 +170,43 @@ class AppAppDrawer extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: AppInk.critical.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Icon(Icons.logout_rounded,
+              color: AppInk.critical, size: 26),
+        ),
         title: const Text('Sign out?'),
-        content: const Text('You will need to sign in again to continue.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sign out'),
-          ),
-        ],
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('You will need to sign in again to continue.'),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                        backgroundColor: AppInk.critical),
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Sign out'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
     if (ok == true) {

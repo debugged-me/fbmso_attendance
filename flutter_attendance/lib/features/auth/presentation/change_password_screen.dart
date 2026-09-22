@@ -114,7 +114,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Change Password',
+      titleWidget: const SizedBox.shrink(),
       body: Column(
         children: [
           if (_success != null) _SuccessBanner(message: _success!),
@@ -122,14 +122,22 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           if (_success != null || _error != null) const SizedBox(height: 16),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const AppPageHeader(
+                    title: 'Change Password',
+                    subtitle: 'Keep your account secure',
+                  ),
+                  AppCard(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                   AppInput(
                     controller: _currentController,
                     label: 'Current Password',
-                    hint: 'Enter your current password',
                     obscureText: _obscureCurrent,
                     prefixIcon: Icons.lock_outline_rounded,
                     textInputAction: TextInputAction.next,
@@ -149,7 +157,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   AppInput(
                     controller: _newController,
                     label: 'New Password',
-                    hint: 'At least 6 characters',
                     obscureText: _obscureNew,
                     prefixIcon: Icons.lock_outline_rounded,
                     textInputAction: TextInputAction.next,
@@ -169,7 +176,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   AppInput(
                     controller: _confirmController,
                     label: 'Confirm New Password',
-                    hint: 'Re-enter your new password',
                     obscureText: _obscureConfirm,
                     prefixIcon: Icons.lock_outline_rounded,
                     textInputAction: TextInputAction.done,
@@ -194,6 +200,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     loading: _busy,
                     disabled: _busy,
                     onTap: _submit,
+                  ),
+                      ],
+                    ),
                   ),
                 ],
               ),

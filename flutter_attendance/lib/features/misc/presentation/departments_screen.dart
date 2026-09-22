@@ -125,7 +125,7 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Courses',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: true,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showForm,
@@ -190,6 +190,7 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
                                 if (i == 0) {
                                   return AppPageHeader(
                                     title: 'Courses',
+                                    icon: Icons.school_outlined,
                                     subtitle: '$_total courses',
                                   );
                                 }
@@ -384,13 +385,13 @@ class _DeptFormState extends State<_DeptForm> {
               Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),
               const SizedBox(height: 12),
             ],
-            AppInput(controller: _code, label: 'Course Code *', hint: 'e.g. BSBA', prefixIcon: Icons.code_rounded),
+            AppInput(controller: _code, label: 'Course Code *', prefixIcon: Icons.code_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _desc, label: 'Course Description *', hint: 'e.g. Bachelor of Science...', prefixIcon: Icons.school_outlined),
+            AppInput(controller: _desc, label: 'Course Description *', prefixIcon: Icons.school_outlined),
             const SizedBox(height: 14),
-            AppInput(controller: _major, label: 'Major', hint: 'Major (optional)', prefixIcon: Icons.book_outlined),
+            AppInput(controller: _major, label: 'Major', prefixIcon: Icons.book_outlined),
             const SizedBox(height: 14),
-            AppInput(controller: _duration, label: 'Duration', hint: 'e.g. 4 years', prefixIcon: Icons.timer_outlined),
+            AppInput(controller: _duration, label: 'Duration', prefixIcon: Icons.timer_outlined),
             const SizedBox(height: 20),
             AppButton(
               label: 'Save',

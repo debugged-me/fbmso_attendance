@@ -99,7 +99,7 @@ class _ExpensesReportScreenState extends State<ExpensesReportScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Expenses Reports',
+      titleWidget: const SizedBox.shrink(),
       body: Column(
         children: [
           // Filters: category chips + date range — same filters as the web
@@ -181,6 +181,7 @@ class _ExpensesReportScreenState extends State<ExpensesReportScreen> {
         children: [
           AppPageHeader(
             title: 'Expenses Report',
+            icon: Icons.receipt_long_outlined,
             subtitle:
                 '${_rows.length} entries · ₱${_total.toStringAsFixed(2)} total',
           ),

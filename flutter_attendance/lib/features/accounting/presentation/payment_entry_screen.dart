@@ -134,7 +134,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
         _payments.fold<double>(0, (s, p) => s + p.amount);
 
     return AppScaffold(
-      title: 'Payment Entry',
+      titleWidget: const SizedBox.shrink(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openForm,
         icon: const Icon(Icons.add_rounded),
@@ -163,6 +163,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
                     children: [
                       AppPageHeader(
                         title: 'Payment Entry',
+                        icon: Icons.payments_outlined,
                         subtitle:
                             '₱${dateTotal.toStringAsFixed(2)} collected ${_dateFilter == 'all' ? 'overall' : 'on $_dateFilter'}',
                       ),
@@ -247,7 +248,7 @@ class _DateChip extends StatelessWidget {
         selectedColor: AppInk.accent,
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           side: BorderSide(
               color: selected ? AppInk.accent : AppInk.rule),
         ),
@@ -380,7 +381,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
 
   PayableStudent? _student;
   FeeTemplate? _fee;
-  final _descriptionCtrl = TextEditingController();
+  bool _isPartial = false;
   final _amountCtrl = TextEditingController();
   final _dateCtrl = TextEditingController();
   final _checkNoCtrl = TextEditingController();
@@ -426,6 +427,21 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
     if (picked != null) setState(() => _student = picked);
   }
 
+  /// Fee picker — the web payment form's Description dropdown.
+  Future<void> _pickFee() async {
+    final picked = await showModalBottomSheet<FeeTemplate>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _FeePicker(fees: _fees),
+    );
+    if (picked != null) {
+      setState(() {
+        _fee = picked;
+        _amountCtrl.text = picked.amount.toStringAsFixed(2);
+      });
+    }
+  }
+
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -447,13 +463,17 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
       _toast('Pick a student first.');
       return;
     }
-    if (_descriptionCtrl.text.trim().isEmpty) {
-      _toast('Description is required.');
+    if (_fee == null) {
+      _toast('Please select a Description.');
       return;
     }
     final amount = double.tryParse(_amountCtrl.text.trim());
     if (amount == null || amount <= 0) {
       _toast('Amount must be greater than 0.');
+      return;
+    }
+    if (_isPartial && amount >= _fee!.amount) {
+      _toast('Partial amount must be less than the full fee.');
       return;
     }
 
@@ -463,7 +483,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
         baseUrl: widget.session.baseUrl,
         token: widget.session.token,
         studentNumber: _student!.studentNumber,
-        description: _descriptionCtrl.text.trim(),
+        description: _fee!.description,
         amount: amount,
         pDate: _dateCtrl.text.trim(),
         paymentType: _paymentType,
@@ -505,7 +525,6 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
 
   @override
   void dispose() {
-    _descriptionCtrl.dispose();
     _amountCtrl.dispose();
     _dateCtrl.dispose();
     _checkNoCtrl.dispose();
@@ -607,55 +626,118 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Fee templates — picking one fills description+amount,
-                    // same as the web fee dropdown.
-                    const _FieldLabel('Fee (optional shortcut)'),
-                    SizedBox(
-                      height: 38,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: _fees
-                            .map((f) => Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: ChoiceChip(
-                                    label: Text(
-                                        '${f.description} · ₱${f.amount.toStringAsFixed(0)}'),
-                                    selected: _fee?.id == f.id,
-                                    showCheckmark: false,
-                                    onSelected: (_) => setState(() {
-                                      _fee = f;
-                                      _descriptionCtrl.text = f.description;
-                                      _amountCtrl.text =
-                                          f.amount.toStringAsFixed(2);
-                                    }),
+                    // Description — the web form's fee dropdown. Picking a
+                    // fee sets the amount; "Partial payment" unlocks a
+                    // custom (lower) amount, same as the web checkbox.
+                    const _FieldLabel('Description'),
+                    AppCard(
+                      onTap: _pickFee,
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _fee == null
+                                ? const Text(
+                                    'Tap to choose a fee',
+                                    style: TextStyle(
+                                        color: AppInk.muted, fontSize: 14),
+                                  )
+                                : Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _fee!.description,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppInk.heading,
+                                        ),
+                                      ),
+                                      Text(
+                                        '₱${_fee!.amount.toStringAsFixed(2)}'
+                                        '${_fee!.type.isNotEmpty ? ' · ${_fee!.type}' : ''}',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppInk.muted),
+                                      ),
+                                    ],
                                   ),
-                                ))
-                            .toList(),
+                          ),
+                          const Icon(Icons.keyboard_arrow_down_rounded,
+                              color: AppInk.muted, size: 22),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
 
-                    const _FieldLabel('Description'),
-                    AppInput(
-                      controller: _descriptionCtrl,
-                      hint: 'e.g. Tuition Fee',
+                    // Partial payment — mirrors the web IsPartial checkbox.
+                    GestureDetector(
+                      onTap: () => setState(() {
+                        _isPartial = !_isPartial;
+                        if (!_isPartial && _fee != null) {
+                          _amountCtrl.text =
+                              _fee!.amount.toStringAsFixed(2);
+                        }
+                      }),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: Checkbox(
+                              value: _isPartial,
+                              onChanged: (v) => setState(() {
+                                _isPartial = v ?? false;
+                                if (!_isPartial && _fee != null) {
+                                  _amountCtrl.text =
+                                      _fee!.amount.toStringAsFixed(2);
+                                }
+                              }),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(6)),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Partial payment — paying less than the full fee',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppInk.body,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 12),
 
                     const _FieldLabel('Amount'),
                     AppInput(
                       controller: _amountCtrl,
-                      hint: '0.00',
+                      readOnly: !_isPartial,
                       keyboardType: const TextInputType.numberWithOptions(
                           decimal: true),
                       prefixIcon: Icons.payments_outlined,
                     ),
+                    if (_isPartial && _fee != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          'Full amount: ₱${_fee!.amount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppInk.muted),
+                        ),
+                      ),
                     const SizedBox(height: 12),
 
                     const _FieldLabel('Payment Date'),
                     AppInput(
                       controller: _dateCtrl,
-                      hint: 'YYYY-MM-DD',
                       readOnly: true,
                       onTap: _pickDate,
                       prefixIcon: Icons.event_rounded,
@@ -678,16 +760,15 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
 
                     if (_paymentType == 'Check') ...[
                       const _FieldLabel('Check Number'),
-                      AppInput(
-                          controller: _checkNoCtrl, hint: 'Check no.'),
+                      AppInput(controller: _checkNoCtrl),
                       const SizedBox(height: 12),
                       const _FieldLabel('Bank'),
-                      AppInput(controller: _bankCtrl, hint: 'Bank name'),
+                      AppInput(controller: _bankCtrl),
                       const SizedBox(height: 12),
                     ],
 
                     const _FieldLabel('Reference No. (optional)'),
-                    AppInput(controller: _refCtrl, hint: 'Ref no.'),
+                    AppInput(controller: _refCtrl),
                     const SizedBox(height: 24),
 
                     SizedBox(
@@ -812,6 +893,82 @@ class _StudentPickerState extends State<_StudentPicker> {
                         const TextStyle(fontSize: 12, color: AppInk.muted),
                   ),
                   onTap: () => Navigator.of(context).pop(s),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Fee picker — the web payment form's Description dropdown, as a
+/// bottom-sheet list so amounts are visible beside each fee.
+class _FeePicker extends StatelessWidget {
+  const _FeePicker({required this.fees});
+  final List<FeeTemplate> fees;
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      maxChildSize: 0.9,
+      minChildSize: 0.4,
+      expand: false,
+      builder: (context, scroll) => Column(
+        children: [
+          const SizedBox(height: 8),
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppInk.rule,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Select Fee',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppInk.heading,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              controller: scroll,
+              itemCount: fees.length,
+              itemBuilder: (context, i) {
+                final f = fees[i];
+                return ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20),
+                  title: Text(
+                    f.description,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: f.type.isNotEmpty
+                      ? Text(f.type,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppInk.muted))
+                      : null,
+                  trailing: Text(
+                    '₱${f.amount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppInk.accent,
+                    ),
+                  ),
+                  onTap: () => Navigator.of(context).pop(f),
                 );
               },
             ),

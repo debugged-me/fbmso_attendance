@@ -159,7 +159,7 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Manage Activities',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: true,
       body: Column(
         children: [
@@ -251,6 +251,7 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
                             if (i == 0) {
                               return AppPageHeader(
                                 title: 'Manage Activities',
+                                icon: Icons.event_note_rounded,
                                 subtitle:
                                     '${_activities.length} activities · tap a card to manage',
                               );

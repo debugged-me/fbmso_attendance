@@ -697,6 +697,7 @@ class _ActivityLogPickerState extends State<_ActivityLogPicker> {
                             if (i == 0) {
                               return const AppPageHeader(
                                 title: 'Attendance Logs',
+                                icon: Icons.fact_check_outlined,
                               );
                             }
                             final a = _activities[i - 1];

@@ -413,7 +413,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           AppInput(
                             controller: _studentNumber,
                             label: 'Student ID *',
-                            hint: 'e.g. 2023-0446',
                             prefixIcon: Icons.badge_outlined,
                             textInputAction: TextInputAction.next,
                             autofillHints: const ['username'],
@@ -439,7 +438,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           AppInput(
                             controller: _password,
                             label: 'Password *',
-                            hint: 'At least 8 characters',
                             prefixIcon: Icons.lock_outline_rounded,
                             obscureText: _obscurePassword,
                             textInputAction: TextInputAction.next,
@@ -458,7 +456,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           AppInput(
                             controller: _confirmPassword,
                             label: 'Confirm Password *',
-                            hint: 'Repeat your password',
                             prefixIcon: Icons.lock_outline_rounded,
                             obscureText: _obscureConfirm,
                             textInputAction: TextInputAction.next,
@@ -481,7 +478,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           AppInput(
                             controller: _firstName,
                             label: 'First Name *',
-                            hint: 'Enter first name',
                             prefixIcon: Icons.person_outline_rounded,
                             textInputAction: TextInputAction.next,
                           ),
@@ -489,7 +485,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           AppInput(
                             controller: _middleName,
                             label: 'Middle Name',
-                            hint: 'Enter middle name (optional)',
                             prefixIcon: Icons.person_outline_rounded,
                             textInputAction: TextInputAction.next,
                           ),
@@ -497,7 +492,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           AppInput(
                             controller: _lastName,
                             label: 'Last Name *',
-                            hint: 'Enter last name',
                             prefixIcon: Icons.person_outline_rounded,
                             textInputAction: TextInputAction.next,
                           ),
@@ -505,7 +499,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           AppInput(
                             controller: _nameExtn,
                             label: 'Ext.',
-                            hint: 'Jr., Sr.',
                             prefixIcon: Icons.person_outline_rounded,
                             textInputAction: TextInputAction.next,
                           ),
@@ -530,7 +523,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       : '',
                                 ),
                                 label: 'Date of Birth *',
-                                hint: 'Tap to select date',
                                 prefixIcon: Icons.calendar_today_rounded,
                               ),
                             ),
@@ -539,7 +531,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           AppInput(
                             controller: _email,
                             label: 'E-mail Address *',
-                            hint: 'you@email.com',
                             prefixIcon: Icons.email_outlined,
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
@@ -558,7 +549,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           AppInput(
                             controller: _contactNo,
                             label: 'Mobile No. *',
-                            hint: '09XX XXX XXXX',
                             prefixIcon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
                             textInputAction: TextInputAction.next,

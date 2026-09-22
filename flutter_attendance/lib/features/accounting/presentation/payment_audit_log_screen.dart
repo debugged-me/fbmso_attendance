@@ -58,7 +58,7 @@ class _PaymentAuditLogScreenState extends State<PaymentAuditLogScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Payment Activity Log',
+      titleWidget: const SizedBox.shrink(),
       body: _loading
           ? const ListSkeleton(itemCount: 6)
           : _error != null
@@ -84,6 +84,7 @@ class _PaymentAuditLogScreenState extends State<PaymentAuditLogScreen> {
                       if (i == 0) {
                         return AppPageHeader(
                           title: 'Payment Activity Log',
+                          icon: Icons.history_rounded,
                           subtitle:
                               '${_entries.length} entr${_entries.length == 1 ? 'y' : 'ies'} · edits & deletions',
                         );

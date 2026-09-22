@@ -457,7 +457,6 @@ class _ProfileEditFormState extends State<_ProfileEditForm> {
                 child: AppInput(
                   controller: _birthDate,
                   label: 'Birth Date',
-                  hint: 'YYYY-MM-DD',
                   prefixIcon: Icons.cake_outlined,
                 ),
               ),

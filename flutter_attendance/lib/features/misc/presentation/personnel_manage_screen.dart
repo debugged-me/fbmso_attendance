@@ -127,7 +127,7 @@ class _PersonnelManageScreenState extends State<PersonnelManageScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Manage Personnel',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: true,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(),
@@ -205,6 +205,7 @@ class _PersonnelManageScreenState extends State<PersonnelManageScreen> {
                                 if (i == 0) {
                                   return AppPageHeader(
                                     title: 'Personnel',
+                                  icon: Icons.badge_outlined,
                                     subtitle: '$_total people',
                                   );
                                 }
@@ -410,21 +411,21 @@ class _PersonnelFormState extends State<_PersonnelForm> {
               Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),
               const SizedBox(height: 12),
             ],
-            AppInput(controller: _idNumber, label: 'ID Number *', hint: 'e.g. AB-002', prefixIcon: Icons.badge_outlined),
+            AppInput(controller: _idNumber, label: 'ID Number *', prefixIcon: Icons.badge_outlined),
             const SizedBox(height: 14),
-            AppInput(controller: _firstName, label: 'First Name *', hint: 'Enter first name', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _firstName, label: 'First Name *', prefixIcon: Icons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _middleName, label: 'Middle Name', hint: 'Enter middle name', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _middleName, label: 'Middle Name', prefixIcon: Icons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _lastName, label: 'Last Name *', hint: 'Enter last name', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _lastName, label: 'Last Name *', prefixIcon: Icons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _title, label: 'Position', hint: 'e.g. Faculty', prefixIcon: Icons.work_outlined),
+            AppInput(controller: _title, label: 'Position', prefixIcon: Icons.work_outlined),
             const SizedBox(height: 14),
-            AppInput(controller: _department, label: 'Department', hint: 'e.g. Admin', prefixIcon: Icons.business_outlined),
+            AppInput(controller: _department, label: 'Department', prefixIcon: Icons.business_outlined),
             const SizedBox(height: 14),
-            AppInput(controller: _email, label: 'Email', hint: 'you@email.com', prefixIcon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+            AppInput(controller: _email, label: 'Email', prefixIcon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
             const SizedBox(height: 14),
-            AppInput(controller: _mobile, label: 'Mobile', hint: '09XX XXX XXXX', prefixIcon: Icons.phone_outlined, keyboardType: TextInputType.phone),
+            AppInput(controller: _mobile, label: 'Mobile', prefixIcon: Icons.phone_outlined, keyboardType: TextInputType.phone),
             const SizedBox(height: 20),
             AppButton(
               label: isEdit ? 'Save Changes' : 'Add Personnel',

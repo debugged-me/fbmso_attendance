@@ -158,7 +158,7 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Manage Users',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: true,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreateForm,
@@ -248,6 +248,7 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
                                 if (i == 0) {
                                   return AppPageHeader(
                                     title: 'Admin Accounts',
+                                    icon: Icons.admin_panel_settings_outlined,
                                     subtitle: '$_total accounts',
                                   );
                                 }
@@ -498,9 +499,9 @@ class _CreateUserFormState extends State<_CreateUserForm> {
               Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),
               const SizedBox(height: 12),
             ],
-            AppInput(controller: _username, label: 'Username *', hint: 'Enter username', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _username, label: 'Username *', prefixIcon: Icons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _idNumber, label: 'ID Number *', hint: 'Enter ID number', prefixIcon: Icons.badge_outlined),
+            AppInput(controller: _idNumber, label: 'ID Number *', prefixIcon: Icons.badge_outlined),
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               initialValue: _acctLevel,
@@ -516,18 +517,17 @@ class _CreateUserFormState extends State<_CreateUserForm> {
               onChanged: (v) => setState(() => _acctLevel = v ?? 'Admin'),
             ),
             const SizedBox(height: 14),
-            AppInput(controller: _fName, label: 'First Name *', hint: 'Enter first name', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _fName, label: 'First Name *', prefixIcon: Icons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _mName, label: 'Middle Name', hint: 'Enter middle name', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _mName, label: 'Middle Name', prefixIcon: Icons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _lName, label: 'Last Name *', hint: 'Enter last name', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _lName, label: 'Last Name *', prefixIcon: Icons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _email, label: 'Email *', hint: 'you@email.com', prefixIcon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+            AppInput(controller: _email, label: 'Email *', prefixIcon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
             const SizedBox(height: 14),
             AppInput(
               controller: _password,
               label: 'Password *',
-              hint: 'Enter password',
               prefixIcon: Icons.lock_outline_rounded,
               obscureText: _obscurePass,
               suffixIcon: GestureDetector(

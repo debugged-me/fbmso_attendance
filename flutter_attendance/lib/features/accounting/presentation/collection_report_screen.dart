@@ -104,7 +104,7 @@ class _CollectionReportScreenState extends State<CollectionReportScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Collection Reports',
+      titleWidget: const SizedBox.shrink(),
       body: Column(
         children: [
           // Filter row — From / To / Term, matching the web filter bar.
@@ -194,6 +194,7 @@ class _CollectionReportScreenState extends State<CollectionReportScreen> {
         children: [
           AppPageHeader(
             title: 'Collection Report',
+            icon: Icons.summarize_outlined,
             subtitle:
                 '${_rows.length} payments · ₱${_total.toStringAsFixed(2)} total',
           ),

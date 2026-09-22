@@ -62,36 +62,75 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
         text: fee != null ? fee.amount.toStringAsFixed(2) : '');
     final typeCtrl = TextEditingController(text: fee?.type ?? '');
 
-    final saved = await showDialog<bool>(
+    final saved = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(fee == null ? 'Add Fee' : 'Edit Fee'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppInput(controller: descCtrl, hint: 'Description'),
-            const SizedBox(height: 12),
-            AppInput(
-              controller: amountCtrl,
-              hint: 'Amount',
-              keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true),
-            ),
-            const SizedBox(height: 12),
-            AppInput(
-              controller: typeCtrl,
-              hint: 'Fee type (default: School Fee)',
-            ),
-          ],
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius:
+                BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppInk.rule,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                fee == null ? 'Add Fee' : 'Edit Fee',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppInk.heading,
+                ),
+              ),
+              const SizedBox(height: 20),
+              AppInput(
+                controller: descCtrl,
+                label: 'Description',
+                prefixIcon: Icons.sell_outlined,
+              ),
+              const SizedBox(height: 14),
+              AppInput(
+                controller: amountCtrl,
+                label: 'Amount',
+                keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true),
+                prefixIcon: Icons.payments_outlined,
+              ),
+              const SizedBox(height: 14),
+              AppInput(
+                controller: typeCtrl,
+                label: 'Fee Type',
+                prefixIcon: Icons.category_outlined,
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  textStyle: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+                child: Text(fee == null ? 'Add Fee' : 'Save Changes'),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Save')),
-        ],
       ),
     );
     if (saved != true) return;
@@ -163,7 +202,7 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Fees Setup',
+      titleWidget: const SizedBox.shrink(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _edit(null),
         icon: const Icon(Icons.add_rounded),
@@ -194,6 +233,7 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
                       if (i == 0) {
                         return AppPageHeader(
                           title: 'Fees Setup',
+                          icon: Icons.sell_outlined,
                           subtitle:
                               '${_fees.length} fee template${_fees.length == 1 ? '' : 's'} · swipe to edit or delete',
                         );
@@ -214,7 +254,8 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
                         confirmDelete: () => _confirmDelete(f),
                         onDeleted: () => _delete(f),
                         onEdit: () => _edit(f),
-                        child: _FeeTile(fee: f),
+                        child:
+                            _FeeTile(fee: f, onEdit: () => _edit(f)),
                       );
                     },
                   ),
@@ -224,9 +265,10 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
 }
 
 class _FeeTile extends StatelessWidget {
-  const _FeeTile({required this.fee});
+  const _FeeTile({required this.fee, required this.onEdit});
 
   final FeeTemplate fee;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -266,6 +308,14 @@ class _FeeTile extends StatelessWidget {
                 fontWeight: FontWeight.w800,
                 color: AppInk.accent,
               ),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined,
+                  size: 20, color: AppInk.muted),
+              onPressed: onEdit,
+              tooltip: 'Edit fee',
+              visualDensity: VisualDensity.compact,
             ),
           ],
         ),

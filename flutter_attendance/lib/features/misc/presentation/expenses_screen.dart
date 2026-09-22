@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
+import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../../misc/data/misc_api.dart';
@@ -131,13 +132,70 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
+  /// Category picker sheet — a scrollable radio-list instead of a cramped
+  /// horizontal chip row, since the web has ~10 categories.
+  Future<void> _pickCategory() async {
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppInk.rule,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Filter by category',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppInk.heading)),
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  _CategoryOption(
+                    label: 'All categories',
+                    selected: _selectedCategory == 0,
+                    onTap: () => Navigator.pop(ctx, 0),
+                  ),
+                  for (var i = 0; i < _categories.length; i++)
+                    _CategoryOption(
+                      label: _categories[i].category,
+                      selected: _selectedCategory == i + 1,
+                      onTap: () => Navigator.pop(ctx, i + 1),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) setState(() => _selectedCategory = picked);
+  }
+
   @override
   Widget build(BuildContext context) {
     final visible = _visible;
-    final chips = ['All', ..._categories.map((c) => c.category)];
+    final selectedLabel = _selectedCategory == 0
+        ? 'All categories'
+        : _categories[_selectedCategory - 1].category;
 
     return AppScaffold(
-      title: 'Expenses',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: widget.menuButton == null,
       leading: widget.menuButton,
       floatingActionButton: FloatingActionButton.extended(
@@ -172,20 +230,104 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             if (i == 0) {
                               return AppPageHeader(
                                 title: 'Expenses',
+                                icon: Icons.receipt_long_outlined,
                                 subtitle:
                                     '₱${_total.toStringAsFixed(2)} · ${visible.length} record${visible.length == 1 ? '' : 's'}',
                               );
                             }
                             if (i == 1) {
-                              return AppFilterChips(
-                                labels: chips,
-                                selected: _selectedCategory
-                                    .clamp(0, chips.length - 1),
-                                onSelected: (v) =>
-                                    setState(() => _selectedCategory = v),
-                                manageLabel: 'Manage',
-                                onManage: _showCategories,
-                                padding: const EdgeInsets.only(bottom: 12),
+                              // Filter bar — a single selector that opens a
+                              // bottom-sheet picker + a Manage shortcut.
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.only(bottom: 12),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: _pickCategory,
+                                        child: Container(
+                                          padding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 14,
+                                                  vertical: 11),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            border: Border.all(
+                                                color: AppInk.rule),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(
+                                                  Icons
+                                                      .filter_list_rounded,
+                                                  size: 18,
+                                                  color: AppInk.accent),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  selectedLabel,
+                                                  style: const TextStyle(
+                                                    fontSize: 13.5,
+                                                    fontWeight:
+                                                        FontWeight.w700,
+                                                    color:
+                                                        AppInk.heading,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow
+                                                      .ellipsis,
+                                                ),
+                                              ),
+                                              const Icon(
+                                                  Icons
+                                                      .keyboard_arrow_down_rounded,
+                                                  size: 20,
+                                                  color: AppInk.muted),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: _showCategories,
+                                      child: Container(
+                                        padding: const EdgeInsets
+                                            .symmetric(
+                                            horizontal: 14,
+                                            vertical: 11),
+                                        decoration: BoxDecoration(
+                                          color: AppInk.accent
+                                              .withValues(alpha: 0.08),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: const Row(
+                                          children: [
+                                            Icon(
+                                                Icons
+                                                    .sell_outlined,
+                                                size: 16,
+                                                color: AppInk.accent),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              'Categories',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight:
+                                                    FontWeight.w700,
+                                                color: AppInk.accent,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               );
                             }
                             if (visible.isEmpty) {
@@ -273,7 +415,7 @@ class _ExpenseCard extends StatelessWidget {
                                   color: AppInk.accent)),
                         ),
                       if (expense.date.isNotEmpty)
-                        Text(expense.date,
+                        Text(toDateTime12(expense.date),
                             style: const TextStyle(
                                 fontSize: 12, color: AppInk.muted)),
                     ],
@@ -451,14 +593,12 @@ class _ExpenseFormState extends State<_ExpenseForm> {
             AppInput(
               controller: _desc,
               label: 'Description *',
-              hint: 'Enter description',
               prefixIcon: Icons.description_outlined,
             ),
             const SizedBox(height: 14),
             AppInput(
               controller: _amount,
               label: 'Amount *',
-              hint: '0.00',
               prefixIcon: Icons.payments_outlined,
               keyboardType: TextInputType.number,
             ),
@@ -466,7 +606,6 @@ class _ExpenseFormState extends State<_ExpenseForm> {
             AppInput(
               controller: _responsible,
               label: 'Responsible',
-              hint: 'Person responsible',
               prefixIcon: Icons.person_outline_rounded,
             ),
             const SizedBox(height: 14),
@@ -476,7 +615,6 @@ class _ExpenseFormState extends State<_ExpenseForm> {
                 child: AppInput(
                   controller: _date,
                   label: 'Expense Date *',
-                  hint: 'Tap to select date',
                   prefixIcon: Icons.calendar_today_rounded,
                 ),
               ),
@@ -624,7 +762,6 @@ class _CategoriesSheetState extends State<_CategoriesSheet> {
                 child: AppInput(
                   controller: _newCategory,
                   label: 'New Category',
-                  hint: 'Enter category name',
                   prefixIcon: Icons.add_outlined,
                 ),
               ),
@@ -660,6 +797,47 @@ class _CategoriesSheetState extends State<_CategoriesSheet> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One row in the category filter sheet — radio-style selection.
+class _CategoryOption extends StatelessWidget {
+  const _CategoryOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight:
+                      selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? AppInk.accent : AppInk.heading,
+                ),
+              ),
+            ),
+            if (selected)
+              const Icon(Icons.check_rounded,
+                  size: 20, color: AppInk.accent),
+          ],
+        ),
       ),
     );
   }

@@ -53,19 +53,18 @@ class AppCard extends StatelessWidget {
       ),
     );
 
-    final decoration = elevated
-        ? ShapeDecoration(
-            color: background,
-            shape: shape,
-            shadows: [
-              BoxShadow(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-                blurRadius: 12,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          )
-        : ShapeDecoration(color: background, shape: shape);
+    final decoration = ShapeDecoration(
+      color: background,
+      shape: shape,
+      shadows: [
+        BoxShadow(
+          color: const Color(0xFF0F172A)
+              .withValues(alpha: elevated ? 0.10 : 0.06),
+          blurRadius: elevated ? 20 : 14,
+          offset: Offset(0, elevated ? 6 : 3),
+        ),
+      ],
+    );
 
     Widget card = DecoratedBox(
       decoration: decoration,

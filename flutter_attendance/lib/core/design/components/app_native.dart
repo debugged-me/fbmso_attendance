@@ -10,41 +10,68 @@ class AppPageHeader extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.icon,
+    this.iconColor,
     this.padding = const EdgeInsets.fromLTRB(4, 8, 4, 16),
   });
 
   final String title;
   final String? subtitle;
+
+  /// Optional leading icon orb — a tinted squircle badge beside the title,
+  /// the fintech-style section marker used across the app.
+  final IconData? icon;
+  final Color? iconColor;
   final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
+    final ic = iconColor ?? AppInk.accent;
     return Padding(
       padding: padding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              color: AppInk.heading,
-              height: 1.15,
-              letterSpacing: -0.4,
+          if (icon != null) ...[
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: ic.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: ic, size: 24),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: AppInk.heading,
+                    height: 1.15,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+                if (subtitle != null && subtitle!.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle!,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppInk.muted,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          if (subtitle != null && subtitle!.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              subtitle!,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppInk.muted,
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -120,7 +147,7 @@ class AppFilterChips extends StatelessWidget {
               : action
                   ? AppInk.accent.withValues(alpha: 0.08)
                   : Colors.white,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected
                 ? AppInk.accent

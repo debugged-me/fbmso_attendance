@@ -94,7 +94,7 @@ class _SectionsScreenState extends State<SectionsScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Sections',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: true,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showForm,
@@ -158,6 +158,7 @@ class _SectionsScreenState extends State<SectionsScreen> {
                                 if (i == 0) {
                                   return AppPageHeader(
                                     title: 'Sections',
+                                  icon: Icons.grid_view_rounded,
                                     subtitle: '${_rows.length} sections',
                                   );
                                 }
@@ -313,7 +314,7 @@ class _SectionFormState extends State<_SectionForm> {
               Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),
               const SizedBox(height: 12),
             ],
-            AppInput(controller: _section, label: 'Section Name *', hint: 'e.g. BA1A', prefixIcon: Icons.group_add_outlined),
+            AppInput(controller: _section, label: 'Section Name *', prefixIcon: Icons.group_add_outlined),
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               initialValue: _yearLevel.isEmpty ? null : _yearLevel,

@@ -87,7 +87,7 @@ class _LedgerScreenState extends State<LedgerScreen> {
     final net = _gross - _spent;
 
     return AppScaffold(
-      title: 'Ledger',
+      titleWidget: const SizedBox.shrink(),
       body: Column(
         children: [
           Padding(
@@ -141,6 +141,7 @@ class _LedgerScreenState extends State<LedgerScreen> {
         children: [
           AppPageHeader(
             title: 'Ledger',
+            icon: Icons.account_balance_wallet_outlined,
             subtitle:
                 '₱${_gross.toStringAsFixed(2)} in · ₱${_spent.toStringAsFixed(2)} out',
           ),

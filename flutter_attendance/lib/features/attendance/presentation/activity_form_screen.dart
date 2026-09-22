@@ -352,14 +352,12 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                   AppInput(
                     controller: _title,
                     label: 'Title',
-                    hint: 'Activity title',
                     prefixIcon: Icons.event_rounded,
                   ),
                   const SizedBox(height: 14),
                   AppInput(
                     controller: _date,
                     label: 'Date',
-                    hint: 'YYYY-MM-DD',
                     prefixIcon: Icons.calendar_today_rounded,
                     readOnly: true,
                     onTap: _pickDate,
@@ -373,7 +371,6 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                     AppInput(
                       controller: _programCustom,
                       label: 'Custom program',
-                      hint: 'Type program name',
                       prefixIcon: Icons.edit_outlined,
                     ),
                   ] else if (_programChoice != null &&
@@ -386,14 +383,12 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                   AppInput(
                     controller: _location,
                     label: 'Location',
-                    hint: 'Where is it held?',
                     prefixIcon: Icons.place_outlined,
                   ),
                   const SizedBox(height: 14),
                   AppInput(
                     controller: _description,
                     label: 'Description',
-                    hint: 'Optional details',
                     prefixIcon: Icons.description_outlined,
                     maxLines: 3,
                   ),
@@ -735,7 +730,6 @@ class _SessionRow extends StatelessWidget {
             child: AppInput(
               controller: inCtrl,
               label: 'In',
-              hint: 'HH:MM',
               readOnly: true,
               onTap: () => onPick(inCtrl, '$label check-in'),
             ),
@@ -745,7 +739,6 @@ class _SessionRow extends StatelessWidget {
             child: AppInput(
               controller: outCtrl,
               label: 'Out',
-              hint: 'HH:MM',
               readOnly: true,
               onTap: () => onPick(outCtrl, '$label check-out'),
             ),

@@ -177,7 +177,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     AppInput(
                       controller: _urlController,
                       label: 'School Portal URL',
-                      hint: 'e.g. fbmso.srmsportal.com',
                       keyboardType: TextInputType.url,
                       textInputAction: TextInputAction.go,
                       prefixIcon: AppIcons.link_rounded,

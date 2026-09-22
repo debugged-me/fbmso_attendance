@@ -18,7 +18,7 @@ class AppTheme {
   static const Color textMuted = Color(0xFF4B5A72);
 
   /// Subtle blue-tinted surface background
-  static const Color surface = Color(0xFFF5F7FD);
+  static const Color surface = Color(0xFFE9EEF7);
 
   /// Card border — light cool gray
   static const Color cardBorder = Color(0xFFD6DFF5);
@@ -83,7 +83,6 @@ class AppTheme {
   static const Color _textMuted = textMuted;
   static const Color _surface = surface;
   static const Color _cardBorder = cardBorder;
-  static const Color _navIndicator = navIndicator;
 
   static ThemeData build() {
     final scheme =
@@ -126,7 +125,9 @@ class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white,
-        indicatorColor: _navIndicator,
+        indicatorColor: midBlue.withValues(alpha: 0.10),
+        height: 68,
+        elevation: 0,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           return TextStyle(
             fontFamily: fontFamily,
@@ -201,6 +202,33 @@ class AppTheme {
         ),
         behavior: SnackBarBehavior.floating,
         elevation: 6,
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: midBlue,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(radiusMd)),
+        ),
+      ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(24)),
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: Color(0xFFEDF0F5),
+        thickness: 1,
+        space: 1,
       ),
       textTheme: const TextTheme(
         headlineMedium: TextStyle(

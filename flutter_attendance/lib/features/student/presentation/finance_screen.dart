@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
+import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
@@ -63,7 +64,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
     final totalValid = validPayments.fold<double>(0, (s, p) => s + p.amount);
 
     return AppScaffold(
-      title: 'Finance',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: false,
       body: Column(
         children: [
@@ -80,6 +81,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                           children: [
                             AppPageHeader(
                               title: 'Finance',
+                              icon: Icons.account_balance_wallet_outlined,
                               subtitle:
                                   '${_payments.length} payment${_payments.length == 1 ? '' : 's'} on record',
                             ),
@@ -232,7 +234,7 @@ class _PaymentCard extends StatelessWidget {
               children: [
                 if (payment.date.isNotEmpty)
                   _MetaItem(
-                      icon: Icons.event_rounded, label: 'Date', value: payment.date),
+                      icon: Icons.event_rounded, label: 'Date', value: toDateTime12(payment.date)),
                 if (payment.orNumber.isNotEmpty)
                   _MetaItem(
                       icon: Icons.receipt_rounded,

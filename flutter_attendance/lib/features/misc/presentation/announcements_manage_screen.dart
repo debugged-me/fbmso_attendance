@@ -84,7 +84,7 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Announcements',
+      titleWidget: const SizedBox.shrink(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showForm,
         icon: const Icon(Icons.add_rounded),
@@ -128,6 +128,7 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
                                 if (i == 0) {
                                   return AppPageHeader(
                                     title: 'Announcements',
+                                  icon: Icons.campaign_outlined,
                                     subtitle:
                                         '${_announcements.length} posted',
                                   );
@@ -329,12 +330,11 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
               Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),
               const SizedBox(height: 12),
             ],
-            AppInput(controller: _title, label: 'Title *', hint: 'Announcement title', prefixIcon: Icons.title_rounded),
+            AppInput(controller: _title, label: 'Title *', prefixIcon: Icons.title_rounded),
             const SizedBox(height: 14),
             AppInput(
               controller: _message,
               label: 'Message *',
-              hint: 'Write your announcement...',
               maxLines: 5,
             ),
             const SizedBox(height: 14),
@@ -371,7 +371,6 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
                     text: _expireDate != null ? _formatDate(_expireDate!) : '',
                   ),
                   label: 'Expiry Date (optional)',
-                  hint: 'Tap to select date',
                   prefixIcon: Icons.event_outlined,
                 ),
               ),

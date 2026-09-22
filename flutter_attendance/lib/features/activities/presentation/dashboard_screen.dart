@@ -904,31 +904,56 @@ class _CashierOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(18),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E3FA0), Color(0xFF285CCC), Color(0xFF4A7CF7)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppInk.accent.withValues(alpha: 0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'COLLECTIONS TODAY',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.7,
-              color: AppInk.muted,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'COLLECTIONS TODAY',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.9,
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+              ),
+              Icon(Icons.account_balance_wallet_outlined,
+                  size: 18,
+                  color: Colors.white.withValues(alpha: 0.75)),
+            ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             '₱${stats.collectionToday.toStringAsFixed(2)}',
             style: const TextStyle(
-              fontSize: 30,
+              fontSize: 34,
               fontWeight: FontWeight.w800,
-              color: AppInk.heading,
-              height: 1.1,
+              color: Colors.white,
+              height: 1.05,
+              letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Row(
             children: [
               _CashierMiniStat(
@@ -948,16 +973,16 @@ class _CashierOverviewCard extends StatelessWidget {
             ],
           ),
           if (stats.recentPayments.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            const AppRule(),
-            const SizedBox(height: 10),
-            const Text(
+            const SizedBox(height: 16),
+            Container(height: 1, color: Colors.white.withValues(alpha: 0.18)),
+            const SizedBox(height: 12),
+            Text(
               'RECENT PAYMENTS',
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.6,
-                color: AppInk.muted,
+                color: Colors.white.withValues(alpha: 0.7),
               ),
             ),
             const SizedBox(height: 8),
@@ -968,10 +993,10 @@ class _CashierOverviewCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           '${p.studentName.isNotEmpty ? p.studentName : p.studentNumber} · ${p.description}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w500,
-                            color: AppInk.body,
+                            color: Colors.white.withValues(alpha: 0.92),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -982,7 +1007,7 @@ class _CashierOverviewCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,
-                          color: AppInk.positive,
+                          color: Colors.white,
                         ),
                       ),
                     ],
@@ -1012,18 +1037,18 @@ class _CashierMiniStat extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: AppInk.accent.withValues(alpha: 0.06),
+          color: Colors.white.withValues(alpha: 0.14),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
             Text(
               label.toUpperCase(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.5,
-                color: AppInk.muted,
+                color: Colors.white.withValues(alpha: 0.7),
               ),
             ),
             const SizedBox(height: 3),
@@ -1032,7 +1057,7 @@ class _CashierMiniStat extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
-                color: AppInk.heading,
+                color: Colors.white,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -1056,61 +1081,86 @@ class _CommitteeOverviewCard extends StatelessWidget {
     final maxTrend = stats.trend.fold<int>(
         0, (m, t) => t.count > m ? t.count : m);
 
-    return AppCard(
-      padding: const EdgeInsets.all(18),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0B6E4F), Color(0xFF0F8A5F), Color(0xFF22B07E)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F8A5F).withValues(alpha: 0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'SCANS TODAY',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.7,
-              color: AppInk.muted,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'SCANS TODAY',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.9,
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+              ),
+              Icon(Icons.qr_code_scanner_rounded,
+                  size: 18,
+                  color: Colors.white.withValues(alpha: 0.75)),
+            ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 '${stats.todayScans}',
                 style: const TextStyle(
-                  fontSize: 30,
+                  fontSize: 34,
                   fontWeight: FontWeight.w800,
-                  color: AppInk.heading,
-                  height: 1.1,
+                  color: Colors.white,
+                  height: 1.05,
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(width: 12),
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.only(bottom: 5),
                 child: Text(
                   '${stats.openCount} open · ${stats.totalCount} activities',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
-                    color: AppInk.muted,
+                    color: Colors.white.withValues(alpha: 0.85),
                   ),
                 ),
               ),
             ],
           ),
           if (stats.trend.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            const AppRule(),
-            const SizedBox(height: 10),
-            const Text(
+            const SizedBox(height: 16),
+            Container(height: 1, color: Colors.white.withValues(alpha: 0.18)),
+            const SizedBox(height: 12),
+            Text(
               'LAST 14 DAYS',
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.6,
-                color: AppInk.muted,
+                color: Colors.white.withValues(alpha: 0.7),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             // Slim bar strip — same trend the web committee dashboard draws.
             SizedBox(
               height: 48,
@@ -1128,8 +1178,8 @@ class _CommitteeOverviewCard extends StatelessWidget {
                               : 4,
                           decoration: BoxDecoration(
                             color: t.count > 0
-                                ? AppInk.accent
-                                : AppInk.rule,
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.22),
                             borderRadius: BorderRadius.circular(3),
                           ),
                         ),
@@ -1141,15 +1191,15 @@ class _CommitteeOverviewCard extends StatelessWidget {
           ],
           if (stats.recentScans.isNotEmpty) ...[
             const SizedBox(height: 14),
-            const AppRule(),
-            const SizedBox(height: 10),
-            const Text(
+            Container(height: 1, color: Colors.white.withValues(alpha: 0.18)),
+            const SizedBox(height: 12),
+            Text(
               'RECENT SCANS',
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.6,
-                color: AppInk.muted,
+                color: Colors.white.withValues(alpha: 0.7),
               ),
             ),
             const SizedBox(height: 8),
@@ -1157,17 +1207,18 @@ class _CommitteeOverviewCard extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Row(
                     children: [
-                      const Icon(Icons.qr_code_scanner_rounded,
-                          size: 14, color: AppInk.accent),
+                      Icon(Icons.qr_code_scanner_rounded,
+                          size: 14,
+                          color: Colors.white.withValues(alpha: 0.8)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           '${s['student_name'] ?? s['student_number'] ?? ''}'
                           '${s['activity_title'] != null ? ' · ${s['activity_title']}' : ''}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w500,
-                            color: AppInk.body,
+                            color: Colors.white.withValues(alpha: 0.92),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1176,8 +1227,9 @@ class _CommitteeOverviewCard extends StatelessWidget {
                       Text(
                         (s['checked_in_at'] ?? s['scanned_at'] ?? '')
                             .toString(),
-                        style: const TextStyle(
-                            fontSize: 11, color: AppInk.muted),
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.65)),
                       ),
                     ],
                   ),
