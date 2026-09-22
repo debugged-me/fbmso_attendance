@@ -286,32 +286,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     $expensesExpanded = $expensesOpen ? 'true' : 'false';
                     $expensesShow     = $expensesOpen ? 'mm-show' : '';
 
-                    $billingOpen = (
-                        stripos($currentUri, 'Accounting/Payment') === 0 ||
-                        stripos($currentUri, 'Accounting/receipt') === 0 ||
-                        stripos($currentUri, 'Accounting/course_setUp') === 0 ||
-                        stripos($currentUri, 'Accounting/collectionReport') === 0 ||
-                        stripos($currentUri, 'Accounting/collectionDateRange') === 0 ||
-                        stripos($currentUri, 'Accounting/collectionMonthly') === 0 ||
-                        stripos($currentUri, 'Accounting/collectionYear') === 0
-                    );
-                    $billingExpand = $billingOpen ? 'true' : 'false';
-                    $billingShow   = $billingOpen ? 'mm-show' : '';
-                    $billingActive = $billingOpen ? 'mm-active mm-open' : '';
                     ?>
-
-                    <li class="<?= $billingActive; ?>">
-                        <a href="javascript:void(0);" class="waves-effect has-arrow" aria-expanded="<?= $billingExpand; ?>">
-                            <i class="ion ion-ios-cash"></i>
-                            <span> Accounting </span>
-                            <span class="menu-arrow"></span>
-                        </a>
-                        <ul class="nav-second-level <?= $billingShow; ?>" aria-expanded="<?= $billingExpand; ?>">
-                            <li><a href="<?= base_url('Accounting/Payment'); ?>">Payment Entry</a></li>
-                            <li><a href="<?= base_url('Accounting/course_setUp'); ?>">Fees Setup</a></li>
-                            <li><a href="<?= base_url('Accounting/collectionReport'); ?>">Collection Report</a></li>
-                        </ul>
-                    </li>
                     <!-- School Expenses -->
                     <li class="<?= $expensesShow ? 'mm-active' : '' ?>">
                         <a href="javascript:void(0);" class="waves-effect" aria-expanded="<?= $expensesExpanded; ?>">
@@ -1029,8 +1004,31 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
             </div>
             <!-- End Sidebar -->
 
-        <?php elseif ($this->session->userdata('level') === 'Accounting'): ?>
+        <?php elseif ($this->session->userdata('level') === 'Committee'): ?>
             <?php
+            $committeeUri = strtolower(trim(uri_string(), '/'));
+            ?>
+            <div id="sidebar-menu">
+                <ul class="metismenu" id="side-menu">
+                    <li class="menu-title">COMMITTEE</li>
+                    <li class="<?= strpos($committeeUri, 'activities') === 0 ? 'mm-active active' : ''; ?>">
+                        <a href="<?= base_url('activities'); ?>" class="waves-effect">
+                            <i class="ion ion-ios-qr-scanner"></i>
+                            <span> Scan Student QR </span>
+                        </a>
+                    </li>
+                    <li class="<?= strpos($committeeUri, 'attendancelogs') === 0 ? 'mm-active active' : ''; ?>">
+                        <a href="<?= base_url('AttendanceLogs'); ?>" class="waves-effect">
+                            <i class="bi bi-clipboard-check"></i>
+                            <span> Attendance Logs </span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+        <?php elseif ($this->session->userdata('level') === 'Cashier'): ?>
+            <?php
+            $isCashier = true;
             // Active/open helpers
             $uri = trim(uri_string(), '/');
             $is = function ($prefix) use ($uri) {
@@ -1097,10 +1095,10 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
 
                     <li class="menu-title">Navigation</li>
 
-                    <li class="<?= $active('Page/accounting'); ?>">
-                        <a href="<?= base_url('Page/accounting'); ?>" class="waves-effect">
+                    <li class="<?= $active($isCashier ? 'Accounting/Payment' : 'Page/accounting'); ?>">
+                        <a href="<?= base_url($isCashier ? 'Accounting/Payment' : 'Page/accounting'); ?>" class="waves-effect">
                             <i class="ion bi bi-house-door"></i>
-                            <span> Dashboard </span>
+                            <span> <?= $isCashier ? 'Payment Entry' : 'Dashboard'; ?> </span>
                         </a>
                     </li>
 
@@ -1176,6 +1174,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         </ul>
                     </li>
 
+                    <?php if (!$isCashier): ?>
                     <!-- Document Request -->
                     <li class="<?= $docsShow ? 'mm-active' : '' ?>">
                         <a href="javascript:void(0);" class="waves-effect" aria-expanded="<?= $docsExpanded; ?>">
@@ -1192,6 +1191,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                             </li>
                         </ul>
                     </li>
+                    <?php endif; ?>
 
                     <!-- Configurations -->
                     <li class="<?= $configsShow ? 'mm-active' : '' ?>">
@@ -1258,7 +1258,8 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
     </a>
 </li> -->
 
-                    To Do
+                    <?php if (!$isCashier): ?>
+                    <!-- Personal productivity links retained for Accounting. -->
                     <li class="<?= $todoShow ? 'mm-active' : '' ?>">
                         <a href="javascript:void(0);" class="waves-effect" aria-expanded="<?= $todoExpanded; ?>">
                             <i class="ion ion-md-paper"></i>
@@ -1285,6 +1286,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                             <span> SRMS FAQ </span>
                         </a>
                     </li>
+                    <?php endif; ?>
 
                 </ul>
             </div>

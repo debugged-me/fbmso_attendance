@@ -9,9 +9,15 @@ import '../domain/app_session.dart';
 /// Change password screen. Three fields: current, new, confirm.
 /// Calls `POST /api/mobile/auth/change-password`.
 class ChangePasswordScreen extends StatefulWidget {
-  const ChangePasswordScreen({super.key, required this.session});
+  const ChangePasswordScreen({super.key, required this.session, this.onSuccess});
 
   final AppSession session;
+
+  /// Called after a successful change. The API revokes all of the user's
+  /// tokens on password change, so callers typically pass a re-login/logout
+  /// action (mirrors the web, which clears the session flag and asks the
+  /// user to sign in again).
+  final VoidCallback? onSuccess;
 
   @override
   State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
@@ -90,6 +96,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       _currentController.clear();
       _newController.clear();
       _confirmController.clear();
+      if (widget.onSuccess != null) {
+        // Brief pause so the success banner is visible before re-login.
+        Future.delayed(const Duration(milliseconds: 1200), () {
+          if (mounted) widget.onSuccess?.call();
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {

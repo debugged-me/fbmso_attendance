@@ -374,7 +374,7 @@ class Activities extends CI_Controller
         }
 
         $level = (string)$this->session->userdata('level');
-        if (!in_array($level, ['Admin', 'Instructor', 'Registrar', 'Accounting'], true)) {
+        if (!in_array($level, ['Admin', 'Instructor', 'Registrar'], true)) {
             if ($this->input->is_ajax_request()) {
                 return $this->output->set_content_type('application/json')
                     ->set_output(json_encode(['ok' => false, 'message' => 'Forbidden']));
@@ -527,7 +527,7 @@ class Activities extends CI_Controller
 
         // Allow staff roles (adjust as needed)
         $level = (string)$this->session->userdata('level');
-        if (!in_array($level, ['Admin', 'Instructor', 'Registrar', 'Accounting'], true)) {
+        if (!in_array($level, ['Admin', 'Instructor', 'Registrar'], true)) {
             return $this->output->set_content_type('application/json')
                 ->set_output(json_encode(['ok' => false, 'message' => 'Forbidden']));
         }

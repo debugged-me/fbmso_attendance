@@ -45,7 +45,7 @@ $config['risk_rules'] = array(
 */
 $config['risk_privileged_levels'] = array(
     'Super Admin', 'Admin', 'IT', 'School Admin',
-    'Registrar', 'Head Registrar', 'Accounting', 'HR Admin', 'Human Resource',
+    'Registrar', 'Head Registrar', 'Cashier', 'HR Admin', 'Human Resource',
 );
 
 /*

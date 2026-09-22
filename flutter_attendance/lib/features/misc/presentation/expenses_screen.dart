@@ -10,9 +10,10 @@ import '../../misc/domain/misc_models.dart';
 /// Expenses management screen — admin can view, create, edit, delete expenses
 /// and manage categories. Mirrors the web Accounting/expenses page.
 class ExpensesScreen extends StatefulWidget {
-  const ExpensesScreen({super.key, required this.session});
+  const ExpensesScreen({super.key, required this.session, this.menuButton});
 
   final AppSession session;
+  final Widget? menuButton;
 
   @override
   State<ExpensesScreen> createState() => _ExpensesScreenState();
@@ -120,7 +121,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Expenses',
-      showBackButton: true,
+      showBackButton: widget.menuButton == null,
+      leading: widget.menuButton,
       actions: [
         IconButton(
           icon: const Icon(Icons.category_outlined),

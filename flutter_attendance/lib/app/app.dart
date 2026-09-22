@@ -9,6 +9,7 @@ import '../features/auth/data/auth_api.dart';
 import '../features/auth/data/session_store.dart';
 import '../features/auth/domain/app_session.dart';
 import '../features/auth/presentation/auth_controller.dart';
+import '../features/auth/presentation/change_password_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/welcome_screen.dart';
 import '../features/misc/data/misc_api.dart';
@@ -173,6 +174,15 @@ class _RoleShellState extends State<_RoleShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Mirrors the web authguard: an account flagged force_change_password
+    // may only reach the change-password screen until it sets a new one.
+    // The API revokes all tokens on change, so success means re-login.
+    if (widget.session.forceChangePassword) {
+      return ChangePasswordScreen(
+        session: widget.session,
+        onSuccess: () => widget.controller.logout(),
+      );
+    }
     if (widget.session.role.isStudentLike) {
       return StudentShell(session: widget.session, controller: widget.controller);
     }

@@ -473,7 +473,7 @@ class Page extends CI_Controller
 
 	function accounting()
 	{
-		if ($this->session->userdata('level') === 'Accounting') {
+		if ($this->session->userdata('level') === 'Cashier') {
 			$sy = $this->session->userdata('sy');
 			$sem = $this->session->userdata('semester');
 
@@ -4956,14 +4956,64 @@ class Page extends CI_Controller
 
 		return redirect('Announcement'); // back to list
 	}
+	private function userAccountLevels()
+	{
+		return ['Admin', 'Cashier', 'Committee', 'Student'];
+	}
+
+	private function queueNewAccountEmail(array $account, $temporaryPassword)
+	{
+		$email = trim((string)($account['email'] ?? ''));
+		if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			return false;
+		}
+
+		$schoolName = (string)$this->SettingsModel->getSchoolName();
+		if (trim($schoolName) === '') {
+			$schoolName = 'School Records Management System';
+		}
+		$loginUrl = base_url('login');
+		$displayName = trim((string)($account['fName'] ?? '') . ' ' . (string)($account['lName'] ?? ''));
+		$esc = static function ($value) {
+			return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+		};
+
+		$message = '<div style="font-family:Arial,sans-serif;background:#f4f4f4;padding:20px;color:#1f2937">'
+			. '<div style="max-width:600px;margin:auto;background:#fff;border-radius:8px;padding:30px">'
+			. '<h2 style="color:#2a4090;margin-top:0">Your FBMSO account is ready</h2>'
+			. '<p>Dear <strong>' . $esc($displayName !== '' ? $displayName : $account['username']) . '</strong>,</p>'
+			. '<p>An account has been created for you as <strong>' . $esc($account['position']) . '</strong>.</p>'
+			. '<table style="width:100%;max-width:440px;border-collapse:collapse;margin:20px 0">'
+			. '<tr><td style="padding:10px;background:#f1f5f9;border:1px solid #dbe2ea"><strong>Username</strong></td>'
+			. '<td style="padding:10px;border:1px solid #dbe2ea">' . $esc($account['username']) . '</td></tr>'
+			. '<tr><td style="padding:10px;background:#f1f5f9;border:1px solid #dbe2ea"><strong>Temporary Password</strong></td>'
+			. '<td style="padding:10px;border:1px solid #dbe2ea;font-family:monospace">' . $esc($temporaryPassword) . '</td></tr>'
+			. '</table>'
+			. '<p>Please sign in with this temporary password. You will be asked to create a new password immediately.</p>'
+			. '<p><a href="' . $esc($loginUrl) . '" style="display:inline-block;padding:10px 20px;background:#2a4090;color:#fff;text-decoration:none;border-radius:5px">Sign in</a></p>'
+			. '<p style="margin-top:30px">Best regards,<br><strong>' . $esc($schoolName) . '</strong></p>'
+			. '<hr style="margin-top:35px;border:0;border-top:1px solid #e5e7eb">'
+			. '<p style="font-size:12px;color:#6b7280">This is an automated message. Please do not reply or share your temporary password.</p>'
+			. '</div></div>';
+
+		return fbmso_mailqueue_push(
+			$this,
+			$email,
+			'Your FBMSO Account - ' . $schoolName,
+			$message,
+			$schoolName
+		);
+	}
+
 	public function userAccounts()
 	{
 		// 1) Handle "Add New User" POST FIRST (modal posts here)
 		if ($this->input->post('submit')) {
-			// DO NOT log raw password anywhere
+			// The system owns initial-password generation. Never accept or log a
+			// temporary password chosen by the administrator.
 			$username  = trim((string)$this->input->post('username', true)); // XSS filter ok for username
-			$IDNumber  = trim((string)$this->input->post('IDNumber', true));
-			$rawPass   = (string)$this->input->post('password');             // raw, don't log
+			$IDNumber  = $username;
+			$rawPass   = bin2hex(random_bytes(8));
 			$password  = fbmso_password_hash($rawPass);
 			$acctLevel = trim((string)$this->input->post('acctLevel', true));
 			$fName     = trim((string)$this->input->post('fName', true));
@@ -4972,7 +5022,7 @@ class Page extends CI_Controller
 			$email     = trim((string)$this->input->post('email', true));
 			$dateCreated = date('Y-m-d');
 
-			// required-field guard (optional)
+			// Required-field and trusted-role guards.
 			if ($username === '' || $rawPass === '' || $acctLevel === '' || $fName === '' || $lName === '' || $email === '' || $IDNumber === '') {
 				$this->AuditLogModel->write(
 					'create',
@@ -4985,6 +5035,26 @@ class Page extends CI_Controller
 					'Failed to create user (missing required fields)'
 				);
 				$this->session->set_flashdata('danger', '<div class="alert alert-danger text-center"><b>Missing required fields.</b></div>');
+				return redirect('Page/userAccounts');
+			}
+
+			if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				$this->session->set_flashdata('danger', '<div class="alert alert-danger text-center"><b>Please enter a valid email address.</b></div>');
+				return redirect('Page/userAccounts');
+			}
+
+			if (!in_array($acctLevel, $this->userAccountLevels(), true)) {
+				$this->AuditLogModel->write(
+					'create', 'User Accounts', 'o_users', null, null,
+					['username' => $username, 'position' => $acctLevel, 'email' => $email],
+					0, 'Failed to create user (invalid account level)'
+				);
+				$this->session->set_flashdata('danger', '<div class="alert alert-danger text-center"><b>Invalid account level.</b></div>');
+				return redirect('Page/userAccounts');
+			}
+
+			if ($password === '') {
+				$this->session->set_flashdata('danger', '<div class="alert alert-danger text-center"><b>Unable to generate a secure password. Please try again.</b></div>');
 				return redirect('Page/userAccounts');
 			}
 
@@ -5020,9 +5090,23 @@ class Page extends CI_Controller
 				'dateCreated' => $dateCreated,
 				'IDNumber'    => $IDNumber
 			];
+			if ($this->db->field_exists('force_change_password', 'o_users')) {
+				$data['force_change_password'] = 1;
+			}
 
-			$ok = $this->db->insert('o_users', $data);
-			$pk = $ok ? (string)$this->db->insert_id() : null;
+			// Keep account creation and its credential email atomic: if the
+			// notification cannot be queued, do not leave an inaccessible account.
+			$queueReady = fbmso_mailqueue_ensure_table($this);
+			$this->db->trans_begin();
+			$inserted = $queueReady && $this->db->insert('o_users', $data);
+			$queued = $inserted && $this->queueNewAccountEmail($data, $rawPass);
+			$ok = $inserted && $queued && $this->db->trans_status() !== false;
+			if ($ok) {
+				$this->db->trans_commit();
+			} else {
+				$this->db->trans_rollback();
+			}
+			$pk = $ok ? $username : null;
 
 			// AUDIT: create user (no passwords in audit)
 			$this->AuditLogModel->write(
@@ -5047,8 +5131,8 @@ class Page extends CI_Controller
 			$this->session->set_flashdata(
 				$ok ? 'success' : 'danger',
 				$ok
-					? '<div class="alert alert-success text-center"><b>New account has been created successfully.</b></div>'
-					: '<div class="alert alert-danger text-center"><b>Failed to create account.</b></div>'
+					? '<div class="alert alert-success text-center"><b>New account created. The system-generated temporary password was queued for delivery to ' . htmlspecialchars($email, ENT_QUOTES, 'UTF-8') . '.</b></div>'
+					: '<div class="alert alert-danger text-center"><b>Account was not created because the credential email could not be queued. Please try again.</b></div>'
 			);
 			return redirect('Page/userAccounts');
 		}
@@ -5326,7 +5410,8 @@ class Page extends CI_Controller
 			$acctLevel = trim((string)$this->input->post('acctLevel'));
 			$email     = trim((string)$this->input->post('email'));
 
-			if ($username && $acctLevel && $email) {
+			if ($username && $acctLevel && filter_var($email, FILTER_VALIDATE_EMAIL)
+				&& in_array($acctLevel, $this->userAccountLevels(), true)) {
 				// OLD snapshot
 				$old = $this->db->get_where('o_users', ['username' => $username])->row_array();
 
@@ -6948,7 +7033,7 @@ class Page extends CI_Controller
 	public function verifyOnlinePayment($id)
 	{
 		// Gate if you have role checks
-		if ($this->session->userdata('position') !== 'Accounting') {
+		if ($this->session->userdata('position') !== 'Cashier') {
 			show_error('Access denied.', 403);
 		}
 

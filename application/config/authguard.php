@@ -116,9 +116,10 @@ $config['authguard_roles'] = array(
     // authguard_student_routes, which is checked separately and overrides
     // role rules. The entries below only affect non-student staff.
     'page/*'    => array('Super Admin', 'Admin', 'IT', 'School Admin', 'Registrar',
-                         'Head Registrar', 'Accounting', 'HR Admin', 'Human Resource',
+                         'Head Registrar', 'HR Admin', 'Human Resource',
                          'Academic Officer', 'Encoder', 'Instructor', 'Teacher',
-                         'Personnel', 'Guidance', 'Medical', 'Librarian'),
+                         'Personnel', 'Guidance', 'Medical', 'Librarian', 'Cashier',
+                         'Committee'),
     'settings/*' => array('Super Admin', 'Admin', 'IT', 'School Admin'),
 
     // --- Granular rules for the most sensitive operations -------------
@@ -158,6 +159,39 @@ $config['authguard_roles'] = array(
     // Super Admin only: this exposes forensic data, captured photos,
     // GPS coordinates, and device fingerprints from all login sessions.
     'securityadmin/*' => array('Super Admin'),
+);
+
+/*
+| RESTRICTED STAFF ROLES
+| -------------------------------------------------------------------------
+| These roles are deny-by-default. Even if a controller has no explicit role
+| rule above, the account can only reach the routes listed for its role here.
+| This prevents a Committee or Cashier account from opening an unrelated
+| staff URL by typing it directly into the address bar.
+*/
+$config['authguard_restricted_role_routes'] = array(
+    'Committee' => array(
+        'activities/index',
+        'attendance/scan',
+        'attendance/consume',
+        'attendance/logs',
+        'attendance/profile',
+        'attendancelogs/*',
+        'page/changepassword',
+        'page/update_password',
+        'login/logout',
+    ),
+    'Cashier' => array(
+        'accounting/*',
+        'page/accounting',
+        'page/proof_payment_view',
+        'page/onlinepaymentsall',
+        'page/deniedpayments',
+        'page/voidors',
+        'page/changepassword',
+        'page/update_password',
+        'login/logout',
+    ),
 );
 
 /*

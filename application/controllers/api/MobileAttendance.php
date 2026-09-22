@@ -82,7 +82,7 @@ class MobileAttendance extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_poster_admin($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
         $p = $this->read_payload();
@@ -177,10 +177,12 @@ class MobileAttendance extends MobileApi
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
 
-        // Only staff (instructors, admins, etc.) may scan and consume student
-        // QR tokens. Students use the separate checkin() endpoint for self
+        // On the web, attendance/scan and attendance/consume are PUBLIC routes
+        // (the kiosk needs no session), so any non-student account may operate
+        // the scanner — including the restricted Committee and Cashier roles.
+        // Students keep using the separate checkin() endpoint for self
         // check-in.
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_nonstudent($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -403,8 +405,10 @@ class MobileAttendance extends MobileApi
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
 
-        // Per-activity attendance logs are staff-only.
-        if (!$this->is_staff($tokenRow)) {
+        // Per-activity attendance logs are staff-only. Committee is included:
+        // the web allowlist grants it attendancelogs/* (and attendance/logs).
+        // Cashier remains excluded, same as on the web.
+        if (!$this->can_view_attendance_logs($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -503,8 +507,9 @@ class MobileAttendance extends MobileApi
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
 
-        // CSV export of attendance logs is staff-only.
-        if (!$this->is_staff($tokenRow)) {
+        // CSV export of attendance logs follows the web attendancelogs/*
+        // rules: every unrestricted staff role plus Committee, not Cashier.
+        if (!$this->can_view_attendance_logs($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -788,13 +793,51 @@ class MobileAttendance extends MobileApi
 
     // ─── Staff helpers ─────────────────────────────────────────────────────
 
+    /**
+     * General staff check — mirrors the web's unrestricted staff roles.
+     *
+     * On the web every position is a staff account EXCEPT the student levels
+     * (Student, Stude Applicant) and the two allowlisted restricted roles
+     * (Committee, Cashier), which are gated per-feature below. The list is
+     * the union of the Login::auth() redirect map and legacy position names
+     * still present in the database.
+     */
     private function is_staff(array $tokenRow): bool
     {
         $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
-        if (in_array($pos, ['admin', 'super admin', 'school admin', 'registrar', 'head registrar', 'accounting', 'hr admin', 'human resource', 'academic officer', 'encoder', 'it', 'instructor', 'teacher', 'personnel'], true)) {
+        if (in_array($pos, ['admin', 'super admin', 'school admin', 'registrar', 'head registrar', 'accounting', 'hr admin', 'human resource', 'academic officer', 'encoder', 'it', 'instructor', 'teacher', 'personnel', 'guidance', 'medical', 'school nurse', 'librarian', 'principal', 'property custodian'], true)) {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Scanner capability. On the web attendance/scan and attendance/consume
+     * are PUBLIC routes — even Committee and Cashier can reach them — so the
+     * only mobile restriction is that student accounts must use checkin().
+     */
+    private function is_nonstudent(array $tokenRow): bool
+    {
+        $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
+        return $pos !== ''
+            && !in_array($pos, ['student', 'student applicant', 'stude', 'stude applicant'], true);
+    }
+
+    /**
+     * Attendance-log viewing. The web allowlist grants Committee
+     * attendancelogs/* and attendance/logs on top of the unrestricted staff
+     * roles; Cashier is denied there, so it is denied here too.
+     */
+    private function can_view_attendance_logs(array $tokenRow): bool
+    {
+        $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
+        return $pos === 'committee' || $this->is_staff($tokenRow);
+    }
+
+    /** Web Activities::set_mode() allows only level === 'Admin'. */
+    private function is_poster_admin(array $tokenRow): bool
+    {
+        return strtolower(trim($this->position_of((string)$tokenRow['username']))) === 'admin';
     }
 
     private function position_of(string $username): string

@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v11.done';
+    const MARKER = 'schema_migrations_v12.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -45,6 +45,22 @@ class Schema_migrator
     protected function migrations()
     {
         return array(
+
+            // Temporary passwords issued for new accounts and password
+            // resets must be replaced on first sign-in. Some installations
+            // already use this flag in code but predate the column itself.
+            '2026_09_22_add_force_change_password' => array(
+                'check' => function () {
+                    return $this->tableExists('o_users')
+                        && !$this->columnExists('o_users', 'force_change_password');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "ALTER TABLE `o_users`
+                         ADD COLUMN `force_change_password` TINYINT(1) NOT NULL DEFAULT 0 AFTER `acctStat`"
+                    );
+                },
+            ),
 
             // The password column was sized for sha1 (40 chars). bcrypt needs
             // 60 -- which already fit -- but the '!locked:<sha256>' marker used

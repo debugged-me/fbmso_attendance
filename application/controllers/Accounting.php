@@ -3,7 +3,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 class Accounting extends CI_Controller
 {
-	private $allowedLevels = ['Admin', 'Accounting'];
+	private $allowedLevels = ['Admin', 'Cashier'];
 	private $receiptSettingsCache = null;
 
 	public function __construct()

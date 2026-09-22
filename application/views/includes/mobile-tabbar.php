@@ -54,10 +54,15 @@ switch ($msLevel) {
         $msAddTab($msTabs, 'AttendanceLogs', 'Attendance', 'mdi-calendar-check-outline');
         break;
 
-    case 'Accounting':
-        $msAddTab($msTabs, 'Page/accounting', 'Home', 'mdi-home-variant-outline');
-        $msAddTab($msTabs, 'Accounting/studeAccounts', 'Accounts', 'mdi-account-outline');
+    case 'Cashier':
         $msAddTab($msTabs, 'Accounting/Payment', 'Payments', 'mdi-cash-multiple');
+        $msAddTab($msTabs, 'Accounting/expenses', 'Expenses', 'mdi-receipt-text-outline');
+        $msAddTab($msTabs, 'Accounting/collectionMonthly', 'Reports', 'mdi-chart-box-outline');
+        break;
+
+    case 'Committee':
+        $msAddTab($msTabs, 'activities', 'Scan QR', 'mdi-qrcode-scan');
+        $msAddTab($msTabs, 'AttendanceLogs', 'Attendance', 'mdi-calendar-check-outline');
         break;
 }
 ?>

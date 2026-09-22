@@ -137,6 +137,8 @@ class MobileApi extends CI_Controller
         $allowed_origins = [
             'https://fbmso.srmsportal.com',
             'https://fbmso.softtechco.biz',
+            'http://localhost:3000',
+            'http://127.0.0.1:3000',
         ];
 
         if ($origin && in_array($origin, $allowed_origins, true)) {
@@ -229,6 +231,22 @@ class MobileApi extends CI_Controller
             $this->MobileTokenModel->revoke($raw);
             $this->json(['ok' => false, 'message' => 'Account has been deactivated.'], 401);
             return null;
+        }
+
+        // Mirror the web authguard: an account flagged force_change_password
+        // may only reach the change-password endpoint (and logout) until it
+        // sets a new password. Everything else answers 403.
+        if (!empty($user['force_change_password'])) {
+            $endpoint = $this->current_endpoint();
+            $allowedWhileForced = ['api/mobileauth/change_password', 'api/mobileauth/logout'];
+            if (!in_array($endpoint, $allowedWhileForced, true)) {
+                $this->json([
+                    'ok'                    => false,
+                    'message'               => 'You must change your password before continuing.',
+                    'force_change_password' => true,
+                ], 403);
+                return null;
+            }
         }
 
         return $row;

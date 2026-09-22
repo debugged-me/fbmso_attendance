@@ -27,6 +27,24 @@
 
   .table-action-links a { display:inline-flex; align-items:center; gap:4px; margin-right:14px; font-size:.84rem; font-weight:600; }
   .table-action-links a i { font-size:16px; }
+  .account-actions .dropdown-toggle {
+    width:38px; height:38px; display:inline-flex; align-items:center; justify-content:center;
+    border:1px solid #e6ebf5; border-radius:10px; background:#fff; color:#6b7a99;
+    padding:0; box-shadow:none;
+  }
+  .account-actions .dropdown-toggle::after { display:none; }
+  .account-actions .dropdown-toggle:hover,
+  .account-actions .dropdown-toggle:focus { color:#4266d4; border-color:#4266d4; box-shadow:0 3px 10px rgba(66,102,212,.12); }
+  .account-actions .dropdown-menu {
+    min-width:210px; padding:6px; border:1px solid #e6ebf5; border-radius:12px;
+    box-shadow:0 12px 36px rgba(15,23,42,.14);
+  }
+  .account-actions .dropdown-item {
+    display:flex; align-items:center; gap:9px; padding:9px 12px; border-radius:8px;
+    font-size:.84rem; font-weight:600; margin:0; color:#0d1b4b;
+  }
+  .account-actions .dropdown-item:hover { background:#f4f7ff; }
+  .account-actions .dropdown-item i { width:19px; text-align:center; font-size:17px; }
 
   .dataTables_wrapper .dataTables_info,
   .dataTables_wrapper .dataTables_paginate { padding:14px 18px !important; margin:0 !important; }
@@ -156,9 +174,14 @@
                         <td><?php echo $row->position; ?></td>
                         <td><?php echo $row->email; ?></td>
                         <td><?php echo $row->acctStat; ?></td>
-                        <td class="table-action-links">
-                          <?php if ($row->position != 'Teacher' && $row->position != 'Student'): ?>
-                            <a href="#" class="text-primary edit-user-btn"
+                        <td class="text-center">
+                          <div class="dropdown account-actions">
+                            <button type="button" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" aria-label="Account actions">
+                              <i class="mdi mdi-dots-vertical"></i>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right">
+                            <?php if ($row->position != 'Teacher' && $row->position != 'Student'): ?>
+                            <a href="#" class="dropdown-item edit-user-btn"
                               data-username="<?= htmlspecialchars($row->username, ENT_QUOTES, 'UTF-8'); ?>"
                               data-email="<?= htmlspecialchars($row->email, ENT_QUOTES, 'UTF-8'); ?>"
                               data-position="<?= htmlspecialchars($row->position, ENT_QUOTES, 'UTF-8'); ?>"
@@ -176,14 +199,14 @@
                           ?>
 
                           <a href="<?= $resetHref; ?>"
-                            class="text-success reset-password-btn"
+                            class="dropdown-item reset-password-btn"
                             data-href="<?= $resetHref; ?>"
                             data-name="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?>">
                             <i class="mdi mdi-file-document-box-check-outline"></i>Reset Password
                           </a>
 
                           <a href="<?= $deleteHref; ?>"
-                            class="text-warning delete-account-btn"
+                            class="dropdown-item text-danger delete-account-btn"
                             data-href="<?= $deleteHref; ?>"
                             data-name="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?>">
                             <i class="mdi mdi-file-document-box-check-outline"></i> Delete Account
@@ -191,7 +214,7 @@
 
                           <?php if ($row->acctStat == 'active'): ?>
                             <a href="<?= $deactHref; ?>"
-                              class="text-danger change-status-btn"
+                              class="dropdown-item text-danger change-status-btn"
                               data-href="<?= $deactHref; ?>"
                               data-name="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?>"
                               data-action="deactivate">
@@ -199,13 +222,15 @@
                             </a>
                           <?php else: ?>
                             <a href="<?= $activateHref; ?>"
-                              class="text-success change-status-btn"
+                              class="dropdown-item text-success change-status-btn"
                               data-href="<?= $activateHref; ?>"
                               data-name="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?>"
                               data-action="activate">
                               <i class="mdi mdi-file-document-box-check-outline"></i>Activate
                             </a>
                           <?php endif; ?>
+                            </div>
+                          </div>
                         </td>
                       <?php
                         echo "</tr>";
@@ -279,12 +304,6 @@
                 </div>
               </div>
               <div class="form-group row">
-                <label for="inputEmail3" class="col-sm-4 col-form-label">Employee No./Student No.</label>
-                <div class="col-sm-8">
-                  <input type="text" class="form-control" name="IDNumber" placeholder="" required>
-                </div>
-              </div>
-              <div class="form-group row">
                 <label for="inputEmail3" class="col-sm-4 col-form-label">E-mail</label>
                 <div class="col-sm-8">
                   <input type="email" class="form-control" name="email" placeholder="" required>
@@ -294,10 +313,10 @@
                 <label for="inputEmail3" class="col-sm-4 col-form-label">Account Level</label>
                 <div class="col-sm-8">
                   <select class="form-control" name="acctLevel" required>
-                    <!-- <option value=""></option>
-                    <option value="Accounting">Accounting</option>
-                    <option value="Cashier">Accounting - Cashier</option> -->
+                    <option value="">-- Select Level --</option>
                     <option value="Admin">Admin</option>
+                    <option value="Committee">Committee</option>
+                    <option value="Cashier">Cashier</option>
                     <!-- <option value="HR Admin">HR Admin</option>
                     <option value="Guidance">Guidance</option>
                     <option value="Librarian">Librarian</option>
@@ -316,27 +335,11 @@
 
 
               <div class="form-group row">
-                <label for="inputEmail3" class="col-sm-4 col-form-label">Username<br /><span style="color:red"><small>Student No. for Students/Employee No. for Teachers</small></span></label>
+                <label for="inputEmail3" class="col-sm-4 col-form-label">Username</label>
                 <div class="col-sm-8">
                   <input type="text" class="form-control" name="username" placeholder="" required>
                 </div>
               </div>
-              <div class="form-group row">
-                <label for="inputPassword3" class="col-sm-4 col-form-label">Password</label>
-                <div class="col-sm-8">
-                  <input
-                    type="password"
-                    class="form-control"
-                    name="password"
-                    placeholder=""
-                    required
-                    minlength="8"
-
-                    title="Password must be at least 8 characters long.">
-
-                </div>
-              </div>
-
             </div>
             <!-- /.card-body -->
             <div class="card-footer">
@@ -351,27 +354,6 @@
     <!-- /.modal-dialog -->
   </div>
   <!-- /.modal -->
-
-  <script>
-    document.querySelector('input[name="password"]').addEventListener('input', function(e) {
-      const password = e.target.value;
-      const minLength = 8;
-      // const hasUpperCase = /[A-Z]/.test(password);
-      // const hasLowerCase = /[a-z]/.test(password);
-      // const hasDigit = /\d/.test(password);
-      // const hasSpecialChar = /[@$!%*?&]/.test(password);
-
-      if (password.length >= minLength) {
-        // if (password.length >= minLength && hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar) {
-        e.target.setCustomValidity('');
-      } else {
-        e.target.setCustomValidity('Password must be at least 8 characters long.');
-        // e.target.setCustomValidity('Password must be at least 8 characters long and include a mix of uppercase letters, lowercase letters, digits, and special characters.');
-      }
-    });
-  </script>
-
-
 
   <!-- Vendor js -->
   <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
@@ -445,9 +427,9 @@
               <label for="modalAcctLevel"> Account Level </label>
               <select class="form-control" name="acctLevel" id="modalAcctLevel" required>
                 <option value="">-- Select Level --</option>
-                <!-- <option value="Accounting">Accounting</option>
-                <option value="Cashier">Accounting - Cashier</option> -->
                 <option value="Admin"> Admin </option>
+                <option value="Committee"> Committee </option>
+                <option value="Cashier"> Cashier </option>
                 <!-- <option value="HR Admin">HR Admin</option>
                 <option value="Guidance">Guidance</option>
                 <option value="Librarian">Librarian</option>

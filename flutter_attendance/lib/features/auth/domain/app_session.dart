@@ -18,6 +18,7 @@ class AppSession {
     required this.position,
     required this.activeSy,
     required this.activeSem,
+    this.forceChangePassword = false,
   });
 
   final String baseUrl;
@@ -33,6 +34,10 @@ class AppSession {
   final String position;
   final String activeSy;
   final String activeSem;
+
+  /// Mirrors the web `force_change_password` account flag: when true the
+  /// app must show the change-password screen and nothing else.
+  final bool forceChangePassword;
 
   UserRole get role => UserRole.fromPosition(position);
 
@@ -63,6 +68,8 @@ class AppSession {
       position: (user['position'] ?? user['role'] ?? '').toString(),
       activeSy: (json['active_sy'] ?? user['active_sy'] ?? '').toString(),
       activeSem: (json['active_sem'] ?? user['active_sem'] ?? '').toString(),
+      forceChangePassword:
+          _truthy(user['force_change_password'] ?? json['force_change_password']),
     );
   }
 
@@ -88,8 +95,13 @@ class AppSession {
       position: (user['position'] ?? user['role'] ?? '').toString(),
       activeSy: (json['active_sy'] ?? user['active_sy'] ?? '').toString(),
       activeSem: (json['active_sem'] ?? user['active_sem'] ?? '').toString(),
+      forceChangePassword:
+          _truthy(user['force_change_password'] ?? json['force_change_password']),
     );
   }
+
+  static bool _truthy(dynamic v) =>
+      v == true || v == 1 || v == '1' || v == 'true';
 
   Map<String, dynamic> toJson() => {
         'baseUrl': baseUrl,
@@ -105,6 +117,7 @@ class AppSession {
         'position': position,
         'activeSy': activeSy,
         'activeSem': activeSem,
+        'forceChangePassword': forceChangePassword,
       };
 
   factory AppSession.fromStorage(Map<String, dynamic> json) {
@@ -122,6 +135,7 @@ class AppSession {
       position: (json['position'] ?? '').toString(),
       activeSy: (json['activeSy'] ?? '').toString(),
       activeSem: (json['activeSem'] ?? '').toString(),
+      forceChangePassword: _truthy(json['forceChangePassword']),
     );
   }
 }

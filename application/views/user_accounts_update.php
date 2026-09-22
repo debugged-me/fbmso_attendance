@@ -87,7 +87,8 @@
                         <div class="col-sm-8">
                           <select class="form-control" name="acctLevel" required>
                             <option value="<?php echo $data[0]->position; ?>"><?php echo $data[0]->position; ?></option>
-                            <option value="Accounting">Accounting</option>
+                            <option value="Cashier">Cashier</option>
+                            <option value="Committee">Committee</option>
                             <option value="Admin">Admin</option>
                             <option value="Alumni">Alumni</option>
                             <option value="HR Admin">HR Admin</option>

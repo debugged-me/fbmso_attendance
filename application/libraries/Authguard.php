@@ -19,6 +19,7 @@ class Authguard
 
     protected $public_routes  = array();
     protected $role_rules     = array();
+    protected $restricted_role_routes = array();
     protected $student_levels = array();
     protected $student_routes = array();
     protected $login_route   = 'login';
@@ -53,6 +54,7 @@ class Authguard
 
         $this->public_routes  = (array)$get('authguard_public', array());
         $this->role_rules     = (array)$get('authguard_roles', array());
+        $this->restricted_role_routes = (array)$get('authguard_restricted_role_routes', array());
         $this->student_levels = (array)$get('authguard_student_levels', array());
         $this->student_routes = (array)$get('authguard_student_routes', array());
         $this->login_route   = (string)$get('authguard_login_route', 'login');
@@ -145,6 +147,15 @@ class Authguard
                 redirect('page/changepassword');
                 return;
             }
+        }
+
+        // Committee and Cashier accounts are intentionally narrow roles.
+        // Apply their allowlist before the general role map so an unlisted
+        // controller cannot become available merely because it has no rule.
+        $restrictedRoutes = $this->restricted_routes_for_current_role();
+        if ($restrictedRoutes !== null && !$this->route_is_listed($route, $restrictedRoutes)) {
+            $this->reject_forbidden(array('an authorised route for ' . $this->level()));
+            return;
         }
 
         $allowed = $this->rule_for($route, $this->role_rules);
@@ -361,6 +372,28 @@ class Authguard
         }
 
         return $route === $pattern;
+    }
+
+    /** Return the route allowlist for the current restricted role, if any. */
+    protected function restricted_routes_for_current_role()
+    {
+        $mine = strtolower($this->level());
+        foreach ($this->restricted_role_routes as $role => $routes) {
+            if ($mine === strtolower(trim((string)$role))) {
+                return (array)$routes;
+            }
+        }
+        return null;
+    }
+
+    protected function route_is_listed($route, array $patterns)
+    {
+        foreach ($patterns as $pattern) {
+            if ($this->route_matches($route, $pattern)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------

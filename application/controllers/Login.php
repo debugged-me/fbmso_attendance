@@ -341,8 +341,11 @@ class Login extends CI_Controller
                     case 'Stude Applicant':
                         redirect('page/student');
                         break;   // <— changed
-                    case 'Accounting':
-                        redirect('page/accounting');
+                    case 'Cashier':
+                        redirect('Accounting/Payment');
+                        break;
+                    case 'Committee':
+                        redirect('activities');
                         break;
                     case 'Instructor':
                         redirect('page/Instructor');

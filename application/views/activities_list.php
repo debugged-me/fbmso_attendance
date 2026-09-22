@@ -4,6 +4,7 @@
 <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
 
 <body>
+  <?php $isCommittee = $this->session->userdata('level') === 'Committee'; ?>
   <div id="wrapper">
     <?php include('includes/top-nav-bar.php'); ?>
     <?php include('includes/sidebar.php'); ?>
@@ -623,16 +624,20 @@
                   <h4 class="up-page-title d-flex align-items-center">
                     <i class="ion ion-ios-qr-scanner mr-2"></i> Activities
                   </h4>
-                  <div class="up-page-sub">Create activities, open the scanner, or print a poster QR for self check-in.</div>
+                  <div class="up-page-sub"><?= $isCommittee
+                    ? 'Open a scanner for an activity or review its attendance.'
+                    : 'Create activities, open the scanner, or print a poster QR for self check-in.'; ?></div>
                   <hr class="up-divider" />
                 </div>
                 <div class="pl-actions">
-                  <a href="<?= base_url(); ?>Page/admin" class="up-btn up-btn-ghost">
-                    <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                  <a href="<?= $isCommittee ? base_url('AttendanceLogs') : base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
+                    <i class="mdi mdi-arrow-left"></i> <?= $isCommittee ? 'Attendance Logs' : 'Back to Dashboard'; ?>
                   </a>
+                  <?php if (!$isCommittee): ?>
                   <a href="<?= site_url('activities/create'); ?>" class="up-btn up-btn-primary">
                     <i class="ion ion-md-add-circle-outline"></i> Create Activity
                   </a>
+                  <?php endif; ?>
                 </div>
               </div>
             </div>
@@ -811,7 +816,7 @@
                               </button>
                               <div class="act-menu dropdown-menu dropdown-menu-right">
 
-                                <?php if (!$posterMode): ?>
+                                <?php if (!$posterMode || $isCommittee): ?>
                                   <a class="act-item" href="<?= site_url('activities/' . $r->activity_id . '/scan') ?>">
                                     <i class="ion ion-md-qr-scanner act-ic act-ic-scan"></i> Scan
                                   </a>
@@ -821,12 +826,13 @@
                                   <i class="ion ion-md-list act-ic act-ic-log"></i> View Attendance
                                 </a>
 
-                                <?php if ($posterMode): ?>
+                                <?php if ($posterMode && !$isCommittee): ?>
                                   <a class="act-item" href="<?= site_url('activities/' . $r->activity_id . '/poster') ?>" target="_blank" rel="noopener">
                                     <i class="ion ion-md-easel act-ic act-ic-poster"></i> View Poster
                                   </a>
                                 <?php endif; ?>
 
+                                <?php if (!$isCommittee): ?>
                                 <?php
                                 $nextStatus = $st['is_open'] ? 'closed' : 'open';
                                 $confirmMsg = $st['is_open']
@@ -860,6 +866,7 @@
                                     <i class="ion ion-md-trash act-ic act-ic-delete"></i> Delete
                                   </button>
                                 </form>
+                                <?php endif; ?>
 
                               </div>
                             </div>

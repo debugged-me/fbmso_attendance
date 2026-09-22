@@ -14,6 +14,7 @@ import '../../attendance/presentation/activity_poster_screen.dart';
 import '../../attendance/presentation/manage_activities_screen.dart';
 import '../../attendance/presentation/scan_screen.dart';
 import '../../auth/domain/app_session.dart';
+import '../../auth/domain/staff_permissions.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../misc/presentation/announcements_manage_screen.dart';
 import '../../misc/presentation/departments_screen.dart';
@@ -48,6 +49,11 @@ class AdminShell extends StatefulWidget {
 class _AdminShellState extends State<AdminShell> {
   int _index = 0;
 
+  /// Mirrors the web authorization model (see StaffPermissions): narrow
+  /// roles like Committee and Cashier only see the modules their web
+  /// allowlist grants them, instead of a drawer full of 403s.
+  StaffPermissions get _perms => StaffPermissions.of(widget.session);
+
   Widget _menuButton(BuildContext context) {
     return IconButton(
       icon: const Icon(Icons.menu_rounded, size: 24),
@@ -60,7 +66,10 @@ class _AdminShellState extends State<AdminShell> {
     );
   }
 
-  List<DrawerItem> get _drawerItems => [
+  List<DrawerItem> get _drawerItems {
+    final p = _perms;
+    return [
+      if (p.canManageActivities)
         DrawerItem(
           icon: Icons.edit_calendar_rounded,
           title: 'Manage Activities',
@@ -75,6 +84,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
+      if (p.canViewAttendanceLogs)
         DrawerItem(
           icon: Icons.history_rounded,
           title: 'Attendance Logs',
@@ -89,6 +99,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
+      if (p.canManagePersonnel)
         DrawerItem(
           icon: Icons.people_outline_rounded,
           title: 'Personnel',
@@ -103,6 +114,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
+      if (p.canViewStaffLists)
         DrawerItem(
           icon: Icons.school_outlined,
           title: 'Registered Students',
@@ -117,6 +129,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
+      if (p.canManageUsers)
         DrawerItem(
           icon: Icons.manage_accounts_rounded,
           title: 'Manage Users',
@@ -131,6 +144,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
+      if (p.canUseAccounting)
         DrawerItem(
           icon: Icons.receipt_long_outlined,
           title: 'Expenses',
@@ -144,6 +158,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
+      if (p.canManageDepartments)
         DrawerItem(
           icon: Icons.school_outlined,
           title: 'Departments',
@@ -157,6 +172,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
+      if (p.canViewStaffLists)
         DrawerItem(
           icon: Icons.group_outlined,
           title: 'Sections',
@@ -170,6 +186,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
+      if (p.canViewStaffLists)
         DrawerItem(
           icon: Icons.assessment_outlined,
           title: 'Reports',
@@ -183,6 +200,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
+      if (p.canManageAnnouncements)
         DrawerItem(
           icon: Icons.campaign_outlined,
           title: 'Announcements',
@@ -197,37 +215,45 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-        DrawerItem(
-          icon: Icons.sticky_note_2_outlined,
-          title: 'Notes',
-          subtitle: 'Your personal notes',
-          onTap: (ctx) {
-            Navigator.of(ctx).pop();
-            Navigator.of(ctx).push(
-              MaterialPageRoute(
-                builder: (_) => NotesScreen(session: widget.session),
-              ),
-            );
-          },
-        ),
-        DrawerItem(
-          icon: Icons.check_circle_outline,
-          title: 'To-Do',
-          subtitle: 'Tasks and reminders',
-          onTap: (ctx) {
-            Navigator.of(ctx).pop();
-            Navigator.of(ctx).push(
-              MaterialPageRoute(
-                builder: (_) => TodosScreen(session: widget.session),
-              ),
-            );
-          },
-        ),
-      ];
+      DrawerItem(
+        icon: Icons.sticky_note_2_outlined,
+        title: 'Notes',
+        subtitle: 'Your personal notes',
+        onTap: (ctx) {
+          Navigator.of(ctx).pop();
+          Navigator.of(ctx).push(
+            MaterialPageRoute(
+              builder: (_) => NotesScreen(session: widget.session),
+            ),
+          );
+        },
+      ),
+      DrawerItem(
+        icon: Icons.check_circle_outline,
+        title: 'To-Do',
+        subtitle: 'Tasks and reminders',
+        onTap: (ctx) {
+          Navigator.of(ctx).pop();
+          Navigator.of(ctx).push(
+            MaterialPageRoute(
+              builder: (_) => TodosScreen(session: widget.session),
+            ),
+          );
+        },
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
+    final p = _perms;
+
+    // Bottom nav mirrors each role's web landing pages:
+    //   Cashier   → Dashboard + Expenses (web lands on Accounting/Payment)
+    //   others    → Dashboard + Activities + Scan
+    final tabs = <Widget>[];
+    final destinations = <NavigationDestination>[];
 
     return Scaffold(
       drawer: AppAppDrawer(
@@ -238,39 +264,49 @@ class _AdminShellState extends State<AdminShell> {
       body: Builder(
         builder: (context) {
           final menu = _menuButton(context);
-          return <Widget>[
-            DashboardScreen(
-              session: session,
-              menuButton: menu,
-            ),
-            ActivitiesScreen(
-              session: session,
-              menuButton: menu,
-            ),
-            _ScanPicker(session: session, menuButton: menu),
-          ][_index];
+
+          tabs
+            ..clear()
+            ..add(DashboardScreen(session: session, menuButton: menu));
+          destinations
+            ..clear()
+            ..add(const NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: 'Dashboard',
+            ));
+
+          if (p.isCashier) {
+            tabs.add(ExpensesScreen(session: session, menuButton: menu));
+            destinations.add(const NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long_rounded),
+              label: 'Expenses',
+            ));
+          } else {
+            tabs
+              ..add(ActivitiesScreen(session: session, menuButton: menu))
+              ..add(_ScanPicker(session: session, menuButton: menu));
+            destinations
+              ..add(const NavigationDestination(
+                icon: Icon(AppIcons.home_outlined),
+                selectedIcon: Icon(AppIcons.home_rounded),
+                label: 'Activities',
+              ))
+              ..add(const NavigationDestination(
+                icon: Icon(Icons.qr_code_scanner_outlined),
+                selectedIcon: Icon(Icons.qr_code_scanner),
+                label: 'Scan',
+              ));
+          }
+
+          return tabs[_index.clamp(0, tabs.length - 1)];
         },
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
+        selectedIndex: _index.clamp(0, destinations.length - 1),
         onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          NavigationDestination(
-            icon: Icon(AppIcons.home_outlined),
-            selectedIcon: Icon(AppIcons.home_rounded),
-            label: 'Activities',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.qr_code_scanner_outlined),
-            selectedIcon: Icon(Icons.qr_code_scanner),
-            label: 'Scan',
-          ),
-        ],
+        destinations: destinations,
       ),
     );
   }

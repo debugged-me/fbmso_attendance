@@ -573,7 +573,7 @@ class MobileMisc extends MobileApi
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
 
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_accounting($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -603,7 +603,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_accounting($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -639,7 +639,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_accounting($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -672,7 +672,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_accounting($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -694,7 +694,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_accounting($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -717,7 +717,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_accounting($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -739,7 +739,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_accounting($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -763,7 +763,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_personnel_manager($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -825,7 +825,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_personnel_manager($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -865,7 +865,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_admin($tokenRow)) {
+        if (!$this->is_personnel_manager($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Admin only.'], 403);
         }
 
@@ -886,7 +886,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_personnel_manager($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -912,7 +912,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_admin($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -989,7 +989,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_admin($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -1013,7 +1013,7 @@ class MobileMisc extends MobileApi
         $allowedLevels = array(
             'Student', 'Stude Applicant', 'Admin', 'Super Admin', 'School Admin',
             'Registrar', 'Head Registrar', 'IT', 'Instructor', 'Encoder',
-            'Accounting', 'HR Admin', 'Human Resource', 'Academic Officer',
+            'Cashier', 'Committee', 'HR Admin', 'Human Resource', 'Academic Officer',
             'Property Custodian',
         );
         $levelOk = false;
@@ -1212,13 +1212,53 @@ class MobileMisc extends MobileApi
         return 'All';
     }
 
+    /**
+     * General staff check — mirrors the web's unrestricted staff roles.
+     *
+     * On the web every position is a staff account EXCEPT the student levels
+     * (Student, Stude Applicant) and the two allowlisted restricted roles
+     * (Committee, Cashier), which are gated per-feature below. The list is
+     * the union of the Login::auth() redirect map and legacy position names
+     * still present in the database.
+     */
     private function is_staff(array $tokenRow): bool
     {
         $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
-        if (in_array($pos, ['admin', 'super admin', 'school admin', 'registrar', 'head registrar', 'accounting', 'hr admin', 'human resource', 'academic officer', 'encoder', 'it'], true)) {
+        if (in_array($pos, ['admin', 'super admin', 'school admin', 'registrar', 'head registrar', 'accounting', 'hr admin', 'human resource', 'academic officer', 'encoder', 'it', 'instructor', 'teacher', 'personnel', 'guidance', 'medical', 'school nurse', 'librarian', 'principal', 'property custodian'], true)) {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Accounting feature check — mirrors Accounting::$allowedLevels on the
+     * web, which is exactly ['Admin', 'Cashier'] (not even Super Admin).
+     * Gates the expenses endpoints; Committee stays excluded.
+     */
+    private function is_accounting(array $tokenRow): bool
+    {
+        $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
+        return in_array($pos, ['admin', 'cashier'], true);
+    }
+
+    /**
+     * Personnel management — mirrors FbmsoPersonnels::require_manager() and
+     * the matching authguard role rules on the web.
+     */
+    private function is_personnel_manager(array $tokenRow): bool
+    {
+        $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
+        return in_array($pos, ['super admin', 'admin', 'it', 'hr admin', 'human resource'], true);
+    }
+
+    /**
+     * School-settings management — mirrors the web 'settings/*' authguard
+     * rule (departments/courses live under the Settings controller).
+     */
+    private function is_settings_admin(array $tokenRow): bool
+    {
+        $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
+        return in_array($pos, ['super admin', 'admin', 'it', 'school admin'], true);
     }
 
     /** Stricter check: only senior admins can delete records. */
@@ -1413,7 +1453,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_settings_admin($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -1467,7 +1507,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_settings_admin($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -1499,7 +1539,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_settings_admin($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 
@@ -1529,7 +1569,7 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
+        if (!$this->is_settings_admin($tokenRow)) {
             return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
         }
 

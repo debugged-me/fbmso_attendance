@@ -387,7 +387,11 @@ class MobileAuth extends MobileApi
             return $this->json(['ok' => false, 'message' => 'That password cannot be used. Please choose a different one.'], 422);
         }
 
-        $this->db->where('username', $username)->update('o_users', ['password' => $newHash]);
+        // Clear the force-change flag — same as web Page::update_password().
+        $this->db->where('username', $username)->update('o_users', [
+            'password'              => $newHash,
+            'force_change_password' => 0,
+        ]);
         $this->MobileTokenModel->revokeAllForUser($username);
 
         return $this->json(['ok' => true, 'message' => 'Password changed successfully. Please log in again.']);
@@ -775,6 +779,7 @@ class MobileAuth extends MobileApi
             'avatar'     => $this->avatar_url((string)($userRow['avatar'] ?? '')),
             'position'   => $position,
             'role'       => $position, // role == position in this codebase
+            'force_change_password' => (int)($userRow['force_change_password'] ?? 0),
             'school_name'=> $schoolName,
             'active_sy'  => $sy,
             'active_sem' => $semester,
