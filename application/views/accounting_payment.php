@@ -114,11 +114,15 @@
                                                     if ($pTime !== '') $dateTimeLabel .= ' ' . date('h:i A', strtotime($pTime));
 
                                                     $amount = (float)($row->Amount ?? 0);
-                                                    $fullAmount = $row->FullAmount !== null ? (float)$row->FullAmount : null;
-                                                    if ($fullAmount === null) {
+                                                    $fullAmount = (float)($row->FullAmount ?? 0);
+                                                    // Status reflects the fee's whole balance, not this one
+                                                    // receipt — instalments that add up to the full price
+                                                    // are fully paid, however many receipts it took.
+                                                    $totalPaid = (float)($row->TotalPaid ?? $amount);
+                                                    if ($fullAmount <= 0) {
                                                         $statusLabel = 'N/A';
                                                         $statusClass = 'badge-secondary';
-                                                    } elseif ($amount + 0.004 < $fullAmount) {
+                                                    } elseif ($totalPaid + 0.004 < $fullAmount) {
                                                         $statusLabel = 'Partial';
                                                         $statusClass = 'badge-warning';
                                                     } else {
@@ -264,6 +268,21 @@
                             </select>
                         </div>
 
+                        <div class="fee-balance" id="feeBalance" style="display:none;">
+                            <div class="fee-balance-item">
+                                <span class="fee-balance-label">Full amount</span>
+                                <span class="fee-balance-value" id="balanceFull">₱ 0.00</span>
+                            </div>
+                            <div class="fee-balance-item">
+                                <span class="fee-balance-label">Already paid</span>
+                                <span class="fee-balance-value" id="balancePaid" style="color:#16a34a;">₱ 0.00</span>
+                            </div>
+                            <div class="fee-balance-item">
+                                <span class="fee-balance-label">Remaining</span>
+                                <span class="fee-balance-value" id="balanceRemaining" style="color:#dc2626;">₱ 0.00</span>
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <label for="amount">Amount</label>
                             <input type="number" class="form-control" id="amount" name="Amount" min="0" step="0.01" readonly required>
@@ -273,9 +292,12 @@
                         <div class="form-group custom-control custom-checkbox">
                             <input type="checkbox" class="custom-control-input" id="partialPayment" name="IsPartial" value="1">
                             <label class="custom-control-label" for="partialPayment">
-                                Partial payment — student is paying less than the full fee amount
+                                Partial payment — student is paying less than the amount still owed
                             </label>
                         </div>
+
+                        <div class="alert alert-warning mt-2 mb-0" id="partialNotice" style="display:none;"></div>
+                        <div class="alert alert-success mt-2 mb-0" id="settledNotice" style="display:none;"></div>
 
                         <div class="alert alert-warning mt-2 mb-0" id="feeWarning" style="display:none;">
                             Please enter or select a <b>Description</b>.
@@ -465,6 +487,95 @@
                 $submitBtn.prop('disabled', false).html(paymentSubmitDefaultHtml);
             }
 
+            function peso(value) {
+                return '₱ ' + Number(value || 0).toFixed(2);
+            }
+
+            // Asks the server what this student still owes on this fee, so the
+            // form bills the remaining balance rather than assuming every
+            // payment starts from the full price again.
+            function refreshFeeBalance() {
+                var student = ($('#studentSelect').val() || '').trim();
+                var description = ($('#descriptionHidden').val() || '').trim();
+                var $amount = $('#amount');
+                var $partial = $('#partialPayment');
+
+                if (!student || !description) {
+                    $('#feeBalance').hide();
+                    $('#settledNotice').hide();
+                    $('#partialNotice').hide();
+                    $amount.removeData('remaining');
+                    return;
+                }
+
+                $.getJSON(baseUrl + 'Accounting/ajaxFeeBalance', {
+                    student: student,
+                    description: description
+                }).done(function(res) {
+                    var full = parseFloat(res.full) || 0;
+                    var paid = parseFloat(res.paid) || 0;
+                    var remaining = parseFloat(res.remaining) || 0;
+
+                    $amount.data('full-amount', full).data('remaining', remaining);
+
+                    if (full <= 0) {
+                        $('#feeBalance').hide();
+                        $('#settledNotice').hide();
+                        return;
+                    }
+
+                    $('#balanceFull').text(peso(full));
+                    $('#balancePaid').text(peso(paid));
+                    $('#balanceRemaining').text(peso(remaining));
+                    $('#feeBalance').show();
+
+                    if (remaining <= 0.004) {
+                        $('#settledNotice')
+                            .text(description + ' is already fully paid for this term. Nothing further is owed.')
+                            .show();
+                        $amount.val('').prop('readonly', true);
+                        $partial.prop('checked', false).prop('disabled', true);
+                        setSubmitDisabled(true);
+                        return;
+                    }
+
+                    $('#settledNotice').hide();
+                    $partial.prop('disabled', false);
+                    setSubmitDisabled(false);
+
+                    // Default to clearing the whole remaining balance; ticking
+                    // "Partial" is what unlocks paying less than that.
+                    if (!$partial.prop('checked')) {
+                        $amount.val(remaining.toFixed(2));
+                    }
+                    updatePartialNotice();
+                });
+            }
+
+            function setSubmitDisabled(disabled) {
+                $('#paymentSubmitBtn').prop('disabled', !!disabled);
+            }
+
+            function updatePartialNotice() {
+                var $amount = $('#amount');
+                var remaining = parseFloat($amount.data('remaining'));
+                var entered = parseFloat($amount.val());
+
+                if (isNaN(remaining) || remaining <= 0 || isNaN(entered)) {
+                    $('#partialNotice').hide();
+                    return;
+                }
+
+                if (entered + 0.004 < remaining) {
+                    $('#partialNotice')
+                        .html('Short by ' + peso(remaining - entered) + '. Balance after this payment: <b>' +
+                            peso(remaining - entered) + '</b>.')
+                        .show();
+                } else {
+                    $('#partialNotice').hide();
+                }
+            }
+
             function applyDescriptionSelection($select, $hidden, $amount, $warn, $partialCheckbox) {
                 var val = ($select.val() || '').trim();
                 var $opt = $select.find('option:selected');
@@ -487,21 +598,27 @@
                     $amount.data('full-amount', amt);
                     $amount.val(Number(amt).toFixed(2));
                 }
+
+                refreshFeeBalance();
             }
 
             function bindPartialToggle($checkbox, $amount, $hint) {
                 $checkbox.on('change', function() {
-                    var full = parseFloat($amount.data('full-amount'));
-                    if (isNaN(full)) full = 0;
+                    var remaining = parseFloat($amount.data('remaining'));
+                    if (isNaN(remaining)) remaining = parseFloat($amount.data('full-amount'));
+                    if (isNaN(remaining)) remaining = 0;
 
                     if (this.checked) {
-                        $amount.prop('readonly', false).attr('max', full || null).focus();
-                        $hint.text('Enter the amount actually being paid now (less than ₱' + full.toFixed(2) + ').');
+                        $amount.prop('readonly', false).attr('max', remaining || null).val('').focus();
+                        $hint.text('Enter the amount being paid now (less than ' + peso(remaining) + ').');
                     } else {
-                        $amount.prop('readonly', true).removeAttr('max').val(full.toFixed(2));
-                        $hint.text("Set by the selected Description's configured fee.");
+                        $amount.prop('readonly', true).removeAttr('max').val(remaining.toFixed(2));
+                        $hint.text('Settles the full remaining balance of ' + peso(remaining) + '.');
                     }
+                    updatePartialNotice();
                 });
+
+                $amount.on('input', updatePartialNotice);
             }
 
             function validateDesc($hidden, $warn) {
@@ -565,11 +682,14 @@
 
                 $('#orNumber').val(defaultOrNumber);
                 $('#paymentDate').val(defaultPaymentDate);
-                $('#amount').val('').prop('readonly', true).removeAttr('max').removeData('full-amount');
-                $('#partialPayment').prop('checked', false);
+                $('#amount').val('').prop('readonly', true).removeAttr('max').removeData('full-amount').removeData('remaining');
+                $('#partialPayment').prop('checked', false).prop('disabled', false);
                 $('#amountHint').text("Set by the selected Description's configured fee.");
                 $('#descriptionHidden').val('');
                 $('#feeWarning').hide();
+                $('#feeBalance').hide();
+                $('#partialNotice').hide();
+                $('#settledNotice').hide();
 
                 if ($('#studentSelect').data('select2')) {
                     $('#studentSelect').val('').trigger('change');
@@ -723,6 +843,7 @@
 
                 $(document).on('change', '#studentSelect', function() {
                     updateStudentTermHint($(this));
+                    refreshFeeBalance();
                 });
 
                 $(document).on('change', '#descriptionField', function() {
@@ -854,6 +975,39 @@
     </script>
 
     <style>
+        .fee-balance {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .fee-balance-item {
+            flex: 1 1 120px;
+            border: 1px solid #e6ebf5;
+            border-radius: 10px;
+            padding: 10px 12px;
+            background: #f8fbff;
+        }
+
+        .fee-balance-label {
+            display: block;
+            font-size: .68rem;
+            font-weight: 700;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: #6b7a99;
+            margin-bottom: 4px;
+        }
+
+        .fee-balance-value {
+            display: block;
+            font-size: 1rem;
+            font-weight: 800;
+            color: #0d1b4b;
+            white-space: nowrap;
+        }
+
         /* ACTION BUTTONS: spacing + consistent size */
         .action-wrap {
             display: inline-flex;

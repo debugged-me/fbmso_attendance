@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v15.done';
+    const MARKER = 'schema_migrations_v16.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -566,6 +566,37 @@ class Schema_migrator
                          ADD COLUMN `client_payment_id` CHAR(36) NULL DEFAULT NULL,
                          ADD UNIQUE KEY `uq_client_payment` (`client_payment_id`)"
                     );
+                },
+            ),
+
+            // The fee price a payment was taken against, frozen at the moment
+            // it was received. Without it, "is this student fully paid?" was
+            // answered against the LIVE fees table, so raising a fee's price
+            // retroactively re-opened balances that were already settled.
+            // Existing rows are backfilled with today's price -- the best
+            // estimate available -- so the report reads the same before and
+            // after this migration, and stops drifting from here on.
+            '2026_09_23_add_payment_fee_snapshot' => array(
+                'check' => function () {
+                    return $this->tableExists('paymentsaccounts')
+                        && !$this->columnExists('paymentsaccounts', 'FeeFullAmount');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "ALTER TABLE `paymentsaccounts`
+                         ADD COLUMN `FeeFullAmount` DECIMAL(12,2) NOT NULL DEFAULT 0.00"
+                    );
+
+                    if ($this->tableExists('fees')) {
+                        $this->CI->db->query(
+                            "UPDATE `paymentsaccounts` p
+                               JOIN (SELECT Description, MAX(Amount) AS FullAmount
+                                       FROM `fees` GROUP BY Description) f
+                                 ON f.Description = p.description
+                                SET p.FeeFullAmount = f.FullAmount
+                              WHERE p.FeeFullAmount = 0"
+                        );
+                    }
                 },
             ),
         );

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/Applications/XAMPP/xamppfiles/bin/mysql -u root softtech_fbmso -e \"SHOW CREATE TABLE payment_audit_log\\\\G\")",
+      "Bash(/Applications/XAMPP/xamppfiles/bin/mysql -u root softtech_fbmso -e \"SHOW CREATE TABLE studeaccount\\\\G\")"
+    ]
+  }
+}

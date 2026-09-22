@@ -57,34 +57,16 @@
 
                                     <!-- Start Form Section -->
                                         <div class="row mb-3 no-print">
-                                            <!-- Dropdown to select Category -->
-                                            <div class="col-lg-3">
-                                                <label for="selectCategory">Select Category:</label>
-                                                <select id="selectCategory" class="form-control">
-                                                    <option value="">All Categories</option>
-                                                    <?php
-                                                    // Assuming $categories is an array of categories fetched from the database
-                                                    foreach ($categories as $Category) {
-                                                        $catSafe = htmlspecialchars((string)$Category, ENT_QUOTES, 'UTF-8');
-                                                        echo '<option value="' . $catSafe . '">' . $catSafe . '</option>';
-                                                    }
-                                                    ?>
-                                                </select>
+                                            <div class="col-12 d-flex flex-wrap align-items-center justify-content-between" style="gap:8px;">
+                                                <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+                                                    <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#expenseFilterModal">
+                                                        <i class="mdi mdi-filter-variant"></i> Filter
+                                                        <span id="filterCountBadge" class="badge badge-primary" style="display:none;margin-left:4px;"></span>
+                                                    </button>
+                                                    <span id="filterSummaryText" class="text-muted" style="font-size:.8rem;"></span>
+                                                </div>
+                                                <div id="expensesExportButtons"></div>
                                             </div>
-
-                                            <!-- Textbox to filter data based on Expense Date range -->
-                                            <div class="col-lg-3">
-                                                <label for="filterFromDate">From:</label>
-                                                <input type="date" id="filterFromDate" class="form-control">
-                                            </div>
-
-                                            <div class="col-lg-3">
-                                                <label for="filterToDate">To:</label>
-                                                <input type="date" id="filterToDate" class="form-control">
-                                            </div>
-                                        </div>
-                                        <div class="row mb-3 no-print">
-                                            <div class="col-12 text-right" id="expensesExportButtons"></div>
                                         </div>
                                         <!-- End Form Section -->
 
@@ -118,6 +100,13 @@
                                         </div>
 
                                         <!-- Summary Table -->
+                                        <?php
+                                        $initialTotal = 0.0;
+                                        foreach ($data as $row) {
+                                            $initialTotal += (float)$row->Amount;
+                                        }
+                                        $initialDescription = !empty($data) ? 'All expenses' : 'No data available';
+                                        ?>
                                         <div class="table-responsive mt-4 no-print" id="summaryWrap">
                                             <table id="summaryTable" class="table table-bordered dt-responsive nowrap up-rt" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
                                                 <thead>
@@ -128,8 +117,8 @@
                                                 </thead>
                                                 <tbody>
                                                     <tr>
-                                                        <td data-label="Description" id="summaryDescription">No data available</td>
-                                                        <td data-label="Total Amount" id="summaryTotal"><a href="#" id="summaryTotalLink">0.00</a></td>
+                                                        <td data-label="Description" id="summaryDescription"><?= htmlspecialchars($initialDescription, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Total Amount" id="summaryTotal"><a href="<?= empty($data) ? '#' : base_url('Accounting/expenseSGenerate'); ?>" id="summaryTotalLink"><?= number_format($initialTotal, 2); ?></a></td>
 
 
                                                     </tr>
@@ -148,6 +137,49 @@
 
 
 
+
+                    <!-- Filter Modal -->
+                    <div class="modal fade" id="expenseFilterModal" tabindex="-1" role="dialog" aria-labelledby="expenseFilterModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="expenseFilterModalLabel"><i class="mdi mdi-filter-variant"></i> Filter Expenses</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="form-group">
+                                        <label for="selectCategory">Category</label>
+                                        <select id="selectCategory" class="form-control">
+                                            <option value="">All Categories</option>
+                                            <?php
+                                            // Assuming $categories is an array of categories fetched from the database
+                                            foreach ($categories as $Category) {
+                                                $catSafe = htmlspecialchars((string)$Category, ENT_QUOTES, 'UTF-8');
+                                                echo '<option value="' . $catSafe . '">' . $catSafe . '</option>';
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6">
+                                            <label for="filterFromDate">From</label>
+                                            <input type="date" id="filterFromDate" class="form-control">
+                                        </div>
+                                        <div class="form-group col-md-6">
+                                            <label for="filterToDate">To</label>
+                                            <input type="date" id="filterToDate" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="up-btn up-btn-ghost" id="clearExpenseFilters">Clear</button>
+                                    <button type="button" class="up-btn up-btn-primary" data-dismiss="modal">Apply</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Footer Start -->
                     <?php include('includes/footer.php'); ?>
@@ -465,11 +497,35 @@
                         }
                     }
 
-                    $category.add($from).add($to).on('change', function() {
+                    function refreshFilterIndicator() {
+                        var selectedCategory = String($category.val() || '').trim();
+                        var fromDate = normalizeDate($from.val());
+                        var toDate = normalizeDate($to.val());
+
+                        var count = (selectedCategory !== '' ? 1 : 0) + (fromDate !== '' ? 1 : 0) + (toDate !== '' ? 1 : 0);
+                        $('#filterCountBadge').toggle(count > 0).text(count);
+
+                        var parts = [];
+                        if (selectedCategory !== '') parts.push(selectedCategory);
+                        if (fromDate !== '' || toDate !== '') parts.push((fromDate || '...') + ' - ' + (toDate || '...'));
+                        $('#filterSummaryText').text(parts.length ? 'Filtered: ' + parts.join(' \u00b7 ') : '');
+                    }
+
+                    $('#expenseFilterModal').on('hidden.bs.modal', function() {
                         table.draw();
                     });
 
-                    table.on('draw', updateSummary);
+                    $('#clearExpenseFilters').on('click', function() {
+                        $category.val('');
+                        $from.val('');
+                        $to.val('');
+                        $('#expenseFilterModal').modal('hide');
+                    });
+
+                    table.on('draw', function() {
+                        updateSummary();
+                        refreshFilterIndicator();
+                    });
                     table.draw();
                 })(window.jQuery);
             </script>

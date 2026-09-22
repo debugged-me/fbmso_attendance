@@ -279,11 +279,10 @@ class StudentModel extends CI_Model
 
 	function totalStudeAccountProfile($sy, $sem)
 	{
-		$this->db->select('COUNT(DISTINCT sp.StudentNumber) AS StudeCount');
-		$this->db->from('studeprofile sp');
-		$this->db->join('semesterstude sa', 'sp.StudentNumber = sa.StudentNumber');
-		$this->db->where('sa.SY', $sy);
-		$this->db->where('sa.Semester', $sem);
+		$this->db->select('COUNT(DISTINCT StudentNumber) AS StudeCount');
+		$this->db->from('semesterstude');
+		$this->db->where('SY', $sy);
+		$this->db->where('Semester', $sem);
 
 		$query = $this->db->get();
 		return $query->result();

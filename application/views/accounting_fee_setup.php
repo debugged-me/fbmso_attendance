@@ -122,9 +122,16 @@
                                             </thead>
                                             <tbody>
                                                 <?php foreach ($fees as $fee): ?>
+                                                    <?php $paidCount = (int)($fee->PaidCount ?? 0); ?>
                                                     <tr>
                                                         <td data-label="Description" style="font-weight:600;color:var(--up-ink);">
                                                             <span class="fee-desc-wrap"><span class="fee-icon"><i class="mdi mdi-cash"></i></span><?= htmlspecialchars((string)$fee->Description, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <?php if ($paidCount > 0): ?>
+                                                                <div style="font-size:.72rem;color:var(--up-muted);margin-top:4px;">
+                                                                    <i class="mdi mdi-lock-outline"></i>
+                                                                    Locked this term — <?= $paidCount; ?> payment<?= $paidCount === 1 ? '' : 's'; ?> recorded
+                                                                </div>
+                                                            <?php endif; ?>
                                                         </td>
                                                         <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-blue);">₱ <?= number_format((float)$fee->Amount, 2); ?></td>
                                                         <td data-label="Action" class="up-rt-actions">
@@ -132,10 +139,11 @@
                                                                 <button type="button"
                                                                     class="up-btn up-btn-ghost edit-fee-btn"
                                                                     style="padding:8px 14px;font-size:.8rem;"
+                                                                    <?= $paidCount > 0 ? 'disabled title="Students have already paid this fee this term. Its name and amount stay locked until next term."' : ''; ?>
                                                                     data-feesid="<?= (int)$fee->feesid; ?>"
                                                                     data-description="<?= htmlspecialchars((string)$fee->Description, ENT_QUOTES, 'UTF-8'); ?>"
                                                                     data-amount="<?= htmlspecialchars((string)$fee->Amount, ENT_QUOTES, 'UTF-8'); ?>">
-                                                                    <i class="mdi mdi-pencil"></i> Edit
+                                                                    <i class="mdi <?= $paidCount > 0 ? 'mdi-lock-outline' : 'mdi-pencil'; ?>"></i> Edit
                                                                 </button>
                                                                 <form method="post"
                                                                     action="<?= base_url('Accounting/course_setUp'); ?>"

@@ -677,13 +677,99 @@ class Accounting extends CI_Controller
 		return $this->db->get()->result();
 	}
 
+	// A fee's currently configured price. 0 means the description isn't a
+	// configured fee at all — free-text descriptions are allowed, and those
+	// have no price to check an amount against.
+	private function feeFullAmountFor($description)
+	{
+		$description = trim((string)$description);
+		if ($description === '' || !$this->tableExists('fees')) {
+			return 0.0;
+		}
+
+		$row = $this->db->select('MAX(Amount) AS FullAmount', false)
+			->from('fees')
+			->where('Description', $description)
+			->get()
+			->row();
+
+		return (float)($row->FullAmount ?? 0);
+	}
+
+	// What a student still owes on one fee this term. The full amount comes
+	// from the price frozen onto their own earlier payments when they have
+	// any, so changing a fee's price midway through an instalment plan can't
+	// move the goalposts on a balance the student already started paying.
+	private function feeBalanceFor($studentNumber, $description, $sem, $sy)
+	{
+		$studentNumber = trim((string)$studentNumber);
+		$description   = trim((string)$description);
+		$full = 0.0;
+		$paid = 0.0;
+
+		if ($studentNumber !== '' && $description !== '') {
+			$this->db->select('COALESCE(SUM(Amount),0) AS Paid, COALESCE(MAX(FeeFullAmount),0) AS Snapshot', false)
+				->from('paymentsaccounts')
+				->where('StudentNumber', $studentNumber)
+				->where('description', $description)
+				->where('ORStatus', 'Valid')
+				->where('CollectionSource', "Student's Account");
+			if ($sem !== '') {
+				$this->db->where('Sem', $sem);
+			}
+			if ($sy !== '') {
+				$this->db->where('SY', $sy);
+			}
+
+			$row  = $this->db->get()->row();
+			$paid = (float)($row->Paid ?? 0);
+			$full = (float)($row->Snapshot ?? 0);
+		}
+
+		if ($full <= 0) {
+			$full = $this->feeFullAmountFor($description);
+		}
+
+		return [
+			'full'      => $full,
+			'paid'      => $paid,
+			'remaining' => max($full - $paid, 0.0),
+		];
+	}
+
+	// Valid payments already taken against a fee description in a term. A fee
+	// with collections behind it is price-locked for that term.
+	private function feePaymentCount($description, $sem, $sy)
+	{
+		$description = trim((string)$description);
+		if ($description === '') {
+			return 0;
+		}
+
+		$this->db->from('paymentsaccounts')
+			->where('description', $description)
+			->where('ORStatus', 'Valid')
+			->where('CollectionSource', "Student's Account");
+		if ($sem !== '') {
+			$this->db->where('Sem', $sem);
+		}
+		if ($sy !== '') {
+			$this->db->where('SY', $sy);
+		}
+
+		return (int)$this->db->count_all_results();
+	}
+
 	private function getRecentPayments($date = null, $limit = 200)
 	{
 		// Payments are tagged to the student's enrolment term, not always the
 		// active one — list the latest across all terms, otherwise a payment
 		// for another semester would look like it was never recorded.
+		// Status is per fee, not per receipt: two instalments that together
+		// settle a fee must both read "Fully Paid", not "Partial" twice. The
+		// price compared against is the one frozen onto the payment itself.
 		$this->db->select("p.ID, p.PDate, p.pTime, p.ORNumber, p.StudentNumber, p.Amount, p.description, p.PaymentType, p.Cashier, p.Sem, p.SY,
-			f.FullAmount,
+			p.FeeFullAmount AS FullAmount, agg.TotalPaid,
 			COALESCE(NULLIF(TRIM(sp.email),''), NULLIF(TRIM(su.email),'')) AS Email,
 			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName,
 			COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName,
@@ -691,7 +777,14 @@ class Accounting extends CI_Controller
 		$this->db->from('paymentsaccounts p');
 		$this->db->join('studeprofile sp', 'sp.StudentNumber = p.StudentNumber', 'left');
 		$this->db->join('studentsignup su', 'su.StudentNumber = p.StudentNumber', 'left');
-		$this->db->join('(SELECT Description, MAX(Amount) AS FullAmount FROM fees GROUP BY Description) f', 'f.Description = p.description', 'left');
+		$this->db->join(
+			"(SELECT StudentNumber, description, Sem, SY, SUM(Amount) AS TotalPaid
+			    FROM paymentsaccounts
+			   WHERE ORStatus = 'Valid' AND CollectionSource = \"Student's Account\"
+			   GROUP BY StudentNumber, description, Sem, SY) agg",
+			'agg.StudentNumber = p.StudentNumber AND agg.description = p.description AND agg.Sem = p.Sem AND agg.SY = p.SY',
+			'left'
+		);
 		$this->db->where('p.CollectionSource', "Student's Account");
 		$this->db->where('p.ORStatus', 'Valid');
 		if ($date !== null && $date !== '') {
@@ -1014,34 +1107,35 @@ class Accounting extends CI_Controller
 		return array_reverse($rows);
 	}
 
-	// Students who paid less than a fee's configured price on at least one
-	// description — grouped per (student, fee) since a student can be fully
-	// paid on one item and partial on another in the same term.
+	// Students who paid less than a fee's price on at least one description —
+	// grouped per (student, fee) since a student can be fully paid on one item
+	// and partial on another in the same term.
+	//
+	// The price compared against is the one frozen onto the student's own
+	// payments (FeeFullAmount), never the live fees table. Re-pricing a fee
+	// must not reach back and re-open balances that were already settled at
+	// the old price.
 	private function partialPaymentRows($sem, $sy)
 	{
-		if (!$this->tableExists('fees')) {
-			return [];
-		}
-
 		$this->db->select("p.StudentNumber, p.description AS Description,
-			f.FullAmount, SUM(p.Amount) AS PaidAmount, MAX(p.PDate) AS LastPaymentDate,
+			MAX(p.FeeFullAmount) AS FullAmount, SUM(p.Amount) AS PaidAmount, MAX(p.PDate) AS LastPaymentDate,
 			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName,
 			COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName,
 			COALESCE(NULLIF(sp.MiddleName,''), su.MiddleName, '') AS MiddleName", false);
 		$this->db->from('paymentsaccounts p');
-		$this->db->join('(SELECT Description, MAX(Amount) AS FullAmount FROM fees GROUP BY Description) f', 'f.Description = p.description', 'inner');
 		$this->db->join('studeprofile sp', 'sp.StudentNumber = p.StudentNumber', 'left');
 		$this->db->join('studentsignup su', 'su.StudentNumber = p.StudentNumber', 'left');
 		$this->db->where('p.ORStatus', 'Valid');
 		$this->db->where('p.CollectionSource', "Student's Account");
+		$this->db->where('p.FeeFullAmount >', 0);
 		if ($sem !== '') {
 			$this->db->where('p.Sem', $sem);
 		}
 		if ($sy !== '') {
 			$this->db->where('p.SY', $sy);
 		}
-		$this->db->group_by('p.StudentNumber, p.description, f.FullAmount');
-		$this->db->having('SUM(p.Amount) < f.FullAmount', null, false);
+		$this->db->group_by('p.StudentNumber, p.description');
+		$this->db->having('SUM(p.Amount) < MAX(p.FeeFullAmount)', null, false);
 		$this->db->order_by('LastName', 'ASC');
 		$this->db->order_by('FirstName', 'ASC');
 		$this->db->order_by('p.description', 'ASC');
@@ -1150,6 +1244,37 @@ class Accounting extends CI_Controller
 				$bank = '';
 			}
 
+			// The amount is only checkable when the description is a configured
+			// fee with a price; free-text descriptions stay unconstrained. The
+			// UI enforces the same rules, but it enforces them in the browser —
+			// this is the copy that actually decides.
+			$balance      = $this->feeBalanceFor($studentNumber, $description, $sem, $sy);
+			$isPartial    = trim((string)$this->input->post('IsPartial', true)) !== '';
+			$feeFullAmount = $balance['full'];
+
+			if ($feeFullAmount > 0) {
+				if ($balance['remaining'] <= 0.004) {
+					$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
+					$this->session->set_flashdata('danger', $description . ' is already fully paid for this term (₱' . number_format($balance['paid'], 2) . ' of ₱' . number_format($feeFullAmount, 2) . ').');
+					redirect('Accounting/Payment');
+					return;
+				}
+
+				if ($amount > $balance['remaining'] + 0.004) {
+					$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
+					$this->session->set_flashdata('danger', 'Amount exceeds the ₱' . number_format($balance['remaining'], 2) . ' still owed on ' . $description . ' for this term.');
+					redirect('Accounting/Payment');
+					return;
+				}
+
+				if ($amount + 0.004 < $balance['remaining'] && !$isPartial) {
+					$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
+					$this->session->set_flashdata('danger', 'This is less than the ₱' . number_format($balance['remaining'], 2) . ' still owed. Tick "Partial payment" to record it as an instalment.');
+					redirect('Accounting/Payment');
+					return;
+				}
+			}
+
 			$student = $this->getStudentContext($studentNumber, $sem, $sy);
 			$course = trim((string)($student->Course ?? ''));
 			if ($course === '') {
@@ -1180,6 +1305,7 @@ class Accounting extends CI_Controller
 					'PDate'            => $pDateInput,
 					'ORNumber'         => $orNumber,
 					'Amount'           => $amount,
+					'FeeFullAmount'    => $feeFullAmount,
 					'description'      => $description,
 					'PaymentType'      => $paymentType,
 					'CheckNumber'      => $checkNumber,
@@ -1483,10 +1609,31 @@ class Accounting extends CI_Controller
 			->set_output(json_encode(['fees' => $fees]));
 	}
 
+	// What a student still owes on one fee this term, so the payment form can
+	// show Full / Already Paid / Remaining instead of assuming every payment
+	// starts from zero.
+	public function ajaxFeeBalance()
+	{
+		$this->ensureAccess();
+		[$sem, $sy] = $this->currentSemSy();
+
+		$studentNumber = trim((string)$this->input->get('student', true));
+		$description   = trim((string)$this->input->get('description', true));
+		$balance       = $this->feeBalanceFor($studentNumber, $description, $sem, $sy);
+
+		$this->output
+			->set_content_type('application/json')
+			->set_output(json_encode([
+				'full'      => round($balance['full'], 2),
+				'paid'      => round($balance['paid'], 2),
+				'remaining' => round($balance['remaining'], 2),
+			]));
+	}
+
 	public function course_setUp()
 	{
 		$this->ensureAccess();
-		[$sem] = $this->currentSemSy();
+		[$sem, $sy] = $this->currentSemSy();
 
 		if (strtoupper((string)$this->input->method()) === 'POST') {
 			$action = trim((string)$this->input->post('action', true));
@@ -1547,6 +1694,36 @@ class Accounting extends CI_Controller
 					'Amount'      => (float)$this->input->post('Amount', true),
 				];
 
+				// Once money has been collected against a fee this term, its
+				// price and name are frozen for that term. Renaming would orphan
+				// the balances already recorded under the old name, and the
+				// price is what those students were quoted. Next term starts
+				// clean, so this is a freeze, not a permanent lock.
+				$existing = $this->db->select('Description, Amount')
+					->from('fees')
+					->where('feesid', $feeId)
+					->limit(1)
+					->get()
+					->row();
+
+				if ($existing) {
+					$renamed  = trim((string)$existing->Description) !== $updateData['Description'];
+					$repriced = abs((float)$existing->Amount - $updateData['Amount']) > 0.004;
+
+					if ($renamed || $repriced) {
+						$paidCount = $this->feePaymentCount((string)$existing->Description, $sem, $sy);
+						if ($paidCount > 0) {
+							$this->session->set_flashdata(
+								'danger',
+								'"' . $existing->Description . '" already has ' . $paidCount . ' payment' . ($paidCount === 1 ? '' : 's') .
+									' recorded this term, so its name and amount are locked until the next term. Add a new fee instead.'
+							);
+							redirect('Accounting/course_setUp');
+							return;
+						}
+					}
+				}
+
 				// The edit form has no feesType field; only update it when one
 				// is actually posted so we never blank an existing value.
 				$feesType = trim((string)$this->input->post('feesType', true));
@@ -1572,6 +1749,10 @@ class Accounting extends CI_Controller
 		$this->db->from('fees');
 		$this->db->order_by('Description', 'ASC');
 		$fees = $this->db->get()->result();
+
+		foreach ($fees as $fee) {
+			$fee->PaidCount = $this->feePaymentCount((string)$fee->Description, $sem, $sy);
+		}
 
 		$data = [
 			'semester'        => $sem,

@@ -89,8 +89,6 @@
                                                     <th>Student No.</th>
                                                     <th>Student</th>
                                                     <th>Description</th>
-                                                    <th>Payment Type</th>
-                                                    <th>Sem/SY</th>
                                                     <th class="text-right">Amount</th>
                                                     <th>Cashier</th>
                                                 </tr>
@@ -109,8 +107,6 @@
                                                         <td data-label="Student No." style="font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--up-muted);"><?= htmlspecialchars((string)($row->StudentNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Student" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Description" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td data-label="Payment Type"><span class="badge badge-info" style="border-radius:6px;font-size:.72rem;font-weight:700;"><?= htmlspecialchars((string)($row->PaymentType ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></td>
-                                                        <td data-label="Sem/SY" style="color:var(--up-muted);font-size:.82rem;"><?= htmlspecialchars(trim((string)($row->Sem ?? '') . ' ' . (string)($row->SY ?? '')), ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-ink);">₱ <?= number_format((float)($row->Amount ?? 0), 2); ?></td>
                                                         <td data-label="Cashier" style="color:var(--up-muted);font-size:.82rem;"><?= htmlspecialchars((string)($row->Cashier ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                     </tr>
@@ -256,7 +252,7 @@
 
     <script>
         $(function() {
-            var exportColumns = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+            var exportColumns = [0, 1, 2, 3, 4, 5, 6];
             var reportMeta = {
                 title: <?= json_encode((string)$report_title); ?>,
                 schoolName: <?= json_encode($schoolName); ?>,
@@ -268,26 +264,6 @@
                 totalAmountText: <?= json_encode('PHP ' . number_format((float)$total_amount, 2)); ?>,
                 filename: <?= json_encode($reportFilename); ?>
             };
-
-            function escapeHtml(value) {
-                return $('<div>').text(String(value || '')).html();
-            }
-
-            function buildPrintHeaderHtml() {
-                var html = '<div class="print-report-header">';
-                html += '<div class="print-school-name">' + escapeHtml(reportMeta.schoolName) + '</div>';
-                if (reportMeta.schoolAddress) {
-                    html += '<div class="print-school-line">' + escapeHtml(reportMeta.schoolAddress) + '</div>';
-                }
-                if (reportMeta.schoolTel) {
-                    html += '<div class="print-school-line">' + escapeHtml(reportMeta.schoolTel) + '</div>';
-                }
-                html += '<div class="print-report-title">' + escapeHtml(reportMeta.title) + '</div>';
-                html += '<div class="print-report-line">Coverage: ' + escapeHtml(reportMeta.period) + '</div>';
-                html += '<div class="print-report-line">Transactions: ' + escapeHtml(reportMeta.totalCount) + ' | Total Collection: ' + escapeHtml(reportMeta.totalAmountText) + ' | Generated: ' + escapeHtml(reportMeta.generatedAt) + '</div>';
-                html += '</div>';
-                return html;
-            }
 
             var table = $('#collectionTable').DataTable({
                 pageLength: 20,
@@ -302,7 +278,7 @@
                 buttons: [{
                         extend: 'copyHtml5',
                         text: 'Copy',
-                        className: 'btn btn-outline-secondary btn-sm',
+                        className: 'btn btn-secondary btn-sm',
                         title: reportMeta.title,
                         exportOptions: {
                             columns: exportColumns,
@@ -386,7 +362,7 @@
 
                             if (tableNode) {
                                 tableNode.table.headerRows = 1;
-                                tableNode.table.widths = [52, 56, 72, '*', '*', 58, 74, 58, 70];
+                                tableNode.table.widths = [52, 56, 72, '*', '*', 58, 70];
                                 tableNode.layout = {
                                     hLineWidth: function() {
                                         return 0.5;
@@ -470,48 +446,6 @@
                                     ]
                                 };
                             };
-                        }
-                    },
-                    {
-                        extend: 'print',
-                        text: 'Print',
-                        className: 'btn btn-primary btn-sm',
-                        title: '',
-                        exportOptions: {
-                            columns: exportColumns,
-                            modifier: {
-                                search: 'applied',
-                                order: 'applied'
-                            }
-                        },
-                        customize: function(win) {
-                            var doc = win.document;
-                            var style = doc.createElement('style');
-                            style.type = 'text/css';
-                            style.appendChild(doc.createTextNode(
-                                '@page { size: landscape; margin: 12mm; }' +
-                                'body { font-family: "Segoe UI", Arial, sans-serif; color: #0f172a; margin: 0; padding: 0; }' +
-                                '.print-report-header { text-align: center; margin-bottom: 18px; border-bottom: 2px solid #cbd5e1; padding-bottom: 12px; }' +
-                                '.print-school-name { font-size: 18px; font-weight: 700; }' +
-                                '.print-school-line { font-size: 11px; color: #475569; margin-top: 2px; }' +
-                                '.print-report-title { font-size: 15px; font-weight: 700; margin-top: 12px; }' +
-                                '.print-report-line { font-size: 11px; color: #334155; margin-top: 4px; }' +
-                                'table { width: 100% !important; border-collapse: collapse !important; font-size: 11px; }' +
-                                'table thead th { background: #1d4ed8 !important; color: #ffffff !important; border: 1px solid #cbd5e1 !important; padding: 8px 6px !important; }' +
-                                'table tbody td { border: 1px solid #dbe4f0 !important; padding: 6px !important; }' +
-                                'table tbody tr:nth-child(even) td { background: #f8fbff !important; }' +
-                                '.dt-print-view h1 { display: none !important; }'
-                            ));
-                            doc.head.appendChild(style);
-
-                            var titleNode = doc.querySelector('h1');
-                            if (titleNode && titleNode.parentNode) {
-                                titleNode.parentNode.removeChild(titleNode);
-                            }
-
-                            var header = doc.createElement('div');
-                            header.innerHTML = buildPrintHeaderHtml();
-                            doc.body.insertBefore(header, doc.body.firstChild);
                         }
                     }
                 ]
