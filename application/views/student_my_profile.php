@@ -308,14 +308,12 @@
                               </option>
                             <?php endforeach; ?>
                           </select>
-                          <small class="text-muted">Format: 1st / 2nd / 3rd / 4th</small>
                         </div>
                         <div class="form-group">
                           <label for="section">Section <span class="text-danger">*</span></label>
                           <select class="form-control" name="section" id="section" data-current="<?= htmlspecialchars($currentSection, ENT_QUOTES, 'UTF-8'); ?>" required>
                             <option value="">Select Section</option>
                           </select>
-                          <small class="text-muted">Sections depend on Course/Program &amp; Year Level.</small>
                         </div>
                       </div>
                     </div>

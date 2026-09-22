@@ -501,6 +501,78 @@ select.field {
   line-height: 1.4;
 }
 
+.password-meter {
+  margin-top: 1px;
+}
+
+.password-meter-track {
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7ecf6;
+}
+
+.password-meter-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: #b8c3d9;
+  transition: width .25s ease, background-color .25s ease;
+}
+
+.password-meter-copy {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 5px;
+  color: #7288b7;
+  font-size: .63rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.password-meter.is-short .password-meter-track span,
+.password-meter.is-weak .password-meter-track span {
+  background: #d94b4b;
+}
+
+.password-meter.is-fair .password-meter-track span {
+  background: #d99022;
+}
+
+.password-meter.is-good .password-meter-track span {
+  background: #3972d8;
+}
+
+.password-meter.is-strong .password-meter-track span {
+  background: #1f9d62;
+}
+
+.password-meter.is-short .password-meter-copy,
+.password-meter.is-weak .password-meter-copy {
+  color: #b83939;
+}
+
+.password-meter.is-fair .password-meter-copy {
+  color: #ad6810;
+}
+
+.password-meter.is-good .password-meter-copy {
+  color: #2f61bb;
+}
+
+.password-meter.is-strong .password-meter-copy {
+  color: #177b4c;
+}
+
+.password-meter.is-short .password-meter-track span { width: 28%; }
+.password-meter.is-weak .password-meter-track span { width: 38%; }
+.password-meter.is-fair .password-meter-track span { width: 60%; }
+.password-meter.is-good .password-meter-track span { width: 82%; }
+.password-meter.is-strong .password-meter-track span { width: 100%; }
+
 .availability-msg {
   display: block;
   min-height: 18px;

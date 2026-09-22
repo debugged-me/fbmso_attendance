@@ -243,14 +243,41 @@
     var $studentNumber = $('#StudentNumber');
     var $studentNumberStatus = $('#student-number-status');
     if ($studentNumber.length) {
+      var formatStudentNumber = function(value) {
+        var digits = (value || '').replace(/\D/g, '').slice(0, 8);
+        return digits.length > 4 ? digits.slice(0, 4) + '-' + digits.slice(4) : digits;
+      };
+
       var runStudentCheck = debounce(function() {
-        var v = ($studentNumber.val() || '').toUpperCase();
-        $studentNumber.val(v);
+        var v = ($studentNumber.val() || '').trim();
+        var inputEl = $studentNumber.get(0);
+
+        if (!v) {
+          inputEl.setCustomValidity('');
+          updateAvailabilityLabel($studentNumberStatus, '', '');
+          return;
+        }
+
+        if (!/^\d{4}-\d{4}$/.test(v)) {
+          inputEl.setCustomValidity('Use the school ID format YYYY-NNNN, for example 2023-0446.');
+          updateAvailabilityLabel($studentNumberStatus, 'is-muted', 'Enter all 8 digits of your school ID.');
+          return;
+        }
+
+        inputEl.setCustomValidity('');
         checkAvailability('studentnumber', v, $studentNumber.get(0), $studentNumberStatus);
       }, 300);
 
-      $studentNumber.on('input blur', runStudentCheck);
+      $studentNumber.on('input', function() {
+        var formatted = formatStudentNumber($studentNumber.val());
+        if ($studentNumber.val() !== formatted) {
+          $studentNumber.val(formatted);
+        }
+        runStudentCheck();
+      });
+      $studentNumber.on('blur', runStudentCheck);
       if (($studentNumber.val() || '').trim() !== '') {
+        $studentNumber.val(formatStudentNumber($studentNumber.val()));
         runStudentCheck();
       }
     }
@@ -268,8 +295,44 @@
       }
     }
 
+    var $contactNumber = $('#contactNo');
+    if ($contactNumber.length) {
+      var formatContactNumber = function(value) {
+        var digits = (value || '').replace(/\D/g, '').slice(0, 11);
+        if (digits.length > 7) {
+          return digits.slice(0, 4) + ' ' + digits.slice(4, 7) + ' ' + digits.slice(7);
+        }
+        if (digits.length > 4) {
+          return digits.slice(0, 4) + ' ' + digits.slice(4);
+        }
+        return digits;
+      };
+
+      var syncContactNumber = function() {
+        var formatted = formatContactNumber($contactNumber.val());
+        if ($contactNumber.val() !== formatted) {
+          $contactNumber.val(formatted);
+        }
+
+        var digits = formatted.replace(/\D/g, '');
+        var inputEl = $contactNumber.get(0);
+        if (!digits || /^09\d{9}$/.test(digits)) {
+          inputEl.setCustomValidity('');
+        } else {
+          inputEl.setCustomValidity('Enter an 11-digit mobile number starting with 09.');
+        }
+      };
+
+      $contactNumber.on('input blur', syncContactNumber);
+      syncContactNumber();
+    }
+
     var $password = $('#password');
     var $confirmPassword = $('#confirm_password');
+    var $passwordMeter = $('#password-strength-meter');
+    var $passwordStrengthLabel = $('#password-strength-label');
+    var $passwordLengthLabel = $('#password-length-label');
+    var $passwordMatchStatus = $('#password-match-status');
     $('.password-toggle').on('click', function() {
       var targetSelector = $(this).data('target');
       if (!targetSelector) {
@@ -295,14 +358,67 @@
       this.setAttribute('title', nextLabel);
     });
 
+    if ($password.length) {
+      var updatePasswordStrength = function() {
+        var value = $password.val() || '';
+        var length = value.length;
+        var percent = 0;
+        var state = 'is-empty';
+        var label = 'Not set';
+
+        if (length > 0 && length < 8) {
+          percent = Math.max(12, Math.round((length / 8) * 38));
+          state = 'is-short';
+          label = 'Too short';
+        } else if (length >= 8) {
+          var score = 1;
+          if (length >= 12) score++;
+          if (/[a-z]/.test(value) && /[A-Z]/.test(value)) score++;
+          if (/\d/.test(value)) score++;
+          if (/[^A-Za-z0-9]/.test(value)) score++;
+
+          if (score <= 2) {
+            percent = 38;
+            state = 'is-weak';
+            label = 'Weak';
+          } else if (score === 3) {
+            percent = 60;
+            state = 'is-fair';
+            label = 'Fair';
+          } else if (score === 4) {
+            percent = 82;
+            state = 'is-good';
+            label = 'Good';
+          } else {
+            percent = 100;
+            state = 'is-strong';
+            label = 'Strong';
+          }
+        }
+
+        $passwordMeter
+          .removeClass('is-empty is-short is-weak is-fair is-good is-strong')
+          .addClass(state)
+          .attr('aria-valuenow', percent)
+          .attr('aria-valuetext', label);
+        $passwordStrengthLabel.text('Strength: ' + label);
+        $passwordLengthLabel.text(length >= 8 ? length + ' characters' : length + ' / 8 minimum');
+      };
+
+      $password.on('input', updatePasswordStrength);
+      updatePasswordStrength();
+    }
+
     if ($password.length && $confirmPassword.length) {
       var syncPasswordValidity = function() {
         var p = $password.val() || '';
         var c = $confirmPassword.val() || '';
         if (c && p !== c) {
           $confirmPassword.get(0).setCustomValidity('Passwords do not match.');
+          updateAvailabilityLabel($passwordMatchStatus, 'is-bad', 'Passwords do not match.');
         } else {
           $confirmPassword.get(0).setCustomValidity('');
+          updateAvailabilityLabel($passwordMatchStatus, c ? 'is-ok' : '', c ? 'Passwords match.' : '');
         }
       };
       $password.on('input', syncPasswordValidity);

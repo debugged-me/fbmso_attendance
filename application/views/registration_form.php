@@ -13,18 +13,18 @@
   <link href="<?= base_url(); ?>assets/css/app.css?v=20260922" rel="stylesheet" type="text/css" id="app-stylesheet" />
 
   <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
-  <link href="<?= base_url(); ?>assets/css/registration_form.css?v=30260830" rel="stylesheet" type="text/css" />
+  <link href="<?= base_url(); ?>assets/css/registration_form.css?v=30260922" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=7'); ?>">
   <meta name="theme-color" content="#1a2942">
   <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
   <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="<?= base_url('assets/images/icons/attendance-192.png'); ?>">
   <script src="<?= base_url('assets/js/mobile-shell-early.js?v=5'); ?>"></script>
 
   <?php include(APPPATH . 'views/includes/ui_kit.php'); ?>
-    <script src="<?= base_url('assets/js/anti-inspect.js?v=1'); ?>"></script>
+  <script src="<?= base_url('assets/js/anti-inspect.js?v=1'); ?>"></script>
 </head>
 
 <body data-layout="horizontal">
@@ -150,14 +150,17 @@
                 class="field"
                 name="StudentNumber"
                 placeholder="e.g. 2023-0446"
-                minlength="4"
-                maxlength="20"
-                pattern="[A-Za-z0-9\-]+"
-                title="Make sure it matches your school ID."
+                inputmode="numeric"
+                autocomplete="username"
+                spellcheck="false"
+                minlength="9"
+                maxlength="9"
+                pattern="[0-9]{4}-[0-9]{4}"
+                title="Use the school ID format YYYY-NNNN, for example 2023-0446."
                 value="<?= $old('StudentNumber'); ?>"
                 required>
             </div>
-            <span class="field-hint">This becomes your username — match it to your school ID.</span>
+            <span class="field-hint">Use your school ID in YYYY-NNNN format.</span>
             <span class="availability-msg" id="student-number-status" aria-live="polite"></span>
           </div>
           <div class="field-group">
@@ -168,7 +171,13 @@
                 <i class="mdi mdi-eye-outline" aria-hidden="true"></i>
               </button>
             </div>
-            <span class="field-hint">Use at least 8 characters.</span>
+            <div class="password-meter is-empty" id="password-strength-meter" role="progressbar" aria-label="Password strength" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="No password entered">
+              <div class="password-meter-track" aria-hidden="true"><span id="password-strength-bar"></span></div>
+              <div class="password-meter-copy">
+                <span id="password-strength-label">Strength: Not set</span>
+                <span id="password-length-label">0 / 8 minimum</span>
+              </div>
+            </div>
           </div>
           <div class="field-group">
             <label class="field-label" for="confirm_password">Confirm Password <span class="req">*</span></label>
@@ -178,6 +187,7 @@
                 <i class="mdi mdi-eye-outline" aria-hidden="true"></i>
               </button>
             </div>
+            <span class="availability-msg" id="password-match-status" aria-live="polite"></span>
           </div>
         </div>
         <div class="section-head" id="section-personal">
@@ -224,7 +234,19 @@
           </div>
           <div class="field-group">
             <label class="field-label" for="contactNo">Mobile No. <span class="req">*</span></label>
-            <input type="text" id="contactNo" class="field" name="contactNo" value="<?= $old('contactNo'); ?>" placeholder="09XX XXX XXXX" required>
+            <input type="tel"
+              id="contactNo"
+              class="field"
+              name="contactNo"
+              value="<?= $old('contactNo'); ?>"
+              placeholder="09XX XXX XXXX"
+              inputmode="numeric"
+              autocomplete="tel-national"
+              minlength="13"
+              maxlength="13"
+              pattern="09[0-9]{2} [0-9]{3} [0-9]{4}"
+              title="Enter an 11-digit mobile number starting with 09."
+              required>
           </div>
         </div>
         <div class="section-head" id="section-academic">
@@ -302,26 +324,30 @@
   <script src="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.js"></script>
   <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
-  <script src="<?= base_url(); ?>assets/js/registration_form.js?v=30260830"></script>
+  <script src="<?= base_url(); ?>assets/js/registration_form.js?v=30260922-2"></script>
   <script src="<?= base_url('assets/js/mobile-shell.js?v=6'); ?>"></script>
   <script>
-  // Lazy-load reCAPTCHA only when the user interacts with the form,
-  // instead of blocking page load with the external Google script.
-  (function() {
-    var loaded = false;
-    function loadRecaptcha() {
-      if (loaded) return;
-      loaded = true;
-      var s = document.createElement('script');
-      s.src = 'https://www.google.com/recaptcha/api.js';
-      s.async = true;
-      s.defer = true;
-      document.body.appendChild(s);
-    }
-    ['focus', 'click', 'touchstart', 'keydown'].forEach(function(evt) {
-      document.addEventListener(evt, loadRecaptcha, { once: true, passive: true });
-    });
-  })();
+    // Lazy-load reCAPTCHA only when the user interacts with the form,
+    // instead of blocking page load with the external Google script.
+    (function() {
+      var loaded = false;
+
+      function loadRecaptcha() {
+        if (loaded) return;
+        loaded = true;
+        var s = document.createElement('script');
+        s.src = 'https://www.google.com/recaptcha/api.js';
+        s.async = true;
+        s.defer = true;
+        document.body.appendChild(s);
+      }
+      ['focus', 'click', 'touchstart', 'keydown'].forEach(function(evt) {
+        document.addEventListener(evt, loadRecaptcha, {
+          once: true,
+          passive: true
+        });
+      });
+    })();
   </script>
 
 </body>

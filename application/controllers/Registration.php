@@ -136,6 +136,8 @@ class Registration extends CI_Controller
             ], $studentData);
             // Normalize and validate StudentNumber (username)
             $studentData['StudentNumber'] = strtoupper(trim((string)$studentData['StudentNumber']));
+            // Store mobile numbers consistently as 11 digits (09XXXXXXXXX).
+            $studentData['contactNo'] = preg_replace('/\D+/', '', (string)$studentData['contactNo']);
             // Ensure age is always a numeric value even if JS didn't populate the hidden field.
             $age = (int)$studentData['age'];
             if ($age <= 0) {
@@ -152,8 +154,13 @@ class Registration extends CI_Controller
                 redirect($registrationRedirect);
                 return;
             }
-            if (!preg_match('/^[A-Z0-9\-]+$/', $studentData['StudentNumber'])) {
-                $this->flashRegistrationError('<div class="alert alert-danger text-center"><b>Student ID may only contain letters, numbers, and hyphen.</b></div>');
+            if (!preg_match('/^[0-9]{4}-[0-9]{4}$/', $studentData['StudentNumber'])) {
+                $this->flashRegistrationError('<div class="alert alert-danger text-center"><b>Student ID must use the YYYY-NNNN format (for example, 2023-0446).</b></div>');
+                redirect($registrationRedirect);
+                return;
+            }
+            if (!preg_match('/^09[0-9]{9}$/', $studentData['contactNo'])) {
+                $this->flashRegistrationError('<div class="alert alert-danger text-center"><b>Mobile number must contain 11 digits and start with 09.</b></div>');
                 redirect($registrationRedirect);
                 return;
             }
