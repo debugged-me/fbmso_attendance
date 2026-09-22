@@ -15,6 +15,7 @@
 /// - [AppEmptyState] — empty state placeholders
 /// - [SquircleBorder] — the squircle shape itself
 /// - [AppChip] / [AppRow] / [AppSection] / [AppStat] / [AppGap] / [AppRule] — flat components
+library;
 
 export 'app_squircle.dart';
 export 'app_button.dart';

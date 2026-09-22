@@ -123,21 +123,18 @@ class _LoginScreenState extends State<LoginScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 64,
+                  minHeight: constraints.maxHeight - 60,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 24),
-
-                    // ── Logo ─────────────────────────────────────────
+                    // ── Compact logo + brand ──────────────────────────
+                    const SizedBox(height: 8),
                     Center(child: _Logo(config: config)),
-                    const SizedBox(height: 20),
-
-                    // ── Brand name (dynamic from /config) ────────────
+                    const SizedBox(height: 16),
                     Center(
                       child: Text(
                         _schoolName,
@@ -150,10 +147,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Center(
                       child: Text(
                         AppBrand.tagline,
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppInk.muted,
@@ -161,7 +159,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 28),
+
+                    Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
 
                     // ── Error banner ─────────────────────────────────
                     if ((_error ?? '').isNotEmpty) ...[
@@ -297,6 +299,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       onAbout: _showAbout,
                       copyrightName: _schoolName,
                     ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -390,8 +394,8 @@ class _Logo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const size = 104.0;
-    const outer = size + 28; // 132
+    const size = 84.0;
+    const outer = size + 20; // 104
     final url = (config?.loginLogoUrl ?? '').trim();
 
     final fallback = Image.asset(

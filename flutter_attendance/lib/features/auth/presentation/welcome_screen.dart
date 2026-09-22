@@ -72,72 +72,95 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     return Scaffold(
       backgroundColor: AppInk.page,
       body: SafeArea(
+        top: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 72,
+                  minHeight: constraints.maxHeight,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 32),
-
-                    // ── App logo ─────────────────────────────────────
-                    Center(
-                      child: Container(
-                        width: 132,
-                        height: 132,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppInk.rule),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppInk.accent.withValues(alpha: 0.08),
-                              blurRadius: 28,
-                              offset: const Offset(0, 10),
-                            ),
+                    // ── Gradient hero band ────────────────────────────
+                    Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF14294B),
+                            Color(0xFF1E3FA0),
+                            Color(0xFF4A7CF7),
                           ],
                         ),
-                        child: ClipOval(
-                          child: Image.asset(
-                            'assets/img/icon-logo.png',
-                            fit: BoxFit.cover,
+                        borderRadius: BorderRadius.vertical(
+                            bottom: Radius.circular(32)),
+                      ),
+                      child: SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.fromLTRB(24, 32, 24, 40),
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 16),
+                              Container(
+                                width: 120,
+                                height: 120,
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black
+                                          .withValues(alpha: 0.15),
+                                      blurRadius: 28,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipOval(
+                                  child: Image.asset(
+                                    'assets/img/icon-logo.png',
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+                              const Text(
+                                'Welcome',
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Connect to your school portal to get started.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white
+                                      .withValues(alpha: 0.8),
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 28),
 
-                    // ── Title ────────────────────────────────────────
-                    const Center(
-                      child: Text(
-                        'Welcome',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: AppInk.heading,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Center(
-                      child: Text(
-                        'Connect to your school portal to get started.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppInk.muted,
-                          fontWeight: FontWeight.w500,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 36),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
 
                     // ── Error banner ─────────────────────────────────
                     if ((_error ?? '').isNotEmpty) ...[
@@ -204,6 +227,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           color: AppInk.muted,
                           height: 1.5,
                         ),
+                      ),
+                    ),
+                        ],
                       ),
                     ),
                   ],

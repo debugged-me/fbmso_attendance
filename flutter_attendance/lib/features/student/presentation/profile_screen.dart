@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/sync_status_banner.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/student_api.dart';
 import '../domain/student_models.dart';
@@ -65,7 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'My Profile',
+      titleWidget: const SizedBox.shrink(),
       actions: [
         if (_profile != null)
           IconButton(
@@ -81,7 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ListSkeleton(itemCount: 6)
                   : _profile == null
                       ? ListView(
                           children: [
@@ -97,6 +98,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       : ListView(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                           children: [
+                            const AppPageHeader(
+                              title: 'My Profile',
+                              icon: Icons.badge_outlined,
+                              subtitle:
+                                  'Your account and academic information',
+                            ),
                             AppCard.elevated(
                               padding: const EdgeInsets.all(20),
                               child: Row(

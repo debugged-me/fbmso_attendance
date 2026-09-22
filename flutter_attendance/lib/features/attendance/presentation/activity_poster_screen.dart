@@ -85,16 +85,12 @@ class _ActivityPosterScreenState extends State<ActivityPosterScreen> {
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.cloud_off_rounded, size: 48, color: AppInk.muted),
-                        const SizedBox(height: 14),
-                        Text(_error!, textAlign: TextAlign.center,
-                            style: const TextStyle(color: AppInk.muted)),
-                        const SizedBox(height: 16),
-                        AppButton(label: 'Retry', onTap: _load),
-                      ],
+                    child: AppEmptyState(
+                      icon: Icons.cloud_off_rounded,
+                      title: 'Failed to load',
+                      subtitle: _error,
+                      action: 'Retry',
+                      onAction: _load,
                     ),
                   ),
                 )

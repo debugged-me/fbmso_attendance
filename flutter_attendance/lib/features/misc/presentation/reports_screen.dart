@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/utils/time_format.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/misc_api.dart';
@@ -49,7 +50,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Reports',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: true,
       body: Column(
         children: [
@@ -58,7 +59,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ListSkeleton(itemCount: 5)
                   : _error != null
                       ? ListView(children: [
                           const SizedBox(height: 80),
@@ -93,6 +94,11 @@ class _ReportContent extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
+        const AppPageHeader(
+          title: 'Reports',
+          icon: Icons.assessment_outlined,
+          subtitle: 'Enrollment & attendance summary',
+        ),
         // ── SY/Sem badge ────────────────────────────────────────
         if (report.sy.isNotEmpty || report.sem.isNotEmpty)
           Padding(

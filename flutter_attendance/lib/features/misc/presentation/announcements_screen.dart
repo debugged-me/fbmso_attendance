@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/sync_status_banner.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/misc_api.dart';
 import '../domain/misc_models.dart';
@@ -49,7 +50,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Announcements',
+      titleWidget: const SizedBox.shrink(),
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -57,7 +58,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ListSkeleton(itemCount: 6)
                   : _items.isEmpty
                       ? ListView(
                           children: [
@@ -72,13 +73,25 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.fromLTRB(
-                              16, 8, 16, 32),
-                          itemCount: _items.length,
-                          itemBuilder: (context, i) => Padding(
-                            padding: EdgeInsets.only(
-                                bottom: i == _items.length - 1 ? 0 : 12),
-                            child: _AnnouncementCard(item: _items[i]),
-                          ),
+                              16, 4, 16, 32),
+                          itemCount: _items.length + 1,
+                          itemBuilder: (context, i) {
+                            if (i == 0) {
+                              return AppPageHeader(
+                                title: 'Announcements',
+                                icon: Icons.campaign_outlined,
+                                subtitle:
+                                    '${_items.length} posted',
+                              );
+                            }
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                  bottom:
+                                      i == _items.length ? 0 : 12),
+                              child: _AnnouncementCard(
+                                  item: _items[i - 1]),
+                            );
+                          },
                         ),
             ),
           ),

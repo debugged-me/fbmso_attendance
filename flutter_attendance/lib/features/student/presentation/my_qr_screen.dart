@@ -5,6 +5,7 @@ import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_brand.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/sync_status_banner.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../attendance/presentation/my_logs_screen.dart';
 import '../../attendance/presentation/poster_scan_screen.dart';
 import '../../auth/domain/app_session.dart';
@@ -130,7 +131,13 @@ class _MyQrScreenState extends State<MyQrScreen> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                      children: const [
+                        SizedBox(height: 12),
+                        CardSkeleton(),
+                      ],
+                    )
                   : _error != null
                       ? ListView(
                           children: [

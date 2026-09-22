@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../core/services/connectivity_service.dart';
+import '../../../core/services/outbox_service.dart';
 import '../data/auth_api.dart';
 import '../data/session_store.dart';
 import '../domain/app_session.dart';
@@ -13,7 +15,12 @@ import '../domain/mobile_config.dart';
 class AuthController extends ChangeNotifier {
   AuthController({required AuthApi api, required SessionStore store})
       : _api = api,
-        _store = store;
+        _store = store {
+    // Queued writes authenticate with the live token, not the one captured
+    // when they were enqueued.
+    OutboxService.tokenProvider = () => _session?.token;
+    ConnectivityService.probeBaseUrl = _store.readBaseUrl();
+  }
 
   final AuthApi _api;
   final SessionStore _store;
@@ -79,6 +86,7 @@ class AuthController extends ChangeNotifier {
     try {
       _config = await _api.fetchConfig(normalized);
       _baseUrl = normalized;
+      ConnectivityService.probeBaseUrl = normalized;
       await _store.saveBaseUrl(normalized);
     } on ApiException catch (e) {
       _error = e.message;
@@ -112,6 +120,9 @@ class AuthController extends ChangeNotifier {
         platform: defaultTargetPlatform.name,
       );
       await _store.saveSession(_session!);
+      // Writes parked on an expired session can go out again now. Draining
+      // happens in the background — it must never delay or fail a sign-in.
+      unawaited(OutboxService.resumeAfterAuth().catchError((_) {}));
       notifyListeners();
       return true;
     } on ApiException catch (e) {

@@ -4,6 +4,7 @@ import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/sync_status_banner.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
 import '../../misc/data/misc_api.dart';
 import '../../misc/domain/misc_models.dart';
@@ -210,7 +211,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ListSkeleton(itemCount: 6)
                   : _error != null
                       ? ListView(children: [
                           const SizedBox(height: 80),

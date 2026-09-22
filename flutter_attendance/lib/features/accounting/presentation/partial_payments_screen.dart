@@ -71,18 +71,17 @@ class _PartialPaymentsScreenState extends State<PartialPaymentsScreen> {
       body: _loading
           ? const ListSkeleton(itemCount: 6)
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
-                        AppButton(label: 'Retry', onTap: _load),
-                      ],
+              ? ListView(
+                  children: [
+                    const SizedBox(height: 80),
+                    AppEmptyState(
+                      icon: Icons.cloud_off_rounded,
+                      title: 'Failed to load',
+                      subtitle: _error,
+                      action: 'Retry',
+                      onAction: _load,
                     ),
-                  ),
+                  ],
                 )
               : RefreshIndicator(
                   onRefresh: _load,

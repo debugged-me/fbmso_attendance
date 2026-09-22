@@ -38,6 +38,10 @@ class _PosterScanScreenState extends State<PosterScanScreen> {
     _controller = MobileScannerController(
       detectionSpeed: DetectionSpeed.noDuplicates,
       facing: CameraFacing.back,
+      // Higher resolution + QR-only decoding lets the scanner lock on from
+      // farther away (a small QR has more pixels to decode at 1080p).
+      cameraResolution: const Size(1920, 1080),
+      formats: const [BarcodeFormat.qrCode],
     );
   }
 

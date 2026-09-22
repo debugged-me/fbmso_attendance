@@ -77,6 +77,12 @@ class SyncStatusBanner extends StatelessWidget {
           AppTheme.warning,
           Icons.sync_problem
         );
+      case SyncStatus.authRequired:
+        return (
+          'Sign in again to sync ${s.authBlockedCount} change(s)',
+          AppTheme.error,
+          Icons.lock_outline
+        );
       case SyncStatus.synced:
         return (
           '${s.conflictCount} conflict(s) need attention',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../../misc/data/misc_api.dart';
@@ -57,7 +58,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Personnel',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: true,
       body: Column(
         children: [
@@ -66,7 +67,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ListSkeleton(itemCount: 6)
                   : _error != null
                       ? ListView(children: [
                           const SizedBox(height: 80),
@@ -90,10 +91,17 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                             ])
                           : ListView.builder(
                               padding:
-                                  const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                              itemCount: _personnel.length,
+                                  const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                              itemCount: _personnel.length + 1,
                               itemBuilder: (context, i) {
-                                final p = _personnel[i];
+                                if (i == 0) {
+                                  return AppPageHeader(
+                                    title: 'FBMSO Officials',
+                                    icon: Icons.groups_outlined,
+                                    subtitle: '${_personnel.length} people',
+                                  );
+                                }
+                                final p = _personnel[i - 1];
                                 return _PersonnelCard(person: p);
                               },
                             ),
@@ -118,7 +126,8 @@ class _PersonnelCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipOval(
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
               child: SizedBox(
                 width: 56,
                 height: 56,

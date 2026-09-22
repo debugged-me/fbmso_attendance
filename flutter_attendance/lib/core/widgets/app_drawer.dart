@@ -38,31 +38,49 @@ class AppAppDrawer extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header ───────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            // ── Gradient header — avatar + name + role on brand color ──
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF14294B),
+                    Color(0xFF1E3FA0),
+                    Color(0xFF4A7CF7),
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
               child: Row(
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 52,
+                    height: 52,
                     decoration: BoxDecoration(
-                      color: AppInk.accent.withValues(alpha: 0.12),
+                      color: Colors.white.withValues(alpha: 0.18),
                       shape: BoxShape.circle,
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.35),
+                          width: 1.5),
                     ),
                     child: ClipOval(
                       child: session.avatar.isNotEmpty
                           ? Image.network(
                               session.avatar,
                               fit: BoxFit.cover,
-                              width: 48,
-                              height: 48,
+                              width: 52,
+                              height: 52,
                               errorBuilder: (context, error, stack) =>
                                   const Icon(Icons.person_rounded,
-                                      color: AppInk.accent, size: 26),
+                                      color: Colors.white, size: 28),
                             )
                           : const Icon(Icons.person_rounded,
-                              color: AppInk.accent, size: 26),
+                              color: Colors.white, size: 28),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -75,24 +93,24 @@ class AppAppDrawer extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
-                            color: AppInk.heading,
+                            color: Colors.white,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 5),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                              horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: AppInk.accent.withValues(alpha: 0.10),
+                            color: Colors.white.withValues(alpha: 0.18),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             session.position,
                             style: const TextStyle(
                               fontSize: 11,
-                              color: AppInk.accent,
+                              color: Colors.white,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -102,10 +120,6 @@ class AppAppDrawer extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: AppRule(),
             ),
             // ── Navigation items ─────────────────────────────────────
             Expanded(

@@ -10,12 +10,14 @@ import 'outbox_service.dart';
 /// the UI banner subscribes to.
 ///
 /// States:
-///   - "offline"   : no connectivity; writes queue locally.
-///   - "syncing"   : online and the outbox is being drained.
-///   - "synced"    : online and the outbox is empty.
-///   - "pending"   : online but queued writes remain (a flush is in flight or
-///                   a transient error left rows queued).
-enum SyncStatus { offline, syncing, synced, pending }
+///   - "offline"      : no connectivity; writes queue locally.
+///   - "syncing"      : online and the outbox is being drained.
+///   - "synced"       : online and the outbox is empty.
+///   - "pending"      : online but queued writes remain (a flush is in flight
+///                      or a transient error left rows backing off).
+///   - "authRequired" : the session expired while writes were queued; they stay
+///                      parked until the user signs in again.
+enum SyncStatus { offline, syncing, synced, pending, authRequired }
 
 class SyncOrchestrator extends SyncStatusNotifier {
   SyncOrchestrator._();
@@ -26,15 +28,18 @@ class SyncOrchestrator extends SyncStatusNotifier {
   SyncStatus _status = SyncStatus.synced;
   int _queued = 0;
   int _conflicts = 0;
+  int _authBlocked = 0;
   bool _wasOffline = false;
   int _lastQueued = 0;
 
   SyncStatus get status => _status;
   int get queuedCount => _queued;
   int get conflictCount => _conflicts;
+  int get authBlockedCount => _authBlocked;
 
   /// Begin monitoring. Call once at startup (after OutboxService.initialize).
   Future<void> start() async {
+    OutboxService.onFlushStart = markSyncing;
     await refresh();
     _connectivitySub?.cancel();
     _connectivitySub = ConnectivityService.connectionStream.listen(_onConnectivity);
@@ -45,6 +50,7 @@ class SyncOrchestrator extends SyncStatusNotifier {
   }
 
   void _onConnectivity(bool online) {
+    ConnectivityService.invalidateProbe();
     if (online) {
       if (_wasOffline && _queued > 0) {
         NotificationService.instance.add(
@@ -67,13 +73,18 @@ class SyncOrchestrator extends SyncStatusNotifier {
 
   /// Recompute status from connectivity + outbox counts.
   Future<void> refresh() async {
-    final online = await ConnectivityService.isConnected();
+    // Reachability, not interface type: a venue's dead one-bar signal would
+    // otherwise show "synced" while nothing can actually leave the device.
+    final online = await ConnectivityService.isReachable();
     _queued = await OutboxService.queuedCount();
     _conflicts = await OutboxService.conflictCount();
+    _authBlocked = await OutboxService.authBlockedCount();
 
     if (!online) {
       _status = SyncStatus.offline;
       _wasOffline = true;
+    } else if (_authBlocked > 0) {
+      _status = SyncStatus.authRequired;
     } else if (_queued > 0) {
       _status = SyncStatus.pending;
     } else {

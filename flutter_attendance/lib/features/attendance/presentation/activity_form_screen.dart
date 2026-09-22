@@ -311,7 +311,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(backgroundColor: AppInk.critical),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete'),
           ),
@@ -570,19 +570,19 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.08),
+                        color: AppInk.critical.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
                           const Icon(Icons.error_outline_rounded,
-                              color: Colors.red, size: 20),
+                              color: AppInk.critical, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               _error!,
                               style: const TextStyle(
-                                  color: Colors.red, fontSize: 13),
+                                  color: AppInk.critical, fontSize: 13),
                             ),
                           ),
                         ],
@@ -605,7 +605,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                 if (_isEdit)
                   TextButton(
                     onPressed: _saving ? null : _delete,
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    style: TextButton.styleFrom(foregroundColor: AppInk.critical),
                     child: const Text('Delete'),
                   ),
                 const Spacer(),

@@ -112,7 +112,7 @@ class _ChangeAvatarScreenState extends State<ChangeAvatarScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Change Avatar',
+      titleWidget: const SizedBox.shrink(),
       body: Column(
         children: [
           if (_success != null) _SuccessBanner(message: _success!),
@@ -124,6 +124,12 @@ class _ChangeAvatarScreenState extends State<ChangeAvatarScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const AppPageHeader(
+                    title: 'Change Avatar',
+                    icon: Icons.photo_camera_outlined,
+                    subtitle: 'Shown on your profile and ID',
+                  ),
+                  const SizedBox(height: 12),
                   // ── Avatar preview ───────────────────────────────────
                   Center(
                     child: _AvatarPreview(

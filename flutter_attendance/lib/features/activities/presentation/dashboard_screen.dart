@@ -136,6 +136,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final perms = StaffPermissions.of(widget.session);
     return AppScaffold(
       title: 'Dashboard',
       showBackButton: false,
@@ -176,7 +177,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         _WelcomeHeader(
                           name: widget.session.displayName,
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
+
+                        // ── Student ID-card hero — the digital student
+                        // card: avatar, name, number, SY/sem. ──────────
+                        if (perms.isStudent) ...[
+                          _StudentIdCard(session: widget.session),
+                          const SizedBox(height: 24),
+                        ],
 
                         // ── Flagged account warning (web parity: the
                         // "pending concern" banner + details modal) ─────
@@ -347,6 +355,176 @@ class _WavingHandState extends State<_WavingHand>
   }
 }
 
+/// Digital student ID card — gradient hero with avatar, name, student
+/// number and the active SY/sem. Rendered only on the student dashboard.
+class _StudentIdCard extends StatelessWidget {
+  const _StudentIdCard({required this.session});
+  final AppSession session;
+
+  String get _initials {
+    final f = session.firstName.trim();
+    final l = session.lastName.trim();
+    final a = f.isNotEmpty ? f[0] : '';
+    final b = l.isNotEmpty ? l[0] : '';
+    return (a + b).isEmpty ? '?' : (a + b).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF14294B), Color(0xFF1E3FA0), Color(0xFF4A7CF7)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1E3FA0).withValues(alpha: 0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.25)),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: session.avatar.isNotEmpty
+                      ? Image.network(
+                          session.avatar,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _initialsBox(),
+                        )
+                      : _initialsBox(),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session.displayName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        height: 1.15,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      session.idNumber.isNotEmpty
+                          ? session.idNumber
+                          : session.username,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withValues(alpha: 0.8),
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.badge_outlined,
+                  size: 26, color: Colors.white.withValues(alpha: 0.5)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(height: 1, color: Colors.white.withValues(alpha: 0.18)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _IdChip(label: 'SY', value: session.activeSy),
+              const SizedBox(width: 10),
+              _IdChip(label: 'SEM', value: session.activeSem),
+              const Spacer(),
+              Text(
+                'STUDENT',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                  color: Colors.white.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _initialsBox() => Center(
+        child: Text(
+          _initials,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+      );
+}
+
+class _IdChip extends StatelessWidget {
+  const _IdChip({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label ',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+              color: Colors.white.withValues(alpha: 0.65),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
   final String text;
@@ -407,13 +585,22 @@ class _AnnouncementCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppInk.rule),
       ),
-      child: Column(
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Accent spine — marks it as a bulletin item.
+            Container(width: 4, color: AppInk.accent),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -490,6 +677,11 @@ class _AnnouncementCard extends StatelessWidget {
             ),
           ],
         ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

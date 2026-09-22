@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../../auth/domain/staff_permissions.dart';
@@ -107,9 +108,20 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ListSkeleton(itemCount: 5)
                   : _error != null
-                      ? _ErrorView(message: _error!, onRetry: _load)
+                      ? ListView(
+                          children: [
+                            const SizedBox(height: 80),
+                            AppEmptyState(
+                              icon: Icons.cloud_off_rounded,
+                              title: 'Failed to load',
+                              subtitle: _error,
+                              action: 'Retry',
+                              onAction: _load,
+                            ),
+                          ],
+                        )
                       : ListView(
                           padding:
                               const EdgeInsets.fromLTRB(16, 8, 16, 88),
@@ -140,7 +152,12 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
                             ],
                             if (_activities.isEmpty &&
                                 !widget.showWelcomeHeader)
-                              const _EmptyState(),
+                              const AppEmptyState(
+                                icon: Icons.event_busy_rounded,
+                                title: 'No activities yet',
+                                subtitle:
+                                    'Activities will appear here once created.',
+                              ),
                           ],
                         ),
             ),
@@ -412,54 +429,6 @@ class _Meta extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: const [
-        SizedBox(height: 140),
-        Center(
-          child: Column(
-            children: [
-              Icon(Icons.event_busy_rounded,
-                  size: 52, color: AppInk.muted),
-              SizedBox(height: 14),
-              Text('No activities yet.',
-                  style: TextStyle(
-                      color: AppInk.muted, fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            AppButton(label: 'Retry', onTap: onRetry),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -326,13 +326,12 @@ class _ErrorView extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            AppButton(label: 'Retry', onTap: onRetry),
-          ],
+        child: AppEmptyState(
+          icon: Icons.cloud_off_rounded,
+          title: 'Failed to load',
+          subtitle: message,
+          action: 'Retry',
+          onAction: onRetry,
         ),
       ),
     );

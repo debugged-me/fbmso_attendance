@@ -12,6 +12,7 @@ import '../../attendance/presentation/poster_scan_screen.dart';
 import '../../attendance/presentation/scan_screen.dart';
 import '../../auth/domain/staff_permissions.dart';
 import '../../student/presentation/my_qr_screen.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 
 /// Shows the activity detail bottom sheet with role-based actions.
 /// - Students: "Scan Poster QR" + "Show My QR"
@@ -393,7 +394,7 @@ class _ActivityLogViewState extends State<ActivityLogView> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ListSkeleton(itemCount: 6)
                   : _error != null
                       ? ListView(children: [
                           const SizedBox(height: 80),

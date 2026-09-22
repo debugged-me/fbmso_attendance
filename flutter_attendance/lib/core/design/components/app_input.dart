@@ -118,7 +118,9 @@ class AppInput extends StatelessWidget {
                 : null,
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: enabled ? const Color(0xFFF8FAFC) : const Color(0xFFF1F5F9),
+            fillColor: (!enabled || readOnly)
+                ? const Color(0xFFF1F5F9)
+                : const Color(0xFFF8FAFC),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             enabledBorder: border,
             focusedBorder: focusedBorder,

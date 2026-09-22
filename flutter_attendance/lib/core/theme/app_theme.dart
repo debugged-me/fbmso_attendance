@@ -189,6 +189,22 @@ class AppTheme {
           ),
         ),
       ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(radiusMd),
+            ),
+          ),
+          textStyle: WidgetStateProperty.all(
+            const TextStyle(
+              fontFamily: fontFamily,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: _textDark,
         contentTextStyle: const TextStyle(

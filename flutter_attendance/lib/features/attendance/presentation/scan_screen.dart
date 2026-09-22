@@ -1,3 +1,4 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -32,6 +33,7 @@ class ScanScreen extends StatefulWidget {
 class _ScanScreenState extends State<ScanScreen> {
   late final AttendanceApi _api;
   late final MobileScannerController _controller;
+  final AudioPlayer _player = AudioPlayer();
   bool _processing = false;
   final List<_ScanRecord> _recent = [];
   String? _lastPayload;
@@ -41,6 +43,48 @@ class _ScanScreenState extends State<ScanScreen> {
   // operator gets confirmation without looking at the history list.
   Color _flashColor = Colors.transparent;
   double _flashOpacity = 0;
+
+  // Identity verification popup — photo + name of whoever just scanned, so a
+  // borrowed/shared QR shows the real owner's face. Auto-dismisses.
+  CheckResult? _verifyResult;
+  int _verifyToken = 0; // bumps per scan so stale timers can't hide a new card
+
+  static const _verifyModes = {
+    'checked_in',
+    'checked_out',
+    'already_in',
+    'duplicate',
+    'queued',
+    'inactive_student',
+  };
+
+  void _showVerify(CheckResult r) {
+    final s = r.student;
+    final hasIdentity = s != null &&
+        ((s['name'] ?? '').toString().isNotEmpty ||
+            (s['photo_url'] ?? '').toString().isNotEmpty);
+    if (!_verifyModes.contains(r.mode) || !hasIdentity) return;
+    final token = ++_verifyToken;
+    setState(() => _verifyResult = r);
+    Future.delayed(const Duration(milliseconds: 2600), () {
+      if (mounted && _verifyToken == token) {
+        setState(() => _verifyResult = null);
+      }
+    });
+  }
+
+  /// Audible result — distinct tones so the operator doesn't need to look at
+  /// the screen: bright chime = recorded, double beep = already counted /
+  /// saved offline, low buzz = rejected or failed.
+  void _playResult(CheckResult r) {
+    final src = switch (r.mode) {
+      'checked_in' || 'checked_out' => 'sounds/scan_success.wav',
+      'already_in' || 'duplicate' || 'queued' => 'sounds/scan_duplicate.wav',
+      _ => 'sounds/scan_error.wav',
+    };
+    _player.stop();
+    _player.play(AssetSource(src));
+  }
 
   void _flash(bool ok) {
     if (ok) {
@@ -64,12 +108,18 @@ class _ScanScreenState extends State<ScanScreen> {
     _controller = MobileScannerController(
       detectionSpeed: DetectionSpeed.noDuplicates,
       facing: CameraFacing.back,
+      // QR only — skipping other symbologies reduces false work per frame.
+      formats: const [BarcodeFormat.qrCode],
+      // Higher capture resolution keeps small/distant codes decodable —
+      // default resolution requires holding the QR close to the lens.
+      cameraResolution: const Size(1920, 1080),
     );
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _player.dispose();
     super.dispose();
   }
 
@@ -91,17 +141,19 @@ class _ScanScreenState extends State<ScanScreen> {
 
     final qrToken = QrPayloadParser.studentToken(raw);
     if (qrToken.isEmpty) {
+      const badQr = CheckResult(
+        ok: false,
+        mode: 'invalid_qr',
+        message: 'Not a student attendance QR. Open My QR and try again.',
+      );
       _flash(false);
+      _playResult(badQr);
       setState(() {
         _recent.insert(
           0,
           _ScanRecord(
             raw: raw,
-            result: const CheckResult(
-              ok: false,
-              mode: 'invalid_qr',
-              message: 'Not a student attendance QR. Open My QR and try again.',
-            ),
+            result: badQr,
             at: now,
           ),
         );
@@ -130,6 +182,8 @@ class _ScanScreenState extends State<ScanScreen> {
 
     if (!mounted) return;
     _flash(result.ok || result.mode == 'queued' || result.mode == 'already_in');
+    _playResult(result);
+    _showVerify(result);
     setState(() {
       _recent.insert(
           0, _ScanRecord(raw: raw, result: result, at: DateTime.now()));
@@ -210,6 +264,18 @@ class _ScanScreenState extends State<ScanScreen> {
                   child: ColoredBox(color: _flashColor),
                 ),
               ),
+              // Identity card — photo + name of the student who scanned, for
+              // visual verification against QR sharing. Tap to dismiss early.
+              if (_verifyResult != null)
+                Positioned(
+                  left: 14,
+                  right: 14,
+                  top: 14,
+                  child: _VerifyCard(
+                    result: _verifyResult!,
+                    onDismiss: () => setState(() => _verifyResult = null),
+                  ),
+                ),
               if (_processing)
                 ColoredBox(
                   color: Colors.black.withValues(alpha: 0.22),
@@ -395,5 +461,156 @@ class _ScanRecordTile extends StatelessWidget {
           Icons.error_outline_rounded
         );
     }
+  }
+}
+
+/// Identity verification card that pops over the camera after each scan.
+/// Shows the QR owner's photo, name, number and course/section so the
+/// operator can match the face to the person in front of them — a shared
+/// QR still resolves to its real owner, which is the whole point.
+class _VerifyCard extends StatelessWidget {
+  const _VerifyCard({required this.result, required this.onDismiss});
+  final CheckResult result;
+  final VoidCallback onDismiss;
+
+  (String, Color, IconData) _status() {
+    switch (result.mode) {
+      case 'checked_in':
+        return ('Checked in', AppInk.positive, Icons.login_rounded);
+      case 'checked_out':
+        return ('Checked out', AppInk.accent, Icons.logout_rounded);
+      case 'already_in':
+        return ('Already in', AppInk.caution, Icons.info_outline_rounded);
+      case 'duplicate':
+        return ('Duplicate scan', AppInk.caution, Icons.block_rounded);
+      case 'queued':
+        return ('Saved offline', AppInk.caution, Icons.cloud_upload_rounded);
+      case 'inactive_student':
+        return ('Inactive account', AppInk.critical, Icons.person_off_rounded);
+      default:
+        return ('Scanned', AppInk.accent, Icons.qr_code_rounded);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = result.student ?? const {};
+    final name = (s['name'] ?? '').toString();
+    final number = (s['number'] ?? result.studentNumber ?? '').toString();
+    final photo = (s['photo_url'] ?? '').toString();
+    final course = (s['course'] ?? '').toString();
+    final section = (s['section'] ?? '').toString();
+    final (label, color, icon) = _status();
+
+    final initials = name
+        .split(RegExp(r'[,\s]+'))
+        .where((p) => p.isNotEmpty)
+        .take(2)
+        .map((p) => p[0].toUpperCase())
+        .join();
+
+    return GestureDetector(
+      onTap: onDismiss,
+      child: Material(
+        elevation: 12,
+        borderRadius: BorderRadius.circular(18),
+        color: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              // Photo — falls back to initials when the account has no avatar.
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: SizedBox(
+                  width: 72,
+                  height: 72,
+                  child: photo.isNotEmpty
+                      ? Image.network(
+                          photo,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _initialAvatar(initials, color),
+                        )
+                      : _initialAvatar(initials, color),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name.isEmpty ? 'Unknown student' : name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppInk.heading,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        if (number.isNotEmpty) number,
+                        if (course.isNotEmpty) course,
+                        if (section.isNotEmpty) section,
+                      ].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppInk.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(icon, size: 14, color: color),
+                          const SizedBox(width: 5),
+                          Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: color,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _initialAvatar(String initials, Color color) {
+    return Container(
+      color: color.withValues(alpha: 0.10),
+      alignment: Alignment.center,
+      child: Text(
+        initials.isEmpty ? '?' : initials,
+        style: TextStyle(
+          fontSize: 26,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
+      ),
+    );
   }
 }

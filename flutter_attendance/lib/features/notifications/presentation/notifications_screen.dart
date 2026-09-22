@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/widgets/sync_status_banner.dart';
@@ -26,42 +27,49 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notifications'),
-        actions: [
-          if (_items.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete_sweep_outlined),
-              onPressed: () async {
-                await NotificationService.instance.clear();
-                if (!mounted) return;
-                setState(() => _items = []);
-              },
-            ),
-        ],
-      ),
+    return AppScaffold(
+      titleWidget: const SizedBox.shrink(),
+      actions: [
+        if (_items.isNotEmpty)
+          IconButton(
+            tooltip: 'Clear all',
+            icon: const Icon(Icons.delete_sweep_outlined),
+            onPressed: () async {
+              await NotificationService.instance.clear();
+              if (!mounted) return;
+              setState(() => _items = []);
+            },
+          ),
+      ],
       body: Column(
         children: [
           const SyncStatusBanner(),
           Expanded(
             child: _items.isEmpty
-                ? const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.notifications_none,
-                            size: 48, color: AppInk.muted),
-                        SizedBox(height: 12),
-                        Text('No notifications.',
-                            style: TextStyle(color: AppInk.muted)),
-                      ],
-                    ),
+                ? ListView(
+                    children: const [
+                      SizedBox(height: 120),
+                      AppEmptyState(
+                        icon: Icons.notifications_none_rounded,
+                        title: 'No notifications',
+                        subtitle:
+                            'Sync results and app events will appear here.',
+                      ),
+                    ],
                   )
                 : ListView.builder(
-                    itemCount: _items.length,
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                    itemCount: _items.length + 1,
                     itemBuilder: (context, i) {
-                      final n = _items[i];
+                      if (i == 0) {
+                        return AppPageHeader(
+                          title: 'Notifications',
+                          icon: Icons.notifications_outlined,
+                          subtitle:
+                              '${_items.length} event${_items.length == 1 ? '' : 's'}',
+                        );
+                      }
+                      final n = _items[i - 1];
                       return _NotificationTile(notification: n);
                     },
                   ),
@@ -79,21 +87,55 @@ class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (icon, color) = _typeStyle(notification.type);
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ListTile(
-        leading: Icon(icon, color: color),
-        title: Text(notification.title,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Column(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AppCard(
+        padding: const EdgeInsets.all(14),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(notification.body),
-            const SizedBox(height: 4),
-            Text(
-              _formatDate(notification.createdAt),
-              style: const TextStyle(
-                  fontSize: 11, color: AppInk.muted),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    notification.title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppInk.heading,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    notification.body,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppInk.body,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    _formatDate(notification.createdAt),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppInk.muted,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -104,15 +146,15 @@ class _NotificationTile extends StatelessWidget {
   (IconData, Color) _typeStyle(String type) {
     switch (type) {
       case 'success':
-        return (Icons.check_circle, AppInk.positive);
+        return (Icons.check_circle_rounded, AppInk.positive);
       case 'warning':
-        return (Icons.warning_amber, AppInk.caution);
+        return (Icons.warning_amber_rounded, AppInk.caution);
       case 'error':
-        return (Icons.error_outline, AppInk.critical);
+        return (Icons.error_outline_rounded, AppInk.critical);
       case 'sync':
-        return (Icons.sync, AppInk.accent);
+        return (Icons.sync_rounded, AppInk.accent);
       default:
-        return (Icons.info_outline, AppInk.accent);
+        return (Icons.info_outline_rounded, AppInk.accent);
     }
   }
 

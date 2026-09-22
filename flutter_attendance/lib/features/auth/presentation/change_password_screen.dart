@@ -128,6 +128,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 children: [
                   const AppPageHeader(
                     title: 'Change Password',
+                    icon: Icons.lock_reset_rounded,
                     subtitle: 'Keep your account secure',
                   ),
                   AppCard(

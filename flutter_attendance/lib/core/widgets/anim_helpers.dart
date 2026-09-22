@@ -94,8 +94,9 @@ class SlideUpRoute<T> extends PageRouteBuilder<T> {
     required WidgetBuilder builder,
     super.settings,
     super.fullscreenDialog,
-    this.transitionDuration = const Duration(milliseconds: 380),
-  }) : super(
+    Duration transitionDuration = const Duration(milliseconds: 380),
+  })  : _transitionDuration = transitionDuration,
+        super(
          pageBuilder: (context, animation, secondaryAnimation) =>
              builder(context),
          transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -116,8 +117,10 @@ class SlideUpRoute<T> extends PageRouteBuilder<T> {
          },
        );
 
+  final Duration _transitionDuration;
+
   @override
-  final Duration transitionDuration;
+  Duration get transitionDuration => _transitionDuration;
 }
 
 // ─── Animated scale-on-tap wrapper ────────────────────────────────────────────

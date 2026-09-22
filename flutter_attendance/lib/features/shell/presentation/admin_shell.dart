@@ -512,6 +512,9 @@ class _ScanPickerState extends State<_ScanPicker> {
                                 title: _posterMode
                                     ? 'Poster Mode'
                                     : 'Select Activity',
+                                icon: _posterMode
+                                    ? Icons.qr_code_2_rounded
+                                    : Icons.qr_code_scanner_rounded,
                                 subtitle: _posterMode
                                     ? 'Tap to show the check-in QR poster'
                                     : 'Open activities you can scan for',
@@ -681,7 +684,7 @@ class _ActivityLogPickerState extends State<_ActivityLogPicker> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ListSkeleton(itemCount: 6)
                   : _activities.isEmpty
                       ? ListView(children: [
                           const SizedBox(height: 80),
@@ -1000,7 +1003,7 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
             child: RefreshIndicator(
               onRefresh: _load,
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const ListSkeleton(itemCount: 6)
                   : _error != null
                       ? ListView(children: [
                           const SizedBox(height: 80),

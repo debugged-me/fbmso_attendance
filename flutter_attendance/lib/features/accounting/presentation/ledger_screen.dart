@@ -122,13 +122,12 @@ class _LedgerScreenState extends State<LedgerScreen> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              AppButton(label: 'Retry', onTap: _load),
-            ],
+          child: AppEmptyState(
+            icon: Icons.cloud_off_rounded,
+            title: 'Failed to load',
+            subtitle: _error,
+            action: 'Retry',
+            onAction: _load,
           ),
         ),
       );
@@ -294,11 +293,11 @@ class _LedgerTile extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 32,
-              height: 32,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.10),
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 row.isIncome

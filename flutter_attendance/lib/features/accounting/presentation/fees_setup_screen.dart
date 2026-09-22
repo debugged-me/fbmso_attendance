@@ -214,14 +214,13 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
-                        AppButton(label: 'Retry', onTap: _load),
-                      ],
-                    ),
+                    child: AppEmptyState(
+            icon: Icons.cloud_off_rounded,
+            title: 'Failed to load',
+            subtitle: _error,
+            action: 'Retry',
+            onAction: _load,
+          ),
                   ),
                 )
               : RefreshIndicator(

@@ -1,4 +1,5 @@
 /// Time formatting helpers.
+library;
 
 /// Converts a time string (e.g. "14:30:00", "14:30") to 12-hour format
 /// (e.g. "2:30 PM").
