@@ -1,0 +1,604 @@
+/* ============================================================================
+   NX Shell — modern application chrome redesign
+   ----------------------------------------------------------------------------
+   Reskins the shared shell (left sidebar + top navbar) that is rendered by
+   includes/sidebar.php and includes/top-nav-bar.php on every authenticated
+   page, plus the dashboard building blocks used by dashboard_admin.php.
+
+   Desktop geometry changes live inside @media (min-width:768px) so the
+   phone shell (mobile-shell.css: appbar + drawer + tabbar) is untouched.
+   ============================================================================ */
+
+:root {
+  --nx-side-bg: #242740;
+  --nx-side-bg-2: #1c1e31;
+  --nx-side-ink: #e4e8f5;
+  --nx-side-dim: #8a92b4;
+  --nx-side-hover: rgba(255, 255, 255, .065);
+  --nx-side-active: #3a3f63;
+  --nx-accent: #4266d4;
+  --nx-accent-2: #6382f0;
+  --nx-page-bg: #f3f5fa;
+  --nx-line: #e8ecf4;
+  --nx-ink: #1b2340;
+  --nx-muted: #66728f;
+  --nx-radius: 18px;
+}
+
+/* ---------------------------------------------------------------------------
+   Sidebar — full height dark panel
+   --------------------------------------------------------------------------- */
+
+.left-side-menu {
+  background: linear-gradient(180deg, var(--nx-side-bg) 0%, var(--nx-side-bg-2) 100%);
+  padding: 0;
+}
+
+/* Brand row */
+.nx-side-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 12px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+  flex: 0 0 auto;
+}
+
+.nx-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.nx-brand:hover,
+.nx-brand:focus {
+  text-decoration: none;
+}
+
+.nx-brand-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  object-fit: contain;
+  background: rgba(255, 255, 255, .1);
+  padding: 3px;
+  flex: 0 0 auto;
+}
+
+.nx-brand-text {
+  color: #fff;
+  font-size: .94rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
+
+.nx-brand-text b {
+  font-weight: 800;
+  color: #a9bcff;
+}
+
+.nx-collapse {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .07);
+  color: #8b93b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background .15s ease, color .15s ease;
+}
+
+.nx-collapse:hover,
+.nx-collapse:focus {
+  background: rgba(255, 255, 255, .14);
+  color: #fff;
+  outline: none;
+}
+
+.nx-collapse i {
+  transition: transform .2s ease;
+}
+
+/* Menu area */
+.left-side-menu > .slimscroll-menu {
+  padding-top: 8px;
+  padding-bottom: 14px;
+}
+
+.left-side-menu > .slimscroll-menu::-webkit-scrollbar,
+.left-side-menu .slimScrollDiv::-webkit-scrollbar {
+  width: 6px;
+}
+
+.left-side-menu > .slimscroll-menu::-webkit-scrollbar-thumb,
+.left-side-menu .slimScrollDiv::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, .14);
+  border-radius: 6px;
+}
+
+#sidebar-menu .menu-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 26px 8px;
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .18em;
+  color: var(--nx-side-dim);
+  text-transform: uppercase;
+}
+
+#sidebar-menu .menu-title::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: rgba(255, 255, 255, .08);
+}
+
+#sidebar-menu > ul > li > a {
+  display: flex;
+  align-items: center;
+  color: var(--nx-side-ink);
+  margin: 2px 12px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: .9rem;
+  font-weight: 600;
+  transition: background .15s ease, color .15s ease;
+}
+
+/* Icon chip — frosted glass tile behind each glyph */
+#sidebar-menu > ul > li > a > i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .07);
+  color: #c3cbec;
+  font-size: 16px;
+  margin: 0 11px 0 0;
+  flex: 0 0 auto;
+  transition: background .15s ease, color .15s ease;
+}
+
+#sidebar-menu > ul > li > a .badge {
+  margin-left: auto;
+}
+
+#sidebar-menu > ul > li > a:hover,
+#sidebar-menu > ul > li > a:focus {
+  background: var(--nx-side-hover);
+  color: #fff;
+}
+
+#sidebar-menu > ul > li > a.active,
+#sidebar-menu > ul > li.mm-active > a,
+#sidebar-menu > ul > li.mm-open > a,
+#sidebar-menu > ul > li.active > a {
+  background: var(--nx-side-active);
+  color: #fff;
+}
+
+#sidebar-menu > ul > li > a.active > i,
+#sidebar-menu > ul > li.mm-active > a > i,
+#sidebar-menu > ul > li.mm-open > a > i,
+#sidebar-menu > ul > li.active > a > i {
+  background: rgba(255, 255, 255, .15);
+  color: #fff;
+}
+
+/* Submenus — indented rail */
+#sidebar-menu > ul > li > ul {
+  margin: 2px 12px 8px;
+  padding-left: 15px;
+  border-left: 1px solid rgba(255, 255, 255, .08);
+}
+
+#sidebar-menu > ul > li > ul ul {
+  padding-left: 14px;
+}
+
+#sidebar-menu .nav-second-level li a,
+#sidebar-menu .nav-thrid-level li a {
+  color: #c0c8e6;
+  padding: 8px 12px;
+  border-radius: 9px;
+  font-size: .85rem;
+  font-weight: 500;
+  display: block;
+}
+
+#sidebar-menu .nav-second-level li a.active,
+#sidebar-menu .nav-second-level li.active > a {
+  color: #fff;
+  font-weight: 700;
+}
+
+#sidebar-menu .menu-arrow {
+  right: 14px;
+  color: var(--nx-side-dim);
+}
+
+#sidebar-menu li.mm-active > a > span.menu-arrow {
+  color: #cdd8ff;
+}
+
+/* Sticky logout — out-specify the inline <style> in sidebar.php */
+.left-side-menu .sidebar-logout {
+  background: var(--nx-side-bg-2);
+  border-top: 1px solid rgba(255, 255, 255, .07);
+  padding: 12px 14px;
+}
+
+.sidebar-logout-btn {
+  border-radius: 12px;
+}
+
+/* Collapsed (icon-only) sidebar — body.enlarged */
+body.enlarged .nx-side-head {
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 8px 6px;
+}
+
+body.enlarged .nx-collapse {
+  margin-left: 0;
+}
+
+body.enlarged .nx-collapse i {
+  transform: rotate(180deg);
+}
+
+body.enlarged .nx-brand-text {
+  display: none;
+}
+
+/* Collapsed rail — centre the icon. Needs .left-side-menu in the selector to
+   out-specify the base theme (.enlarged .left-side-menu … sets padding and a
+   20px icon margin that push the glyph left). */
+body.enlarged .left-side-menu #sidebar-menu > ul > li > a {
+  margin: 1px 8px;
+  border-radius: 10px;
+  padding: 0;
+  height: 50px;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.enlarged .left-side-menu #sidebar-menu > ul > li > a > i {
+  margin: 0;
+  width: 32px;
+  height: 32px;
+  font-size: 17px;
+}
+
+/* Flyout mode — the link widens to reveal its label; keep the icon chip
+   centred inside the 70px rail and push the label right of it. */
+body.enlarged .left-side-menu #sidebar-menu > ul > li:hover > a {
+  margin-left: 0;
+  margin-right: 0;
+  border-radius: 0;
+  justify-content: flex-start;
+  padding-left: 19px;
+  background: var(--nx-side-hover);
+  color: #fff;
+}
+
+body.enlarged .left-side-menu #sidebar-menu > ul > li:hover > a > span {
+  padding-left: 0;
+  margin-left: 14px;
+}
+
+/* Collapsed flyout submenu — dark card, slightly rounded */
+body.enlarged .left-side-menu #sidebar-menu > ul ul {
+  background: #1a2942;
+  border-left: 0;
+  border-radius: 12px;
+  margin-left: 4px;
+  padding: 6px;
+  -webkit-box-shadow: 0 10px 26px rgba(0, 0, 0, .35);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .35);
+}
+
+/* ---------------------------------------------------------------------------
+   Top navbar — slim light bar that starts after the sidebar
+   --------------------------------------------------------------------------- */
+
+@media (min-width: 768px) {
+  .left-side-menu {
+    top: 0;
+    z-index: 104;
+  }
+
+  .navbar-custom {
+    left: 240px;
+    background: #fff;
+    border-bottom: 1px solid var(--nx-line);
+    -webkit-box-shadow: none;
+    box-shadow: none;
+    transition: left .2s ease-out;
+  }
+
+  body.enlarged .navbar-custom {
+    left: 70px;
+  }
+
+  /* Brand lives in the sidebar now */
+  .navbar-custom .logo-box {
+    display: none;
+  }
+
+  /* Org name sits flush left — burger is hidden on desktop (sidebar has
+     its own collapse chevron); element stays in DOM for the mobile JS. */
+  .navbar-custom .ms-appbar-title {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 24px;
+    right: 300px;
+    height: 70px;
+    line-height: 70px;
+    font-size: .98rem;
+    font-weight: 800;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    color: var(--nx-ink);
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .navbar-custom .app-search {
+    display: none;
+  }
+
+  .navbar-custom .button-menu-mobile {
+    display: none;
+  }
+
+  .navbar-custom .topnav-menu .nav-link {
+    color: #5b6684;
+  }
+
+  .navbar-custom .topnav-menu .nav-link:hover,
+  .navbar-custom .topnav-menu .nav-link:focus {
+    color: var(--nx-ink);
+  }
+
+  .navbar-custom .nav-user img {
+    width: 36px;
+    height: 36px;
+    border: 2px solid #e6ebf5;
+  }
+
+  .navbar-custom .pro-user-name {
+    font-weight: 700;
+    color: #2b3652;
+    font-size: .88rem;
+  }
+}
+
+/* In-page title blocks duplicate the top navbar title — hide them visually.
+   Elements stay in the DOM: mobile-shell.js reads their textContent (which
+   works on display:none elements) to populate .ms-appbar-title. */
+.page-title,
+.up-page-title,
+.up-page-sub,
+.up-divider,
+.page-title-right {
+  display: none !important;
+}
+
+.page-title-box {
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+}
+
+/* Content canvas — only pages that load includes/head.php get this file,
+   so standalone pages (login, prints) keep their own backgrounds. */
+body {
+  background: var(--nx-page-bg);
+}
+
+.content-page {
+  background: var(--nx-page-bg);
+}
+
+/* ---------------------------------------------------------------------------
+   Dashboard components (used by dashboard_admin.php)
+   --------------------------------------------------------------------------- */
+
+/* Hero — greeting + date */
+.nx-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+}
+
+.nx-hello {
+  font-size: 1.72rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--nx-ink);
+  margin: 0;
+}
+
+.nx-hello .nx-wave {
+  display: inline-block;
+  margin-left: 2px;
+}
+
+.nx-hero-sub {
+  color: var(--nx-muted);
+  font-size: .9rem;
+  font-weight: 500;
+  margin-top: 5px;
+}
+
+/* Stat tiles — colourful gradient cards with footer link */
+.nx-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.nx-stat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 158px;
+  border-radius: var(--nx-radius);
+  overflow: hidden;
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 10px 24px rgba(20, 30, 70, .14);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.nx-stat:hover,
+.nx-stat:focus {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px rgba(20, 30, 70, .22);
+  text-decoration: none;
+  color: #fff;
+}
+
+.nx-stat:active {
+  transform: translateY(-1px) scale(.98);
+}
+
+.nx-stat::before {
+  content: '';
+  position: absolute;
+  top: -52px;
+  right: -52px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .1);
+  pointer-events: none;
+}
+
+.nx-stat::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  bottom: 46px;
+  width: 96px;
+  height: 38px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 38'%3E%3Cpolyline points='2,32 16,26 32,29 48,18 64,22 80,10 94,5' fill='none' stroke='%23ffffff' stroke-opacity='.55' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='94' cy='5' r='3' fill='%23ffffff' fill-opacity='.7'/%3E%3C/svg%3E") no-repeat center / contain;
+  opacity: .6;
+  pointer-events: none;
+}
+
+.nx-stat.span2 {
+  grid-column: span 2;
+}
+
+.nx-stat-main {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 18px 18px 10px;
+}
+
+.nx-stat-num {
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -.01em;
+}
+
+.nx-stat-label {
+  margin-top: 7px;
+  font-size: .73rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .88);
+}
+
+.nx-stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+  flex: 0 0 auto;
+}
+
+.nx-stat-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 18px;
+  background: rgba(0, 0, 0, .15);
+  font-size: .78rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .95);
+}
+
+.nx-stat-foot i {
+  font-size: 15px;
+  line-height: 1;
+  transition: transform .2s ease;
+}
+
+.nx-stat:hover .nx-stat-foot i {
+  transform: translateX(4px);
+}
+
+.nx-stat.green  { background: linear-gradient(140deg, #20a860 0%, #38c982 100%); }
+.nx-stat.blue   { background: linear-gradient(140deg, #2f6be6 0%, #4e8cf6 100%); }
+.nx-stat.cyan   { background: linear-gradient(140deg, #0d97a8 0%, #26c2d4 100%); }
+.nx-stat.violet { background: linear-gradient(140deg, #6746d7 0%, #8a68f0 100%); }
+.nx-stat.orange { background: linear-gradient(140deg, #e07a10 0%, #f5a623 100%); }
+.nx-stat.rose   { background: linear-gradient(140deg, #d9395f 0%, #f0608a 100%); }
+
+/* Responsive breakpoints */
+@media (max-width: 1399.98px) {
+  .nx-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 991.98px) {
+  .nx-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 575.98px) {
+  .nx-stats { grid-template-columns: 1fr; }
+  .nx-stat.span2 { grid-column: auto; }
+  .nx-hello { font-size: 1.4rem; }
+}
+
+@media print {
+  .nx-collapse {
+    display: none !important;
+  }
+}

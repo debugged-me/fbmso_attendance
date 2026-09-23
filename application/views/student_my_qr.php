@@ -385,11 +385,8 @@
           <!-- Header -->
           <div class="row">
             <div class="col-12">
-           <div class="page-title-box d-flex align-items-end justify-content-between flex-wrap gap-2">
-  <div>
-    <h4 class="qr-page-title">My QR Code</h4>
-    <div class="page-sub">Present this card at activities, or scan poster QR codes to check in.</div>
-  </div>
+           <div class="page-title-box d-flex align-items-end justify-content-end flex-wrap gap-2">
+  <h4 class="up-page-title">My QR Code</h4>
 
   <div class="header-actions">
     <button id="btnOpenScanner" class="qr-header-btn qr-header-btn-primary" aria-haspopup="dialog">

@@ -18,17 +18,8 @@
                     $activeLabel  = trim((string)$active_sem . ' ' . (string)$active_sy);
                     ?>
 
-                    <div class="pl-header">
-                        <div class="page-title-box">
-                            <h4 class="up-page-title">Academic Term</h4>
-                            <div class="up-page-sub">Set one active semester and school year for every admin, student, web, and mobile screen.</div>
-                            <hr class="up-divider" />
-                        </div>
-                        <div class="pl-actions">
-                            <a href="<?= base_url('Settings/schoolInfo'); ?>" class="up-btn up-btn-ghost">
-                                <i class="mdi mdi-arrow-left"></i> School Information
-                            </a>
-                        </div>
+                    <div class="page-title-box">
+                        <h4 class="up-page-title">Academic Term</h4>
                     </div>
 
                     <?php if (!empty($flashSuccess)): ?>
@@ -71,7 +62,12 @@
                         <div class="col-lg-7 mb-3">
                             <div class="up-card mb-0 h-100">
                                 <div class="up-card-head">
-                                    <i class="mdi mdi-format-list-bulleted"></i> Terms in the enrolment data
+                                    <span><i class="mdi mdi-format-list-bulleted"></i> Terms in the enrolment data</span>
+                                    <div class="pl-actions">
+                                        <a href="<?= base_url('Settings/schoolInfo'); ?>" class="up-btn up-btn-ghost d-md-none">
+                                            <i class="mdi mdi-arrow-left"></i> School Information
+                                        </a>
+                                    </div>
                                 </div>
                                 <div class="up-card-body" style="padding:0 !important;">
                                     <div class="table-responsive up-rt-host">

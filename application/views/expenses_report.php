@@ -28,17 +28,8 @@
                 <div class="container-fluid">
 
                     <!-- Title + actions -->
-                    <div class="pl-header">
-                        <div class="page-title-box">
-                            <h4 class="up-page-title">Expenses Report</h4>
-                            <div class="up-page-sub">Filter expenses by date range and view summaries by category.</div>
-                            <hr class="up-divider" />
-                        </div>
-                        <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
-                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                            </a>
-                        </div>
+                    <div class="page-title-box">
+                        <h4 class="up-page-title">Expenses Report</h4>
                     </div>
 
                     <!-- Date filter -->
@@ -47,6 +38,11 @@
                             <div class="up-card">
                                 <div class="up-card-head">
                                     <h4><i class="mdi mdi-filter-variant"></i> Date Range Filter</h4>
+                                    <div class="pl-actions">
+                                        <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                                            <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                                        </a>
+                                    </div>
                                 </div>
                                 <div class="up-card-body">
                                     <form method="GET" class="form-inline" style="gap:10px;flex-wrap:wrap;">

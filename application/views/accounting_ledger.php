@@ -37,8 +37,7 @@
                 <div class="container-fluid">
 
                     <!-- Title + actions -->
-                    <div class="pl-header">
-                        <div class="page-title-box">
+                    <div class="page-title-box">
                             <h4 class="up-page-title">Ledger</h4>
                             <div class="up-page-sub">
                                 Collections and expenses side by side, with a running balance —
@@ -48,18 +47,6 @@
                             </div>
                             <hr class="up-divider" />
                         </div>
-                        <div class="pl-actions">
-                            <a href="<?= base_url('Page/accounting'); ?>" class="up-btn up-btn-ghost">
-                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                            </a>
-                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#filterModal">
-                                <i class="mdi mdi-filter-outline"></i> Filter
-                            </button>
-                            <button type="button" class="up-btn up-btn-primary" onclick="window.open('<?= base_url('Accounting/ledger'); ?>?from=<?= urlencode((string)$from); ?>&to=<?= urlencode((string)$to); ?>&print=1', '_blank')">
-                                <i class="mdi mdi-printer"></i> Print
-                            </button>
-                        </div>
-                    </div>
 
                     <div class="alert alert-info py-2 px-3 mb-3" style="font-size:.84rem;">
                         <i class="mdi mdi-information-outline"></i>
@@ -104,9 +91,22 @@
                         <div class="col-12">
                             <div class="up-card">
                                 <div class="up-card-head">
-                                    <h4><i class="mdi mdi-book-open-variant"></i> Ledger Entries</h4>
+<div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+<h4><i class="mdi mdi-book-open-variant"></i> Ledger Entries</h4>
                                     <span class="badge badge-purple"><?= count($rows); ?> entries</span>
-                                </div>
+</div>
+<div class="pl-actions">
+                            <a href="<?= base_url('Page/accounting'); ?>" class="up-btn up-btn-ghost d-md-none">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#filterModal">
+                                <i class="mdi mdi-filter-outline"></i> Filter
+                            </button>
+                            <button type="button" class="up-btn up-btn-primary" onclick="window.open('<?= base_url('Accounting/ledger'); ?>?from=<?= urlencode((string)$from); ?>&to=<?= urlencode((string)$to); ?>&print=1', '_blank')">
+                                <i class="mdi mdi-printer"></i> Print
+                            </button>
+                        </div>
+</div>
                                 <div class="up-card-body" style="padding:0 !important;">
                                     <div class="table-responsive up-rt-host">
                                         <table id="ledgerTable" class="table table-bordered table-sm up-rt ms-rt-keep" style="width:100%">

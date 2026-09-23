@@ -199,14 +199,9 @@ if (!empty($activity_id) && !empty($activities)) {
         .pl-actions > .up-btn, .pl-actions > a.up-btn, .pl-actions > button.up-btn { margin-right:10px; margin-bottom:6px; }
         @supports (gap:10px) { .pl-actions > .up-btn { margin-right:0; } }
 
-        /* Title + actions on one row */
-        .pl-header {
-            display:flex; align-items:flex-start; justify-content:space-between;
-            gap:14px; flex-wrap:wrap; margin-bottom:8px;
-        }
-        .pl-header .page-title-box { flex:1 1 auto; margin:0; padding:12px 0 4px; }
-        .pl-header .page-title-box .up-divider { margin:8px 0 0; }
-        .pl-header .pl-actions { flex:0 0 auto; align-self:center; }
+        /* Actions inside the card head */
+        .up-card-head .pl-actions { flex:0 0 auto; }
+        .up-card-head .pl-actions .up-btn { padding:7px 14px; font-size:.8rem; }
 
         /* Filter badges */
         .filter-badges { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
@@ -333,8 +328,7 @@ if (!empty($activity_id) && !empty($activities)) {
 
         /* ===== Mobile: table becomes cards ===== */
         @media (max-width: 767.98px) {
-            .pl-header { flex-direction:column; gap:10px; margin-bottom:14px; }
-            .pl-header .pl-actions { align-self:flex-start; }
+            .up-card-head .pl-actions { width:100%; }
             .pl-actions .up-btn { font-size:.8rem; padding:8px 14px; }
             .filter-badges { gap:6px; }
             .filter-badge { font-size:.72rem; padding:5px 10px; }
@@ -418,23 +412,64 @@ if (!empty($activity_id) && !empty($activities)) {
                     <?php if ($flashError): ?><div class="up-flash up-flash-danger"><?= h($flashError); ?></div><?php endif; ?>
                     <?php if ($flashInfo): ?><div class="up-flash up-flash-info"><?= h($flashInfo); ?></div><?php endif; ?>
 
-                    <!-- Title + actions on one row -->
-                    <div class="pl-header">
-                        <div class="page-title-box">
-                            <h4 class="up-page-title">Attendance Logs</h4>
-                            <div class="up-page-sub">View and filter attendance records by activity, section, and session.</div>
-                            <hr class="up-divider" />
-                        </div>
-
-                        <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
-                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                            </a>
-                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#filterModal">
-                                <i class="mdi mdi-filter-variant"></i> Select Activity
-                            </button>
-                        </div>
+                    <!-- Title source for the top navbar (visually hidden; read by mobile-shell.js) -->
+                    <div class="page-title-box">
+                        <h4 class="up-page-title">Attendance Logs</h4>
                     </div>
+
+                    <?php if (!empty($activity_id)):
+                        $alRows = (array)($rows ?? []);
+                        $alStudents = [];
+                        $alDone = 0;
+                        foreach ($alRows as $r) {
+                            $sn = trim((string)($r->student_number ?? ''));
+                            if ($sn !== '') $alStudents[$sn] = true;
+                            if (!empty($r->checked_out_at)) $alDone++;
+                        }
+                    ?>
+                        <div class="nx-stats" style="margin-top:2px;margin-bottom:16px;">
+                            <div class="nx-stat blue">
+                                <div class="nx-stat-main">
+                                    <div>
+                                        <div class="nx-stat-num"><?= number_format(count($alRows)); ?></div>
+                                        <div class="nx-stat-label">Attendance Records</div>
+                                    </div>
+                                    <div class="nx-stat-icon"><i class="mdi mdi-clipboard-list-outline"></i></div>
+                                </div>
+                                <div class="nx-stat-foot">In selected activity <i class="mdi mdi-arrow-right"></i></div>
+                            </div>
+                            <div class="nx-stat cyan">
+                                <div class="nx-stat-main">
+                                    <div>
+                                        <div class="nx-stat-num"><?= number_format(count($alStudents)); ?></div>
+                                        <div class="nx-stat-label">Students Scanned</div>
+                                    </div>
+                                    <div class="nx-stat-icon"><i class="mdi mdi-account-check-outline"></i></div>
+                                </div>
+                                <div class="nx-stat-foot">Unique students <i class="mdi mdi-arrow-right"></i></div>
+                            </div>
+                            <div class="nx-stat green">
+                                <div class="nx-stat-main">
+                                    <div>
+                                        <div class="nx-stat-num"><?= number_format($alDone); ?></div>
+                                        <div class="nx-stat-label">Checked Out</div>
+                                    </div>
+                                    <div class="nx-stat-icon"><i class="mdi mdi-logout-variant"></i></div>
+                                </div>
+                                <div class="nx-stat-foot">Completed records <i class="mdi mdi-arrow-right"></i></div>
+                            </div>
+                            <div class="nx-stat orange">
+                                <div class="nx-stat-main">
+                                    <div>
+                                        <div class="nx-stat-num"><?= number_format(count($alRows) - $alDone); ?></div>
+                                        <div class="nx-stat-label">No Check-Out Yet</div>
+                                    </div>
+                                    <div class="nx-stat-icon"><i class="mdi mdi-clock-outline"></i></div>
+                                </div>
+                                <div class="nx-stat-foot">Awaiting check-out <i class="mdi mdi-arrow-right"></i></div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
 
                     <!-- Active filter badges -->
                     <?php if (!empty($activity_id) || !empty($section) || !empty($year_level) || !empty($date) || !empty($session)): ?>
@@ -461,13 +496,17 @@ if (!empty($activity_id) && !empty($activities)) {
                     <div class="row">
                         <div class="col-md-12">
                             <div class="up-card">
-                                <?php if (!empty($activity_id) && !empty($rows)): ?>
-                                    <div class="up-card-head">
-                                        <h4><i class="mdi mdi-clipboard-list-outline"></i> Attendance Results</h4>
-                                        <div style="display:flex;align-items:center;gap:10px;">
+                                <div class="up-card-head">
+                                    <div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+                                        <h4><i class="mdi mdi-clipboard-list-outline"></i> Attendance Logs</h4>
+                                        <?php if (!empty($activity_id) && !empty($rows)): ?>
                                             <span class="badge badge-light" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;color:#6b7a99;border:1px solid #e6ebf5;">
                                                 <?= count($rows) ?> records
                                             </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+                                        <?php if (!empty($activity_id) && !empty($rows)): ?>
                                             <div class="btn-group export-actions">
                                                 <?php
                                                 $csvParams = [];
@@ -484,9 +523,17 @@ if (!empty($activity_id) && !empty($activities)) {
                                                     <i class="bi bi-printer"></i> Print
                                                 </a>
                                             </div>
+                                        <?php endif; ?>
+                                        <div class="pl-actions">
+                                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                                            </a>
+                                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#filterModal">
+                                                <i class="mdi mdi-filter-variant"></i> Select Activity
+                                            </button>
                                         </div>
                                     </div>
-                                <?php endif; ?>
+                                </div>
                                 <div class="up-card-body" style="padding:0 !important;">
                                     <?php if (!empty($activity_id)): ?>
                                         <?php if (!empty($rows)): ?>

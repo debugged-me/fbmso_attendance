@@ -139,33 +139,32 @@
           <?php endif; ?>
 
           <!-- Title + actions on one row -->
-          <div class="pl-header">
-            <div class="page-title-box">
+          <div class="page-title-box">
               <h4 class="up-page-title">Duplicate Students</h4>
               <div class="up-page-sub">Students with matching names &mdash; compare their IDs to identify true duplicates.</div>
               <hr class="up-divider" />
             </div>
-
-            <div class="pl-actions">
-              <a href="<?= base_url('Page/profileList'); ?>" class="up-btn up-btn-ghost">
-                <i class="mdi mdi-arrow-left"></i> Back to Profile List
-              </a>
-              <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
-                <i class="mdi mdi-view-dashboard"></i> Dashboard
-              </a>
-            </div>
-          </div>
 
           <!-- Duplicates table card -->
           <div class="row">
             <div class="col-12">
               <div class="up-card">
                 <div class="up-card-head">
-                  <h4><i class="mdi mdi-account-multiple-alert"></i> Duplicate Records</h4>
+<div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+<h4><i class="mdi mdi-account-multiple-alert"></i> Duplicate Records</h4>
                   <span class="badge badge-light" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;color:#6b7a99;border:1px solid #e6ebf5;">
                     <?= number_format(count($data)); ?> found
                   </span>
-                </div>
+</div>
+<div class="pl-actions">
+              <a href="<?= base_url('Page/profileList'); ?>" class="up-btn up-btn-ghost d-md-none">
+                <i class="mdi mdi-arrow-left"></i> Back to Profile List
+              </a>
+              <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                <i class="mdi mdi-view-dashboard"></i> Dashboard
+              </a>
+            </div>
+</div>
                 <div class="up-card-body" style="padding:0 !important;">
                   <div class="table-responsive" style="padding:0;">
                     <table id="duplicateTable" class="table table-hover dt-responsive nowrap" style="width:100%;margin:0;">

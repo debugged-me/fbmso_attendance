@@ -84,29 +84,29 @@
           ?>
 
           <!-- Title + actions on one row -->
-          <div class="pl-header">
-            <div class="page-title-box">
+          <div class="page-title-box">
               <h4 class="up-page-title">Manage Courses</h4>
               <div class="up-page-sub">Create, edit, and delete course offerings.</div>
               <hr class="up-divider" />
             </div>
-            <div class="pl-actions">
-              <a href="<?= base_url(); ?>Page/admin" class="up-btn up-btn-ghost">
+          <!-- start row -->
+          <div class="row">
+            <div class="col-md-12">
+              <div class="up-card">
+                <div class="up-card-head">
+<div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+<h4><i class="mdi mdi-book-open-variant"></i> Course List</h4>
+                  <span class="badge badge-purple" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;">SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></span>
+</div>
+<div class="pl-actions">
+              <a href="<?= base_url(); ?>Page/admin" class="up-btn up-btn-ghost d-md-none">
                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
               </a>
               <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#courseModal">
                 <i class="mdi mdi-plus"></i> Add Course
               </button>
             </div>
-          </div>
-          <!-- start row -->
-          <div class="row">
-            <div class="col-md-12">
-              <div class="up-card">
-                <div class="up-card-head">
-                  <h4><i class="mdi mdi-book-open-variant"></i> Course List</h4>
-                  <span class="badge badge-purple" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;">SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></span>
-                </div>
+</div>
                 <div class="up-card-body" style="padding:0 !important;">
                   <div class="table-responsive">
                     <table id="datatable" class="table table-bordered dt-responsive nowrap resp-table" style="width:100%;">

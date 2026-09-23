@@ -163,9 +163,7 @@
                     <div class="row">
                         <div class="col-12">
                             <div class="page-title-box">
-                                <h4 class="ar-page-title">My Accounting Records</h4>
-                                <div class="ar-page-sub">Track your payments and transactions across school years.</div>
-                                <hr class="ar-divider" />
+                                <h4 class="up-page-title">My Accounting Records</h4>
                             </div>
                         </div>
                     </div>
@@ -191,31 +189,47 @@
                         <div class="ar-id-pill"><?= htmlspecialchars((string)$studentNumber, ENT_QUOTES, 'UTF-8'); ?></div>
                     </div>
 
-                    <!-- Stats -->
-                    <div class="row">
-                        <div class="col-md-6 col-xl-4 mb-3">
-                            <div class="ar-stat ar-stat-blue h-100">
-                                <div class="ar-stat-icon"><i class="mdi mdi-cash-multiple"></i></div>
-                                <div class="ar-stat-label">Valid Payments</div>
-                                <div class="ar-stat-value">₱ <?= number_format((float)($totalValid ?? 0), 2); ?></div>
-                                <div class="ar-stat-foot">Total of OR-status = Valid</div>
+                    <!-- Stats — same tiles as the admin dashboard -->
+                    <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
+                        <div class="nx-stat green">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;">₱ <?= number_format((float)($totalValid ?? 0), 2); ?></div>
+                                    <div class="nx-stat-label">Valid Payments</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-cash-check"></i></div>
                             </div>
+                            <div class="nx-stat-foot">Total of OR-status = Valid <i class="mdi mdi-arrow-right"></i></div>
                         </div>
-                        <div class="col-md-6 col-xl-4 mb-3">
-                            <div class="ar-stat ar-stat-green h-100">
-                                <div class="ar-stat-icon"><i class="mdi mdi-format-list-numbered"></i></div>
-                                <div class="ar-stat-label">Transactions</div>
-                                <div class="ar-stat-value"><?= (int)count($payments ?? []); ?></div>
-                                <div class="ar-stat-foot">All recorded payments</div>
+                        <div class="nx-stat blue">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format(count((array)($payments ?? []))); ?></div>
+                                    <div class="nx-stat-label">Transactions</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-receipt-text-outline"></i></div>
                             </div>
+                            <div class="nx-stat-foot">All recorded payments <i class="mdi mdi-arrow-right"></i></div>
                         </div>
-                        <div class="col-md-6 col-xl-4 mb-3">
-                            <div class="ar-stat ar-stat-amber h-100">
-                                <div class="ar-stat-icon"><i class="mdi mdi-scale-balance"></i></div>
-                                <div class="ar-stat-label">Total Amount</div>
-                                <div class="ar-stat-value">₱ <?= number_format((float)($totalAll ?? 0), 2); ?></div>
-                                <div class="ar-stat-foot">Including pending ORs</div>
+                        <div class="nx-stat orange">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;">₱ <?= number_format((float)($totalAll ?? 0), 2); ?></div>
+                                    <div class="nx-stat-label">Total Amount</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-scale-balance"></i></div>
                             </div>
+                            <div class="nx-stat-foot">Including pending ORs <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <div class="nx-stat violet">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format(count((array)($accountTerms ?? []))); ?></div>
+                                    <div class="nx-stat-label">School Terms</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-calendar-range-outline"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Terms on record <i class="mdi mdi-arrow-right"></i></div>
                         </div>
                     </div>
 

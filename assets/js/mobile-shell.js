@@ -71,7 +71,7 @@
     if (!bar) return;
 
     var title = bar.querySelector('.ms-appbar-title');
-    var source = document.querySelector('.page-title') || document.querySelector('.page-title-box h4');
+    var source = document.querySelector('.page-title') || document.querySelector('.page-title-box h4') || document.querySelector('.up-page-title');
     var titleText = source ? source.textContent : document.title;
     if (title) title.textContent = String(titleText || 'Attendance').replace(/\s+/g, ' ').trim();
 

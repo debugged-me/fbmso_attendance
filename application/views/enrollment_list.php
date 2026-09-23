@@ -72,20 +72,11 @@
 
           <div class="row">
             <div class="col-12">
-              <div class="pl-header">
-                <div class="page-title-box">
-                  <h4 class="up-page-title">
-                    <?= htmlspecialchars($groupLabel, ENT_QUOTES, 'UTF-8'); ?>:
-                    <?= htmlspecialchars($groupValue, ENT_QUOTES, 'UTF-8'); ?>
-                  </h4>
-                  <div class="up-page-sub">Enrolled Students</div>
-                  <hr class="up-divider" />
-                </div>
-                <div class="pl-actions">
-                  <a href="<?= base_url(); ?>Page/admin" class="up-btn up-btn-ghost">
-                    <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                  </a>
-                </div>
+              <div class="page-title-box">
+                <h4 class="up-page-title">
+                  <?= htmlspecialchars($groupLabel, ENT_QUOTES, 'UTF-8'); ?>:
+                  <?= htmlspecialchars($groupValue, ENT_QUOTES, 'UTF-8'); ?>
+                </h4>
               </div>
             </div>
           </div>
@@ -94,6 +85,7 @@
             <div class="col-12">
               <div class="up-card">
                 <div class="up-card-head">
+                  <div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
                   <h4><i class="mdi mdi-account-group-outline"></i> Enrolled Students</h4>
                   <div class="drill-meta" style="margin:0;">
                     <span class="badge badge-purple">
@@ -107,6 +99,12 @@
                     <?php if (!empty($filterMajor)): ?>
                       <span class="badge badge-secondary">Major: <?= htmlspecialchars($filterMajor, ENT_QUOTES, 'UTF-8'); ?></span>
                     <?php endif; ?>
+                  </div>
+                  </div>
+                  <div class="pl-actions">
+                    <a href="<?= base_url(); ?>Page/admin" class="up-btn up-btn-ghost d-md-none">
+                      <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                    </a>
                   </div>
                 </div>
                 <div class="up-card-body" style="padding:0 !important;">

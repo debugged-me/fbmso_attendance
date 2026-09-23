@@ -29,30 +29,30 @@
                 <div class="container-fluid">
 
                     <!-- Title + actions -->
-                    <div class="pl-header">
-                        <div class="page-title-box">
+                    <div class="page-title-box">
                             <h4 class="up-page-title">Expenses</h4>
                             <div class="up-page-sub">Record and manage school expenses by category.</div>
                             <hr class="up-divider" />
                         </div>
-                        <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
-                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                            </a>
-                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target=".bs-example-modal-lg">
-                                <i class="mdi mdi-plus-circle"></i> Add New
-                            </button>
-                        </div>
-                    </div>
 
                     <!-- start row -->
                     <div class="row">
                         <div class="col-md-12">
                             <div class="up-card">
                                 <div class="up-card-head">
-                                    <h4><i class="mdi mdi-cash-register"></i> Expenses</h4>
+<div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+<h4><i class="mdi mdi-cash-register"></i> Expenses</h4>
                                     <span class="badge badge-purple">SY <?= htmlspecialchars($this->session->userdata('sy') ?? '', ENT_QUOTES, 'UTF-8'); ?> <?= htmlspecialchars($this->session->userdata('semester') ?? '', ENT_QUOTES, 'UTF-8'); ?></span>
-                                </div>
+</div>
+<div class="pl-actions">
+                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target=".bs-example-modal-lg">
+                                <i class="mdi mdi-plus-circle"></i> Add New
+                            </button>
+                        </div>
+</div>
                                 <div class="up-card-body" style="padding:0 !important;">
                                     <div class="table-responsive">
                                         <table id="datatable" class="table table-bordered dt-responsive nowrap up-rt" style="border-collapse: collapse; border-spacing: 0; width: 100%;">

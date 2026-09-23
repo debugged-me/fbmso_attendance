@@ -60,16 +60,21 @@
                        </div>
                    </li>
 
-                   <li class="dropdown notification-list ms-settings-action ms-overflow-source">
-                       <a href="javascript:void(0);" class="nav-link right-bar-toggle waves-effect">
-                           <i class="mdi mdi-settings-outline noti-icon"></i>
-                       </a>
-                   </li>
-
-
                </ul>
 
-               <span class="ms-appbar-title" aria-live="polite">Attendance Portal</span>
+               <?php
+               $nxOrgName = 'Faculty of Business and Management Student Organization';
+               try {
+                   if (!isset($this->SettingsModel)) {
+                       $this->load->model('SettingsModel');
+                   }
+                   $nxTmp = $this->SettingsModel->getSchoolName();
+                   if (is_string($nxTmp) && trim($nxTmp) !== '') {
+                       $nxOrgName = $nxTmp;
+                   }
+               } catch (Throwable $e) { /* keep fallback */ }
+               ?>
+               <span class="ms-appbar-title" aria-live="polite" title="<?= htmlspecialchars($nxOrgName, ENT_QUOTES, 'UTF-8'); ?>"><?= htmlspecialchars($nxOrgName, ENT_QUOTES, 'UTF-8'); ?></span>
 
                <!-- LOGO -->
                <div class="logo-box">

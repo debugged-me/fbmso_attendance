@@ -7,41 +7,14 @@
 <style>
   a.text-decoration-none:hover { text-decoration: none; }
 
-  /* ===== KPI stat cards (match student accounting stat cards) ===== */
-  .kpi {
-    border: 1px solid var(--up-line, #e6ebf5);
-    border-radius: 18px;
-    background: var(--up-card, #fff);
-    box-shadow: 0 6px 18px rgba(13,27,75,.05);
-    transition: transform .22s ease, box-shadow .22s ease;
-    margin-bottom: 0;
-  }
-  .kpi:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(13,27,75,.09); }
-  .kpi:active { transform: translateY(-1px) scale(.97); }
-  .kpi .card-body { display:flex; align-items:center; justify-content:space-between; padding:20px 22px; height:100%; gap:12px; }
-  .kpi .count { font-size:1.6rem; font-weight:800; color:var(--up-ink,#0d1b4b); margin:0; line-height:1; letter-spacing:-.01em; }
-  .kpi .label { margin:6px 0 0; color:var(--up-muted,#6b7a99); font-weight:700; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; }
-  .kpi .icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:24px; flex:0 0 auto; }
-  .kpi.blue   .icon { background:#eef2ff; color:#4266d4; }
-  .kpi.pink   .icon { background:#fce7f3; color:#ec4899; }
-  .kpi.purple .icon { background:#f3e8ff; color:#8b5cf6; }
-  .kpi.cyan   .icon { background:#cffafe; color:#06b6d4; }
-  .kpi.primary .icon { background:#dbeafe; color:#3b82f6; }
-
-  /* ===== KPI grid ===== */
-  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; align-items:stretch; }
-  .kpi-grid>a { display:block; height:100%; text-decoration:none; }
-  .kpi-grid>a>.card.kpi { height:100%; }
-  .kpi .card-body>div:first-child { min-width:0; }
-  @media (max-width:1499.98px){ .kpi-grid{grid-template-columns:repeat(auto-fit, minmax(160px, 1fr))} }
-  @media (max-width:991.98px){ .kpi-grid{grid-template-columns:repeat(auto-fit, minmax(150px, 1fr))} }
-  @media (max-width:575.98px){ .kpi-grid{gap:12px} .kpi .card-body{padding:16px} .kpi .count{font-size:1.35rem} .kpi .icon{width:40px;height:40px;font-size:20px} }
-
-  /* ===== Enrollment summary (uniform card) ===== */
+  /* ===== Enrollment summary (white card head, matches nx shell) ===== */
   .enroll-card-wrap { background:var(--up-card,#fff); border:1px solid var(--up-line,#e6ebf5); border-radius:18px; overflow:hidden; box-shadow:0 6px 18px rgba(13,27,75,.05); }
-  .enroll-card-head { padding:18px 22px; border-bottom:1px solid var(--up-line,#e6ebf5); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:linear-gradient(135deg,#1a2a6c,#2a4090); color:#fff; }
-  .enroll-card-head h5 { margin:0; font-weight:800; font-size:1rem; color:#fff; display:flex; align-items:center; gap:8px; }
-  .enroll-card-head .badge-term { background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25); color:#fff; padding:5px 12px; border-radius:999px; font-size:.76rem; font-weight:700; }
+  .enroll-card-head { padding:17px 22px; border-bottom:1px solid var(--up-line,#e6ebf5); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:#fff; color:var(--up-ink,#0d1b4b); }
+  .enroll-card-head h5 { margin:0; font-weight:800; font-size:1rem; color:var(--up-ink,#0d1b4b); display:flex; align-items:center; gap:9px; }
+  .enroll-card-head h5 > i { color:#4266d4; font-size:19px; }
+  .enroll-card-head .card-widgets a { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:9px; background:#f1f4fb; color:#66728f; }
+  .enroll-card-head .card-widgets a:hover { background:#e5eaf6; color:#1b2340; }
+  .enroll-card-head .card-widgets a i { color:inherit; }
   .enroll-card-body { padding:22px; }
 
   .enroll-split { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:20px; align-items:stretch; }
@@ -53,6 +26,9 @@
   .sum-head h6 { margin:0; font-weight:800; font-size:.68rem; letter-spacing:.18em; text-transform:uppercase; color:var(--up-muted,#6b7a99); display:flex; align-items:center; gap:8px; }
   .sum-head h6::before { content:''; width:8px; height:8px; border-radius:50%; background:linear-gradient(135deg,var(--up-blue,#2a4090),var(--up-blue-2,#4266d4)); flex-shrink:0; }
   .sum-head .badge { flex:0 0 auto; border-radius:999px; font-size:.72rem; font-weight:700; padding:4px 12px; }
+  .sum-head .badge.badge-primary { background:#2f6be6; }
+  .sum-head .badge.badge-info { background:#0d97a8; }
+  .sum-head .badge.badge-warning { background:#e07a10; }
   .sum-chart { position:relative; height:240px; margin-bottom:10px; }
   .sum-empty { display:grid; place-items:center; height:100%; font-size:.85rem; color:var(--up-muted,#6b7a99); }
 
@@ -79,9 +55,13 @@
 
   /* ===== Announcements (uniform card) ===== */
   .ann-card-wrap { background:var(--up-card,#fff); border:1px solid var(--up-line,#e6ebf5); border-radius:18px; overflow:hidden; box-shadow:0 6px 18px rgba(13,27,75,.05); }
-  .ann-card-head { padding:18px 22px; border-bottom:1px solid var(--up-line,#e6ebf5); display:flex; align-items:center; justify-content:space-between; background:linear-gradient(135deg,#1a2a6c,#2a4090); color:#fff; }
-  .ann-card-head h5 { margin:0; font-weight:800; font-size:1rem; color:#fff; display:flex; align-items:center; gap:8px; }
-  .ann-card-body { padding:22px; }
+  .ann-card-head { padding:17px 22px; border-bottom:1px solid var(--up-line,#e6ebf5); display:flex; align-items:center; justify-content:space-between; background:#fff; color:var(--up-ink,#0d1b4b); }
+  .ann-card-head h5 { margin:0; font-weight:800; font-size:1rem; color:var(--up-ink,#0d1b4b); display:flex; align-items:center; gap:9px; }
+  .ann-card-head h5 > i { color:#4266d4; font-size:19px; }
+  .ann-card-head .card-widgets a { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:9px; background:#f1f4fb; color:#66728f; }
+  .ann-card-head .card-widgets a:hover { background:#e5eaf6; color:#1b2340; }
+  .ann-card-head .card-widgets a i { color:inherit; }
+  .ann-card-body { padding:18px 22px 22px; }
 
   .ann-row { border:1px solid var(--up-line,#e6ebf5); border-radius:14px; padding:16px 18px; background:#fff; box-shadow:0 2px 8px rgba(13,27,75,.04); transition:transform .25s ease, box-shadow .25s ease; margin-bottom:12px; }
   .ann-row:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(13,27,75,.08); }
@@ -137,19 +117,17 @@
       <div class="content">
         <div class="container-fluid">
 
-          <div class="row">
-            <div class="col-12">
-              <div class="page-title-box">
-                <h4 class="up-page-title">
-                  <?= htmlspecialchars($data18[0]->SchoolName, ENT_QUOTES, 'UTF-8'); ?>
-                </h4>
-                <div class="up-page-sub"><?= htmlspecialchars($data18[0]->SchoolAddress, ENT_QUOTES, 'UTF-8'); ?></div>
-                <hr class="up-divider" />
-              </div>
-            </div>
-          </div>
-
           <?php
+          $nxTz    = new DateTimeZone('Asia/Manila');
+          $nxNow   = new DateTime('now', $nxTz);
+          $nxHour  = (int)$nxNow->format('G');
+          $nxGreet = $nxHour < 12 ? 'Good morning' : ($nxHour < 18 ? 'Good afternoon' : 'Good evening');
+          $nxFname = trim((string)$this->session->userdata('fname'));
+          if ($nxFname === '') {
+            $nxFname = (string)$this->session->userdata('username');
+          }
+          $nxSchool = !empty($data18) ? $data18[0] : null;
+
           $SP_count = (int)($data7[0]->StudeCount ?? 0);
 
           $yl1 = $data[0]  ?? null;
@@ -167,66 +145,83 @@
           $yl3Level = $yl3->YearLevel ?? '3rd Year';
           $yl4Level = $yl4->YearLevel ?? '4th Year';
 
+          $pendingPayCount = (int)($data4[0]->Studecount ?? 0);
+
           $sy   = $this->session->userdata('sy');
           $sem  = $this->session->userdata('semester');
+          $nxOrgName = $nxSchool && !empty($nxSchool->SchoolName)
+            ? (string)$nxSchool->SchoolName
+            : 'Faculty of Business and Management Student Organization';
           ?>
-          <div class="kpi-grid">
-            <a href="<?= base_url(); ?>Page/profileList" class="text-decoration-none kpi-span-2">
-              <div class="card kpi blue">
-                <div class="card-body">
-                  <div>
-                    <h2 class="count mb-1">
-                      <span data-plugin="counterup"><?= number_format($SP_count); ?></span>
-                    </h2>
-                    <p class="label mb-0">Registered Students</p>
-                  </div>
-                  <div class="icon"><i class="mdi mdi-layers-plus"></i></div>
+
+          <div class="nx-hero">
+            <div>
+              <span class="page-title" style="display:none;"><?= htmlspecialchars($nxOrgName, ENT_QUOTES, 'UTF-8'); ?></span>
+              <h1 class="nx-hello"><?= $nxGreet; ?>, <?= htmlspecialchars($nxFname, ENT_QUOTES, 'UTF-8'); ?> <span class="nx-wave">👋</span></h1>
+              <div class="nx-hero-sub"><?= $nxNow->format('l, F j'); ?> &nbsp;&middot;&nbsp; <?= $nxNow->format('g:i A'); ?> &nbsp;&middot;&nbsp; Here&rsquo;s what&rsquo;s happening today.</div>
+            </div>
+          </div>
+
+          <div class="nx-stats">
+            <a class="nx-stat green span2" href="<?= base_url(); ?>Page/profileList">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><span data-plugin="counterup"><?= number_format($SP_count); ?></span></div>
+                  <div class="nx-stat-label">Registered Students</div>
                 </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-account-group-outline"></i></div>
               </div>
+              <div class="nx-stat-foot">View students <i class="mdi mdi-arrow-right"></i></div>
             </a>
-            <a href="<?= base_url(); ?>Masterlist/byGradeYL?sy=<?= urlencode($sy) ?>&sem=<?= urlencode($sem) ?>&yearlevel=<?= urlencode($yl1Level) ?>" class="text-decoration-none">
-              <div class="card kpi pink">
-                <div class="card-body">
-                  <div>
-                    <h2 class="count mb-1"><span data-plugin="counterup"><?= number_format($yl1Count); ?></span></h2>
-                    <p class="label mb-0">1st Year</p>
-                  </div>
-                  <div class="icon"><i class="mdi mdi-monitor-lock"></i></div>
+            <a class="nx-stat blue" href="<?= base_url(); ?>Masterlist/byGradeYL?sy=<?= urlencode($sy) ?>&sem=<?= urlencode($sem) ?>&yearlevel=<?= urlencode($yl1Level) ?>">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><span data-plugin="counterup"><?= number_format($yl1Count); ?></span></div>
+                  <div class="nx-stat-label">1st Year</div>
                 </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-numeric-1-box-outline"></i></div>
               </div>
+              <div class="nx-stat-foot">View list <i class="mdi mdi-arrow-right"></i></div>
             </a>
-            <a href="<?= base_url(); ?>Masterlist/byGradeYL?sy=<?= urlencode($sy) ?>&sem=<?= urlencode($sem) ?>&yearlevel=<?= urlencode($yl2Level) ?>" class="text-decoration-none">
-              <div class="card kpi purple">
-                <div class="card-body">
-                  <div>
-                    <h2 class="count mb-1"><span data-plugin="counterup"><?= number_format($yl2Count); ?></span></h2>
-                    <p class="label mb-0">2nd Year</p>
-                  </div>
-                  <div class="icon"><i class="mdi mdi-file-eye-outline"></i></div>
+            <a class="nx-stat blue" href="<?= base_url(); ?>Masterlist/byGradeYL?sy=<?= urlencode($sy) ?>&sem=<?= urlencode($sem) ?>&yearlevel=<?= urlencode($yl2Level) ?>">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><span data-plugin="counterup"><?= number_format($yl2Count); ?></span></div>
+                  <div class="nx-stat-label">2nd Year</div>
                 </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-numeric-2-box-outline"></i></div>
               </div>
+              <div class="nx-stat-foot">View list <i class="mdi mdi-arrow-right"></i></div>
             </a>
-            <a href="<?= base_url(); ?>Masterlist/byGradeYL?sy=<?= urlencode($sy) ?>&sem=<?= urlencode($sem) ?>&yearlevel=<?= urlencode($yl3Level) ?>" class="text-decoration-none">
-              <div class="card kpi cyan">
-                <div class="card-body">
-                  <div>
-                    <h2 class="count mb-1"><span data-plugin="counterup"><?= number_format($yl3Count); ?></span></h2>
-                    <p class="label mb-0">3rd Year</p>
-                  </div>
-                  <div class="icon"><i class="mdi mdi-pen-lock"></i></div>
+            <a class="nx-stat cyan" href="<?= base_url(); ?>Masterlist/byGradeYL?sy=<?= urlencode($sy) ?>&sem=<?= urlencode($sem) ?>&yearlevel=<?= urlencode($yl3Level) ?>">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><span data-plugin="counterup"><?= number_format($yl3Count); ?></span></div>
+                  <div class="nx-stat-label">3rd Year</div>
                 </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-numeric-3-box-outline"></i></div>
               </div>
+              <div class="nx-stat-foot">View list <i class="mdi mdi-arrow-right"></i></div>
             </a>
-            <a href="<?= base_url(); ?>Masterlist/byGradeYL?sy=<?= urlencode($sy) ?>&sem=<?= urlencode($sem) ?>&yearlevel=<?= urlencode($yl4Level) ?>" class="text-decoration-none">
-              <div class="card kpi primary">
-                <div class="card-body">
-                  <div>
-                    <h2 class="count mb-1"><span data-plugin="counterup"><?= number_format($yl4Count); ?></span></h2>
-                    <p class="label mb-0">4th Year</p>
-                  </div>
-                  <div class="icon"><i class="mdi mdi-cast-education"></i></div>
+            <a class="nx-stat green" href="<?= base_url(); ?>Masterlist/byGradeYL?sy=<?= urlencode($sy) ?>&sem=<?= urlencode($sem) ?>&yearlevel=<?= urlencode($yl4Level) ?>">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><span data-plugin="counterup"><?= number_format($yl4Count); ?></span></div>
+                  <div class="nx-stat-label">4th Year</div>
                 </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-numeric-4-box-outline"></i></div>
               </div>
+              <div class="nx-stat-foot">View list <i class="mdi mdi-arrow-right"></i></div>
+            </a>
+            <a class="nx-stat orange" href="<?= base_url(); ?>Accounting/paymentAuditLog">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><span data-plugin="counterup"><?= number_format($pendingPayCount); ?></span></div>
+                  <div class="nx-stat-label">Payment Logs</div>
+                </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-history"></i></div>
+              </div>
+              <div class="nx-stat-foot">View payment activity <i class="mdi mdi-arrow-right"></i></div>
             </a>
           </div>
           <?php
@@ -271,13 +266,13 @@
             <div class="col-xl-12">
               <div class="enroll-card-wrap">
                 <div class="enroll-card-head">
-                  <div>
-                    <h5><i class="mdi mdi-chart-donut"></i> Student Summary</h5>
-                  </div>
-                  <div class="card-widgets">
-                    <a data-toggle="collapse" href="#enrollSummary" role="button" aria-expanded="true" aria-controls="enrollSummary">
-                      <i class="mdi mdi-minus text-white"></i>
-                    </a>
+                  <h5><i class="mdi mdi-chart-donut"></i> Student Summary</h5>
+                  <div class="d-flex align-items-center" style="gap:8px;">
+                    <div class="card-widgets">
+                      <a data-toggle="collapse" href="#enrollSummary" role="button" aria-expanded="true" aria-controls="enrollSummary">
+                        <i class="mdi mdi-minus"></i>
+                      </a>
+                    </div>
                   </div>
                 </div>
                 <div id="enrollSummary" class="collapse show">
@@ -482,16 +477,17 @@
                 </div>
 
               </div>
+            </div>
+          </div>
 
-
-              <div class="row mt-4">
-                <div class="col-xl-12">
+          <div class="row mt-4">
+            <div class="col-12">
                   <div class="ann-card-wrap">
                     <div class="ann-card-head">
                       <h5><i class="mdi mdi-bullhorn-outline"></i> Announcements</h5>
                       <div class="card-widgets">
                         <a data-toggle="collapse" href="#adminAnnouncements" role="button" aria-expanded="true" aria-controls="adminAnnouncements">
-                          <i class="mdi mdi-minus text-white"></i>
+                          <i class="mdi mdi-minus"></i>
                         </a>
                       </div>
                     </div>
@@ -569,8 +565,6 @@
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
             </div>
           </div>
           <div style="height:40px;"></div>
@@ -620,10 +614,10 @@
         return;
       }
 
+      // KPI tile hues — keep the donuts on the same palette as the stat cards
       var PALETTE = [
-        '#2563eb', '#8b5cf6', '#ec4899', '#06b6d4', '#f59e0b',
-        '#10b981', '#ef4444', '#6366f1', '#84cc16', '#f97316',
-        '#0ea5e9', '#a855f7'
+        '#38c982', '#4e8cf6', '#26c2d4', '#f5a623', '#8a68f0', '#f0608a',
+        '#20a860', '#2f6be6', '#0d97a8', '#e07a10', '#6746d7', '#d9395f'
       ];
       var OTHERS_COLOR = '#94a3b8';
 

@@ -29,20 +29,33 @@
                 <div class="container-fluid">
 
                     <!-- Title + actions -->
-                    <div class="pl-header">
-                        <div class="page-title-box">
+                    <div class="page-title-box">
                             <h4 class="up-page-title">Expenses Category</h4>
                             <div class="up-page-sub">Manage expense categories for reporting and classification.</div>
                             <hr class="up-divider" />
                         </div>
-                        <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
-                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                            </a>
-                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target=".bs-example-modal-lg">
-                                <i class="mdi mdi-plus-circle"></i> Add New
-                            </button>
+
+                    <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
+                        <div class="nx-stat blue">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format(count((array)$data)); ?></div>
+                                    <div class="nx-stat-label">Categories</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-tag-multiple-outline"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Listed below <i class="mdi mdi-arrow-right"></i></div>
                         </div>
+                        <a class="nx-stat green" href="javascript:void(0)" data-toggle="modal" data-target=".bs-example-modal-lg">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><i class="mdi mdi-plus-circle-outline" style="font-size:1.6rem;"></i></div>
+                                    <div class="nx-stat-label">Add Category</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-tag-plus-outline"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Create a new category <i class="mdi mdi-arrow-right"></i></div>
+                        </a>
                     </div>
 
                     <!-- start row -->
@@ -50,9 +63,19 @@
                         <div class="col-md-12">
                             <div class="up-card">
                                 <div class="up-card-head">
-                                    <h4><i class="mdi mdi-tag-multiple"></i> Expenses Categories</h4>
+<div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+<h4><i class="mdi mdi-tag-multiple"></i> Expenses Categories</h4>
                                     <span class="badge badge-purple"><?= count($data); ?> items</span>
-                                </div>
+</div>
+<div class="pl-actions">
+                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target=".bs-example-modal-lg">
+                                <i class="mdi mdi-plus-circle"></i> Add New
+                            </button>
+                        </div>
+</div>
                                 <div class="up-card-body" style="padding:0 !important;">
                                     <div class="table-responsive">
                                         <table id="datatable" class="table table-bordered dt-responsive nowrap up-rt" style="border-collapse: collapse; border-spacing: 0; width: 100%;">

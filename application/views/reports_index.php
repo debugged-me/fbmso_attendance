@@ -37,65 +37,55 @@
                             <hr class="up-divider" />
                         </div>
                     </div>
-                    <div class="row" id="section-kpis" data-print-id="kpis">
-                        <div class="col-md-3 mb-3">
-                            <div class="up-card kpi p-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div class="text-muted small">Total Courses</div>
-                                        <div class="display-5 lh-1 kpi-number kpi-blue"><?= count($by_course) ?></div>
-                                    </div>
-                                    <div class="icon bg-soft-primary"><i class="mdi mdi-school"></i></div>
+                    <?php
+                    $totalSections = array_sum(array_map(function ($r) {
+                        return (int)$r->sections;
+                    }, (array)$sections_count));
+                    $totalStudents = array_sum(array_map(function ($r) {
+                        return (int)$r->total;
+                    }, (array)$by_course));
+                    ?>
+                    <div class="nx-stats" id="section-kpis" data-print-id="kpis" style="margin-top:2px;margin-bottom:18px;">
+                        <a class="nx-stat blue" href="#section-course">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format(count((array)$by_course)); ?></div>
+                                    <div class="nx-stat-label">Total Courses</div>
                                 </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-school-outline"></i></div>
                             </div>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <div class="up-card kpi p-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div class="text-muted small">Total Sections</div>
-                                        <div class="display-5 lh-1 kpi-number kpi-green">
-                                            <?php $totalSections = array_sum(array_map(function ($r) {
-                                                return (int)$r->sections;
-                                            }, $sections_count));
-                                            echo $totalSections; ?>
-                                        </div>
-                                    </div>
-                                    <div class="icon bg-soft-primary"><i class="mdi mdi-door-open"></i></div>
+                            <div class="nx-stat-foot">Breakdown below <i class="mdi mdi-arrow-right"></i></div>
+                        </a>
+                        <a class="nx-stat cyan" href="#section-sections">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format($totalSections); ?></div>
+                                    <div class="nx-stat-label">Total Sections</div>
                                 </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-google-classroom"></i></div>
                             </div>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <div class="up-card kpi p-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div class="text-muted small">Total Students (unique)</div>
-                                        <div class="display-5 lh-1 kpi-number kpi-amber">
-                                            <?php $sum = array_sum(array_map(function ($r) {
-                                                return (int)$r->total;
-                                            }, $by_course));
-                                            echo $sum; ?>
-                                        </div>
-                                    </div>
-                                    <div class="icon bg-soft-warning"><i class="mdi mdi-account-group"></i></div>
+                            <div class="nx-stat-foot">Breakdown below <i class="mdi mdi-arrow-right"></i></div>
+                        </a>
+                        <a class="nx-stat green" href="#section-bysection">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format($totalStudents); ?></div>
+                                    <div class="nx-stat-label">Students (unique)</div>
                                 </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-account-group-outline"></i></div>
                             </div>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <div class="up-card kpi p-3">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div class="text-muted small">Events / Scans</div>
-                                        <div class="h5 mb-0">
-                                            <span class="count-badge count-blue"><?= (int)$events_total ?></span>
-                                            <span class="mx-1 text-muted">/</span>
-                                            <span class="count-badge count-cyan"><?= (int)$event_scans ?></span>
-                                        </div>
-                                    </div>
-                                    <div class="icon bg-soft-info"><i class="mdi mdi-calendar-check"></i></div>
+                            <div class="nx-stat-foot">Breakdown below <i class="mdi mdi-arrow-right"></i></div>
+                        </a>
+                        <a class="nx-stat violet" href="#section-events">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;"><?= number_format((int)$events_total); ?> <span style="opacity:.6;font-weight:600;">/</span> <?= number_format((int)$event_scans); ?></div>
+                                    <div class="nx-stat-label">Events / Scans</div>
                                 </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-calendar-check-outline"></i></div>
                             </div>
-                        </div>
+                            <div class="nx-stat-foot">Breakdown below <i class="mdi mdi-arrow-right"></i></div>
+                        </a>
                     </div>
                     <div id="reportsAccordion" class="accordion">
                         <div class="up-card mb-3 section-card" id="section-yearlevel" data-print-id="by_yearlevel">

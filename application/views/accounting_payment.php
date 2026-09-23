@@ -21,23 +21,8 @@
                     ?>
 
                     <!-- Title + actions -->
-                    <div class="pl-header">
-                        <div class="page-title-box">
-                            <h4 class="up-page-title">Payment Entry</h4>
-                            <div class="up-page-sub">Record and manage student payments. Print receipts on demand.</div>
-                            <hr class="up-divider" />
-                        </div>
-                        <div class="pl-actions">
-                            <a href="<?= base_url($this->session->userdata('level') === 'Cashier' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost">
-                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                            </a>
-                            <a href="<?= base_url('Accounting/partialPayments'); ?>" class="up-btn up-btn-ghost">
-                                <i class="mdi mdi-account-clock-outline"></i> View Partial Payments
-                            </a>
-                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#paymentModal">
-                                <i class="mdi mdi-plus-circle"></i> Add Payment
-                            </button>
-                        </div>
+                    <div class="page-title-box">
+                        <h4 class="up-page-title">Payment Entry</h4>
                     </div>
 
                     <?php if (!empty($flashSuccess)): ?>
@@ -84,6 +69,17 @@
                                             <?php endif; ?>
                                         </select>
                                         <span class="badge badge-purple"><?= count($recent_payments); ?> entries</span>
+                                        <div class="pl-actions">
+                                            <a href="<?= base_url($this->session->userdata('level') === 'Cashier' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                                            </a>
+                                            <a href="<?= base_url('Accounting/partialPayments'); ?>" class="up-btn up-btn-ghost">
+                                                <i class="mdi mdi-account-clock-outline"></i> View Partial Payments
+                                            </a>
+                                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#paymentModal">
+                                                <i class="mdi mdi-plus-circle"></i> Add Payment
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="up-card-body" style="padding:0 !important;">

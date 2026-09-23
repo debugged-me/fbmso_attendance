@@ -119,32 +119,83 @@
               <input type="hidden" id="flashSuccess" value="<?= htmlspecialchars($flashSuccessText, ENT_QUOTES, 'UTF-8'); ?>">
               <input type="hidden" id="flashDanger" value="<?= htmlspecialchars($flashDangerText, ENT_QUOTES, 'UTF-8'); ?>">
 
-              <div class="pl-header">
-                <div class="page-title-box">
+              <div class="page-title-box">
                   <h4 class="up-page-title">User Accounts</h4>
                   <div class="up-page-sub">Manage admin, staff, and personnel account credentials.</div>
                   <hr class="up-divider" />
                 </div>
-                <div class="pl-actions">
-                  <a href="<?= base_url(); ?>Page/admin" class="up-btn up-btn-ghost">
+            </div>
+          </div>
+
+          <?php
+          $uaRows = (array)($data ?? []);
+          $uaStaff = $uaActive = $uaInactive = 0;
+          foreach ($uaRows as $row) {
+              $p = strtolower(trim((string)($row->position ?? '')));
+              if ($p !== 'student' && $p !== 'teacher') $uaStaff++;
+              if (strtolower((string)($row->acctStat ?? '')) === 'active') $uaActive++; else $uaInactive++;
+          }
+          ?>
+          <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
+            <div class="nx-stat blue">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><?= number_format(count($uaRows)); ?></div>
+                  <div class="nx-stat-label">Total Accounts</div>
+                </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-account-group-outline"></i></div>
+              </div>
+              <div class="nx-stat-foot">Listed below <i class="mdi mdi-arrow-right"></i></div>
+            </div>
+            <div class="nx-stat violet">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><?= number_format($uaStaff); ?></div>
+                  <div class="nx-stat-label">Staff Accounts</div>
+                </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-shield-account-outline"></i></div>
+              </div>
+              <div class="nx-stat-foot">Non-student roles <i class="mdi mdi-arrow-right"></i></div>
+            </div>
+            <div class="nx-stat green">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><?= number_format($uaActive); ?></div>
+                  <div class="nx-stat-label">Active</div>
+                </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-check-circle-outline"></i></div>
+              </div>
+              <div class="nx-stat-foot">Can sign in <i class="mdi mdi-arrow-right"></i></div>
+            </div>
+            <div class="nx-stat rose">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><?= number_format($uaInactive); ?></div>
+                  <div class="nx-stat-label">Inactive</div>
+                </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-account-off-outline"></i></div>
+              </div>
+              <div class="nx-stat-foot">Disabled accounts <i class="mdi mdi-arrow-right"></i></div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-12">
+              <div class="up-card">
+                <div class="up-card-head">
+<div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+<h4><i class="mdi mdi-shield-account-outline"></i> Account List</h4>
+                  <span class="badge badge-purple" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;">SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></span>
+</div>
+<div class="pl-actions">
+                  <a href="<?= base_url(); ?>Page/admin" class="up-btn up-btn-ghost d-md-none">
                     <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                   </a>
                   <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target=".bs-example-modal-lg">
                     <i class="mdi mdi-account-plus"></i> Add New
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-
-
-          <div class="row">
-            <div class="col-md-12">
-              <div class="up-card">
-                <div class="up-card-head">
-                  <h4><i class="mdi mdi-shield-account-outline"></i> Account List</h4>
-                  <span class="badge badge-purple" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;">SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></span>
-                </div>
+</div>
                 <div class="up-card-body" style="padding:0 !important;">
                   <div class="table-responsive">
                   <table id="datatable-buttons" class="table table-striped dt-responsive nowrap resp-table" style="width:100%;">

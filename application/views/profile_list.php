@@ -52,19 +52,13 @@
   .pl-actions > button.up-btn { margin-right:10px; margin-bottom:6px; }
   @supports (gap:10px) { .pl-actions > .up-btn { margin-right:0; } }
 
-  /* Title + actions on one row */
-  .pl-header {
-    display:flex; align-items:flex-start; justify-content:space-between;
-    gap:18px; flex-wrap:wrap; margin-bottom:16px;
-  }
-  .pl-header .page-title-box { flex:1 1 auto; margin:0; }
-  .pl-header .page-title-box .up-divider { margin:10px 0 0; }
-  .pl-header .pl-actions { flex:0 0 auto; align-self:center; }
+  /* Actions inside the card head */
+  .up-card-head .pl-actions { flex:0 0 auto; }
+  .up-card-head .pl-actions .up-btn { padding:7px 14px; font-size:.8rem; }
 
   /* ===== Mobile: table becomes cards ===== */
   @media (max-width: 767.98px) {
-    .pl-header { flex-direction:column; gap:10px; margin-bottom:14px; }
-    .pl-header .pl-actions { align-self:flex-start; }
+    .up-card-head .pl-actions { width:100%; }
     .pl-actions .up-btn { font-size:.8rem; padding:8px 14px; }
 
     /* DataTables wrapper: let it flow as block */
@@ -183,28 +177,40 @@
             <div class="up-flash up-flash-info"><?= htmlspecialchars($flashMessage, ENT_QUOTES, 'UTF-8'); ?></div>
           <?php endif; ?>
 
-          <!-- Title + actions on one row -->
-          <div class="pl-header">
-            <div class="page-title-box">
-              <h4 class="up-page-title">Registered Students</h4>
-              <div class="up-page-sub">View, edit, and manage student profiles.</div>
-              <hr class="up-divider" />
-            </div>
+          <!-- Title source for the top navbar (visually hidden; read by mobile-shell.js) -->
+          <div class="page-title-box">
+            <h4 class="up-page-title">Registered Students</h4>
+          </div>
 
-            <div class="pl-actions">
-              <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
-                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+          <?php
+          $nxYearCounts = [1 => 0, 2 => 0, 3 => 0, 4 => 0];
+          foreach ((array)($data ?? []) as $row) {
+              if (preg_match('/(\d)/', (string)($row->yearLevel ?? ''), $m) && isset($nxYearCounts[(int)$m[1]])) {
+                  $nxYearCounts[(int)$m[1]]++;
+              }
+          }
+          $nxYearMeta = [
+              1 => ['label' => '1st Year', 'cls' => 'blue',   'icon' => 'mdi-numeric-1-circle-outline'],
+              2 => ['label' => '2nd Year', 'cls' => 'cyan',   'icon' => 'mdi-numeric-2-circle-outline'],
+              3 => ['label' => '3rd Year', 'cls' => 'violet', 'icon' => 'mdi-numeric-3-circle-outline'],
+              4 => ['label' => '4th Year', 'cls' => 'orange', 'icon' => 'mdi-numeric-4-circle-outline'],
+          ];
+          ?>
+
+          <!-- Stat tiles — same palette as the dashboard; clicking filters the table -->
+          <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
+            <?php foreach ($nxYearMeta as $yr => $meta): ?>
+              <a class="nx-stat <?= $meta['cls']; ?>" href="javascript:void(0)" data-yearfilter="<?= ['1st','2nd','3rd','4th'][$yr - 1]; ?>">
+                <div class="nx-stat-main">
+                  <div>
+                    <div class="nx-stat-num"><span data-plugin="counterup"><?= number_format($nxYearCounts[$yr]); ?></span></div>
+                    <div class="nx-stat-label"><?= $meta['label']; ?></div>
+                  </div>
+                  <div class="nx-stat-icon"><i class="mdi <?= $meta['icon']; ?>"></i></div>
+                </div>
+                <div class="nx-stat-foot">Filter table <i class="mdi mdi-arrow-right"></i></div>
               </a>
-              <a href="<?= site_url('Registration/index') . '?source=admin'; ?>" class="up-btn up-btn-primary">
-                <i class="mdi mdi-account-plus"></i> Add Student
-              </a>
-              <a href="<?= base_url('Page/duplicateStudentsByName'); ?>" class="up-btn up-btn-ghost" style="background:#fef3c7;color:#92400e;border-color:#fcd34d;">
-                <i class="mdi mdi-account-multiple"></i> Duplicate Students
-              </a>
-              <button type="button" class="up-btn up-btn-ghost" onclick="window.print()">
-                <i class="mdi mdi-printer"></i> Print
-              </button>
-            </div>
+            <?php endforeach; ?>
           </div>
 
           <!-- Students table card -->
@@ -212,10 +218,26 @@
             <div class="col-md-12">
               <div class="up-card">
                 <div class="up-card-head">
-                  <h4><i class="mdi mdi-account-group"></i> Student List</h4>
-                  <span class="badge badge-light" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;color:#6b7a99;border:1px solid #e6ebf5;">
-                    <?= number_format(count($data)); ?> records
-                  </span>
+                  <div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+                    <h4><i class="mdi mdi-account-group"></i> Student List</h4>
+                    <span class="badge badge-light" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;color:#6b7a99;border:1px solid #e6ebf5;">
+                      <?= number_format(count($data)); ?> records
+                    </span>
+                  </div>
+                  <div class="pl-actions">
+                    <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                      <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                    </a>
+                    <a href="<?= site_url('Registration/index') . '?source=admin'; ?>" class="up-btn up-btn-primary">
+                      <i class="mdi mdi-account-plus"></i> Add Student
+                    </a>
+                    <a href="<?= base_url('Page/duplicateStudentsByName'); ?>" class="up-btn up-btn-ghost" style="background:#fef3c7;color:#92400e;border-color:#fcd34d;">
+                      <i class="mdi mdi-account-multiple"></i> Duplicate Students
+                    </a>
+                    <button type="button" class="up-btn up-btn-ghost" onclick="window.print()">
+                      <i class="mdi mdi-printer"></i> Print
+                    </button>
+                  </div>
                 </div>
                 <div class="up-card-body" style="padding:0 !important;">
                   <div class="table-responsive" style="padding:0;">
@@ -319,6 +341,12 @@
   <script>
     $(function() {
       $('#datatable').DataTable();
+    });
+    $(document).on('click', '.nx-stat[data-yearfilter]', function(e) {
+      e.preventDefault();
+      try {
+        $('#datatable').DataTable().search(String($(this).data('yearfilter') || '')).draw();
+      } catch (err) {}
     });
   </script>
   <script>

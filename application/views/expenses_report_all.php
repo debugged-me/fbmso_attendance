@@ -28,21 +28,11 @@
                 <div class="container-fluid">
 
                     <!-- Title + actions -->
-                    <div class="pl-header">
-                        <div class="page-title-box">
+                    <div class="page-title-box">
                             <h4 class="up-page-title">Expenses Report</h4>
                             <div class="up-page-sub">All expenses across all categories and dates.</div>
                             <hr class="up-divider" />
                         </div>
-                        <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
-                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                            </a>
-                            <a href="#custom-modal" class="up-btn up-btn-primary" data-animation="fadein" data-plugin="custommodal" data-overlayspeed="200" data-overlaycolor="#36404a">
-                                <i class="mdi mdi-plus-circle"></i> Add New Expense
-                            </a>
-                        </div>
-                    </div>
 
 
                     <!-- end page title -->
@@ -51,9 +41,19 @@
                         <div class="col-md-12">
                             <div class="up-card">
                                 <div class="up-card-head">
-                                    <h4><i class="mdi mdi-file-document-multiple-outline"></i> All Expenses</h4>
+<div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+<h4><i class="mdi mdi-file-document-multiple-outline"></i> All Expenses</h4>
                                     <span class="badge badge-purple"><?= count($data); ?> entries</span>
-                                </div>
+</div>
+<div class="pl-actions">
+                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <a href="#custom-modal" class="up-btn up-btn-primary" data-animation="fadein" data-plugin="custommodal" data-overlayspeed="200" data-overlaycolor="#36404a">
+                                <i class="mdi mdi-plus-circle"></i> Add New Expense
+                            </a>
+                        </div>
+</div>
                                 <div class="up-card-body table-responsive">
 
 

@@ -619,8 +619,7 @@
 
           <div class="row">
             <div class="col-12">
-              <div class="pl-header">
-                <div class="page-title-box">
+              <div class="page-title-box">
                   <h4 class="up-page-title d-flex align-items-center">
                     <i class="ion ion-ios-qr-scanner mr-2"></i> Activities
                   </h4>
@@ -629,8 +628,72 @@
                     : 'Create activities, open the scanner, or print a poster QR for self check-in.'; ?></div>
                   <hr class="up-divider" />
                 </div>
-                <div class="pl-actions">
-                  <a href="<?= $isCommittee ? base_url('AttendanceLogs') : base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
+            </div>
+          </div>
+
+          <?php
+          $acRows = (array)($rows ?? []);
+          $acToday = $acSoon = $acPast = 0;
+          $acNow = date('Y-m-d');
+          foreach ($acRows as $r) {
+              $d = substr((string)($r->activity_date ?? ''), 0, 10);
+              if ($d === '') continue;
+              if ($d === $acNow) $acToday++;
+              elseif ($d > $acNow) $acSoon++;
+              else $acPast++;
+          }
+          ?>
+          <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
+            <div class="nx-stat violet">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><?= number_format(count($acRows)); ?></div>
+                  <div class="nx-stat-label">Total Activities</div>
+                </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-calendar-star"></i></div>
+              </div>
+              <div class="nx-stat-foot">In this list <i class="mdi mdi-arrow-right"></i></div>
+            </div>
+            <div class="nx-stat green">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><?= number_format($acToday); ?></div>
+                  <div class="nx-stat-label">Today</div>
+                </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-calendar-today"></i></div>
+              </div>
+              <div class="nx-stat-foot">Happening today <i class="mdi mdi-arrow-right"></i></div>
+            </div>
+            <div class="nx-stat blue">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><?= number_format($acSoon); ?></div>
+                  <div class="nx-stat-label">Upcoming</div>
+                </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-calendar-arrow-right"></i></div>
+              </div>
+              <div class="nx-stat-foot">Scheduled ahead <i class="mdi mdi-arrow-right"></i></div>
+            </div>
+            <div class="nx-stat orange">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><?= number_format($acPast); ?></div>
+                  <div class="nx-stat-label">Past</div>
+                </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-history"></i></div>
+              </div>
+              <div class="nx-stat-foot">Already done <i class="mdi mdi-arrow-right"></i></div>
+            </div>
+          </div>
+
+          <div class="up-card">
+            <div class="up-card-head">
+<div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+<h4><i class="ion ion-ios-qr-scanner"></i> List of Activities</h4>
+              <span class="badge badge-light" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;color:#6b7a99;border:1px solid #e6ebf5;">QR Attendance</span>
+</div>
+<div class="pl-actions">
+                  <a href="<?= $isCommittee ? base_url('AttendanceLogs') : base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                     <i class="mdi mdi-arrow-left"></i> <?= $isCommittee ? 'Attendance Logs' : 'Back to Dashboard'; ?>
                   </a>
                   <?php if (!$isCommittee): ?>
@@ -639,15 +702,7 @@
                   </a>
                   <?php endif; ?>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="up-card">
-            <div class="up-card-head">
-              <h4><i class="ion ion-ios-qr-scanner"></i> List of Activities</h4>
-              <span class="badge badge-light" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;color:#6b7a99;border:1px solid #e6ebf5;">QR Attendance</span>
-            </div>
+</div>
             <div class="up-card-body" style="padding:0 !important;">
               <div class="table-responsive">
                 <table class="table table-hover table-striped mb-0 align-middle resp-table">

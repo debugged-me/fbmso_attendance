@@ -29,16 +29,62 @@
                 <div class="container-fluid">
 
                     <!-- Title + actions -->
-                    <div class="pl-header">
-                        <div class="page-title-box">
+                    <div class="page-title-box">
                             <h4 class="up-page-title">Expenses Report</h4>
                             <div class="up-page-sub">Filter expenses by category and date range. Export or print as needed.</div>
                             <hr class="up-divider" />
                         </div>
-                        <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
-                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                            </a>
+
+                    <?php
+                    $exRows = (array)($data ?? []);
+                    $exTotal = 0; $exCats = []; $exMonth = 0; $exM = date('Y-m');
+                    foreach ($exRows as $row) {
+                        $exTotal += (float)($row->Amount ?? 0);
+                        $c = trim((string)($row->Category ?? ''));
+                        if ($c !== '') $exCats[$c] = true;
+                        if (substr((string)($row->ExpenseDate ?? ''), 0, 7) === $exM) $exMonth++;
+                    }
+                    ?>
+                    <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
+                        <div class="nx-stat blue">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format(count($exRows)); ?></div>
+                                    <div class="nx-stat-label">Expense Entries</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-format-list-bulleted"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">In this report <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <div class="nx-stat green">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;">₱<?= number_format($exTotal, 2); ?></div>
+                                    <div class="nx-stat-label">Total Amount</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-cash-multiple"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Sum of listed expenses <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <div class="nx-stat violet">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format(count($exCats)); ?></div>
+                                    <div class="nx-stat-label">Categories</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-tag-multiple-outline"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Distinct categories <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <div class="nx-stat orange">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format($exMonth); ?></div>
+                                    <div class="nx-stat-label">This Month</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-calendar-month-outline"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Dated <?= date('M Y'); ?> <i class="mdi mdi-arrow-right"></i></div>
                         </div>
                     </div>
 
@@ -51,8 +97,15 @@
                         <div class="col-md-12">
                             <div class="up-card">
                                 <div class="up-card-head">
-                                    <h4><i class="mdi mdi-file-document-multiple-outline"></i> Expenses Report</h4>
-                                </div>
+<div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+<h4><i class="mdi mdi-file-document-multiple-outline"></i> Expenses Report</h4>
+</div>
+<div class="pl-actions">
+                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
+                        </div>
+</div>
                                 <div class="up-card-body">
 
                                     <!-- Start Form Section -->

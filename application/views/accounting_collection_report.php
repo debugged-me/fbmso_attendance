@@ -23,30 +23,9 @@
                         preg_replace('/[^A-Za-z0-9_-]+/', '_', (string)$to);
                     ?>
 
-                    <!-- Title + actions -->
-                    <div class="pl-header no-print">
-                        <div class="page-title-box">
-                            <h4 class="up-page-title"><?= htmlspecialchars((string)$report_title, ENT_QUOTES, 'UTF-8'); ?></h4>
-                            <div class="up-page-sub"><?= htmlspecialchars($reportPeriod, ENT_QUOTES, 'UTF-8'); ?></div>
-                            <hr class="up-divider" />
-                        </div>
-                        <div class="pl-actions">
-                            <a href="<?= base_url('Page/accounting'); ?>" class="up-btn up-btn-ghost">
-                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                            </a>
-                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#filterModal">
-                                <i class="mdi mdi-filter-outline"></i> Filter
-                            </button>
-                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#monthlyModal">
-                                <i class="mdi mdi-calendar-month-outline"></i> Monthly View
-                            </button>
-                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#yearlyModal">
-                                <i class="mdi mdi-calendar-range-outline"></i> Yearly View
-                            </button>
-                            <button type="button" class="up-btn up-btn-primary" onclick="window.open('<?= base_url('Accounting/collectionReport'); ?>?from=<?= urlencode((string)$from); ?>&to=<?= urlencode((string)$to); ?>&print=1', '_blank')">
-                                <i class="mdi mdi-printer"></i> Print
-                            </button>
-                        </div>
+                    <!-- Title source for the top navbar (visually hidden; read by mobile-shell.js) -->
+                    <div class="page-title-box">
+                        <h4 class="up-page-title"><?= htmlspecialchars((string)$report_title, ENT_QUOTES, 'UTF-8'); ?></h4>
                     </div>
 
                     <!-- Stats -->
@@ -76,7 +55,26 @@
                             <div class="up-card">
                                 <div class="up-card-head no-print">
                                     <h4><i class="mdi mdi-file-document-outline"></i> Collection Details</h4>
-                                    <div id="collectionExportButtons"></div>
+                                    <div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+                                        <div id="collectionExportButtons"></div>
+                                        <div class="pl-actions">
+                                            <a href="<?= base_url('Page/accounting'); ?>" class="up-btn up-btn-ghost d-md-none">
+                                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                                            </a>
+                                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#filterModal">
+                                                <i class="mdi mdi-filter-outline"></i> Filter
+                                            </button>
+                                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#monthlyModal">
+                                                <i class="mdi mdi-calendar-month-outline"></i> Monthly View
+                                            </button>
+                                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#yearlyModal">
+                                                <i class="mdi mdi-calendar-range-outline"></i> Yearly View
+                                            </button>
+                                            <button type="button" class="up-btn up-btn-primary" onclick="window.open('<?= base_url('Accounting/collectionReport'); ?>?from=<?= urlencode((string)$from); ?>&to=<?= urlencode((string)$to); ?>&print=1', '_blank')">
+                                                <i class="mdi mdi-printer"></i> Print
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="up-card-body" style="padding:0 !important;">
 

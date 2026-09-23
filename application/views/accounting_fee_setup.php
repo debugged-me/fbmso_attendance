@@ -46,21 +46,11 @@
                     ?>
 
                     <!-- Title + actions -->
-                    <div class="pl-header">
-                        <div class="page-title-box">
+                    <div class="page-title-box">
                             <h4 class="up-page-title">Fees Setup</h4>
                             <div class="up-page-sub">Configure fee descriptions and amounts used for student payments.</div>
                             <hr class="up-divider" />
                         </div>
-                        <div class="pl-actions">
-                            <a href="<?= base_url($this->session->userdata('level') === 'Cashier' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost">
-                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                            </a>
-                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#addFeeModal">
-                                <i class="mdi mdi-plus-circle"></i> Add Fee
-                            </button>
-                        </div>
-                    </div>
 
                     <?php if (!empty($flashSuccess)): ?>
                         <div class="up-flash up-flash-success">
@@ -107,9 +97,19 @@
                         <div class="col-12">
                             <div class="up-card">
                                 <div class="up-card-head">
-                                    <h4><i class="mdi mdi-currency-usd"></i> Configured Fees</h4>
+<div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+<h4><i class="mdi mdi-currency-usd"></i> Configured Fees</h4>
                                     <span class="badge badge-purple"><?= count($fees); ?> items</span>
-                                </div>
+</div>
+<div class="pl-actions">
+                            <a href="<?= base_url($this->session->userdata('level') === 'Cashier' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#addFeeModal">
+                                <i class="mdi mdi-plus-circle"></i> Add Fee
+                            </button>
+                        </div>
+</div>
                                 <div class="up-card-body" style="padding:0 !important;">
                                     <div class="table-responsive up-rt-host">
                                         <table id="feesTable" class="table table-bordered table-sm up-rt ms-rt-keep" style="width:100%">

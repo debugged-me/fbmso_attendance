@@ -125,6 +125,15 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
 </style>
 
 <div class="left-side-menu">
+    <div class="nx-side-head">
+        <a href="<?= base_url(); ?>" class="nx-brand">
+            <img src="<?= base_url(); ?>assets/images/Attendance.png" alt="" class="nx-brand-logo">
+            <span class="nx-brand-text">Attendance <b>Portal</b></span>
+        </a>
+        <button type="button" class="nx-collapse" id="nxSideToggle" aria-label="Toggle sidebar">
+            <i class="mdi mdi-chevron-double-left"></i>
+        </button>
+    </div>
     <div class="slimscroll-menu">
         <?php if ($this->session->userdata('level') === 'Super Admin'): ?>
             <?php
@@ -210,21 +219,20 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
             <div id="sidebar-menu">
                 <ul class="metismenu" id="side-menu">
 
-                    <li class="menu-title">ADMINISTRATION</li>
-                    <li>
+                    <li class="<?= (stripos($currentUri, 'Page/admin') === 0 ? 'mm-active active' : ''); ?>">
                         <a href="<?= base_url(); ?>Page/admin" class="waves-effect">
                             <i class="bi bi-speedometer2"></i>
                             <span> Dashboard </span>
                         </a>
                     </li>
 
-                    <li>
+                    <li class="<?= (stripos($currentUri, 'Page/profileList') === 0 ? 'mm-active active' : ''); ?>">
                         <a href="<?= base_url('Page/profileList'); ?>">
                             <i class="bi bi-person-fill"></i>
                             <span> Registered Students </span>
                         </a>
                     </li>
-                    <li>
+                    <li class="<?= (stripos($currentUri, 'AttendanceLogs') === 0 ? 'mm-active active' : ''); ?>">
                         <a href="<?= base_url('AttendanceLogs'); ?>" class="waves-effect">
                             <i class="bi bi-clipboard-check"></i>
                             <span> Attendance Logs </span>
@@ -1511,6 +1519,39 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
             document.addEventListener('DOMContentLoaded', bindLogoutConfirm);
         } else {
             bindLogoutConfirm();
+        }
+    })();
+</script>
+<script>
+    (function() {
+        function bindSideToggle() {
+            var btn = document.getElementById('nxSideToggle');
+            if (!btn || btn.__nxBound) return;
+            btn.__nxBound = true;
+            btn.addEventListener('click', function(event) {
+                event.preventDefault();
+                /* Phone: this lives inside the drawer, so it closes the drawer.
+                   Desktop: reuse the theme's own toggle so enlarged-mode logic
+                   (scroll reset, aria state) stays in one place. */
+                if (window.MS && typeof window.MS.isPhone === 'function' && window.MS.isPhone()) {
+                    if (typeof window.MS.closeDrawer === 'function') {
+                        window.MS.closeDrawer();
+                    } else {
+                        document.body.classList.remove('sidebar-enable', 'ms-drawer-locked');
+                        document.documentElement.classList.remove('ms-drawer-locked');
+                    }
+                    return;
+                }
+                var trigger = document.querySelector('.button-menu-mobile');
+                if (trigger) {
+                    trigger.click();
+                }
+            });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bindSideToggle);
+        } else {
+            bindSideToggle();
         }
     })();
 </script>

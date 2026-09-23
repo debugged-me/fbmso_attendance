@@ -42,7 +42,7 @@
                             <hr class="up-divider" />
                         </div>
                         <div class="pl-actions">
-                            <a href="<?= base_url('Page/accounting'); ?>" class="up-btn up-btn-ghost">
+                            <a href="<?= base_url('Page/accounting'); ?>" class="up-btn up-btn-ghost d-md-none">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
                             <button type="button" class="up-btn up-btn-primary" onclick="window.open('<?= base_url('Accounting/partialPayments'); ?>?print=1', '_blank')">

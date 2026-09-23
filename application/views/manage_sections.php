@@ -78,20 +78,53 @@
                     ?>
 
                     <!-- Title + actions on one row -->
-                    <div class="pl-header">
-                        <div class="page-title-box">
+                    <div class="page-title-box">
                             <h4 class="up-page-title">Manage Sections</h4>
                             <div class="up-page-sub">Create, edit, and delete course sections.</div>
                             <hr class="up-divider" />
                         </div>
-                        <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost">
-                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                            </a>
-                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#addSectionModal">
-                                <i class="mdi mdi-plus"></i> Add Section
-                            </button>
+
+                    <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
+                        <div class="nx-stat blue">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format(count((array)$sections)); ?></div>
+                                    <div class="nx-stat-label">Sections</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-format-list-bulleted"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Listed below <i class="mdi mdi-arrow-right"></i></div>
                         </div>
+                        <div class="nx-stat violet">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format(count((array)$courses)); ?></div>
+                                    <div class="nx-stat-label">Courses</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-book-open-variant"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Available courses <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <div class="nx-stat cyan">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format(count((array)$yearLevels)); ?></div>
+                                    <div class="nx-stat-label">Year Levels</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-school-outline"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Available levels <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <a class="nx-stat green" href="javascript:void(0)" data-toggle="modal" data-target="#addSectionModal">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><i class="mdi mdi-plus-circle-outline" style="font-size:1.6rem;"></i></div>
+                                    <div class="nx-stat-label">Add Section</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-playlist-plus"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Create a new section <i class="mdi mdi-arrow-right"></i></div>
+                        </a>
                     </div>
 
                     <!-- start row -->
@@ -99,9 +132,19 @@
                         <div class="col-md-12">
                             <div class="up-card">
                                 <div class="up-card-head">
-                                    <h4><i class="mdi mdi-format-list-bulleted"></i> Sections</h4>
+<div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+<h4><i class="mdi mdi-format-list-bulleted"></i> Sections</h4>
                                     <span class="badge badge-purple" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;">SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></span>
-                                </div>
+</div>
+<div class="pl-actions">
+                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                            </a>
+                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#addSectionModal">
+                                <i class="mdi mdi-plus"></i> Add Section
+                            </button>
+                        </div>
+</div>
                                 <div class="up-card-body" style="padding:0 !important;">
                                     <div class="table-responsive">
                                         <table id="datatable" class="table table-bordered dt-responsive nowrap resp-table up-rt" style="width:100%;">

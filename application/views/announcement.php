@@ -75,9 +75,9 @@
 
         <div class="row">
           <div class="col-md-12">
-            <h1 class="up-page-title">Announcements</h1>
-            <p class="up-page-sub">View and manage school announcements.</p>
-            <hr class="up-divider">
+            <div class="page-title-box">
+              <h4 class="up-page-title">Announcements</h4>
+            </div>
 
             <?php if ($this->session->flashdata('success')): ?>
               <div class="up-flash up-flash-success">
@@ -91,14 +91,6 @@
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
               </div>
             <?php endif; ?>
-          </div>
-        </div>
-
-        <div class="row mb-4">
-          <div class="col-md-12">
-            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#announcementModal">
-              <i class="mdi mdi-plus"></i> Post New Announcement
-            </button>
           </div>
         </div>
 
@@ -243,10 +235,17 @@
           <div class="col-md-12">
             <div class="up-card">
               <div class="up-card-head">
-                <i class="mdi mdi-bullhorn-outline"></i> Announcement List
-                <span class="badge badge-purple" style="margin-left:8px;">
-                  SY <?= $this->session->userdata('sy'); ?> <?= $this->session->userdata('semester'); ?>
-                </span>
+                <div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
+                  <h4><i class="mdi mdi-bullhorn-outline"></i> Announcement List</h4>
+                  <span class="badge badge-purple">
+                    SY <?= $this->session->userdata('sy'); ?> <?= $this->session->userdata('semester'); ?>
+                  </span>
+                </div>
+                <div class="pl-actions">
+                  <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#announcementModal">
+                    <i class="mdi mdi-plus"></i> Post New Announcement
+                  </button>
+                </div>
               </div>
               <div class="up-card-body">
 

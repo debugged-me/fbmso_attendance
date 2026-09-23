@@ -239,7 +239,7 @@
               <hr class="up-divider" />
             </div>
             <div class="pl-actions">
-              <a href="<?= site_url('activities'); ?>" class="up-btn up-btn-ghost">
+              <a href="<?= site_url('activities'); ?>" class="up-btn up-btn-ghost d-md-none">
                 <i class="mdi mdi-arrow-left"></i> Back
               </a>
             </div>
