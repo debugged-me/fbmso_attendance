@@ -25,6 +25,62 @@
                         <h4 class="up-page-title">Payment Entry</h4>
                     </div>
 
+                    <?php
+                    $apRows = (array)($recent_payments ?? []);
+                    $apCollected = 0.0; $apFull = 0; $apPart = 0;
+                    foreach ($apRows as $row) {
+                        $amt  = (float)($row->Amount ?? 0);
+                        $full = (float)($row->FullAmount ?? 0);
+                        $paid = (float)($row->TotalPaid ?? $amt);
+                        $apCollected += $paid;
+                        if ($full > 0) {
+                            if ($paid + 0.004 < $full) $apPart++; else $apFull++;
+                        }
+                    }
+                    ?>
+                    <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
+                        <div class="nx-stat blue">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format(count($apRows)); ?></div>
+                                    <div class="nx-stat-label">Payments Listed</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-format-list-bulleted"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Recent receipts below <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <div class="nx-stat green">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<?= number_format($apCollected, 2); ?></div>
+                                    <div class="nx-stat-label">Collected</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-cash-check"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Sum of payments shown <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <div class="nx-stat cyan">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format($apFull); ?></div>
+                                    <div class="nx-stat-label">Fully Paid</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-check-decagram-outline"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Fees settled in full <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <div class="nx-stat orange">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format($apPart); ?></div>
+                                    <div class="nx-stat-label">Partial</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-account-clock-outline"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Still with balance <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                    </div>
+
                     <?php if (!empty($flashSuccess)): ?>
                         <div class="up-flash up-flash-success">
                             <?= htmlspecialchars($flashSuccess, ENT_QUOTES, 'UTF-8'); ?>
@@ -69,7 +125,7 @@
                                             <?php endif; ?>
                                         </select>
                                         <span class="badge badge-purple"><?= count($recent_payments); ?> entries</span>
-                                        <div class="pl-actions">
+                                        <div class="pl-actions" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
                                             <a href="<?= base_url($this->session->userdata('level') === 'Cashier' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                                             </a>

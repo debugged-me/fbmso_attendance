@@ -56,33 +56,46 @@
                         cash position (Gross Collections &minus; Total Expenses) for the whole period.
                     </div>
 
-                    <div class="kpi-grid">
-                        <div class="card kpi green">
-                            <div class="card-body">
+                    <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
+                        <div class="nx-stat green">
+                            <div class="nx-stat-main">
                                 <div>
-                                    <h2 class="count mb-1">&#8369;<?= number_format((float)$gross, 2); ?></h2>
-                                    <p class="label mb-0">Gross Collections</p>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<?= number_format((float)$gross, 2); ?></div>
+                                    <div class="nx-stat-label">Gross Collections</div>
                                 </div>
-                                <div class="icon"><i class="mdi mdi-trending-up"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-trending-up"></i></div>
                             </div>
+                            <div class="nx-stat-foot">Valid payments in range <i class="mdi mdi-arrow-right"></i></div>
                         </div>
-                        <div class="card kpi red">
-                            <div class="card-body">
+                        <div class="nx-stat rose">
+                            <div class="nx-stat-main">
                                 <div>
-                                    <h2 class="count mb-1">&#8369;<?= number_format((float)$spent, 2); ?></h2>
-                                    <p class="label mb-0">Total Expenses</p>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<?= number_format((float)$spent, 2); ?></div>
+                                    <div class="nx-stat-label">Total Expenses</div>
                                 </div>
-                                <div class="icon"><i class="mdi mdi-trending-down"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-trending-down"></i></div>
                             </div>
+                            <div class="nx-stat-foot">Recorded expenses <i class="mdi mdi-arrow-right"></i></div>
                         </div>
-                        <div class="card kpi blue<?= (float)$net < 0 ? ' net-negative' : ''; ?>">
-                            <div class="card-body">
+                        <div class="nx-stat <?= (float)$net < 0 ? 'rose' : 'blue'; ?>">
+                            <div class="nx-stat-main">
                                 <div>
-                                    <h2 class="count mb-1">&#8369;<?= number_format((float)$net, 2); ?></h2>
-                                    <p class="label mb-0">Net (Gross &minus; Expenses)</p>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<?= number_format((float)$net, 2); ?></div>
+                                    <div class="nx-stat-label">Net (Gross &minus; Expenses)</div>
                                 </div>
-                                <div class="icon"><i class="mdi mdi-scale-balance"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-scale-balance"></i></div>
                             </div>
+                            <div class="nx-stat-foot">Cash position <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <div class="nx-stat violet">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format(count((array)$rows)); ?></div>
+                                    <div class="nx-stat-label">Ledger Entries</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-book-open-variant"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Listed below <i class="mdi mdi-arrow-right"></i></div>
                         </div>
                     </div>
 

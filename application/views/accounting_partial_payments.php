@@ -51,24 +51,46 @@
                         </div>
                     </div>
 
-                    <div class="kpi-grid no-print">
-                        <div class="card kpi orange">
-                            <div class="card-body">
+                    <div class="nx-stats no-print" style="margin-top:2px;margin-bottom:18px;">
+                        <div class="nx-stat orange">
+                            <div class="nx-stat-main">
                                 <div>
-                                    <h2 class="count mb-1"><?= number_format((int)$studentCount); ?></h2>
-                                    <p class="label mb-0">Students With Balance</p>
+                                    <div class="nx-stat-num"><?= number_format((int)$studentCount); ?></div>
+                                    <div class="nx-stat-label">Students With Balance</div>
                                 </div>
-                                <div class="icon"><i class="mdi mdi-account-clock-outline"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-account-clock-outline"></i></div>
                             </div>
+                            <div class="nx-stat-foot">Partial payers <i class="mdi mdi-arrow-right"></i></div>
                         </div>
-                        <div class="card kpi red">
-                            <div class="card-body">
+                        <div class="nx-stat rose">
+                            <div class="nx-stat-main">
                                 <div>
-                                    <h2 class="count mb-1">&#8369;<?= number_format((float)$totalOutstanding, 2); ?></h2>
-                                    <p class="label mb-0">Total Outstanding</p>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<?= number_format((float)$totalOutstanding, 2); ?></div>
+                                    <div class="nx-stat-label">Total Outstanding</div>
                                 </div>
-                                <div class="icon"><i class="mdi mdi-cash-refund"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-cash-refund"></i></div>
                             </div>
+                            <div class="nx-stat-foot">Still to be collected <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <div class="nx-stat blue">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format(count((array)$rows)); ?></div>
+                                    <div class="nx-stat-label">Open Balances</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-format-list-checks"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Fee entries below <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <div class="nx-stat cyan">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<?= number_format((int)$studentCount ? (float)$totalOutstanding / (int)$studentCount : 0, 2); ?></div>
+                                    <div class="nx-stat-label">Avg Balance</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-calculator-variant-outline"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Per student <i class="mdi mdi-arrow-right"></i></div>
                         </div>
                     </div>
 

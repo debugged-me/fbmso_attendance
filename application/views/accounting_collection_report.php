@@ -29,22 +29,46 @@
                     </div>
 
                     <!-- Stats -->
-                    <div class="row mb-3 no-print">
-                        <div class="col-6 col-md-3">
-                            <div class="up-card mb-0">
-                                <div class="up-card-body py-3">
-                                    <h6 class="text-muted mb-1">Transactions</h6>
-                                    <h4 class="mb-0" style="font-weight:800;color:var(--up-ink);"><?= (int)$total_count; ?></h4>
+                    <div class="nx-stats no-print" style="margin-top:2px;margin-bottom:18px;">
+                        <div class="nx-stat blue">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><?= number_format((int)$total_count); ?></div>
+                                    <div class="nx-stat-label">Transactions</div>
                                 </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-receipt-text-outline"></i></div>
                             </div>
+                            <div class="nx-stat-foot">In this report <i class="mdi mdi-arrow-right"></i></div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <div class="up-card mb-0">
-                                <div class="up-card-body py-3">
-                                    <h6 class="text-muted mb-1">Total Collection</h6>
-                                    <h4 class="mb-0" style="font-weight:800;color:var(--up-blue);">₱<?= number_format((float)$total_amount, 2); ?></h4>
+                        <div class="nx-stat green">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;">₱<?= number_format((float)$total_amount, 2); ?></div>
+                                    <div class="nx-stat-label">Total Collection</div>
                                 </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-cash-multiple"></i></div>
                             </div>
+                            <div class="nx-stat-foot">Sum of listed payments <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <div class="nx-stat cyan">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;">₱<?= number_format($total_count ? (float)$total_amount / (int)$total_count : 0, 2); ?></div>
+                                    <div class="nx-stat-label">Avg / Transaction</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-calculator-variant-outline"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Mean payment size <i class="mdi mdi-arrow-right"></i></div>
+                        </div>
+                        <div class="nx-stat violet">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num" style="font-size:1.15rem;line-height:1.3;"><?= htmlspecialchars(date('M d', strtotime((string)$from)), ENT_QUOTES, 'UTF-8'); ?> &ndash; <?= htmlspecialchars(date('M d, Y', strtotime((string)$to)), ENT_QUOTES, 'UTF-8'); ?></div>
+                                    <div class="nx-stat-label">Report Period</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-calendar-range-outline"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Selected date range <i class="mdi mdi-arrow-right"></i></div>
                         </div>
                     </div>
 

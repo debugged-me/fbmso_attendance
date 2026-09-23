@@ -107,50 +107,46 @@
             </div>
           </div>
 
-          <div class="kpi-grid">
-            <a href="<?= base_url('Accounting/collectionDateRange'); ?>" class="text-decoration-none">
-              <div class="card kpi green">
-                <div class="card-body">
-                  <div>
-                    <h2 class="count mb-1"><span data-plugin="counterup">&#8369;<?= number_format($todayAmt, 2); ?></span></h2>
-                    <p class="label mb-0">Today's Collection</p>
-                  </div>
-                  <div class="icon"><i class="mdi mdi-trending-up"></i></div>
+          <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
+            <a class="nx-stat green" href="<?= base_url('Accounting/collectionDateRange'); ?>">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num" style="font-size:1.45rem;"><span data-plugin="counterup">&#8369;<?= number_format($todayAmt, 2); ?></span></div>
+                  <div class="nx-stat-label">Today's Collection</div>
                 </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-trending-up"></i></div>
               </div>
+              <div class="nx-stat-foot">Daily breakdown <i class="mdi mdi-arrow-right"></i></div>
             </a>
-            <a href="<?= base_url('Accounting/collectionMonthly'); ?>" class="text-decoration-none">
-              <div class="card kpi blue">
-                <div class="card-body">
-                  <div>
-                    <h2 class="count mb-1"><span data-plugin="counterup">&#8369;<?= number_format($monthAmt, 2); ?></span></h2>
-                    <p class="label mb-0">This Month</p>
-                  </div>
-                  <div class="icon"><i class="mdi mdi-calendar-month"></i></div>
+            <a class="nx-stat blue" href="<?= base_url('Accounting/collectionMonthly'); ?>">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num" style="font-size:1.45rem;"><span data-plugin="counterup">&#8369;<?= number_format($monthAmt, 2); ?></span></div>
+                  <div class="nx-stat-label">This Month</div>
                 </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-calendar-month-outline"></i></div>
               </div>
+              <div class="nx-stat-foot">Monthly report <i class="mdi mdi-arrow-right"></i></div>
             </a>
-            <a href="<?= base_url('Accounting/collectionYear'); ?>" class="text-decoration-none">
-              <div class="card kpi purple">
-                <div class="card-body">
-                  <div>
-                    <h2 class="count mb-1"><span data-plugin="counterup">&#8369;<?= number_format($yearAmt, 2); ?></span></h2>
-                    <p class="label mb-0">This Year</p>
-                  </div>
-                  <div class="icon"><i class="mdi mdi-chart-line"></i></div>
+            <a class="nx-stat violet" href="<?= base_url('Accounting/collectionYear'); ?>">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num" style="font-size:1.45rem;"><span data-plugin="counterup">&#8369;<?= number_format($yearAmt, 2); ?></span></div>
+                  <div class="nx-stat-label">This Year</div>
                 </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-chart-line"></i></div>
               </div>
+              <div class="nx-stat-foot">Yearly report <i class="mdi mdi-arrow-right"></i></div>
             </a>
-            <div class="text-decoration-none">
-              <div class="card kpi orange">
-                <div class="card-body">
-                  <div>
-                    <h2 class="count mb-1"><span data-plugin="counterup"><?= number_format($studeCount); ?></span></h2>
-                    <p class="label mb-0">Students This Term</p>
-                  </div>
-                  <div class="icon"><i class="mdi mdi-account-group"></i></div>
+            <div class="nx-stat orange">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><span data-plugin="counterup"><?= number_format($studeCount); ?></span></div>
+                  <div class="nx-stat-label">Students This Term</div>
                 </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-account-group-outline"></i></div>
               </div>
+              <div class="nx-stat-foot">Enrolled this term <i class="mdi mdi-arrow-right"></i></div>
             </div>
           </div>
 

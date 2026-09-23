@@ -411,6 +411,17 @@ body.enlarged .left-side-menu #sidebar-menu > ul ul {
   min-height: 0;
 }
 
+/* .pl-actions lives inside card heads now — base theme only flexes it
+   inside .pl-header, so give it its own flex layout. */
+.pl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
 /* Content canvas — only pages that load includes/head.php get this file,
    so standalone pages (login, prints) keep their own backgrounds. */
 body {

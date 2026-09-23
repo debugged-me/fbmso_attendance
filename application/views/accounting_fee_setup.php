@@ -71,25 +71,37 @@
                         $feeTotal += (float)$fee->Amount;
                     }
                     ?>
-                    <div class="kpi-grid">
-                        <div class="card kpi blue">
-                            <div class="card-body">
+                    <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
+                        <div class="nx-stat blue">
+                            <div class="nx-stat-main">
                                 <div>
-                                    <h2 class="count mb-1"><?= number_format(count($fees)); ?></h2>
-                                    <p class="label mb-0">Configured Fees</p>
+                                    <div class="nx-stat-num"><?= number_format(count((array)$fees)); ?></div>
+                                    <div class="nx-stat-label">Configured Fees</div>
                                 </div>
-                                <div class="icon"><i class="mdi mdi-format-list-bulleted"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-format-list-bulleted"></i></div>
                             </div>
+                            <div class="nx-stat-foot">Listed below <i class="mdi mdi-arrow-right"></i></div>
                         </div>
-                        <div class="card kpi green">
-                            <div class="card-body">
+                        <div class="nx-stat green">
+                            <div class="nx-stat-main">
                                 <div>
-                                    <h2 class="count mb-1">&#8369;<?= number_format($feeTotal, 2); ?></h2>
-                                    <p class="label mb-0">Combined Value</p>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<?= number_format($feeTotal, 2); ?></div>
+                                    <div class="nx-stat-label">Combined Value</div>
                                 </div>
-                                <div class="icon"><i class="mdi mdi-currency-usd"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-currency-usd"></i></div>
                             </div>
+                            <div class="nx-stat-foot">If all fees are paid once <i class="mdi mdi-arrow-right"></i></div>
                         </div>
+                        <a class="nx-stat violet" href="javascript:void(0)" data-toggle="modal" data-target="#addFeeModal">
+                            <div class="nx-stat-main">
+                                <div>
+                                    <div class="nx-stat-num"><i class="mdi mdi-plus-circle-outline" style="font-size:1.6rem;"></i></div>
+                                    <div class="nx-stat-label">Add Fee</div>
+                                </div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-cash-plus"></i></div>
+                            </div>
+                            <div class="nx-stat-foot">Configure a new fee <i class="mdi mdi-arrow-right"></i></div>
+                        </a>
                     </div>
 
                     <!-- Configured Fees -->
