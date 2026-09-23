@@ -7,35 +7,11 @@
 <style>
   a.text-decoration-none:hover { text-decoration: none; }
 
-  /* ===== KPI stat cards ===== */
-  .kpi {
-    border: 1px solid var(--up-line, #e6ebf5);
-    border-radius: 18px;
-    background: var(--up-card, #fff);
-    box-shadow: 0 6px 18px rgba(13,27,75,.05);
-    transition: transform .22s ease, box-shadow .22s ease;
-    margin-bottom: 0;
-  }
-  .kpi:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(13,27,75,.09); }
-  .kpi:active { transform: translateY(-1px) scale(.97); }
-  .kpi .card-body { display:flex; align-items:center; justify-content:space-between; padding:20px 22px; height:100%; gap:12px; }
-  .kpi .count { font-size:1.6rem; font-weight:800; color:var(--up-ink,#0d1b4b); margin:0; line-height:1; letter-spacing:-.01em; }
-  .kpi .label { margin:6px 0 0; color:var(--up-muted,#6b7a99); font-weight:700; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; }
-  .kpi .icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:24px; flex:0 0 auto; }
-  .kpi.blue   .icon { background:#eef2ff; color:#4266d4; }
-  .kpi.green  .icon { background:#dcfce7; color:#16a34a; }
-  .kpi.purple .icon { background:#f3e8ff; color:#8b5cf6; }
-
-  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; align-items:stretch; margin-bottom:0; }
-  .kpi-grid>a { display:block; height:100%; text-decoration:none; }
-  .kpi-grid>a>.card.kpi { height:100%; }
-  .kpi .card-body>div:first-child { min-width:0; }
-  @media (max-width:575.98px){ .kpi-grid{gap:12px} .kpi .card-body{padding:16px} .kpi .count{font-size:1.35rem} .kpi .icon{width:40px;height:40px;font-size:20px} }
-
   /* ===== Panels ===== */
   .acct-card-wrap { background:var(--up-card,#fff); border:1px solid var(--up-line,#e6ebf5); border-radius:18px; overflow:hidden; box-shadow:0 6px 18px rgba(13,27,75,.05); height:100%; }
-  .acct-card-head { padding:18px 22px; border-bottom:1px solid var(--up-line,#e6ebf5); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:linear-gradient(135deg,#1a2a6c,#2a4090); color:#fff; }
-  .acct-card-head h5 { margin:0; font-weight:800; font-size:1rem; color:#fff; display:flex; align-items:center; gap:8px; }
+  .acct-card-head { padding:17px 22px; border-bottom:1px solid var(--up-line,#e6ebf5); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:#fff; color:var(--up-ink,#0d1b4b); }
+  .acct-card-head h5 { margin:0; font-weight:800; font-size:1rem; color:var(--up-ink,#0d1b4b); display:flex; align-items:center; gap:9px; }
+  .acct-card-head h5 > i { color:#4266d4; font-size:19px; }
   .acct-card-body { padding:22px; }
 
   .trend-chart { position:relative; height:280px; }
@@ -82,6 +58,7 @@
           foreach ((array)($trend ?? []) as $row) {
             $trendRows[] = ['date' => (string)$row->SDate, 'scans' => (int)($row->Scans ?? 0)];
           }
+          $scans14 = array_sum(array_column($trendRows, 'scans'));
           ?>
 
           <div class="row">
@@ -92,48 +69,51 @@
                   <div class="up-page-sub">Committee Dashboard &mdash; QR scanning activity for <?= htmlspecialchars($schoolAddress, ENT_QUOTES, 'UTF-8'); ?></div>
                   <hr class="up-divider" />
                 </div>
-                <div class="pl-actions">
-                  <a href="<?= base_url('activities'); ?>" class="up-btn up-btn-primary">
-                    <i class="mdi mdi-qrcode-scan"></i> Scan Student QR
-                  </a>
-                </div>
+
               </div>
             </div>
           </div>
 
-          <div class="kpi-grid">
-            <a href="<?= base_url('activities'); ?>" class="text-decoration-none">
-              <div class="card kpi blue">
-                <div class="card-body">
-                  <div>
-                    <h2 class="count mb-1"><span data-plugin="counterup"><?= number_format((int)$todayScans); ?></span></h2>
-                    <p class="label mb-0">Today's Scans</p>
-                  </div>
-                  <div class="icon"><i class="mdi mdi-qrcode-scan"></i></div>
+          <div class="nx-stats">
+            <a class="nx-stat blue" href="<?= base_url('AttendanceLogs'); ?>">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><span data-plugin="counterup"><?= number_format((int)$todayScans); ?></span></div>
+                  <div class="nx-stat-label">Today's Scans</div>
                 </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-qrcode-scan"></i></div>
               </div>
+              <div class="nx-stat-foot">View logs <i class="mdi mdi-arrow-right"></i></div>
             </a>
-            <a href="<?= base_url('activities'); ?>" class="text-decoration-none">
-              <div class="card kpi green">
-                <div class="card-body">
-                  <div>
-                    <h2 class="count mb-1"><span data-plugin="counterup"><?= number_format((int)$openCount); ?></span></h2>
-                    <p class="label mb-0">Open Activities</p>
-                  </div>
-                  <div class="icon"><i class="mdi mdi-calendar-check-outline"></i></div>
+            <a class="nx-stat cyan" href="<?= base_url('AttendanceLogs'); ?>">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><span data-plugin="counterup"><?= number_format((int)$scans14); ?></span></div>
+                  <div class="nx-stat-label">Scans · Last 14 Days</div>
                 </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-chart-line"></i></div>
               </div>
+              <div class="nx-stat-foot">View logs <i class="mdi mdi-arrow-right"></i></div>
             </a>
-            <a href="<?= base_url('AttendanceLogs'); ?>" class="text-decoration-none">
-              <div class="card kpi purple">
-                <div class="card-body">
-                  <div>
-                    <h2 class="count mb-1"><span data-plugin="counterup"><?= number_format((int)$totalCount); ?></span></h2>
-                    <p class="label mb-0">Total Activities</p>
-                  </div>
-                  <div class="icon"><i class="mdi mdi-clipboard-list-outline"></i></div>
+            <a class="nx-stat green" href="<?= base_url('activities'); ?>">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><span data-plugin="counterup"><?= number_format((int)$openCount); ?></span></div>
+                  <div class="nx-stat-label">Open Activities</div>
                 </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-calendar-check-outline"></i></div>
               </div>
+              <div class="nx-stat-foot">Scan now <i class="mdi mdi-arrow-right"></i></div>
+            </a>
+            <a class="nx-stat violet" href="<?= base_url('activities'); ?>">
+              <div class="nx-stat-main">
+                <div>
+                  <div class="nx-stat-num"><span data-plugin="counterup"><?= number_format((int)$totalCount); ?></span></div>
+                  <div class="nx-stat-label">Total Activities</div>
+                </div>
+                <div class="nx-stat-icon"><i class="mdi mdi-clipboard-list-outline"></i></div>
+              </div>
+              <div class="nx-stat-foot">View activities <i class="mdi mdi-arrow-right"></i></div>
             </a>
           </div>
 

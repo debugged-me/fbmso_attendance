@@ -292,11 +292,12 @@ body.enlarged .left-side-menu #sidebar-menu > ul > li > a > i {
 body.enlarged .left-side-menu #sidebar-menu > ul > li:hover > a {
   margin-left: 0;
   margin-right: 0;
-  border-radius: 0;
+  border-radius: 0 12px 12px 0;
   justify-content: flex-start;
   padding-left: 19px;
-  background: var(--nx-side-hover);
+  background: #2a2e4e;
   color: #fff;
+  box-shadow: 8px 0 20px rgba(10, 14, 30, .35);
 }
 
 body.enlarged .left-side-menu #sidebar-menu > ul > li:hover > a > span {
