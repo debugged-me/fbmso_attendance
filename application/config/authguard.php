@@ -139,6 +139,10 @@ $config['authguard_roles'] = array(
     'page/create_stude_accts'     => array('Super Admin', 'Admin', 'IT'),
     'page/transfersignuptoprofile'=> array('Super Admin', 'Admin', 'IT'),
 
+    // Bulk student account creation (Excel template + upload). Same tier as
+    // the other account-management routes; the controller checks too.
+    'studentimport/*'             => array('Super Admin', 'Admin', 'IT'),
+
     // School settings & payment credentials: only top-level admins.
     'page/updatesuperadmin'       => array('Super Admin', 'Admin', 'IT'),
     'page/saveschoolsettings'     => array('Super Admin', 'Admin', 'IT'),

@@ -32,39 +32,62 @@ class Registration extends CI_Controller
         $source = $this->input->get('source', true) ?: $this->input->post('source', true);
         $isAdminFlow = (strtolower((string)$source) === 'admin');
         $registrationRedirect = $isAdminFlow ? 'Registration/index?source=admin' : 'Registration/index';
+
+        // The admin flow is a staff tool, not the public signup page. Without
+        // a staff session the form would still render (registration/* is a
+        // public route), create the account on POST, then bounce the visitor
+        // to the login page — which looked like the whole thing failed.
+        if ($isAdminFlow) {
+            if ($this->session->userdata('logged_in') !== true) {
+                $this->session->set_flashdata('danger', 'Please sign in to register a student.');
+                redirect('login');
+                return;
+            }
+            $adminLevel = strtolower(trim((string)$this->session->userdata('level')));
+            if (in_array($adminLevel, ['student', 'stude applicant'], true)) {
+                show_error('You do not have permission to register students.', 403);
+                return;
+            }
+        }
+        $data['isAdmin'] = $isAdminFlow;
+
         // ----- Handle POST (registration submit) -----
         // Handle any POST submission (button name can be omitted when form submits via Enter key).
         if ($this->input->method(TRUE) === 'POST') {
 
-            // 0) reCAPTCHA verify (robust: use cURL)
-            $recaptchaResponse = (string)$this->input->post('g-recaptcha-response', true);
-            $secretKey         = $this->SettingsModel->getRecaptchaSecretKey();
+            // 0) reCAPTCHA verify (robust: use cURL). Skipped for the admin
+            // flow — it guards the anonymous public signup; staff are already
+            // authenticated, and the widget can fail outright on intranets.
+            if (!$isAdminFlow) {
+                $recaptchaResponse = (string)$this->input->post('g-recaptcha-response', true);
+                $secretKey         = $this->SettingsModel->getRecaptchaSecretKey();
 
-            if ($recaptchaResponse === '') {
-                $this->flashRegistrationError('<div class="alert alert-danger text-center"><b>Please complete the reCAPTCHA.</b></div>');
-                redirect($registrationRedirect);
-                return;
-            }
+                if ($recaptchaResponse === '') {
+                    $this->flashRegistrationError('<div class="alert alert-danger text-center"><b>Please complete the reCAPTCHA.</b></div>');
+                    redirect($registrationRedirect);
+                    return;
+                }
 
-            $ch = curl_init('https://www.google.com/recaptcha/api/siteverify');
-            curl_setopt_array($ch, [
-                CURLOPT_POST           => true,
-                CURLOPT_POSTFIELDS     => http_build_query([
-                    'secret'   => $secretKey,
-                    'response' => $recaptchaResponse,
-                    'remoteip' => $this->input->ip_address(),
-                ]),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT        => 10,
-            ]);
-            $verifyResponse = curl_exec($ch);
-            curl_close($ch);
+                $ch = curl_init('https://www.google.com/recaptcha/api/siteverify');
+                curl_setopt_array($ch, [
+                    CURLOPT_POST           => true,
+                    CURLOPT_POSTFIELDS     => http_build_query([
+                        'secret'   => $secretKey,
+                        'response' => $recaptchaResponse,
+                        'remoteip' => $this->input->ip_address(),
+                    ]),
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT        => 10,
+                ]);
+                $verifyResponse = curl_exec($ch);
+                curl_close($ch);
 
-            $json = @json_decode($verifyResponse, true);
-            if (!is_array($json) || empty($json['success'])) {
-                $this->flashRegistrationError('<div class="alert alert-danger text-center"><b>reCAPTCHA verification failed. Please try again.</b></div>');
-                redirect($registrationRedirect);
-                return;
+                $json = @json_decode($verifyResponse, true);
+                if (!is_array($json) || empty($json['success'])) {
+                    $this->flashRegistrationError('<div class="alert alert-danger text-center"><b>reCAPTCHA verification failed. Please try again.</b></div>');
+                    redirect($registrationRedirect);
+                    return;
+                }
             }
 
             // Year Level: normalize/validate (expects "1st/2nd/3rd/4th")
@@ -182,6 +205,18 @@ class Registration extends CI_Controller
             $passwordRaw = preg_replace('/^\s+|\s+$/u', '', $passwordRaw);
             $confirmPass = preg_replace('/^\s+|\s+$/u', '', $confirmPass);
 
+            // Admin flow: a blank password defaults to the student's birth
+            // date (YYYY-MM-DD) — the same convention as the bulk Excel
+            // import. The confirm box is then not required either.
+            $passwordAuto = false;
+            if ($passwordRaw === '' && $isAdminFlow) {
+                $birth = (string)$studentData['birthDate'];
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $birth)) {
+                    $passwordRaw  = $birth;
+                    $passwordAuto = true;
+                }
+            }
+
             if ($passwordRaw === '') {
                 $this->flashRegistrationError('<div class="alert alert-danger text-center"><b>Please enter a password.</b></div>');
                 redirect($registrationRedirect);
@@ -192,7 +227,7 @@ class Registration extends CI_Controller
                 redirect($registrationRedirect);
                 return;
             }
-            if ($passwordRaw !== $confirmPass) {
+            if (!$passwordAuto && $passwordRaw !== $confirmPass) {
                 $this->flashRegistrationError('<div class="alert alert-danger text-center"><b>Passwords do not match.</b></div>');
                 redirect($registrationRedirect);
                 return;

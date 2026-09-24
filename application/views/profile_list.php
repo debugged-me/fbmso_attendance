@@ -169,6 +169,145 @@
             <div class="up-flash up-flash-info"><?= htmlspecialchars($flashMessage, ENT_QUOTES, 'UTF-8'); ?></div>
           <?php endif; ?>
 
+          <?php
+          $bulk = $this->session->flashdata('bulk_import');
+          if (is_array($bulk) && !empty($bulk['rows'])):
+            $bulkMeta = [
+              'created' => ['label' => 'Created', 'bg' => '#dcfce7', 'fg' => '#15803d', 'accent' => '#22c55e', 'icon' => 'mdi-check-circle'],
+              'skipped' => ['label' => 'Skipped', 'bg' => '#fef9c3', 'fg' => '#a16207', 'accent' => '#eab308', 'icon' => 'mdi-skip-next-circle'],
+              'error'   => ['label' => 'Failed',  'bg' => '#fee2e2', 'fg' => '#b91c1c', 'accent' => '#ef4444', 'icon' => 'mdi-alert-circle'],
+            ];
+          ?>
+            <style>
+              .bulk-filter {
+                border:1px solid #e6ebf5; background:#f8faff; color:#4a5a7a;
+                border-radius:999px; padding:5px 12px; font-size:.76rem; font-weight:700;
+                cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+              }
+              .bulk-filter span { opacity:.65; font-weight:800; }
+              .bulk-filter.is-active { border-color:transparent; color:#fff; }
+              .bulk-filter.is-active[data-status="all"]     { background:#2a4090; }
+              .bulk-filter.is-active[data-status="created"] { background:#16a34a; }
+              .bulk-filter.is-active[data-status="skipped"] { background:#ca8a04; }
+              .bulk-filter.is-active[data-status="error"]   { background:#dc2626; }
+              .bulk-filter.is-active span { opacity:.85; }
+              .bulk-search {
+                border:1px solid #e6ebf5; border-radius:999px; background:#f8faff;
+                padding:5px 12px 5px 30px; font-size:.78rem; width:170px; color:#0d1b4b;
+                outline:none;
+              }
+              .bulk-search:focus { border-color:#c7d2fe; background:#fff; box-shadow:0 0 0 3px rgba(59,95,212,.12); }
+              .bulk-results-body { max-height:420px; overflow:auto; }
+              .bulk-results-table { width:100%; border-collapse:collapse; font-size:.86rem; }
+              .bulk-results-table thead th {
+                position:sticky; top:0; z-index:2; background:#f1f5fd; color:#4a5a7a;
+                font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; font-weight:800;
+                padding:10px 14px; text-align:left; border-bottom:1px solid #e6ebf5;
+              }
+              .bulk-results-table tbody td { padding:9px 14px; border-bottom:1px solid #f1f4fb; vertical-align:top; }
+              .bulk-results-table tbody tr:nth-child(even) { background:#fafbff; }
+              .bulk-results-table tbody tr:hover { background:#f1f5fd; }
+              .bulk-results-table tr[data-status="created"] td:first-child { box-shadow:inset 4px 0 0 #22c55e; }
+              .bulk-results-table tr[data-status="skipped"] td:first-child { box-shadow:inset 4px 0 0 #eab308; }
+              .bulk-results-table tr[data-status="error"]   td:first-child { box-shadow:inset 4px 0 0 #ef4444; }
+              .bulk-row-num { color:#8a97b8; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.8rem; }
+              .bulk-studno { font-family:ui-monospace,Menlo,Consolas,monospace; font-weight:700; color:#0d1b4b; font-size:.86rem; }
+              .bulk-name { color:#6b7a99; font-size:.78rem; margin-top:1px; }
+              .bulk-badge {
+                display:inline-flex; align-items:center; gap:5px; border-radius:999px;
+                padding:4px 11px; font-size:.72rem; font-weight:700; white-space:nowrap;
+              }
+              .bulk-msg { color:#4a5a7a; font-size:.83rem; line-height:1.5; }
+              .bulk-empty-row td { padding:26px 14px !important; text-align:center; color:#8a97b8; font-size:.85rem; }
+            </style>
+            <div class="up-card" style="margin-bottom:18px;" id="bulkResultsCard">
+              <div class="up-card-head">
+                <h4><i class="mdi mdi-cloud-upload-outline"></i> Bulk Upload Results</h4>
+                <div class="pl-actions" style="gap:6px;align-items:center;">
+                  <span style="position:relative;display:inline-flex;align-items:center;">
+                    <i class="mdi mdi-magnify" style="position:absolute;left:10px;color:#8a97b8;font-size:.95rem;"></i>
+                    <input type="text" class="bulk-search" id="bulkSearch" placeholder="Filter student…" autocomplete="off">
+                  </span>
+                  <button type="button" class="bulk-filter is-active" data-status="all">All <span><?= count($bulk['rows']); ?></span></button>
+                  <button type="button" class="bulk-filter" data-status="created">Created <span><?= (int)$bulk['created']; ?></span></button>
+                  <button type="button" class="bulk-filter" data-status="skipped">Skipped <span><?= (int)$bulk['skipped']; ?></span></button>
+                  <button type="button" class="bulk-filter" data-status="error">Failed <span><?= (int)$bulk['failed']; ?></span></button>
+                </div>
+              </div>
+              <div class="bulk-results-body">
+                <table class="bulk-results-table">
+                  <thead>
+                    <tr>
+                      <th style="width:64px;">Row</th>
+                      <th style="width:220px;">Student</th>
+                      <th style="width:110px;">Status</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="bulkResultsBody">
+                    <?php foreach ($bulk['rows'] as $br):
+                      $bm = $bulkMeta[$br['status']] ?? $bulkMeta['error'];
+                      $bStatus = in_array($br['status'], ['created','skipped','error'], true) ? $br['status'] : 'error';
+                    ?>
+                      <tr data-status="<?= $bStatus; ?>">
+                        <td class="bulk-row-num"><?= (int)$br['row']; ?></td>
+                        <td>
+                          <div class="bulk-studno"><?= htmlspecialchars((string)$br['id'], ENT_QUOTES, 'UTF-8'); ?></div>
+                          <?php if (!empty($br['name'])): ?>
+                            <div class="bulk-name"><?= htmlspecialchars((string)$br['name'], ENT_QUOTES, 'UTF-8'); ?></div>
+                          <?php endif; ?>
+                        </td>
+                        <td>
+                          <span class="bulk-badge" style="background:<?= $bm['bg']; ?>;color:<?= $bm['fg']; ?>;">
+                            <i class="mdi <?= $bm['icon']; ?>"></i> <?= $bm['label']; ?>
+                          </span>
+                        </td>
+                        <td class="bulk-msg"><?= htmlspecialchars((string)$br['message'], ENT_QUOTES, 'UTF-8'); ?></td>
+                      </tr>
+                    <?php endforeach; ?>
+                    <tr class="bulk-empty-row" style="display:none;"><td colspan="4">No rows in this group.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <?php if (!empty($bulk['truncated'])): ?>
+                <div style="padding:10px 18px;font-size:.8rem;color:#6b7a99;border-top:1px solid #f1f4fb;">
+                  <i class="mdi mdi-information-outline"></i> …and <?= (int)$bulk['truncated']; ?> more row(s) not shown.
+                </div>
+              <?php endif; ?>
+            </div>
+            <script>
+              (function () {
+                var card = document.getElementById('bulkResultsCard');
+                if (!card) return;
+                var chips = card.querySelectorAll('.bulk-filter');
+                var search = document.getElementById('bulkSearch');
+                var rows = card.querySelectorAll('#bulkResultsBody tr:not(.bulk-empty-row)');
+                var emptyRow = card.querySelector('.bulk-empty-row');
+                var status = 'all';
+                function apply() {
+                  var q = (search.value || '').toLowerCase();
+                  var visible = 0;
+                  rows.forEach(function (tr) {
+                    var okStatus = status === 'all' || tr.getAttribute('data-status') === status;
+                    var okText = q === '' || tr.textContent.toLowerCase().indexOf(q) !== -1;
+                    tr.style.display = (okStatus && okText) ? '' : 'none';
+                    if (okStatus && okText) visible++;
+                  });
+                  emptyRow.style.display = visible === 0 ? '' : 'none';
+                }
+                chips.forEach(function (chip) {
+                  chip.addEventListener('click', function () {
+                    chips.forEach(function (c) { c.classList.remove('is-active'); });
+                    chip.classList.add('is-active');
+                    status = chip.getAttribute('data-status');
+                    apply();
+                  });
+                });
+                if (search) search.addEventListener('input', apply);
+              })();
+            </script>
+          <?php endif; ?>
+
           <!-- Title source for the top navbar (visually hidden; read by mobile-shell.js) -->
           <div class="page-title-box">
             <h4 class="up-page-title">Registered Students</h4>
@@ -223,12 +362,29 @@
                     <a href="<?= site_url('Registration/index') . '?source=admin'; ?>" class="up-btn up-btn-primary">
                       <i class="mdi mdi-account-plus"></i> Add Student
                     </a>
-                    <a href="<?= base_url('Page/duplicateStudentsByName'); ?>" class="up-btn up-btn-ghost" style="background:#fef3c7;color:#92400e;border-color:#fcd34d;">
-                      <i class="mdi mdi-account-multiple"></i> Duplicate Students
-                    </a>
-                    <button type="button" class="up-btn up-btn-ghost" onclick="window.print()">
-                      <i class="mdi mdi-printer"></i> Print
-                    </button>
+                    <div class="dropdown">
+                      <button type="button" class="up-btn up-btn-ghost dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="background:#eef2ff;color:#3730a3;border-color:#c7d2fe;">
+                        <i class="mdi mdi-dots-horizontal"></i> Tools
+                      </button>
+                      <div class="dropdown-menu dropdown-menu-right" style="min-width:230px;border:none;border-radius:14px;box-shadow:0 14px 40px rgba(13,27,75,.2);padding:8px;">
+                        <a class="dropdown-item" href="<?= site_url('StudentImport/template'); ?>" style="border-radius:9px;padding:9px 12px;font-size:.86rem;font-weight:600;color:#0d1b4b;">
+                          <i class="mdi mdi-file-excel" style="color:#15803d;font-size:1.05rem;margin-right:8px;"></i> Download Template
+                        </a>
+                        <a class="dropdown-item" href="<?= site_url('StudentImport/export'); ?>" style="border-radius:9px;padding:9px 12px;font-size:.86rem;font-weight:600;color:#0d1b4b;">
+                          <i class="mdi mdi-export" style="color:#0369a1;font-size:1.05rem;margin-right:8px;"></i> Export to Excel
+                        </a>
+                        <a class="dropdown-item" href="javascript:void(0)" data-toggle="modal" data-target="#bulkUploadModal" style="border-radius:9px;padding:9px 12px;font-size:.86rem;font-weight:600;color:#0d1b4b;">
+                          <i class="mdi mdi-cloud-upload-outline" style="color:#3730a3;font-size:1.05rem;margin-right:8px;"></i> Bulk Upload
+                        </a>
+                        <div class="dropdown-divider" style="margin:6px 4px;"></div>
+                        <a class="dropdown-item" href="<?= base_url('Page/duplicateStudentsByName'); ?>" style="border-radius:9px;padding:9px 12px;font-size:.86rem;font-weight:600;color:#0d1b4b;">
+                          <i class="mdi mdi-account-multiple" style="color:#92400e;font-size:1.05rem;margin-right:8px;"></i> Duplicate Students
+                        </a>
+                        <a class="dropdown-item" href="javascript:void(0)" onclick="window.print()" style="border-radius:9px;padding:9px 12px;font-size:.86rem;font-weight:600;color:#0d1b4b;">
+                          <i class="mdi mdi-printer" style="color:#4a5a7a;font-size:1.05rem;margin-right:8px;"></i> Print
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div class="up-card-body" style="padding:0 !important;">
@@ -279,6 +435,49 @@
           </div>
 
           <div style="height:40px;"></div>
+
+          <!-- Bulk Upload modal -->
+          <div class="modal fade" id="bulkUploadModal" tabindex="-1" role="dialog" aria-labelledby="bulkUploadModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+              <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(13,27,75,.25);">
+                <form method="post" action="<?= site_url('StudentImport/upload'); ?>" enctype="multipart/form-data">
+                  <div class="modal-header" style="background:linear-gradient(135deg,#1a2a6c,#2a4090,#3b5fd4);color:#fff;border:none;">
+                    <h5 class="modal-title" id="bulkUploadModalLabel" style="color:#fff;font-weight:700;">
+                      <i class="mdi mdi-cloud-upload-outline"></i> Bulk Upload Students
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color:#fff;opacity:.9;">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body" style="padding:24px;">
+                    <ol style="padding-left:18px;margin:0 0 16px;font-size:.88rem;color:#4a5a7a;line-height:1.8;">
+                      <li>Download the
+                        <a href="<?= site_url('StudentImport/template'); ?>" style="font-weight:700;color:#2a4090;">Excel template <i class="mdi mdi-file-excel"></i></a>
+                        and fill in one student per row starting at row 2.
+                      </li>
+                      <li>Save the file — keep it as <strong>.xlsx</strong>, or use Save As → <strong>.csv</strong>.</li>
+                      <li>Upload it below. Each valid row creates the student account, enrolls the student in the current term, and emails their login credentials.</li>
+                    </ol>
+                    <div class="form-group" style="margin-bottom:10px;">
+                      <label style="font-size:.8rem;font-weight:700;color:#0d1b4b;">Template file (.xlsx or .csv)</label>
+                      <input type="file" name="file" accept=".xlsx,.csv" required
+                        style="display:block;width:100%;padding:10px;border:1px dashed #c7d2fe;border-radius:10px;background:#f8faff;font-size:.86rem;">
+                    </div>
+                    <div style="font-size:.76rem;color:#6b7a99;">
+                      <i class="mdi mdi-information-outline"></i>
+                      Rows with an existing Student Number or Email are skipped. Validation errors are listed per row after the upload.
+                    </div>
+                  </div>
+                  <div class="modal-footer" style="border:none;padding:16px 24px 22px;">
+                    <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="up-btn up-btn-primary">
+                      <i class="mdi mdi-cloud-upload-outline"></i> Upload &amp; Import
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
 
         </div>
       </div>

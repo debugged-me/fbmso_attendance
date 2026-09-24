@@ -476,6 +476,11 @@
     var form = document.querySelector('form.parsley-examples') || document.querySelector('form');
     if (form) {
       form.addEventListener('submit', function(e) {
+        // Admin flow renders no captcha widget — nothing to verify.
+        if (!form.querySelector('.g-recaptcha')) {
+          return;
+        }
+
         var message = getText('recaptchaRequiredMessage', 'Please confirm you are not a robot.');
 
         if (typeof window.grecaptcha === 'undefined' || typeof window.grecaptcha.getResponse !== 'function') {
