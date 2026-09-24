@@ -343,17 +343,24 @@ class Securityadmin extends CI_Controller
         if ($deleteAll) {
             $count = $this->db->count_all('security_audit_logs');
             $this->db->empty_table('security_audit_logs');
-            // Re-seed the hash chain anchor so future events still chain
-            $this->db->insert('security_audit_anchors', [
-                'anchor_hash' => hash('sha256', 'FBMSO-RESET-' . time()),
-                'created_at'  => date('Y-m-d H:i:s'),
-            ]);
-            $this->session->set_flashdata('success', 'Deleted ALL ' . $count . ' security events. Hash chain re-anchored.');
+            // The purge itself becomes the first record of the new chain, so
+            // the next daily report can explain the reset instead of only
+            // alarming about it.
+            $this->securityaudit->event('AUDIT_LOG_PURGED', array(
+                'module'      => 'security',
+                'description' => 'Audit log emptied by ' . (string)$this->session->userdata('username')
+                               . ' (' . $count . ' records deleted)',
+            ));
+            $this->session->set_flashdata('success', 'Deleted ALL ' . $count . ' security events. The purge is recorded as the first entry of the new log.');
         } else {
             if ($days < 1) $days = 30;
             $cutoff = date('Y-m-d H:i:s', time() - ($days * 86400));
             $count = $this->db->where('event_time <', $cutoff)->count_all_results('security_audit_logs');
             $this->db->where('event_time <', $cutoff)->delete('security_audit_logs');
+            $this->securityaudit->event('AUDIT_LOG_PURGED', array(
+                'module'      => 'security',
+                'description' => 'Purged ' . $count . ' audit records older than ' . $days . ' days',
+            ));
             $this->session->set_flashdata('success', 'Deleted ' . $count . ' security events older than ' . $days . ' days.');
         }
         redirect('Securityadmin');

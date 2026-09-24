@@ -110,8 +110,16 @@ class Securityaudit
     /**
      * Verify the hash chain.
      *
+     * The trail is really a chain that may fork: two events written in the
+     * same instant can legitimately share a parent (see the write lock in
+     * write()). A fork is only provably innocent because prev_hash feeds the
+     * HMAC -- an attacker cannot retarget it without the pepper. So a row
+     * passes when its prev_hash points at ANY verified earlier row, and the
+     * table fails only when a row points at a hash that exists nowhere
+     * (a deletion) or when its own content no longer hashes (a modification).
+     *
      * @param int $fromId start at this id (0 = beginning)
-     * @return array ['ok' => bool, 'checked' => int, 'broken_at' => ?int]
+     * @return array ['ok' => bool, 'checked' => int, 'broken_at' => ?int, 'forks' => int]
      */
     public function verify($fromId = 0)
     {
@@ -121,25 +129,36 @@ class Securityaudit
             ->get('security_audit_logs')
             ->result_array();
 
-        $prev = null;
+        $seen    = array(); // record_hash of every verified row
+        $prev    = null;
         $checked = 0;
+        $forks   = 0;
 
         foreach ($rows as $row) {
             // The first row examined inherits whatever chain preceded it.
-            if ($prev !== null && (string)$row['prev_hash'] !== (string)$prev) {
-                return array('ok' => false, 'checked' => $checked, 'broken_at' => (int)$row['id']);
+            if ($prev !== null) {
+                $ph = (string)$row['prev_hash'];
+                if (!isset($seen[$ph])) {
+                    // Points at a row that is not there -- deletion, or the
+                    // link itself was rewritten.
+                    return array('ok' => false, 'checked' => $checked, 'broken_at' => (int)$row['id'], 'forks' => $forks);
+                }
+                if ($ph !== (string)$prev) {
+                    $forks++;
+                }
             }
 
             $expected = $this->hashRow($row, (string)$row['prev_hash']);
             if (!hash_equals((string)$row['record_hash'], $expected)) {
-                return array('ok' => false, 'checked' => $checked, 'broken_at' => (int)$row['id']);
+                return array('ok' => false, 'checked' => $checked, 'broken_at' => (int)$row['id'], 'forks' => $forks);
             }
 
+            $seen[(string)$row['record_hash']] = true;
             $prev = $row['record_hash'];
             $checked++;
         }
 
-        return array('ok' => true, 'checked' => $checked, 'broken_at' => null);
+        return array('ok' => true, 'checked' => $checked, 'broken_at' => null, 'forks' => $forks);
     }
 
     // ------------------------------------------------------------------
@@ -206,11 +225,26 @@ class Securityaudit
             'extra'       => isset($opts['extra']) ? json_encode($opts['extra'], JSON_UNESCAPED_UNICODE) : null,
         );
 
-        $prev = $this->lastHash();
-        $row['prev_hash']   = $prev;
-        $row['record_hash'] = $this->hashRow($row, (string)$prev);
+        // Serialize writers. Without a lock, two events landing in the same
+        // instant both read the same last hash and chain to the same parent;
+        // verify() then reads that fork as a mid-table tamper. A named lock
+        // costs a millisecond and removes the false positive entirely.
+        $lockRow = $this->CI->db->query("SELECT GET_LOCK('fbmso_audit_chain', 5) AS l")->row();
+        $locked  = $lockRow && (int)$lockRow->l === 1;
 
-        return $this->CI->db->insert('security_audit_logs', $row);
+        try {
+            $prev = $this->lastHash();
+            $row['prev_hash']   = $prev;
+            $row['record_hash'] = $this->hashRow($row, (string)$prev);
+
+            $inserted = $this->CI->db->insert('security_audit_logs', $row);
+        } finally {
+            if ($locked) {
+                $this->CI->db->query("SELECT RELEASE_LOCK('fbmso_audit_chain')");
+            }
+        }
+
+        return $inserted;
     }
 
     /** Hash of the meaningful payload, chained to the previous record.
