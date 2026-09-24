@@ -296,8 +296,8 @@ class Securitycheck extends CI_Controller
         $alerts = array();
 
         if (!$chain['ok']) {
-            $alerts[] = 'Hash chain broken at record id ' . $chain['broken_at']
-                      . ' - that record, or an earlier one it was linked to, was modified or removed.';
+            $alerts[] = 'Record #' . $chain['broken_at']
+                      . ' no longer matches its security seal - it, or a record it was linked to, was changed or removed.';
         }
 
         if (!$prev) {
@@ -305,14 +305,14 @@ class Securitycheck extends CI_Controller
         }
 
         if ($state['total'] < (int)$prev['total_records']) {
-            $alerts[] = 'Record count fell from ' . (int)$prev['total_records']
+            $alerts[] = 'The record count dropped from ' . (int)$prev['total_records']
                       . ' to ' . $state['total'] . ' - records were deleted.';
         }
 
         if ($prev['last_record_id'] !== null && $state['last_id'] !== null
             && $state['last_id'] < (int)$prev['last_record_id']) {
-            $alerts[] = 'Last record id went backwards, from ' . (int)$prev['last_record_id']
-                      . ' to ' . $state['last_id'] . ' - the end of the trail was truncated.';
+            $alerts[] = 'The last record number went backwards, from #' . (int)$prev['last_record_id']
+                      . ' to #' . $state['last_id'] . ' - the end of the log was cut.';
         }
 
         // The record the last checkpoint pointed at must still be there,
@@ -323,11 +323,11 @@ class Securitycheck extends CI_Controller
                 ->limit(1)->get('security_audit_logs')->row();
 
             if (!$row) {
-                $alerts[] = 'Previously checkpointed record id ' . (int)$prev['last_record_id']
-                          . ' no longer exists.';
+                $alerts[] = 'Record #' . (int)$prev['last_record_id']
+                          . ', verified at the last check, no longer exists.';
             } elseif ((string)$row->record_hash !== (string)$prev['last_record_hash']) {
-                $alerts[] = 'Previously checkpointed record id ' . (int)$prev['last_record_id']
-                          . ' now has a different hash - it was rewritten.';
+                $alerts[] = 'Record #' . (int)$prev['last_record_id']
+                          . ', verified at the last check, has changed since.';
             }
         }
 
@@ -566,64 +566,54 @@ class Securitycheck extends CI_Controller
 
             $h .= '<div style="background:#fef2f2;border-left:4px solid #b42318;padding:14px 18px;margin:0 0 20px 0;border-radius:0 4px 4px 0">';
             if ($shrank) {
-                $h .= '<strong style="color:#b42318">The security log is smaller than it was.</strong> '
-                    . 'The application never deletes audit records on its own -- the only built-in way '
-                    . 'records leave the log is the purge tool on the Security admin page (Super Admin only).';
+                $h .= '<strong style="color:#b42318">Some records are missing from the security log.</strong> '
+                    . 'It had more entries at the last check than it does now, and the system never removes them by itself.';
             } else {
-                $h .= '<strong style="color:#b42318">A record inside the security log was changed or removed.</strong> '
-                    . 'Growth is normal -- what matters is that the break is in the middle of the trail, '
-                    . 'not at the end. Nothing was wiped or truncated, but one record no longer matches '
-                    . 'the chain of hashes the others still agree on.';
+                $h .= '<strong style="color:#b42318">A record in the security log was changed or deleted.</strong> '
+                    . 'New entries kept being added normally, but one record no longer matches its security seal. '
+                    . 'That does not happen on its own.';
             }
             $h .= '</div>';
 
             if ($prev) {
+                $steps = array(
+                    'Last check, ' . $fmtDate($prev['checked_at']) . ':  '
+                        . (int)$prev['total_records'] . ' records, ending at #' . (int)$prev['last_record_id'],
+                );
                 if ($shrank) {
-                    $h .= $flow(array(
-                        'At ' . $fmtDate($prev['checked_at']) . '  the log held '
-                            . (int)$prev['total_records'] . ' records, ending at #' . (int)$prev['last_record_id'],
-                        'Between then and now, records went missing',
-                        'At ' . $fmtDate(date('Y-m-d H:i:s')) . '  it holds ' . $state['total']
-                            . ' records, ending at #' . ($state['last_id'] === null ? '-' : $state['last_id']),
-                    ));
+                    $steps[] = 'Records went missing in between';
+                } elseif (!$chain['ok']) {
+                    $steps[] = 'Record #' . (int)$chain['broken_at'] . ' no longer matches its security seal';
                 } else {
-                    $steps = array(
-                        'At ' . $fmtDate($prev['checked_at']) . '  the log held '
-                            . (int)$prev['total_records'] . ' records, ending at #' . (int)$prev['last_record_id'],
-                    );
-                    $steps[] = !$chain['ok']
-                        ? 'The hash chain no longer matches at record #' . (int)$chain['broken_at']
-                          . ' -- that record, or an earlier one it was linked to, was edited or deleted'
-                        : 'A record the last checkpoint vouched for has since changed or disappeared';
-                    $steps[] = 'Logging carried on normally afterwards -- ' . $state['total']
-                        . ' records now, ending at #'
-                        . ($state['last_id'] === null ? '-' : $state['last_id']);
-                    $h .= $flow($steps);
+                    $steps[] = 'A record verified at the last check has changed or disappeared since';
                 }
+                $steps[] = 'Now:  ' . $state['total'] . ' records, ending at #'
+                    . ($state['last_id'] === null ? '-' : $state['last_id']);
+                $h .= $flow($steps);
             }
 
-            $h .= '<p style="font-size:13px;color:#444;margin:12px 0 6px"><strong>Specifically:</strong></p>'
+            $h .= '<p style="font-size:13px;color:#444;margin:12px 0 6px"><strong>What we found:</strong></p>'
                 . '<ul style="margin:6px 0 14px 20px;padding:0;font-size:13px;color:#444">';
             foreach ($alerts as $a) { $h .= '<li style="margin-bottom:4px">' . $e($a) . '</li>'; }
             $h .= '</ul>';
 
             $h .= '<div style="background:#fffbeb;border-left:4px solid #d4a017;padding:14px 18px;margin:14px 0;border-radius:0 4px 4px 0;font-size:13px;color:#444">'
-                . '<strong style="color:#92400e">Before assuming the worst.</strong> The innocent explanations, '
-                . 'roughly in order of likelihood: a Super Admin used the purge tool on the Security page; '
-                . 'a database backup was restored or a copy re-imported; test data was cleared; or somebody '
-                . 'edited a row directly in the database. Ask around first. '
-                . 'On the server, <span style="' . $mono . ';font-size:11px">SELECT AUTO_INCREMENT FROM information_schema.TABLES '
-                . 'WHERE TABLE_NAME=\'security_audit_logs\'</span> helps tell them apart: a low number means the '
-                . 'table was emptied and started over; a number still above the old maximum means individual '
-                . 'rows were touched, which is harder to explain innocently.</div>';
+                . '<strong style="color:#92400e">What to do.</strong> First check whether someone purged old '
+                . 'records on the Security admin page, restored a backup, or cleared test data -- those are '
+                . 'the harmless explanations. If none of them happened, treat this as urgent and forward '
+                . 'this email to your system provider or IT support.'
+                . '<div style="margin-top:8px;font-size:11px;color:#8a6d1a">For IT: <span style="' . $mono . '">'
+                . 'SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_NAME=\'security_audit_logs\'</span>'
+                . ' -- a low number means the table was emptied and restarted; above the old maximum means '
+                . 'individual rows were touched.</div></div>';
         } else {
             $h .= '<div style="background:#f0fdf4;border-left:4px solid #1a7f37;padding:14px 18px;margin:0 0 20px 0;border-radius:0 4px 4px 0">';
             $h .= '<strong style="color:#1a7f37">The audit trail is intact.</strong> Every record still matches its hash, '
                 . 'and the log has only grown since the last check.';
             if (!empty($chain['forks'])) {
                 $h .= '<br><span style="font-size:12px;color:#3f6212">Includes ' . (int)$chain['forks']
-                    . ' same-instant write collision' . ($chain['forks'] === 1 ? '' : 's')
-                    . ' -- two records sharing a parent. Harmless, and no longer possible.</span>';
+                    . ' record' . ($chain['forks'] === 1 ? '' : 's')
+                    . ' logged in the same instant that share a link in the chain -- harmless.</span>';
             }
             $h .= '</div>';
         }
@@ -676,17 +666,6 @@ class Securitycheck extends CI_Controller
             if ($n('PASSWORD_RESET'))   $extra[] = $n('PASSWORD_RESET') . ' password reset' . ($n('PASSWORD_RESET') === 1 ? '' : 's');
             if ($n('RATE_LIMIT_TRIGGERED')) $extra[] = $n('RATE_LIMIT_TRIGGERED') . ' sign-in' . ($n('RATE_LIMIT_TRIGGERED') === 1 ? '' : 's') . ' blocked for too many attempts';
 
-            // Anything else that happened still deserves a mention -- an
-            // audit-log purge is exactly the sort of event the reader is
-            // scanning for, and listing only the known types would swallow it.
-            $known = array('LOGIN_SUCCESS', 'LOGIN_FAILED', 'LOGIN_NEW_DEVICE',
-                           'PASSWORD_CHANGED', 'PASSWORD_RESET', 'RATE_LIMIT_TRIGGERED');
-            foreach ($c as $type => $count) {
-                if (in_array($type, $known, true)) continue;
-                $extra[] = $count . ' ' . strtolower(str_replace('_', ' ', $type))
-                         . ' event' . ($count === 1 ? '' : 's');
-            }
-
             $first = $parts
                 ? 'There ' . ($firstCount === 1 ? 'was ' : 'were ') . $join($parts) . '.'
                 : '';
@@ -695,7 +674,24 @@ class Securitycheck extends CI_Controller
                 $verb = (count($extra) === 1 && substr($extra[0], 0, 2) === '1 ') ? 'was ' : 'were ';
                 $second = ($first === '' ? 'There ' . $verb : 'Also ') . $join($extra) . '.';
             }
-            $h .= '<p>' . $first . ($second !== '' ? ' ' . $second : '') . '</p>';
+            if ($first !== '' || $second !== '') {
+                $h .= '<p>' . trim($first . ' ' . $second) . '</p>';
+            }
+
+            // Everything else still deserves a mention -- an audit-log purge
+            // is exactly what the reader is scanning for -- but it gets one
+            // compact line, not prose.
+            $known = array('LOGIN_SUCCESS', 'LOGIN_FAILED', 'LOGIN_NEW_DEVICE',
+                           'PASSWORD_CHANGED', 'PASSWORD_RESET', 'RATE_LIMIT_TRIGGERED');
+            $other = array();
+            foreach ($c as $type => $count) {
+                if (in_array($type, $known, true)) continue;
+                $other[] = strtolower(str_replace('_', ' ', $type)) . ' x' . $count;
+            }
+            if ($other) {
+                $h .= '<p style="font-size:12px;color:#888;margin-top:-4px">Other activity: '
+                    . $e(implode(' · ', $other)) . '.</p>';
+            }
         }
 
         // ---- suspicious IPs, explained ------------------------------------
@@ -741,11 +737,10 @@ class Securitycheck extends CI_Controller
                     }
 
                     $h .= '<div style="font-size:13px;color:#4b5563;line-height:1.6">'
-                        . 'Tried <strong>' . $e($r['accounts']) . ' different accounts</strong>. '
-                        . 'One address trying several accounts is what credential spraying looks like.<br>'
-                        . '<span style="color:#6b7280">A shared campus or household connection can look '
-                        . 'identical, so check whether those accounts have anything to do with each other '
-                        . 'before treating it as an attack.</span>';
+                        . 'Tried <strong>' . $e($r['accounts']) . ' different accounts</strong> -- '
+                        . 'this pattern can be password guessing. '
+                        . '<span style="color:#6b7280">A shared campus connection can look the same, '
+                        . 'so check whether the accounts are related before treating it as an attack.</span>';
                     if ($accountListHtml !== '') {
                         $h .= '<div style="margin-top:8px;padding:8px 12px;background:#fff;border:1px solid #e0e0e0;border-radius:4px">'
                             . '<div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:4px;font-weight:600">Targeted accounts</div>'
@@ -755,7 +750,7 @@ class Securitycheck extends CI_Controller
                     $h .= '</div>';
                 } else {
                     $h .= '<div style="font-size:13px;color:#4b5563;line-height:1.6">'
-                        . 'Tried one account. Most likely somebody who has forgotten their password.'
+                        . 'Tried one account -- most likely a forgotten password.'
                         . '</div>';
                 }
                 $h .= '</div>';
@@ -866,9 +861,9 @@ class Securitycheck extends CI_Controller
         // ---- checkpoint, with the reason it matters -----------------------
         $h .= '<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;border-bottom:1px solid #ddd;'
             . 'padding-bottom:6px;margin:28px 0 12px;font-family:Georgia,serif">Keep this email</h3>';
-        $h .= '<p style="font-size:13px;color:#444">These numbers are the only copy of the audit trail\'s size '
-            . 'that lives outside the server. If a future report shows <em>fewer</em> records or a <em>lower</em> '
-            . 'last id than this one, the log was cut &mdash; no matter what the server claims.</p>';
+        $h .= '<p style="font-size:13px;color:#444">Keep this email -- these numbers are the only proof of '
+            . 'the log\'s size stored outside the server. If a future report ever shows <em>fewer</em> '
+            . 'records or a <em>lower</em> last id, the log was cut.</p>';
         $h .= '<div style="' . $mono . ';font-size:12px;background:#f5f5f5;border:1px solid #ddd;'
             . 'padding:14px 18px;border-radius:4px;word-break:break-all;margin:12px 0">'
             . '<div style="margin-bottom:4px"><span style="color:#666;display:inline-block;width:80px">records</span>'
