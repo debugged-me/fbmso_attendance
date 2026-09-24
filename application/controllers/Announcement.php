@@ -23,11 +23,10 @@ class Announcement extends CI_Controller {
 {
     $title       = trim($this->input->post('title', TRUE));
     $message     = trim($this->input->post('message', TRUE));
-    $audience    = $this->input->post('audience', TRUE);
     $date_expire = $this->input->post('date_expire', TRUE);
 
-    if ($title === '' || $message === '' || $audience === '') {
-        $this->session->set_flashdata('error', 'Please complete Title, Message, and Audience.');
+    if ($title === '' || $message === '') {
+        $this->session->set_flashdata('error', 'Please complete Title and Message.');
         return redirect('Announcement');
     }
 
@@ -58,7 +57,7 @@ class Announcement extends CI_Controller {
     'image'        => $filename, 
     'author'       => $this->session->userdata('username'),
     'datePosted'   => date('Y-m-d'),
-    'audience'     => $audience,
+    'audience'     => 'Students',
     'date_expire'  => $expire_val
 ];
 
@@ -117,7 +116,9 @@ private function audienceForCurrentUser() {
 
 public function active() {
     $aud  = $this->audienceForCurrentUser();
-    $list = $this->AnnouncementModel->getActiveAnnouncementsForMany(['All', $aud]);
+    $list = ($aud === 'Students')
+        ? $this->AnnouncementModel->getActiveAnnouncementsForMany(['All', 'Students'])
+        : $this->AnnouncementModel->getAllActiveAnnouncements();
 
     $out = [];
     foreach (array_slice($list, 0, 10) as $a) {
@@ -137,7 +138,9 @@ public function active() {
 
 public function activeCount() {
     $aud = $this->audienceForCurrentUser();
-    $cnt = $this->AnnouncementModel->countActiveAnnouncementsForMany(['All', $aud]);
+    $cnt = ($aud === 'Students')
+        ? $this->AnnouncementModel->countActiveAnnouncementsForMany(['All', 'Students'])
+        : $this->AnnouncementModel->countAllActiveAnnouncements();
 
     $this->output->set_content_type('application/json')->set_output(json_encode(['count' => (int)$cnt]));
 }

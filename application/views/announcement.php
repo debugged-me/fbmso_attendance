@@ -40,12 +40,36 @@
     .ann-meta { font-size:.78rem; }
     .ann-actions { display:flex; gap:8px; }
     .ann-actions a { margin-left:0; flex:1; text-align:center; font-size:.8rem; padding:8px 10px; }
-    /* Modal form rows stack */
-    .modal-body .form-group.row { flex-direction:column; }
-    .modal-body .form-group.row > label { width:100%; margin-bottom:4px; }
-    .modal-body .form-group.row > .col-md-8,
-    .modal-body .form-group.row > .col-md-4 { max-width:100%; width:100%; }
   }
+
+  /* Announcement modals — gradient head, stacked fields, styled picker */
+  .ann-modal .modal-content{border:0;border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(13,27,75,.28)}
+  .ann-modal .modal-header{background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border-bottom:0;padding:18px 22px;align-items:center}
+  .ann-modal .modal-title{font-weight:700;font-size:1.02rem;display:flex;align-items:center;gap:9px;color:#fff;margin:0}
+  .ann-modal .modal-title .mdi{font-size:1.25rem;opacity:.92}
+  .ann-modal .modal-header .close{color:#fff;opacity:.75;text-shadow:none;font-size:1.7rem;font-weight:300;padding:0;margin:0 0 0 auto;line-height:1}
+  .ann-modal .modal-header .close:hover{opacity:1}
+  .ann-modal .modal-body{padding:20px 24px 6px}
+  .ann-modal .modal-body .form-group{margin-bottom:16px}
+  .ann-modal .modal-body label{font-weight:600;color:#334155;font-size:.85rem;display:flex;align-items:center;gap:6px;margin-bottom:7px}
+  .ann-modal .modal-body label .mdi{color:#4266d4;font-size:1rem}
+  .ann-modal .ann-opt{color:#94a3b8;font-weight:400}
+  .ann-modal .form-control{border:1.5px solid #dbe4f3;border-radius:10px;padding:10px 14px;height:auto;font-size:.92rem;color:#1e293b;transition:border-color .15s,box-shadow .15s}
+  .ann-modal .form-control:focus{border-color:#4266d4;box-shadow:0 0 0 3px rgba(66,102,212,.14)}
+  .ann-modal textarea.form-control{min-height:110px;resize:vertical}
+  .ann-audience-note{display:flex;align-items:center;gap:9px;background:#eef4ff;border:1px solid #d7e3fb;color:#2a4090;font-size:.85rem;border-radius:10px;padding:10px 14px;margin-bottom:16px}
+  .ann-audience-note .mdi{font-size:1.15rem}
+  .ann-modal .custom-file{height:auto}
+  .ann-modal .custom-file-input{height:auto}
+  .ann-modal .custom-file-label{position:relative;border:1.5px dashed #c3cfe8;border-radius:10px;padding:10px 14px;height:auto;font-size:.9rem;color:#64748b;background:#f8faff;cursor:pointer;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:90px}
+  .ann-modal .custom-file-label::after{content:"Browse";position:absolute;top:50%;bottom:auto;right:7px;transform:translateY(-50%);display:flex;align-items:center;background:#eef2fb;color:#2a4090;border:0;border-radius:7px;font-weight:700;height:auto;line-height:1.4;padding:7px 14px}
+  .ann-modal .custom-file-input:focus~.custom-file-label{border-color:#4266d4;box-shadow:0 0 0 3px rgba(66,102,212,.14)}
+  .ann-cur-img{display:flex;gap:12px;align-items:center;background:#f8fafc;border:1px solid #e6ebf5;border-radius:10px;padding:10px 12px;margin-bottom:10px}
+  .ann-cur-img img{width:96px;height:64px;object-fit:cover;border-radius:8px;display:block}
+  .ann-cur-img-name{font-size:.8rem;color:#64748b;word-break:break-all;margin-bottom:6px}
+  .ann-modal .modal-footer{border-top:0;background:#f8fafc;padding:14px 24px}
+  .ann-modal.fade .modal-dialog{transform:translateY(-12px) scale(.98);transition:transform .2s ease-out}
+  .ann-modal.show .modal-dialog{transform:none}
 </style>
 
 <body>
@@ -95,60 +119,48 @@
         </div>
 
         <!-- Create Modal -->
-        <div class="modal fade" id="announcementModal" tabindex="-1" role="dialog" aria-labelledby="announcementModalLabel" aria-hidden="true">
-          <div class="modal-dialog modal-lg" role="document">
+        <div class="modal fade ann-modal" id="announcementModal" tabindex="-1" role="dialog" aria-labelledby="announcementModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
             <div class="modal-content">
               <div class="modal-header">
-                <h4 class="modal-title" id="announcementModalLabel"><b>Announcement Posting</b></h4>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title" id="announcementModalLabel"><i class="mdi mdi-bullhorn-outline"></i> New Announcement</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button>
               </div>
-              <form class="form-horizontal" action="<?= base_url('Announcement/uploadAnnouncement'); ?>" enctype="multipart/form-data" method="POST">
+              <form action="<?= base_url('Announcement/uploadAnnouncement'); ?>" enctype="multipart/form-data" method="POST">
                 <div class="modal-body">
-                  <div class="form-group row">
-                    <label class="col-md-4 col-form-label">Title</label>
-                    <div class="col-md-8">
-                      <input type="text" class="form-control" name="title" required>
-                    </div>
+                  <div class="ann-audience-note">
+                    <i class="mdi mdi-account-group-outline"></i>
+                    <span>This will be posted to <strong>all students</strong>.</span>
                   </div>
 
-                  <div class="form-group row">
-                    <label class="col-md-4 col-form-label">Text / Message</label>
-                    <div class="col-md-8">
-                      <textarea name="message" class="form-control" rows="4" placeholder="Write the announcement details here…" required></textarea>
-                    </div>
+                  <div class="form-group">
+                    <label for="ann_title"><i class="mdi mdi-format-title"></i> Title</label>
+                    <input type="text" class="form-control" name="title" id="ann_title" placeholder="e.g. No classes on Monday" required>
                   </div>
 
-                  <div class="form-group row">
-                    <label class="col-md-4 col-form-label">Attach Image (optional)</label>
-                    <div class="col-md-8">
-                      <input type="file" class="form-control" name="nonoy" accept=".jpg,.jpeg,.png,.gif">
-                      <p class="text-muted small mt-2 mb-0">Optional. Recommended max size: width=900px, height=600px. Allowed: jpg, png, gif.</p>
-                    </div>
+                  <div class="form-group">
+                    <label for="ann_message"><i class="mdi mdi-text-long"></i> Message</label>
+                    <textarea name="message" id="ann_message" class="form-control" rows="4" placeholder="Write the announcement details here…" required></textarea>
                   </div>
 
-                  <div class="form-group row">
-                    <label class="col-md-4 col-form-label">Audience</label>
-                    <div class="col-md-8">
-                      <select name="audience" class="form-control" required>
-                        <option value="All">All</option>
-                        <option value="Students">Students</option>
-                        <option value="Registrar">Registrar</option>
-                        <option value="Instructors">Instructors</option>
-                      </select>
+                  <div class="form-group">
+                    <label for="ann_image"><i class="mdi mdi-image-outline"></i> Attach Image <span class="ann-opt">(optional)</span></label>
+                    <div class="custom-file">
+                      <input type="file" class="custom-file-input" name="nonoy" id="ann_image" accept=".jpg,.jpeg,.png,.gif">
+                      <label class="custom-file-label" for="ann_image">Choose image…</label>
                     </div>
+                    <small class="text-muted d-block mt-2">Recommended max: 900×600px. Allowed: jpg, png, gif.</small>
                   </div>
 
-                  <div class="form-group row">
-                    <label class="col-md-4 col-form-label">Expire Date</label>
-                    <div class="col-md-8">
-                      <input type="date" name="date_expire" class="form-control">
-                      <small class="text-muted">Leave blank to show indefinitely.</small>
-                    </div>
+                  <div class="form-group mb-0">
+                    <label for="ann_expire"><i class="mdi mdi-calendar-remove-outline"></i> Expire Date</label>
+                    <input type="date" name="date_expire" id="ann_expire" class="form-control">
+                    <small class="text-muted d-block mt-2">Leave blank to show indefinitely.</small>
                   </div>
                 </div>
                 <div class="modal-footer">
-                  <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Close</button>
-                  <input type="submit" name="submit" class="up-btn up-btn-primary" value="Save">
+                  <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
+                  <button type="submit" name="submit" class="up-btn up-btn-primary"><i class="mdi mdi-send-outline"></i> Post Announcement</button>
                 </div>
               </form>
             </div>
@@ -156,75 +168,57 @@
         </div>
 
         <!-- Edit Modal -->
-        <div class="modal fade" id="editAnnouncementModal" tabindex="-1" role="dialog" aria-labelledby="editAnnouncementModalLabel" aria-hidden="true">
-          <div class="modal-dialog modal-lg" role="document">
-<form class="modal-content"
-      action="<?= site_url('Page/updateAnnouncement'); ?>"
-      enctype="multipart/form-data" method="POST">
+        <div class="modal fade ann-modal" id="editAnnouncementModal" tabindex="-1" role="dialog" aria-labelledby="editAnnouncementModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <form class="modal-content" action="<?= site_url('Page/updateAnnouncement'); ?>" enctype="multipart/form-data" method="POST">
               <div class="modal-header">
-                <h4 class="modal-title" id="editAnnouncementModalLabel"><b>Edit Announcement</b></h4>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title" id="editAnnouncementModalLabel"><i class="mdi mdi-pencil-outline"></i> Edit Announcement</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button>
               </div>
 
               <div class="modal-body">
                 <input type="hidden" name="aID" id="edit_aID">
                 <input type="hidden" name="old_image" id="edit_old_image">
 
-                <div class="form-group row">
-                  <label class="col-md-4 col-form-label">Title</label>
-                  <div class="col-md-8">
-                    <input type="text" class="form-control" name="title" id="edit_title" required>
-                  </div>
+                <div class="form-group">
+                  <label for="edit_title"><i class="mdi mdi-format-title"></i> Title</label>
+                  <input type="text" class="form-control" name="title" id="edit_title" required>
                 </div>
 
-                <div class="form-group row">
-                  <label class="col-md-4 col-form-label">Text / Message</label>
-                  <div class="col-md-8">
-                    <textarea name="message" id="edit_message" class="form-control" rows="5" required></textarea>
-                  </div>
+                <div class="form-group">
+                  <label for="edit_message"><i class="mdi mdi-text-long"></i> Message</label>
+                  <textarea name="message" id="edit_message" class="form-control" rows="5" required></textarea>
                 </div>
 
-                <div class="form-group row">
-                  <label class="col-md-4 col-form-label">Current Image</label>
-                  <div class="col-md-8">
-                    <div id="edit_image_wrap" class="mb-2" style="display:none">
-                      <img id="edit_preview" src="" alt="Current image" style="max-width:220px;border-radius:4px;">
-                      <div class="small text-muted mt-1" id="edit_image_name"></div>
+                <div class="form-group">
+                  <label><i class="mdi mdi-image-outline"></i> Image</label>
+                  <div id="edit_image_wrap" class="ann-cur-img" style="display:none">
+                    <img id="edit_preview" src="" alt="Current image">
+                    <div>
+                      <div class="ann-cur-img-name" id="edit_image_name"></div>
+                      <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" id="remove_image" name="remove_image" value="1">
+                        <label class="form-check-label" for="remove_image">Remove current image</label>
+                      </div>
                     </div>
-                    <div class="form-check mb-3">
-                      <input class="form-check-input" type="checkbox" id="remove_image" name="remove_image" value="1">
-                      <label class="form-check-label" for="remove_image">Remove current image</label>
-                    </div>
-                    <label class="col-form-label pt-0">Replace with new image (optional)</label>
-                    <input type="file" class="form-control" name="nonoy" accept=".jpg,.jpeg,.png,.gif">
-                    <small class="text-muted d-block mt-2">Allowed: jpg, png, gif. Max 5MB.</small>
                   </div>
+                  <div class="custom-file">
+                    <input type="file" class="custom-file-input" name="nonoy" id="edit_image" accept=".jpg,.jpeg,.png,.gif">
+                    <label class="custom-file-label" for="edit_image">Replace with new image…</label>
+                  </div>
+                  <small class="text-muted d-block mt-2">Allowed: jpg, png, gif. Max 5MB.</small>
                 </div>
 
-                <div class="form-group row">
-                  <label class="col-md-4 col-form-label">Audience</label>
-                  <div class="col-md-8">
-                    <select name="audience" id="edit_audience" class="form-control" required>
-                      <option value="All">All</option>
-                      <option value="Students">Students</option>
-                      <option value="Registrar">Registrar</option>
-                      <option value="Instructors">Instructors</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="form-group row">
-                  <label class="col-md-4 col-form-label">Expire Date</label>
-                  <div class="col-md-8">
-                    <input type="date" name="date_expire" id="edit_date_expire" class="form-control">
-                    <small class="text-muted">Leave blank to show indefinitely.</small>
-                  </div>
+                <div class="form-group mb-0">
+                  <label for="edit_date_expire"><i class="mdi mdi-calendar-remove-outline"></i> Expire Date</label>
+                  <input type="date" name="date_expire" id="edit_date_expire" class="form-control">
+                  <small class="text-muted d-block mt-2">Leave blank to show indefinitely.</small>
                 </div>
               </div>
 
               <div class="modal-footer">
                 <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
-                <button type="submit" name="submit" class="up-btn up-btn-primary">Update</button>
+                <button type="submit" name="submit" class="up-btn up-btn-primary"><i class="mdi mdi-content-save-outline"></i> Save Changes</button>
               </div>
             </form>
           </div>
@@ -282,7 +276,6 @@
                              data-id="<?= (int)$row->aID; ?>"
                              data-title="<?= $title; ?>"
                              data-message-raw="<?= $rawMsg; ?>"
-                             data-audience="<?= htmlspecialchars($row->audience ?? '', ENT_QUOTES, 'UTF-8'); ?>"
                              data-date-expire="<?= $dateExpire; ?>"
                              data-image="<?= $imageURL; ?>"
                              data-image-name="<?= htmlspecialchars($img, ENT_QUOTES, 'UTF-8'); ?>"
@@ -332,12 +325,12 @@
 </div>
 
 <!-- View Modal -->
-<div class="modal fade" id="viewAnnouncementModal" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade ann-modal" id="viewAnnouncementModal" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
     <div class="modal-content">
-      <div class="modal-header text-white">
-        <h5 class="modal-title" id="vamTitle">Announcement</h5>
-        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="mdi mdi-bullhorn-outline"></i> <span id="vamTitle">Announcement</span></h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button>
       </div>
       <div class="modal-body">
         <div id="vamContent" style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap;">
@@ -362,6 +355,12 @@
 <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
 <script>
+  // Show the chosen filename on the styled file inputs
+  $(document).on('change', '.custom-file-input', function () {
+    var name = ($(this).val() || '').split('\\').pop();
+    $(this).siblings('.custom-file-label').text(name || 'Choose image…');
+  });
+
   // View modal
   $('#viewAnnouncementModal').on('show.bs.modal', function (e) {
     var t   = $(e.relatedTarget);
@@ -396,7 +395,6 @@
 
     var title      = box.data('title') || '';
     var raw        = box.data('message-raw') || '';
-    var audience   = box.data('audience') || 'All';
     var dateExpire = box.data('date-expire') || '';
     var imgUrl     = box.data('image') || '';
     var imgName    = box.data('image-name') || '';
@@ -405,7 +403,6 @@
     $('#edit_aID').val(id);
     $('#edit_title').val(title);
     $('#edit_message').val(raw);
-    $('#edit_audience').val(audience);
     $('#edit_date_expire').val(dateExpire);
     $('#edit_old_image').val(imgName);
     $('#remove_image').prop('checked', false);

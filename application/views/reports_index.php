@@ -11,16 +11,6 @@
         <div class="content-page">
             <div class="content">
                 <div class="container-fluid section-gutters">
-                    <div class="only-print" id="printLetterhead" style="text-align:center;margin-bottom:16px;">
-                        <div style="display:flex;align-items:center;justify-content:center;min-height:22mm;padding:3mm 8mm;margin-bottom:8px;background:#1a2942;border-radius:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
-                            <img src="<?= base_url('assets/images/srms-logo-1.png') ?>" alt="School Logo" style="display:block;width:80mm;height:auto;">
-                        </div>
-                        <div style="font-size:16pt;font-weight:800;color:#0d1b4b;"><?= isset($school[0]->SchoolName) ? htmlspecialchars($school[0]->SchoolName, ENT_QUOTES, 'UTF-8') : 'FBMSO'; ?></div>
-                        <div style="font-size:10pt;color:#555;margin:2px 0 10px;"><?= isset($school[0]->SchoolAddress) ? htmlspecialchars($school[0]->SchoolAddress, ENT_QUOTES, 'UTF-8') : ''; ?></div>
-                        <div style="font-size:13pt;font-weight:700;color:#2a4090;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Activities Report</div>
-                        <div style="font-size:9pt;color:#777;">Printed: <?= date('F d, Y \a\t h:i A'); ?></div>
-                        <div style="height:2px;background:linear-gradient(to right,#2a4090,#4266d4,#2a4090);margin:10px 0 16px;border-radius:1px;"></div>
-                    </div>
                     <div class="row">
                         <div class="col-12">
                             <div class="d-flex align-items-center justify-content-between mb-2">
@@ -45,7 +35,7 @@
                         return (int)$r->total;
                     }, (array)$by_course));
                     ?>
-                    <div class="nx-stats" id="section-kpis" data-print-id="kpis" style="margin-top:2px;margin-bottom:18px;">
+                    <div class="nx-stats" id="section-kpis" style="margin-top:2px;margin-bottom:18px;">
                         <a class="nx-stat blue" href="#section-course">
                             <div class="nx-stat-main">
                                 <div>
@@ -88,13 +78,12 @@
                         </a>
                     </div>
                     <div id="reportsAccordion" class="accordion">
-                        <div class="up-card mb-3 section-card" id="section-yearlevel" data-print-id="by_yearlevel">
+                        <div class="up-card mb-3 section-card" id="section-yearlevel">
                             <div class="up-card-head py-2 px-3" id="headYearLevel">
                                 <h6 class="mb-0">
                                     <button class="btn btn-link collapsed section-toggle no-print" type="button" data-target="#collapseYearLevel">
                                         <i class="mdi mdi-chevron-right mr-1"></i> Students by Year Level
                                     </button>
-                                    <span class="only-print h6">Students by Year Level</span>
                                 </h6>
                             </div>
                             <div id="collapseYearLevel" class="collapse" aria-labelledby="headYearLevel">
@@ -118,13 +107,12 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="up-card mb-3 section-card" id="section-course" data-print-id="by_course">
+                        <div class="up-card mb-3 section-card" id="section-course">
                             <div class="up-card-head py-2 px-3" id="headCourse">
                                 <h6 class="mb-0">
                                     <button class="btn btn-link collapsed section-toggle no-print" type="button" data-target="#collapseCourse">
                                         <i class="mdi mdi-chevron-right mr-1"></i> Students by Course
                                     </button>
-                                    <span class="only-print h6">Students by Course</span>
                                 </h6>
                             </div>
                             <div id="collapseCourse" class="collapse" aria-labelledby="headCourse">
@@ -148,13 +136,12 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="up-card mb-3 section-card" id="section-sections" data-print-id="sections_per_course">
+                        <div class="up-card mb-3 section-card" id="section-sections">
                             <div class="up-card-head py-2 px-3" id="headSectionsCount">
                                 <h6 class="mb-0">
                                     <button class="btn btn-link collapsed section-toggle no-print" type="button" data-target="#collapseSectionsCount">
                                         <i class="mdi mdi-chevron-right mr-1"></i> Number of Sections per Course
                                     </button>
-                                    <span class="only-print h6">Number of Sections per Course</span>
                                 </h6>
                             </div>
                             <div id="collapseSectionsCount" class="collapse" aria-labelledby="headSectionsCount">
@@ -178,13 +165,12 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="up-card mb-3 section-card" id="section-bysection" data-print-id="by_section">
+                        <div class="up-card mb-3 section-card" id="section-bysection">
                             <div class="up-card-head py-2 px-3 d-flex align-items-center justify-content-between" id="headBySection">
                                 <h6 class="mb-0">
                                     <button class="btn btn-link collapsed section-toggle no-print" type="button" data-target="#collapseBySection">
                                         <i class="mdi mdi-chevron-right mr-1"></i> Students by Section
                                     </button>
-                                    <span class="only-print h6">Students by Section</span>
                                 </h6>
                             </div>
                             <div id="collapseBySection" class="collapse" aria-labelledby="headBySection">
@@ -214,13 +200,12 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="up-card mb-3 section-card" id="section-events" data-print-id="events">
+                        <div class="up-card mb-3 section-card" id="section-events">
                             <div class="up-card-head py-2 px-3" id="headEvents">
                                 <h6 class="mb-0">
                                     <button class="btn btn-link collapsed section-toggle no-print" type="button" data-target="#collapseEvents">
                                         <i class="mdi mdi-chevron-right mr-1"></i> Events & Attendance (latest)
                                     </button>
-                                    <span class="only-print h6">Events & Attendance (latest)</span>
                                 </h6>
                             </div>
                             <div id="collapseEvents" class="collapse" aria-labelledby="headEvents">
@@ -277,13 +262,12 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="up-card mb-3 section-card" id="section-attendance" data-print-id="attendance">
+                        <div class="up-card mb-3 section-card" id="section-attendance">
                             <div class="up-card-head py-2 px-3" id="headAttendance">
                                 <h6 class="mb-0">
                                     <button class="btn btn-link collapsed section-toggle no-print" type="button" data-target="#collapseAttendance">
                                         <i class="mdi mdi-chevron-right mr-1"></i> Recent Attendance (latest 100)
                                     </button>
-                                    <span class="only-print h6">Recent Attendance (latest 100)</span>
                                 </h6>
                             </div>
                             <div id="collapseAttendance" class="collapse" aria-labelledby="headAttendance">
@@ -448,28 +432,18 @@
                 $('#optAll').prop('checked', allOn);
             });
             $('#confirmPrint').on('click', function() {
-                $('#printPicker').modal('hide');
                 var selected = $('.print-opt-item:checked').map(function() {
                     return $(this).data('target');
                 }).get();
-                var all = $('[data-print-id]').map(function() {
-                    return $(this).data('print-id');
-                }).get();
-                all.forEach(function(id) {
-                    $('[data-print-id="' + id + '"]').addClass('print-hide');
-                });
-                selected.forEach(function(id) {
-                    $('[data-print-id="' + id + '"]').removeClass('print-hide');
-                });
-                selected.forEach(function(id) {
-                    var card = $('[data-print-id="' + id + '"]');
-                    card.find('.collapse').collapse('show');
-                });
-
-                window.print();
-                setTimeout(function() {
-                    $('[data-print-id]').removeClass('print-hide');
-                }, 500);
+                if (!selected.length) {
+                    return;
+                }
+                $('#printPicker').modal('hide');
+                var url = '<?= base_url('reports'); ?>?print=1';
+                if (selected.length !== $('.print-opt-item').length) {
+                    url += '&sections=' + encodeURIComponent(selected.join(','));
+                }
+                window.open(url, '_blank');
             });
         });
     </script>
@@ -651,61 +625,6 @@
 
         .table-tight tbody tr:hover {
             background: #f8faff;
-        }
-
-        .print-hide {
-            display: none !important;
-        }
-
-        .only-print {
-            display: none;
-        }
-
-        @media print {
-
-            html,
-            body {
-                background: #fff !important;
-            }
-
-            .no-print,
-            .no-print * {
-                display: none !important;
-            }
-
-            .content-page,
-            .container-fluid {
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-
-            .up-card,
-            .kpi {
-                box-shadow: none !important;
-            }
-
-            .up-card {
-                border: 1px solid #ddd;
-                margin-bottom: .75rem;
-            }
-
-            .only-print {
-                display: inline-block !important;
-            }
-
-            .btn,
-            .badge {
-                filter: grayscale(100%);
-            }
-
-            .accordion .collapse {
-                display: block !important;
-                height: auto !important;
-            }
-
-            .table-tight tbody td {
-                padding: .35rem .6rem;
-            }
         }
 
         .lh-1 {

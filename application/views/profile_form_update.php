@@ -11,16 +11,22 @@
 
     <!-- Plugins css-->
     <link href="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.css" rel="stylesheet" type="text/css" />
-    <link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
 
     <!-- App css -->
     <link href="<?= base_url(); ?>assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" id="bootstrap-stylesheet" />
     <link href="<?= base_url(); ?>assets/css/icons.min.css" rel="stylesheet" type="text/css" />
   <link href="<?= base_url(); ?>assets/css/app.css?v=20260922" rel="stylesheet" type="text/css" id="app-stylesheet" />
     <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=30260827'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/update_profile.css?v=2'); ?>">
 
     <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
-    <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=7'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/fonts/bootstrap-icons/bootstrap-icons.css'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/custom-sidebar-icons.css?v=3'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/masterlist-responsive.css'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=8'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/nx-shell.css?v=13'); ?>">
+
+    <?php include(APPPATH . 'views/includes/ui_kit.php'); ?>
     <meta name="theme-color" content="#1a2942">
     <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -28,59 +34,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="<?= base_url('assets/images/icons/attendance-192.png'); ?>">
     <script src="<?= base_url('assets/js/mobile-shell-early.js?v=5'); ?>"></script>
-
-    <style>
-        .card-simple {border:1px solid #e6ecf5;border-radius:14px;box-shadow:0 6px 18px rgba(36,59,83,.06)}
-        .section-title{font-weight:800;color:var(--up-muted,#6b7a99);font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;margin:8px 0 14px;display:flex;align-items:center;gap:10px}
-        .section-title::before{content:'';width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,var(--up-blue,#2a4090),var(--up-blue-2,#4266d4));flex-shrink:0}
-        .label-req::after{content:" *"; color:#e55353}
-
-        /* CSS grid for tidy alignment */
-        .form-grid{
-            display:grid;
-            grid-template-columns:repeat(4, minmax(0, 1fr));
-            grid-column-gap:16px;
-            grid-row-gap:14px;
-        }
-        .span-2{grid-column:span 2}
-        .span-3{grid-column:span 3}
-        .span-4{grid-column:span 4}
-        @media (max-width:1199.98px){ .form-grid{grid-template-columns:repeat(3,1fr)} }
-        @media (max-width:991.98px){ .form-grid{grid-template-columns:repeat(2,1fr)} }
-        @media (max-width:575.98px){ .form-grid{grid-template-columns:1fr} .span-2,.span-3,.span-4{grid-column:span 1} }
-
-        /* Select2 height match */
-        .select2-container .select2-selection--single{height:38px}
-        .select2-selection__rendered{line-height:36px}
-        .select2-selection__arrow{height:36px}
-
-        .profile-fieldset[disabled] .form-control,
-        .profile-fieldset[disabled] .form-control:focus {
-            background-color:#f8f9fa;
-            color:#243b53;
-            opacity:1;
-        }
-        .profile-fieldset[disabled] select{
-            pointer-events:none;
-        }
-        .profile-readonly-note{
-            background:#f1f5f9;
-            border-left:4px solid #348cd4;
-            color:#1b2a4e;
-        }
-        .availability-msg {
-            display: block;
-            min-height: 18px;
-            margin-top: 6px;
-            font-size: .72rem;
-            font-weight: 600;
-            line-height: 1.3;
-            color: #7288b7;
-        }
-        .availability-msg.is-ok   { color: #1e8449; }
-        .availability-msg.is-bad  { color: #c0392b; }
-        .availability-msg.is-muted{ color: #7288b7; }
-    </style>
 
     <script>
         function calculateAge(dateInputId, resultInputId) {
@@ -177,156 +130,205 @@ $ageVal        = $pickField(['Age', 'age']);
             <?php endif; ?>
 
             <div class="container-fluid">
-                <!-- title -->
-                <div class="row">
+                <!-- Title source for the top navbar (visually hidden; read by mobile-shell.js) -->
+                <div class="page-title-box">
+                    <h4 class="up-page-title"><?= $readOnly ? 'View Profile' : 'Update Profile'; ?></h4>
+                </div>
 
-                    <div class="col-md-12">
-                        <div class="page-title-box">
+                <?php
+                $bannerName = trim($firstNameVal . ' ' . $lastNameVal);
+                if ($bannerName === '') {
+                    $bannerName = $snVal;
+                }
+                ?>
 
-                            <h4 class="up-page-title"><?= $readOnly ? 'VIEW PROFILE' : 'UPDATE PROFILE'; ?></h4>
-                            <div class="up-page-sub"><?= $readOnly ? 'Viewing student details (read-only).' : 'Update student personal and academic information.'; ?></div>
-                            <hr class="up-divider" />
-                               <a href="<?= base_url('Page/profileList'); ?>" class="up-btn up-btn-ghost"><i class="mdi mdi-arrow-left"></i> Back</a>
+                <div class="reg-card">
+                    <div class="card-banner">
+                        <div class="ring ring-1"></div>
+                        <div class="ring ring-2"></div>
+
+                        <div class="banner-text">
+                            <div class="banner-eyebrow">Student Record &middot; <?= htmlspecialchars($snVal ?: 'N/A', ENT_QUOTES, 'UTF-8'); ?></div>
+                            <div class="banner-title"><?= $readOnly ? 'View Profile' : 'Update Profile'; ?></div>
+                            <div class="banner-sub">
+                                <span class="banner-student"><?= htmlspecialchars($bannerName, ENT_QUOTES, 'UTF-8'); ?></span><br>
+                                <?= $readOnly ? 'Viewing student details (read-only).' : 'Update student personal and academic information.'; ?>
+                            </div>
                         </div>
 
-
+                        <div class="banner-icon">
+                            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="46" cy="34" r="15" stroke="rgba(255,255,255,0.3)" stroke-width="2.5" />
+                                <circle cx="46" cy="34" r="9" fill="rgba(255,255,255,0.10)" />
+                                <path d="M18 84c3.5-15 13.5-23 28-23 8 0 15 2.4 20.4 7" stroke="rgba(255,255,255,0.3)" stroke-width="2.5" stroke-linecap="round" />
+                                <path d="M67 90l8.5-8.5 9 9L76 99h-9v-9z" fill="rgba(255,255,255,0.16)" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linejoin="round" />
+                            </svg>
+                            <div class="scan-beam"></div>
+                            <div class="scan-beam-h"></div>
+                            <div class="qr-corner tl"></div>
+                            <div class="qr-corner tr"></div>
+                            <div class="qr-corner bl"></div>
+                            <div class="qr-corner br"></div>
+                        </div>
                     </div>
-                </div>
 
-                <!-- form -->
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="up-card">
-                            <div class="up-card-body">
-                                <form class="parsley-examples" method="post" enctype="multipart/form-data"
-                                    data-check-availability-url="<?= htmlspecialchars(site_url('Page/checkSignupAvailability'), ENT_QUOTES, 'UTF-8'); ?>"
-                                    data-exclude-student-number="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>">
-                                    <?php if ($readOnly): ?>
-                                        <div class="alert profile-readonly-note py-2 px-3 mb-3">
-                                            Viewing student details only. Editing is disabled for administrators.
-                                        </div>
-                                    <?php endif; ?>
-                                    <fieldset class="profile-fieldset" <?= $readOnly ? 'disabled' : ''; ?>>
-                                        <h5 class="section-title">Personal Data</h5>
+                    <div class="card-body-inner">
+                        <?php if ($readOnly): ?>
+                            <div class="profile-readonly-note">
+                                Viewing student details only. Editing is disabled for your account.
+                            </div>
+                        <?php endif; ?>
 
-                                        <div class="form-grid">
-                                          <!-- Student No -->
-                                          <div class="form-group span-2">
-                                              <input type="hidden" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>" name="oldStudentNo" required>
-                                              <label class="label-req">Student No.</label>
-                                              <input type="text" class="form-control" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>" name="StudentNumber" id="StudentNumber" <?= $readOnly ? 'readonly' : ''; ?> required>
-                                              <?php if (!$readOnly): ?>
-                                                <span class="availability-msg" id="student-number-status" aria-live="polite"></span>
-                                              <?php endif; ?>
-                                          </div>
+                        <form class="parsley-examples" method="post" enctype="multipart/form-data"
+                            data-check-availability-url="<?= htmlspecialchars(site_url('Page/checkSignupAvailability'), ENT_QUOTES, 'UTF-8'); ?>"
+                            data-exclude-student-number="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>">
+                            <fieldset class="profile-fieldset" <?= $readOnly ? 'disabled' : ''; ?>>
 
-                                          <!-- Names -->
-                                          <div class="form-group">
-                                              <label class="label-req">First Name</label>
-                                              <input type="text" class="form-control" name="FirstName" value="<?= htmlspecialchars($firstNameVal, ENT_QUOTES, 'UTF-8'); ?>" required>
-                                          </div>
-                                          <div class="form-group">
-                                              <label>Middle Name</label>
-                                              <input type="text" class="form-control" name="MiddleName" value="<?= htmlspecialchars($middleNameVal, ENT_QUOTES, 'UTF-8'); ?>">
-                                          </div>
-                                          <div class="form-group">
-                                              <label class="label-req">Last Name</label>
-                                              <input type="text" class="form-control" name="LastName" value="<?= htmlspecialchars($lastNameVal, ENT_QUOTES, 'UTF-8'); ?>" required>
-                                          </div>
-                                          <div class="form-group">
-                                              <label>Name Extn</label>
-                                              <input type="text" class="form-control" name="nameExtn" value="<?= htmlspecialchars($nameExtnVal, ENT_QUOTES, 'UTF-8'); ?>">
-                                          </div>
+                                <div class="section-head">
+                                    <div class="section-dot"></div>
+                                    <div class="section-label">Personal Data</div>
+                                    <div class="section-line"></div>
+                                </div>
 
-                                          <!-- Sex / Civil / Mobile -->
-                                          <div class="form-group">
-                                              <label class="label-req">Sex</label>
-                                              <select name="Sex" class="form-control" required>
-                                                  <option value=""></option>
-                                                  <option value="Female" <?= ($sexVal == 'Female') ? 'selected' : ''; ?>>Female</option>
-                                                  <option value="Male"   <?= ($sexVal == 'Male') ? 'selected' : ''; ?>>Male</option>
-                                              </select>
-                                          </div>
-                                          <div class="form-group">
-                                              <label class="label-req">Civil Status</label>
-                                              <select name="CivilStatus" class="form-control" required>
-                                                  <option value=""></option>
-                                                  <option value="Single"  <?= ($civilVal == 'Single') ? 'selected' : ''; ?>>Single</option>
-                                                  <option value="Married" <?= ($civilVal == 'Married') ? 'selected' : ''; ?>>Married</option>
-                                              </select>
-                                          </div>
-                                          <div class="form-group span-2">
-                                              <label>Mobile No.</label>
-    <input type="text" class="form-control" name="contactNo" value="<?= htmlspecialchars($contactVal, ENT_QUOTES, 'UTF-8'); ?>">
-                                          </div>
-
-                                     <!-- Birth Date / Age -->
-    <div class="form-group">
-        <label class="label-req">Birth Date</label>
-        <input type="date" name="birthDate" id="bday" class="form-control"
-        onchange="calculateAge('bday','resultBday')" required value="<?= htmlspecialchars($birthDateVal, ENT_QUOTES, 'UTF-8'); ?>">
-    </div>
-    <div class="form-group">
-        <label class="label-req">Age</label>
-        <input type="text" name="Age" id="resultBday" class="form-control" readonly required value="<?= htmlspecialchars($ageVal, ENT_QUOTES, 'UTF-8'); ?>">
-    </div>
-
-
-                                          <!-- Address Fields -->
-                                          <div class="span-4"><h6 class="section-title">Address</h6></div>
-    <div class="form-group">
-        <label class="label-req" for="province">Province</label>
-        <select id="province" name="Province" class="form-control" required>
-            <option value="">Select Province</option>
-            <?php foreach ($provinces as $province): ?>
-                <option value="<?= htmlspecialchars($province->Province, ENT_QUOTES, 'UTF-8'); ?>" <?= ($province->Province == $provinceVal) ? 'selected' : ''; ?>>
-                    <?= htmlspecialchars($province->Province, ENT_QUOTES, 'UTF-8'); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    <div class="form-group">
-        <label class="label-req" for="city">City/Municipality</label>
-        <select id="city" name="City" class="form-control" required>
-            <option value="">Select City/Municipality</option>
-            <?php foreach ($cities as $city): ?>
-                <option value="<?= htmlspecialchars($city->City, ENT_QUOTES, 'UTF-8'); ?>" <?= ($city->City == $cityVal) ? 'selected' : ''; ?>>
-                    <?= htmlspecialchars($city->City, ENT_QUOTES, 'UTF-8'); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    <div class="form-group">
-        <label class="label-req" for="barangay">Barangay</label>
-        <select id="barangay" name="Brgy" class="form-control" required>
-            <option value="">Select Barangay</option>
-        <?php foreach ($barangays as $barangay): ?>
-            <option value="<?= htmlspecialchars($barangay->Brgy, ENT_QUOTES, 'UTF-8'); ?>" <?= ($barangay->Brgy == $brgyVal) ? 'selected' : ''; ?>>
-                <?= htmlspecialchars($barangay->Brgy, ENT_QUOTES, 'UTF-8'); ?>
-            </option>
-        <?php endforeach; ?>
-        </select>
-    </div>
-    <div class="form-group">
-        <label for="sitio">Sitio</label>
-        <input type="text" id="sitio" class="form-control" name="Sitio" placeholder="Sitio" value="<?= htmlspecialchars($sitioVal, ENT_QUOTES, 'UTF-8'); ?>">
-    </div>
-
-
-                                        </div><!-- /.form-grid -->
-
-                                        <input type="hidden" name="StudentNumber_original" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>">
-                                    </fieldset>
-                                    <?php if (!$readOnly): ?>
-                                    <div class="mt-3">
-                                        <button type="submit" name="submit" class="up-btn up-btn-primary"><i class="mdi mdi-content-save"></i> Update Profile</button>
+                                <div class="row-fields cols-4">
+                                    <div class="field-group">
+                                        <input type="hidden" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>" name="oldStudentNo" required>
+                                        <label class="field-label" for="StudentNumber">Student No. <span class="req">*</span></label>
+                                        <input type="text" class="field" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>" name="StudentNumber" id="StudentNumber" <?= $readOnly ? 'readonly' : ''; ?> required>
+                                        <?php if (!$readOnly): ?>
+                                            <span class="availability-msg" id="student-number-status" aria-live="polite"></span>
+                                        <?php endif; ?>
                                     </div>
-                                    <?php endif; ?>
-                                </form>
-                            </div><!-- /.card-body -->
-                        </div><!-- /.card -->
+                                    <div class="field-group">
+                                        <label class="field-label" for="FirstName">First Name <span class="req">*</span></label>
+                                        <input type="text" class="field" id="FirstName" name="FirstName" value="<?= htmlspecialchars($firstNameVal, ENT_QUOTES, 'UTF-8'); ?>" style="text-transform:uppercase;" required>
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label" for="MiddleName">Middle Name</label>
+                                        <input type="text" class="field" id="MiddleName" name="MiddleName" value="<?= htmlspecialchars($middleNameVal, ENT_QUOTES, 'UTF-8'); ?>" style="text-transform:uppercase;">
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label" for="LastName">Last Name <span class="req">*</span></label>
+                                        <input type="text" class="field" id="LastName" name="LastName" value="<?= htmlspecialchars($lastNameVal, ENT_QUOTES, 'UTF-8'); ?>" style="text-transform:uppercase;" required>
+                                    </div>
+                                </div>
+
+                                <div class="row-fields cols-4">
+                                    <div class="field-group">
+                                        <label class="field-label" for="nameExtn">Name Extn</label>
+                                        <input type="text" class="field" id="nameExtn" name="nameExtn" value="<?= htmlspecialchars($nameExtnVal, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Jr., Sr." style="text-transform:uppercase;">
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label" for="Sex">Sex <span class="req">*</span></label>
+                                        <select name="Sex" id="Sex" class="field" required>
+                                            <option value=""></option>
+                                            <option value="Female" <?= ($sexVal == 'Female') ? 'selected' : ''; ?>>Female</option>
+                                            <option value="Male"   <?= ($sexVal == 'Male') ? 'selected' : ''; ?>>Male</option>
+                                        </select>
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label" for="CivilStatus">Civil Status <span class="req">*</span></label>
+                                        <select name="CivilStatus" id="CivilStatus" class="field" required>
+                                            <option value=""></option>
+                                            <option value="Single"  <?= ($civilVal == 'Single') ? 'selected' : ''; ?>>Single</option>
+                                            <option value="Married" <?= ($civilVal == 'Married') ? 'selected' : ''; ?>>Married</option>
+                                        </select>
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label" for="contactNo">Mobile No.</label>
+                                        <input type="text" class="field" id="contactNo" name="contactNo" value="<?= htmlspecialchars($contactVal, ENT_QUOTES, 'UTF-8'); ?>" placeholder="09XX XXX XXXX">
+                                    </div>
+                                </div>
+
+                                <div class="row-fields cols-2">
+                                    <div class="field-group">
+                                        <label class="field-label" for="bday">Birth Date <span class="req">*</span></label>
+                                        <input type="date" name="birthDate" id="bday" class="field"
+                                            onchange="calculateAge('bday','resultBday')" required value="<?= htmlspecialchars($birthDateVal, ENT_QUOTES, 'UTF-8'); ?>">
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label" for="resultBday">Age <span class="req">*</span></label>
+                                        <input type="text" name="Age" id="resultBday" class="field" readonly required value="<?= htmlspecialchars($ageVal, ENT_QUOTES, 'UTF-8'); ?>">
+                                    </div>
+                                </div>
+
+                                <div class="section-head">
+                                    <div class="section-dot"></div>
+                                    <div class="section-label">Address</div>
+                                    <div class="section-line"></div>
+                                </div>
+
+                                <div class="row-fields cols-4">
+                                    <div class="field-group">
+                                        <label class="field-label" for="province">Province <span class="req">*</span></label>
+                                        <select id="province" name="Province" class="field" required>
+                                            <option value="">Select Province</option>
+                                            <?php foreach ($provinces as $province): ?>
+                                                <option value="<?= htmlspecialchars($province->Province, ENT_QUOTES, 'UTF-8'); ?>" <?= ($province->Province == $provinceVal) ? 'selected' : ''; ?>>
+                                                    <?= htmlspecialchars($province->Province, ENT_QUOTES, 'UTF-8'); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label" for="city">City/Municipality <span class="req">*</span></label>
+                                        <select id="city" name="City" class="field" required>
+                                            <option value="">Select City/Municipality</option>
+                                            <?php foreach ($cities as $city): ?>
+                                                <option value="<?= htmlspecialchars($city->City, ENT_QUOTES, 'UTF-8'); ?>" <?= ($city->City == $cityVal) ? 'selected' : ''; ?>>
+                                                    <?= htmlspecialchars($city->City, ENT_QUOTES, 'UTF-8'); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label" for="barangay">Barangay <span class="req">*</span></label>
+                                        <select id="barangay" name="Brgy" class="field" required>
+                                            <option value="">Select Barangay</option>
+                                            <?php foreach ($barangays as $barangay): ?>
+                                                <option value="<?= htmlspecialchars($barangay->Brgy, ENT_QUOTES, 'UTF-8'); ?>" <?= ($barangay->Brgy == $brgyVal) ? 'selected' : ''; ?>>
+                                                    <?= htmlspecialchars($barangay->Brgy, ENT_QUOTES, 'UTF-8'); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label" for="sitio">Sitio</label>
+                                        <input type="text" id="sitio" class="field" name="Sitio" placeholder="Sitio" value="<?= htmlspecialchars($sitioVal, ENT_QUOTES, 'UTF-8'); ?>">
+                                    </div>
+                                </div>
+
+                                <input type="hidden" name="StudentNumber_original" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>">
+                            </fieldset>
+
+                            <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap; margin-top:8px;">
+                                <?php if (!$readOnly): ?>
+                                <button type="submit" name="submit" class="btn-submit">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                    </svg>
+                                    <span>Update Profile</span>
+                                </button>
+                                <?php endif; ?>
+                                <a href="<?= base_url('Page/profileList'); ?>" class="btn-back">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                    </svg>
+                                    <span>Back to List</span>
+                                </a>
+                            </div>
+
+                            <div class="form-footer">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                                Changes to this record are stored securely and recorded in the audit log.
+                            </div>
+                        </form>
                     </div>
                 </div>
+
+                <div style="height:40px;"></div>
             </div><!-- /.container-fluid -->
 
         </div><!-- /.content -->
@@ -342,7 +344,6 @@ $ageVal        = $pickField(['Age', 'age']);
 <script src="<?= base_url(); ?>assets/libs/jquery-scrollto/jquery.scrollTo.min.js"></script>
 <script src="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.js"></script>
 <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
-<script src="<?= base_url(); ?>assets/libs/select2/select2.min.js"></script>
 
 <!-- Province → City → Barangay chaining -->
 <script>
@@ -352,8 +353,6 @@ $(function () {
         $('#province, #city, #barangay').prop('disabled', true);
         return;
     }
-
-    $('#province, #city, #barangay').select2({ width: '100%' });
 
     function notifyError(message) {
         if (window.UI && typeof window.UI.fire === 'function') {
@@ -379,7 +378,7 @@ function setSelectValue($el, val, label) {
     if ($el.find('option').filter((_, o) => $(o).val() == val).length === 0) {
         $el.append($('<option/>', { value: val, text: label || val }));
     }
-    $el.val(val).trigger('change.select2');
+    $el.val(val).trigger('change');
 }
 
 function fillOptions($el, items, valueKey, textKey, placeholder) {
@@ -390,7 +389,7 @@ function fillOptions($el, items, valueKey, textKey, placeholder) {
         const t = it[textKey] ?? v;
         if (v) $el.append($('<option/>', { value: v, text: t }));
     });
-    $el.trigger('change.select2');
+    $el.trigger('change');
 }
 
 function loadProvinces() {

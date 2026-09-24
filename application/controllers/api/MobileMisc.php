@@ -53,7 +53,9 @@ class MobileMisc extends MobileApi
 
         $position = $this->position_of((string)$tokenRow['username']);
         $audience = $this->audience_for($position);
-        $list = $this->AnnouncementModel->getActiveAnnouncementsForMany(['All', $audience]);
+        $list = ($audience === 'Students')
+            ? $this->AnnouncementModel->getActiveAnnouncementsForMany(['All', 'Students'])
+            : $this->AnnouncementModel->getAllActiveAnnouncements();
 
         $out = [];
         foreach ($list as $a) {

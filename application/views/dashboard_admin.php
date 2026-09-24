@@ -85,6 +85,20 @@
   .ann-expires { font-weight:600; color:var(--up-muted,#6b7a99); }
   .ann-expires-expired { color:#ef4444; font-weight:700; }
 
+  /* Announcement view modal — gradient head, readable white title */
+  .ann-modal .modal-content { border:0; border-radius:18px; overflow:hidden; box-shadow:0 24px 60px rgba(13,27,75,.28); }
+  .ann-modal .modal-header { background:linear-gradient(135deg,#1a2a6c,#2a4090); color:#fff; border-bottom:0; padding:16px 22px; align-items:center; }
+  .ann-modal .modal-title { font-weight:800; font-size:1.02rem; display:flex; align-items:center; gap:9px; color:#fff !important; margin:0; }
+  .ann-modal .modal-title .mdi { font-size:1.25rem; opacity:.92; }
+  .ann-modal .modal-header .close { color:#fff; opacity:.75; text-shadow:none; font-size:1.7rem; font-weight:300; padding:0; margin:0 0 0 auto; line-height:1; }
+  .ann-modal .modal-header .close:hover { opacity:1; }
+  .ann-modal .modal-body { padding:20px 24px; }
+  .ann-modal-meta { font-size:.8rem; color:var(--up-muted,#6b7a99); display:flex; align-items:center; gap:6px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--up-line,#e6ebf5); }
+  .ann-modal-meta .mdi { font-size:.95rem; }
+  .ann-modal .modal-footer { border-top:0; background:#f8fafc; padding:14px 24px; }
+  .ann-modal.fade .modal-dialog { transform:translateY(-12px) scale(.98); transition:transform .2s ease-out; }
+  .ann-modal.show .modal-dialog { transform:none; }
+
   .modal-body img { max-width:100%; height:auto; border-radius:8px; }
   #viewAnnouncementModal .modal-body { max-height:75vh; overflow:auto; }
   .ann-flex { display:flex; gap:16px; align-items:flex-start; flex-wrap:nowrap; }
@@ -530,23 +544,25 @@
                               <?php endif; ?>
                             </div>
 
-                            <div class="modal fade" id="<?= $modalID; ?>" tabindex="-1" role="dialog" aria-labelledby="<?= $modalID; ?>Label" aria-hidden="true">
+                            <div class="modal fade ann-modal" id="<?= $modalID; ?>" tabindex="-1" role="dialog" aria-labelledby="<?= $modalID; ?>Label" aria-hidden="true">
                               <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
                                 <div class="modal-content">
-                                  <div class="modal-header" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;">
-                                    <h5 class="modal-title" id="<?= $modalID; ?>Label" style="font-weight:800;"><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></h5>
-                                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="font-size:1.2rem;line-height:1;">
-                                      <i class="mdi mdi-close"></i>
-                                    </button>
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="<?= $modalID; ?>Label"><i class="mdi mdi-bullhorn-outline"></i> <?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button>
                                   </div>
                                   <div class="modal-body">
+                                    <div class="ann-modal-meta">
+                                      <i class="mdi mdi-calendar-outline"></i> Posted on <?= $posted; ?>
+                                      <?php if ($expires): ?> · <span class="<?= $isExpired ? 'ann-expires-expired' : ''; ?>"><i class="mdi mdi-timer-outline"></i> <?= $isExpired ? 'Expired' : 'Expires'; ?> <?= $expires; ?></span><?php endif; ?>
+                                    </div>
                                     <div class="ann-flex">
-                                      <div class="ann-text" style="white-space:pre-wrap;"><?= $message; ?></div>
+                                      <div class="ann-text"><?= nl2br(htmlspecialchars((string)$message, ENT_QUOTES, 'UTF-8')); ?></div>
                                       <?php if ($imageURL): ?>
                                         <aside class="ann-aside">
                                           <img src="<?= $imageURL; ?>" alt="Announcement Image">
                                           <div class="text-right mt-2">
-                                            <a href="<?= $imageURL; ?>" class="btn btn-outline-info btn-sm" download>
+                                            <a href="<?= $imageURL; ?>" class="up-btn up-btn-ghost" download>
                                               <i class="mdi mdi-download"></i> Download Image
                                             </a>
                                           </div>
@@ -555,7 +571,7 @@
                                     </div>
                                   </div>
                                   <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                    <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Close</button>
                                   </div>
                                 </div>
                               </div>

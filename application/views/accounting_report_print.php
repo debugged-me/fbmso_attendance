@@ -44,6 +44,15 @@
     }
     .report-meta strong { color:var(--ink); }
 
+    .report-section { margin-top:26px; }
+    .report-section:first-of-type { margin-top:0; }
+    .section-title {
+      margin:0 0 10px; padding:7px 12px; background:#eef2ff; border-left:4px solid var(--blue);
+      border-radius:6px; color:var(--ink); font-size:13px; font-weight:800; letter-spacing:.05em;
+      text-transform:uppercase; -webkit-print-color-adjust:exact; print-color-adjust:exact;
+      break-after:avoid; page-break-after:avoid;
+    }
+
     .table-wrap { overflow-x:auto; }
     table { width:100%; border-collapse:collapse; table-layout:auto; }
     thead { display:table-header-group; }
@@ -72,6 +81,8 @@
       .report-heading h1 { font-size:16pt; }
       .report-heading p { font-size:9pt; }
       .report-meta { margin:3mm 0 4mm; font-size:7.5pt; }
+      .report-section { margin-top:5mm; }
+      .section-title { margin:0 0 2mm; padding:1.5mm 3mm; font-size:9pt; }
       .table-wrap { overflow:visible; }
       tr { break-inside:avoid; page-break-inside:avoid; }
       th { padding:1.8mm 1.5mm; font-size:6.5pt; }
@@ -97,6 +108,41 @@ $aligns = $aligns ?? [];
 $rows = $rows ?? [];
 $meta = $meta ?? [];
 $totals = $totals ?? null;
+$sections = $sections ?? [];
+
+$renderPrintTable = function (array $tblCols, array $tblRows, array $tblAligns, $tblTotals) {
+?>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <?php foreach ($tblCols as $i => $col): ?>
+                <th class="<?= ($tblAligns[$i] ?? '') === 'right' ? 'align-right' : ((($tblAligns[$i] ?? '') === 'center') ? 'align-center' : ''); ?>"><?= accounting_print_h($col); ?></th>
+              <?php endforeach; ?>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($tblRows as $row): ?>
+              <tr>
+                <?php foreach ($row as $i => $cell): ?>
+                  <td class="<?= ($tblAligns[$i] ?? '') === 'right' ? 'align-right' : ((($tblAligns[$i] ?? '') === 'center') ? 'align-center' : ''); ?>"><?= accounting_print_h($cell); ?></td>
+                <?php endforeach; ?>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+          <?php if (!empty($tblTotals)): ?>
+            <tfoot>
+              <tr>
+                <?php foreach ($tblTotals as $i => $cell): ?>
+                  <td class="<?= ($tblAligns[$i] ?? '') === 'right' ? 'align-right' : ((($tblAligns[$i] ?? '') === 'center') ? 'align-center' : ''); ?>"><?= accounting_print_h($cell); ?></td>
+                <?php endforeach; ?>
+              </tr>
+            </tfoot>
+          <?php endif; ?>
+        </table>
+      </div>
+<?php
+};
 ?>
 
   <div class="print-toolbar no-print">
@@ -125,36 +171,19 @@ $totals = $totals ?? null;
       </div>
     </header>
 
-    <?php if (!empty($rows)): ?>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <?php foreach (($columns ?? []) as $i => $col): ?>
-                <th class="<?= ($aligns[$i] ?? '') === 'right' ? 'align-right' : ((($aligns[$i] ?? '') === 'center') ? 'align-center' : ''); ?>"><?= accounting_print_h($col); ?></th>
-              <?php endforeach; ?>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($rows as $row): ?>
-              <tr>
-                <?php foreach ($row as $i => $cell): ?>
-                  <td class="<?= ($aligns[$i] ?? '') === 'right' ? 'align-right' : ((($aligns[$i] ?? '') === 'center') ? 'align-center' : ''); ?>"><?= accounting_print_h($cell); ?></td>
-                <?php endforeach; ?>
-              </tr>
-            <?php endforeach; ?>
-          </tbody>
-          <?php if (!empty($totals)): ?>
-            <tfoot>
-              <tr>
-                <?php foreach ($totals as $i => $cell): ?>
-                  <td class="<?= ($aligns[$i] ?? '') === 'right' ? 'align-right' : ((($aligns[$i] ?? '') === 'center') ? 'align-center' : ''); ?>"><?= accounting_print_h($cell); ?></td>
-                <?php endforeach; ?>
-              </tr>
-            </tfoot>
+    <?php if (!empty($sections)): ?>
+      <?php foreach ($sections as $sec): ?>
+        <section class="report-section">
+          <h2 class="section-title"><?= accounting_print_h($sec['title'] ?? ''); ?></h2>
+          <?php if (!empty($sec['rows'])): ?>
+            <?php $renderPrintTable($sec['columns'] ?? [], $sec['rows'], $sec['aligns'] ?? [], $sec['totals'] ?? null); ?>
+          <?php else: ?>
+            <div class="empty"><?= accounting_print_h($sec['empty_message'] ?? ($empty_message ?? 'No records matched.')); ?></div>
           <?php endif; ?>
-        </table>
-      </div>
+        </section>
+      <?php endforeach; ?>
+    <?php elseif (!empty($rows)): ?>
+      <?php $renderPrintTable($columns ?? [], $rows, $aligns, $totals); ?>
     <?php else: ?>
       <div class="empty"><?= accounting_print_h($empty_message ?? 'No records matched.'); ?></div>
     <?php endif; ?>

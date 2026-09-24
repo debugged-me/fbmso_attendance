@@ -149,14 +149,6 @@
   <div id="wrapper">
     <?php include('includes/top-nav-bar.php'); ?>
     <?php include('includes/sidebar.php'); ?>
-    <?php
-
-    function view_signup_url($id)
-    {
-
-      return site_url('Page/editSignup') . '?id=' . rawurlencode($id);
-    }
-    ?>
     <div class="content-page">
       <div class="content">
         <div class="container-fluid">
@@ -251,67 +243,34 @@
                           <th style="text-align:center;width:320px">Action</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        <?php
-                        $allowedRoles = ['head registrar', 'registrar', 'assistant registrar', 'admin', 'administrator'];
-                        $canDelete = in_array(
-                            strtolower(trim((string)($this->session->userdata('level') ?? ''))),
-                            $allowedRoles,
-                            true
-                        );
-                        ?>
-                        <?php foreach ($data as $row): ?>
-                          <?php
+                      <?php
+                      $allowedRoles = ['head registrar', 'registrar', 'assistant registrar', 'admin', 'administrator'];
+                      $canDelete = in_array(
+                          strtolower(trim((string)($this->session->userdata('level') ?? ''))),
+                          $allowedRoles,
+                          true
+                      );
+
+                      // Rows are handed to DataTables as JSON and rendered lazily
+                      // (deferRender) — writing ~3k <tr>s into the page made the
+                      // browser build ~20k DOM nodes before init and was the lag.
+                      $dtRows = [];
+                      foreach ((array)$data as $row) {
                           $ln = trim($row->LastName ?? '');
                           $fn = trim($row->FirstName ?? '');
                           $mn = trim($row->MiddleName ?? '');
                           $fullname = trim(($ln ? $ln : '') . (($ln || $fn) ? ', ' : '') . ($fn ? $fn : '') . ($mn ? ' ' . $mn : ''));
                           if ($fullname === '' && !empty($row->StudentNumber)) $fullname = $row->StudentNumber;
-
-                          $studno = $row->StudentNumber ?? '';
-                          $bdate  = !empty($row->birthDate) ? $row->birthDate : 'N/A';
-                          $email  = trim((string)($row->email ?? ''));
-                          $yl     = $row->yearLevel ?? '';
-                          $sec    = $row->section ?? '';
-                          ?>
-                          <tr>
-                            <td data-label="Student Name">
-                              <div style="font-weight:700;color:#0d1b4b;"><?= htmlspecialchars($fullname, ENT_QUOTES, 'UTF-8'); ?></div>
-                              <?php if ($yl || $sec): ?>
-                                <div style="font-size:.76rem;color:#6b7a99;margin-top:2px;"><?= htmlspecialchars("$yl $sec", ENT_QUOTES, 'UTF-8'); ?></div>
-                              <?php endif; ?>
-                            </td>
-                            <td data-label="Student No." style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:#2a4090;"><?= htmlspecialchars($studno, ENT_QUOTES, 'UTF-8'); ?></td>
-                            <td data-label="Email"><?= $email ? htmlspecialchars($email, ENT_QUOTES, 'UTF-8') : '<span style="color:#9aa5b8;">N/A</span>'; ?></td>
-                            <td data-label="Birth Date" style="color:#6b7a99;"><?= htmlspecialchars($bdate, ENT_QUOTES, 'UTF-8'); ?></td>
-                            <td data-label="Action" class="text-center">
-                              <a href="<?= view_signup_url($studno); ?>" class="up-btn up-btn-ghost" style="padding:6px 12px;font-size:.78rem;min-height:auto;">
-                                <i class="mdi mdi-eye-outline"></i> View
-                              </a>
-                              <?php if ($canDelete): ?>
-                                <?php
-                                $resetHref = base_url('Page/resetPass?u=' . rawurlencode((string)$studno) . '&return_to=profileList');
-                                ?>
-                                <a href="<?= $resetHref; ?>"
-                                  class="up-btn up-btn-ghost reset-pass-btn"
-                                  style="padding:6px 12px;font-size:.78rem;min-height:auto;background:#fef3c7;color:#92400e;border-color:#fcd34d;"
-                                  data-href="<?= htmlspecialchars($resetHref, ENT_QUOTES, 'UTF-8'); ?>"
-                                  data-studno="<?= htmlspecialchars((string)$studno, ENT_QUOTES, 'UTF-8'); ?>">
-                                  <i class="mdi mdi-lock-reset"></i> Reset
-                                </a>
-                                <form method="post" action="<?= base_url('Page/deleteSignup'); ?>" style="display:inline" class="delete-signup-form">
-                                  <input type="hidden" name="id" value="<?= htmlspecialchars($studno, ENT_QUOTES, 'UTF-8'); ?>">
-                                  <button type="button" class="up-btn delete-signup-btn" style="padding:6px 12px;font-size:.78rem;min-height:auto;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;border:none;" data-studno="<?= htmlspecialchars($studno, ENT_QUOTES, 'UTF-8'); ?>">
-                                    <i class="mdi mdi-delete-forever"></i> Delete
-                                  </button>
-                                </form>
-                              <?php else: ?>
-                                <span style="color:#9aa5b8;">&mdash;</span>
-                              <?php endif; ?>
-                            </td>
-                          </tr>
-                        <?php endforeach; ?>
-                      </tbody>
+                          $dtRows[] = [
+                              'name'   => $fullname,
+                              'sub'    => trim(($row->yearLevel ?? '') . ' ' . ($row->section ?? '')),
+                              'studno' => (string)($row->StudentNumber ?? ''),
+                              'email'  => trim((string)($row->email ?? '')),
+                              'bdate'  => !empty($row->birthDate) ? $row->birthDate : 'N/A',
+                          ];
+                      }
+                      ?>
+                      <tbody></tbody>
                     </table>
                   </div>
                 </div>
@@ -339,8 +298,94 @@
   <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.responsive.min.js"></script>
   <script src="<?= base_url(); ?>assets/libs/datatables/responsive.bootstrap4.min.js"></script>
   <script>
+    var PL_DATA = <?= json_encode($dtRows, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+    var PL_CAN_DELETE = <?= $canDelete ? 'true' : 'false'; ?>;
+    var PL_URL_VIEW = <?= json_encode(site_url('Page/editSignup')); ?>;
+    var PL_URL_RESET = <?= json_encode(base_url('Page/resetPass')); ?>;
+    var PL_URL_DELETE = <?= json_encode(base_url('Page/deleteSignup')); ?>;
+
+    function plEsc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
     $(function() {
-      $('#datatable').DataTable();
+      var csrfNameEl = document.querySelector('meta[name="csrf-token-name"]');
+      var csrfHashEl = document.querySelector('meta[name="csrf-token"]');
+      var csrfField = (csrfNameEl && csrfHashEl)
+        ? '<input type="hidden" name="' + plEsc(csrfNameEl.content) + '" value="' + plEsc(csrfHashEl.content) + '">'
+        : '';
+
+      $('#datatable').DataTable({
+        data: PL_DATA,
+        deferRender: true,
+        columns: [
+          {
+            data: 'name',
+            render: function(d, type, row) {
+              if (type === 'sort' || type === 'type') return d;
+              var html = '<div style="font-weight:700;color:#0d1b4b;">' + plEsc(d) + '</div>';
+              if (row.sub) {
+                html += '<div style="font-size:.76rem;color:#6b7a99;margin-top:2px;">' + plEsc(row.sub) + '</div>';
+              }
+              return html;
+            },
+            createdCell: function(td) { td.setAttribute('data-label', 'Student Name'); }
+          },
+          {
+            data: 'studno',
+            createdCell: function(td) {
+              td.setAttribute('data-label', 'Student No.');
+              td.style.fontFamily = 'ui-monospace,Menlo,Consolas,monospace';
+              td.style.fontWeight = '700';
+              td.style.color = '#2a4090';
+            }
+          },
+          {
+            data: 'email',
+            render: function(d, type) {
+              if (type !== 'display') return d;
+              return d ? plEsc(d) : '<span style="color:#9aa5b8;">N/A</span>';
+            },
+            createdCell: function(td) { td.setAttribute('data-label', 'Email'); }
+          },
+          {
+            data: 'bdate',
+            createdCell: function(td) {
+              td.setAttribute('data-label', 'Birth Date');
+              td.style.color = '#6b7a99';
+            }
+          },
+          {
+            data: null,
+            orderable: false,
+            searchable: false,
+            className: 'text-center',
+            render: function(d, type, row) {
+              if (type !== 'display') return '';
+              var studno = plEsc(row.studno);
+              var html = '<a href="' + PL_URL_VIEW + '?id=' + encodeURIComponent(row.studno) + '" class="up-btn up-btn-ghost" style="padding:6px 12px;font-size:.78rem;min-height:auto;">'
+                + '<i class="mdi mdi-eye-outline"></i> View</a>';
+              if (!PL_CAN_DELETE) {
+                return html + ' <span style="color:#9aa5b8;">&mdash;</span>';
+              }
+              var resetHref = PL_URL_RESET + '?u=' + encodeURIComponent(row.studno) + '&return_to=profileList';
+              html += ' <a href="' + plEsc(resetHref) + '" class="up-btn up-btn-ghost reset-pass-btn"'
+                + ' style="padding:6px 12px;font-size:.78rem;min-height:auto;background:#fef3c7;color:#92400e;border-color:#fcd34d;"'
+                + ' data-href="' + plEsc(resetHref) + '" data-studno="' + studno + '">'
+                + '<i class="mdi mdi-lock-reset"></i> Reset</a>'
+                + ' <form method="post" action="' + PL_URL_DELETE + '" style="display:inline" class="delete-signup-form">'
+                + csrfField
+                + '<input type="hidden" name="id" value="' + studno + '">'
+                + '<button type="button" class="up-btn delete-signup-btn" style="padding:6px 12px;font-size:.78rem;min-height:auto;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;border:none;" data-studno="' + studno + '">'
+                + '<i class="mdi mdi-delete-forever"></i> Delete</button></form>';
+              return html;
+            },
+            createdCell: function(td) { td.setAttribute('data-label', 'Action'); }
+          }
+        ]
+      });
     });
     $(document).on('click', '.nx-stat[data-yearfilter]', function(e) {
       e.preventDefault();

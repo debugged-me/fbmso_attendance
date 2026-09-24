@@ -153,7 +153,7 @@ class Page extends CI_Controller
 			//   - 'xyz' -> exact major filter
 
 			$this->load->model('AnnouncementModel');
-			$data['announcements'] = $this->AnnouncementModel->getActiveAnnouncementsFor('Admin');
+			$data['announcements'] = $this->AnnouncementModel->getAllActiveAnnouncements();
 
 			$this->load->model('Message_model');
 			$result['unreadMessages'] = $this->Message_model->getUnreadMessages($this->session->userdata('IDNumber'));
@@ -246,7 +246,7 @@ class Page extends CI_Controller
 			$this->load->model('Message_model');
 			$this->load->model('AnnouncementModel');
 
-			$result['announcements'] = $this->AnnouncementModel->getActiveAnnouncementsFor('School Admin');
+			$result['announcements'] = $this->AnnouncementModel->getAllActiveAnnouncements();
 
 			$result['unreadMessages'] = $this->Message_model->getUnreadMessages($this->session->userdata('IDNumber'));
 			$result['users']          = $this->Message_model->get_all_users($this->session->userdata('IDNumber'));
@@ -519,8 +519,7 @@ class Page extends CI_Controller
 
 
 			$this->load->model('AnnouncementModel');
-			$userRole = 'Registrar';
-			$data['announcements'] = $this->AnnouncementModel->getActiveAnnouncementsFor($userRole);
+			$data['announcements'] = $this->AnnouncementModel->getAllActiveAnnouncements();
 
 			$this->load->model('Message_model');
 			$this->load->model('Message_model');
@@ -571,7 +570,7 @@ class Page extends CI_Controller
 		$result = [];
 
 		// ---- Announcements (for instructors) ----
-		$result['announcements'] = $this->AnnouncementModel->getActiveAnnouncementsFor('Instructors');
+		$result['announcements'] = $this->AnnouncementModel->getAllActiveAnnouncements();
 
 		// ---- Messaging ----
 		$result['unreadMessages'] = $this->Message_model->getUnreadMessages($this->session->userdata('IDNumber'));
@@ -4883,7 +4882,6 @@ class Page extends CI_Controller
 		$aID         = (int)$this->input->post('aID');
 		$title       = trim($this->input->post('title', TRUE));
 		$message     = trim($this->input->post('message', TRUE));
-		$audience    = $this->input->post('audience', TRUE);
 		$date_expire = $this->input->post('date_expire', TRUE);
 		$old_image   = $this->input->post('old_image', TRUE);
 		$remove_img  = $this->input->post('remove_image');
@@ -4892,8 +4890,8 @@ class Page extends CI_Controller
 			$this->session->set_flashdata('error', 'Invalid announcement ID.');
 			return redirect('Announcement'); // your list page
 		}
-		if ($title === '' || $message === '' || $audience === '') {
-			$this->session->set_flashdata('error', 'Please complete Title, Message, and Audience.');
+		if ($title === '' || $message === '') {
+			$this->session->set_flashdata('error', 'Please complete Title and Message.');
 			return redirect('Announcement');
 		}
 
@@ -4960,7 +4958,7 @@ class Page extends CI_Controller
 		$data = [
 			'title'       => $title,
 			'message'     => $message,
-			'audience'    => $audience,
+			'audience'    => 'Students',
 			'date_expire' => $expire_val,
 			'image'       => $final_image
 		];

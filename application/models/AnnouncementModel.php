@@ -46,6 +46,20 @@ class AnnouncementModel extends CI_Model
         return $this->db->get($this->table)->result();
     }
 
+    // Staff dashboards/bell see every non-expired announcement regardless of
+    // audience — they manage the posts and need visibility into what students
+    // were told. Student feeds stay audience-filtered via the methods below.
+    public function getAllActiveAnnouncements()
+    {
+        $today = date('Y-m-d');
+        $this->db->group_start()
+                 ->where('date_expire IS NULL', NULL, FALSE)
+                 ->or_where('date_expire >=', $today)
+                 ->group_end();
+        $this->db->order_by('aID', 'DESC');
+        return $this->db->get($this->table)->result();
+    }
+
     public function getActiveAnnouncementsForMany(array $audiences)
     {
         $today = date('Y-m-d');
@@ -62,6 +76,16 @@ class AnnouncementModel extends CI_Model
     {
         $today = date('Y-m-d');
         $this->db->where_in('audience', $audiences);
+        $this->db->group_start()
+                 ->where('date_expire IS NULL', NULL, FALSE)
+                 ->or_where('date_expire >=', $today)
+                 ->group_end();
+        return (int)$this->db->count_all_results($this->table);
+    }
+
+    public function countAllActiveAnnouncements()
+    {
+        $today = date('Y-m-d');
         $this->db->group_start()
                  ->where('date_expire IS NULL', NULL, FALSE)
                  ->or_where('date_expire >=', $today)
