@@ -112,6 +112,13 @@ class MobileAccounting extends MobileApi
             'description'   => (string)($payment->description ?? ''),
         ];
 
+        // A new payment has no "before": its snapshot is the "after".
+        $isCreate = strtolower((string)$action) === 'create';
+        $oldValues = $isCreate ? null : $snapshot;
+        if ($isCreate && $newValues === null) {
+            $newValues = $snapshot;
+        }
+
         $this->db->insert('payment_audit_log', [
             'payment_id'     => (int)($payment->ID ?? 0),
             'action'         => $action,
@@ -978,6 +985,18 @@ class MobileAccounting extends MobileApi
         if ($useReservedOr) {
             $this->or_sequence->mark_consumed($deviceId, $orNumber);
         }
+
+        // Same trail as the web cashier: every payment entry is logged.
+        $this->logPaymentAudit('create', (object)$paymentData, $cashier, [
+            'StudentNumber' => $studentNumber,
+            'ORNumber'      => $orNumber,
+            'PDate'         => $pDateInput,
+            'Amount'        => $amount,
+            'description'   => $description,
+            'PaymentType'   => $paymentType,
+            'Sem'           => $sem,
+            'SY'            => $sy,
+        ]);
 
         // Queue the receipt email exactly like the web flow — non-fatal.
         $emailResult = ['attempted' => false, 'sent' => false];

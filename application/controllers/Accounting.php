@@ -134,6 +134,13 @@ class Accounting extends CI_Controller
 			'description'   => (string)($payment->description ?? ''),
 		];
 
+		// A new payment has no "before": its snapshot is the "after".
+		$isCreate = strtolower((string)$action) === 'create';
+		$oldValues = $isCreate ? null : $snapshot;
+		if ($isCreate && $newValues === null) {
+			$newValues = $snapshot;
+		}
+
 		$this->db->insert('payment_audit_log', [
 			'payment_id'     => (int)($payment->ID ?? 0),
 			'action'         => $action,
@@ -1517,6 +1524,19 @@ class Accounting extends CI_Controller
 				redirect('Accounting/Payment');
 				return;
 			}
+
+			// Payment entry is the cashier's main write, so it belongs in the
+			// same trail as edits and deletions (and in Super Admin's Audit Trail).
+			$this->logPaymentAudit('create', (object)$paymentData, [
+				'StudentNumber' => $studentNumber,
+				'ORNumber'      => $orNumber,
+				'PDate'         => $pDateInput,
+				'Amount'        => $amount,
+				'description'   => $description,
+				'PaymentType'   => $paymentType,
+				'Sem'           => $sem,
+				'SY'            => $sy,
+			]);
 
 			$receiptSettings = $this->getReceiptSettings();
 			$receiptPayment = $this->buildReceiptEmailPayment($paymentData, $student);

@@ -256,8 +256,34 @@ class Securitycheck extends CI_Controller
         echo "  checkpoint also written to: " . $this->anchor_path() . "\n";
     }
 
-    /** Minimum gap between reports, whatever the cron says. */
-    const MIN_REPORT_INTERVAL = 21600; // 6 hours
+    /** HTTP gets a bare word (see the class comment); CLI gets the reason. */
+    private function report_skipped($message)
+    {
+        if (!is_cli() && !$this->input->is_cli_request()) {
+            $this->output->set_content_type('text/plain')->set_output("skipped\n");
+            return;
+        }
+        echo $message;
+    }
+
+    /** Hour of day (0-23, Asia/Manila) the daily report falls due. */
+    private function report_hour()
+    {
+        $hour = $this->config->item('security_report_hour');
+
+        return is_numeric($hour) ? max(0, min(23, (int)$hour)) : 6;
+    }
+
+    /**
+     * Start of the current report day: today at report_hour, or yesterday at
+     * report_hour while today's has not come round yet.
+     */
+    private function report_day_start()
+    {
+        $start = strtotime(date('Y-m-d') . sprintf(' %02d:00:00', $this->report_hour()));
+
+        return $start > time() ? strtotime('-1 day', $start) : $start;
+    }
 
     /**
      * Seconds until the next report is due, or NULL when one is due now.
@@ -456,7 +482,7 @@ class Securitycheck extends CI_Controller
             $out['warnings'][] = 'Oldest pending message is from ' . $out['oldest'] . ' -- delivery is stalled.';
         }
 
-        return array_values(array_unique($out));
+        return $out;
     }
 
     /** Where the on-disk checkpoint lives. */
