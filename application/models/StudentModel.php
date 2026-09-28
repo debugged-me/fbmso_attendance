@@ -1760,6 +1760,7 @@ class StudentModel extends CI_Model
 				NULLIF(s.yearLevel, '')                                                                    AS yearLevel,
 				NULLIF(s.section, '')                                                                      AS section,
 				NULLIF(s.Status, '')                                                                       AS signupStatus,
+				ou.acctStat                                                                                AS acctStat,
 				'studentsignup'                                                                            AS source_table
 			FROM studentsignup s
 			LEFT JOIN o_users ou
@@ -1784,6 +1785,7 @@ class StudentModel extends CI_Model
 				NULL                                                               AS yearLevel,
 				NULL                                                               AS section,
 				COALESCE(NULLIF(ou.acctStat, ''), 'Registered')                    AS signupStatus,
+				ou.acctStat                                                        AS acctStat,
 				'o_users'                                                          AS source_table
 			FROM o_users ou
 			LEFT JOIN studeprofile sp

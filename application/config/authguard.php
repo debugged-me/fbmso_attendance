@@ -133,7 +133,10 @@ $config['authguard_roles'] = array(
     // passwords, activating/deactivating accounts, bulk account operations.
     'page/useraccounts'           => array('Super Admin', 'Admin', 'IT'),
     'page/updateuserinfo'         => array('Super Admin', 'Admin', 'IT'),
-    'page/changesuserstat'        => array('Super Admin', 'Admin', 'IT'),
+    // Was spelled 'changesuserstat', which matched nothing, so changeUserStat
+    // fell through to 'page/*' and any staff role could deactivate any account.
+    'page/changeuserstat'         => array('Super Admin', 'Admin', 'IT'),
+    'page/setstudentstatus'       => array('Super Admin', 'Admin', 'IT'),
     'page/changestat'             => array('Super Admin', 'Admin', 'IT'),
     'page/resetpass'              => array('Super Admin', 'Admin', 'IT'),
     'page/copy_users_to_o_users'  => array('Super Admin', 'Admin', 'IT'),

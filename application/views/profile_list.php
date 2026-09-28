@@ -53,6 +53,46 @@
   .pl-actions > button.up-btn { margin-right:10px; margin-bottom:6px; }
   @supports (gap:10px) { .pl-actions > .up-btn { margin-right:0; } }
 
+  /* Per-row actions: one kebab menu, same look as Admin Accounts */
+  .row-actions .dropdown-toggle {
+    width:38px; height:38px; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    border:1px solid #e6ebf5; border-radius:10px; background:#fff; color:#6b7a99;
+    padding:0; box-shadow:none; font-size:18px;
+  }
+  .row-actions .dropdown-toggle::after { display:none; }
+  .row-actions .dropdown-toggle:hover,
+  .row-actions .dropdown-toggle:focus,
+  .row-actions.show .dropdown-toggle { color:#4266d4; border-color:#4266d4; box-shadow:0 3px 10px rgba(66,102,212,.12); outline:none; }
+  .row-actions .dropdown-toggle .ra-label { display:none; font-size:.82rem; font-weight:700; }
+  .row-actions .dropdown-menu {
+    min-width:210px; padding:6px; border:1px solid #e6ebf5; border-radius:12px;
+    box-shadow:0 12px 36px rgba(15,23,42,.14); z-index:1060;
+  }
+  .row-actions .dropdown-item {
+    display:flex; align-items:center; gap:9px; width:100%; padding:9px 12px; border-radius:8px;
+    font-size:.84rem; font-weight:600; margin:0; color:#0d1b4b; background:none; border:0; text-align:left;
+  }
+  .row-actions .dropdown-item:hover,
+  .row-actions .dropdown-item:focus { background:#f4f7ff; }
+  .row-actions .dropdown-item i { width:19px; text-align:center; font-size:17px; }
+  .row-actions .dropdown-item.ra-warn i    { color:#b45309; }
+  .row-actions .dropdown-item.ra-success   { color:#15803d; }
+  .row-actions .dropdown-item.ra-danger    { color:#dc2626; }
+  .row-actions .dropdown-item.ra-danger:hover { background:#fef2f2; }
+  .row-actions .dropdown-divider { margin:5px 4px; }
+  .row-actions form { margin:0; }
+
+  /* Account status badge */
+  .acct-badge {
+    display:inline-flex; align-items:center; gap:5px; border-radius:999px;
+    padding:4px 11px; font-size:.72rem; font-weight:700; white-space:nowrap;
+  }
+  .acct-badge::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .acct-active   { background:#dcfce7; color:#15803d; }
+  .acct-inactive { background:#fee2e2; color:#b91c1c; }
+  .acct-pending  { background:#fef3c7; color:#a16207; }
+  .acct-none     { background:#f1f5f9; color:#64748b; }
+
   /* Actions inside the card head */
   .up-card-head .pl-actions { flex:0 0 auto; }
   .up-card-head .pl-actions .up-btn { padding:7px 14px; font-size:.8rem; }
@@ -118,14 +158,11 @@
       border-bottom:0 !important;
     }
     #datatable tbody td:last-child::before { display:none; }
-    #datatable tbody td:last-child .btn,
-    #datatable tbody td:last-child a,
-    #datatable tbody td:last-child button {
-      width:100%;
-      text-align:center;
-      font-size:.82rem;
-      padding:8px 12px;
+    /* On a card the kebab becomes a full-width "Actions" button */
+    #datatable tbody td:last-child .row-actions .dropdown-toggle {
+      width:100%; height:auto; padding:9px 12px; font-size:1rem;
     }
+    #datatable tbody td:last-child .row-actions .dropdown-toggle .ra-label { display:inline; }
 
     /* DataTables filter/length/pagination — stacked */
     .dataTables_wrapper .dataTables_filter,
@@ -399,7 +436,8 @@
                           <th>Student No.</th>
                           <th>Email</th>
                           <th style="width:110px">Birth Date</th>
-                          <th style="text-align:center;width:320px">Action</th>
+                          <th style="width:110px">Status</th>
+                          <th style="text-align:center;width:70px">Action</th>
                         </tr>
                       </thead>
                       <?php
@@ -407,6 +445,13 @@
                       $canDelete = in_array(
                           strtolower(trim((string)($this->session->userdata('level') ?? ''))),
                           $allowedRoles,
+                          true
+                      );
+                      // Reset password and activate/deactivate are guarded to these
+                      // roles (config/authguard.php), so only they see the items.
+                      $canManage = in_array(
+                          strtolower(trim((string)($this->session->userdata('level') ?? ''))),
+                          ['super admin', 'admin', 'it'],
                           true
                       );
 
@@ -426,6 +471,8 @@
                               'studno' => (string)($row->StudentNumber ?? ''),
                               'email'  => trim((string)($row->email ?? '')),
                               'bdate'  => !empty($row->birthDate) ? $row->birthDate : 'N/A',
+                              // null = no login account exists for this signup yet
+                              'status' => isset($row->acctStat) ? strtolower(trim((string)$row->acctStat)) : null,
                           ];
                       }
                       ?>
@@ -502,9 +549,20 @@
   <script>
     var PL_DATA = <?= json_encode($dtRows, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
     var PL_CAN_DELETE = <?= $canDelete ? 'true' : 'false'; ?>;
+    var PL_CAN_MANAGE = <?= $canManage ? 'true' : 'false'; ?>;
     var PL_URL_VIEW = <?= json_encode(site_url('Page/editSignup')); ?>;
     var PL_URL_RESET = <?= json_encode(base_url('Page/resetPass')); ?>;
     var PL_URL_DELETE = <?= json_encode(base_url('Page/deleteSignup')); ?>;
+    var PL_URL_STATUS = <?= json_encode(base_url('Page/setStudentStatus')); ?>;
+
+    // acctStat -> badge. null means the signup has no login account yet.
+    function plStatusMeta(s) {
+      if (s === null || s === undefined) return { cls: 'acct-none', label: 'No account' };
+      if (s === 'active') return { cls: 'acct-active', label: 'Active' };
+      if (s === 'inactive') return { cls: 'acct-inactive', label: 'Inactive' };
+      if (s === 'pending verification') return { cls: 'acct-pending', label: 'Pending' };
+      return { cls: 'acct-none', label: s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Unknown' };
+    }
 
     function plEsc(s) {
       return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
@@ -560,6 +618,16 @@
             }
           },
           {
+            data: 'status',
+            render: function(d, type) {
+              var meta = plStatusMeta(d);
+              // Filter/sort on the label so typing "inactive" in search finds them.
+              if (type !== 'display') return meta.label;
+              return '<span class="acct-badge ' + meta.cls + '">' + plEsc(meta.label) + '</span>';
+            },
+            createdCell: function(td) { td.setAttribute('data-label', 'Status'); }
+          },
+          {
             data: null,
             orderable: false,
             searchable: false,
@@ -567,28 +635,97 @@
             render: function(d, type, row) {
               if (type !== 'display') return '';
               var studno = plEsc(row.studno);
-              var html = '<a href="' + PL_URL_VIEW + '?id=' + encodeURIComponent(row.studno) + '" class="up-btn up-btn-ghost" style="padding:6px 12px;font-size:.78rem;min-height:auto;">'
-                + '<i class="mdi mdi-eye-outline"></i> View</a>';
-              if (!PL_CAN_DELETE) {
-                return html + ' <span style="color:#9aa5b8;">&mdash;</span>';
+              var items = '<a class="dropdown-item" href="' + PL_URL_VIEW + '?id=' + encodeURIComponent(row.studno) + '">'
+                + '<i class="mdi mdi-eye-outline"></i> View Profile</a>';
+
+              // Reset and status need a login account to act on.
+              if (PL_CAN_MANAGE && row.status !== null) {
+                var resetHref = PL_URL_RESET + '?u=' + encodeURIComponent(row.studno) + '&return_to=profileList';
+                items += '<a class="dropdown-item ra-warn reset-pass-btn" href="' + plEsc(resetHref) + '"'
+                  + ' data-href="' + plEsc(resetHref) + '" data-studno="' + studno + '">'
+                  + '<i class="mdi mdi-lock-reset"></i> Reset Password</a>';
+
+                if (row.status === 'inactive') {
+                  items += '<a class="dropdown-item ra-success status-toggle-btn" href="#" data-studno="' + studno + '" data-action="Activate">'
+                    + '<i class="mdi mdi-account-check-outline"></i> Activate Account</a>';
+                } else {
+                  items += '<a class="dropdown-item ra-danger status-toggle-btn" href="#" data-studno="' + studno + '" data-action="Deactivate">'
+                    + '<i class="mdi mdi-account-off-outline"></i> Set Inactive</a>';
+                }
               }
-              var resetHref = PL_URL_RESET + '?u=' + encodeURIComponent(row.studno) + '&return_to=profileList';
-              html += ' <a href="' + plEsc(resetHref) + '" class="up-btn up-btn-ghost reset-pass-btn"'
-                + ' style="padding:6px 12px;font-size:.78rem;min-height:auto;background:#fef3c7;color:#92400e;border-color:#fcd34d;"'
-                + ' data-href="' + plEsc(resetHref) + '" data-studno="' + studno + '">'
-                + '<i class="mdi mdi-lock-reset"></i> Reset</a>'
-                + ' <form method="post" action="' + PL_URL_DELETE + '" style="display:inline" class="delete-signup-form">'
-                + csrfField
-                + '<input type="hidden" name="id" value="' + studno + '">'
-                + '<button type="button" class="up-btn delete-signup-btn" style="padding:6px 12px;font-size:.78rem;min-height:auto;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;border:none;" data-studno="' + studno + '">'
-                + '<i class="mdi mdi-delete-forever"></i> Delete</button></form>';
-              return html;
+
+              if (PL_CAN_DELETE) {
+                items += '<div class="dropdown-divider"></div>'
+                  + '<form method="post" action="' + PL_URL_DELETE + '" class="delete-signup-form">'
+                  + csrfField
+                  + '<input type="hidden" name="id" value="' + studno + '">'
+                  + '<button type="button" class="dropdown-item ra-danger delete-signup-btn" data-studno="' + studno + '">'
+                  + '<i class="mdi mdi-delete-forever"></i> Delete</button></form>';
+              }
+
+              return '<div class="dropdown row-actions">'
+                + '<button type="button" class="dropdown-toggle ra-toggle" aria-haspopup="true" aria-expanded="false" aria-label="Actions for ' + studno + '">'
+                + '<i class="mdi mdi-dots-vertical"></i><span class="ra-label">Actions</span></button>'
+                + '<div class="dropdown-menu dropdown-menu-right">' + items + '</div></div>';
             },
             createdCell: function(td) { td.setAttribute('data-label', 'Action'); }
           }
         ]
       });
     });
+    // Row menus open and close here rather than through Bootstrap's dropdown
+    // plugin. They are pinned to the viewport so .table-responsive's overflow
+    // can't clip the last rows, and the theme's bootstrap.css forces
+    // `.dropdown-menu.show{top:100%!important}` / `.dropdown-menu-right
+    // {right:0!important}`, so coordinates must be !important. Bootstrap's
+    // Popper rewrites top/left on every update without the flag, which threw
+    // the menu off-screen — hence no Bootstrap here.
+    var PL_MENU_PROPS = ['position', 'top', 'left', 'right', 'bottom', 'transform'];
+    function plPlaceMenu(wrap) {
+      var toggle = wrap.querySelector('.ra-toggle');
+      var menu = wrap.querySelector('.dropdown-menu');
+      var r = toggle.getBoundingClientRect();
+      var mw = menu.offsetWidth, mh = menu.offsetHeight;
+      var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+      var left = Math.max(8, Math.min(r.right - mw, vw - mw - 8));
+      var top = r.bottom + 4;
+      if (top + mh > vh - 8 && r.top - mh - 4 >= 8) top = r.top - mh - 4; // open upward
+      var set = { position: 'fixed', top: top + 'px', left: left + 'px', right: 'auto', bottom: 'auto', transform: 'none' };
+      PL_MENU_PROPS.forEach(function(p) { menu.style.setProperty(p, set[p], 'important'); });
+    }
+    function plCloseMenus() {
+      document.querySelectorAll('#datatable .row-actions.show').forEach(function(wrap) {
+        var menu = wrap.querySelector('.dropdown-menu');
+        wrap.classList.remove('show');
+        menu.classList.remove('show');
+        PL_MENU_PROPS.forEach(function(p) { menu.style.removeProperty(p); });
+        wrap.querySelector('.ra-toggle').setAttribute('aria-expanded', 'false');
+      });
+    }
+    document.addEventListener('click', function(e) {
+      var toggle = e.target.closest && e.target.closest('#datatable .ra-toggle');
+      if (toggle) {
+        var wrap = toggle.parentNode;
+        var wasOpen = wrap.classList.contains('show');
+        plCloseMenus();
+        if (!wasOpen) {
+          wrap.classList.add('show');
+          wrap.querySelector('.dropdown-menu').classList.add('show');
+          toggle.setAttribute('aria-expanded', 'true');
+          plPlaceMenu(wrap);
+        }
+        return;
+      }
+      // Any other click (including picking an item) closes the menu.
+      plCloseMenus();
+    });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') plCloseMenus(); });
+    // A pinned menu would drift away from its row on scroll; close it instead.
+    document.addEventListener('scroll', function(e) {
+      if (!(e.target && e.target.closest && e.target.closest('.dropdown-menu'))) plCloseMenus();
+    }, true);
+    window.addEventListener('resize', plCloseMenus);
+
     $(document).on('click', '.nx-stat[data-yearfilter]', function(e) {
       e.preventDefault();
       try {
@@ -718,7 +855,55 @@
         }
       }
 
+      function handleStatusClick(event, button) {
+        event.preventDefault();
+        var studno = button.getAttribute('data-studno') || '';
+        var action = button.getAttribute('data-action') === 'Activate' ? 'Activate' : 'Deactivate';
+        var activate = action === 'Activate';
+        var promptText = activate
+          ? studno + ' will be able to sign in again.'
+          : studno + ' will be signed out everywhere and will not be able to sign in until the account is activated again.';
+
+        var submit = function() {
+          if (window.UI && UI.navBusy) UI.navBusy(activate ? 'Activating…' : 'Deactivating…');
+          var form = document.createElement('form');
+          form.method = 'POST';
+          form.action = PL_URL_STATUS;
+          var fields = { u: studno, t: action };
+          var csrfName = document.querySelector('meta[name="csrf-token-name"]');
+          var csrfHash = document.querySelector('meta[name="csrf-token"]');
+          if (csrfName && csrfHash) fields[csrfName.content] = csrfHash.content;
+          Object.keys(fields).forEach(function(k) {
+            var inp = document.createElement('input');
+            inp.type = 'hidden'; inp.name = k; inp.value = fields[k];
+            form.appendChild(inp);
+          });
+          document.body.appendChild(form);
+          form.submit();
+        };
+
+        if (window.UI && typeof window.UI.fire === 'function') {
+          window.UI.fire({
+            title: activate ? 'Activate account?' : 'Set account inactive?',
+            text: promptText,
+            icon: activate ? 'question' : 'warning',
+            showCancelButton: true,
+            confirmButtonText: activate ? 'Activate' : 'Set inactive',
+            cancelButtonText: 'Cancel'
+          }).then(function(result) {
+            if (result && (result.isConfirmed || result.value === true)) submit();
+          });
+        } else if (window.confirm(promptText)) {
+          submit();
+        }
+      }
+
       document.addEventListener('click', function(event) {
+        var statusButton = closestByClass(event.target, 'status-toggle-btn');
+        if (statusButton) {
+          handleStatusClick(event, statusButton);
+          return;
+        }
         var button = closestByClass(event.target, 'delete-signup-btn');
         if (button) {
           handleDeleteClick(event, button);

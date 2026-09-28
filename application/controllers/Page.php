@@ -2975,6 +2975,64 @@ class Page extends CI_Controller
 		}
 	}
 
+	/**
+	 * Activate or deactivate a student's login from Page/profileList.
+	 *
+	 * Login (web and mobile) already refuses any account whose acctStat is not
+	 * 'active', so flipping the column is what blocks sign-in. Deactivating
+	 * also ends the sessions and mobile tokens the student already holds —
+	 * otherwise they would stay signed in until those expired.
+	 *
+	 * Limited to student accounts so this cannot be pointed at a staff login.
+	 */
+	public function setStudentStatus()
+	{
+		if (!$this->requirePost()) return;
+
+		$u = trim((string)$this->input->post('u', true));
+		$t = (string)$this->input->post('t', true);
+		$activate = ($t === 'Activate');
+
+		$account = ($u === '') ? null : $this->db
+			->select('username, acctStat')
+			->where('username', $u)
+			->where_in('position', ['Student', 'Stude Applicant'])
+			->get('o_users')->row();
+
+		if (!$account) {
+			$this->session->set_flashdata('danger', 'No student login account was found for ' . $u . '.');
+			return redirect('Page/profileList');
+		}
+
+		$newStatus = $activate ? 'active' : 'inactive';
+		$this->db->where('username', $account->username)->update('o_users', ['acctStat' => $newStatus]);
+
+		$ended = 0;
+		if (!$activate) {
+			$this->load->library('sessionregistry');
+			$ended = $this->sessionregistry->revokeAllForUser($account->username, 'account deactivated');
+			$this->load->model('MobileTokenModel');
+			$this->MobileTokenModel->revokeAllForUser($account->username);
+		}
+
+		$this->AuditLogModel->write(
+			'update',
+			'Registered Students',
+			'o_users',
+			$account->username,
+			['acctStat' => $account->acctStat],
+			['acctStat' => $newStatus],
+			1,
+			$activate ? 'Activated student account' : 'Deactivated student account',
+			['sessions_ended' => $ended]
+		);
+
+		$this->session->set_flashdata('success', $activate
+			? $account->username . ' is active again and can sign in.'
+			: $account->username . ' is now inactive and can no longer sign in.');
+		redirect('Page/profileList');
+	}
+
 	public function duplicateStudentsByName()
 	{
 		$result['data'] = $this->StudentModel->getDuplicateStudentsByName();
@@ -5254,6 +5312,15 @@ class Page extends CI_Controller
 
 		// Update the user account status
 		$this->db->query("UPDATE o_users SET acctStat = ? WHERE username = ?", array($newStatus, $u));
+
+		// Blocking sign-in is not enough on its own: end the sessions and
+		// mobile tokens the account already holds.
+		if ($newStatus === 'inactive') {
+			$this->load->library('sessionregistry');
+			$this->sessionregistry->revokeAllForUser((string)$u, 'account deactivated');
+			$this->load->model('MobileTokenModel');
+			$this->MobileTokenModel->revokeAllForUser((string)$u);
+		}
 
 		// Insert a trail record
 		$this->db->query(

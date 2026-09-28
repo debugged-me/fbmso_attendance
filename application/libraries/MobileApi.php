@@ -227,7 +227,10 @@ class MobileApi extends CI_Controller
             $this->json(['ok' => false, 'message' => 'Account no longer exists.'], 401);
             return null;
         }
-        if (isset($user['acctStat']) && $user['acctStat'] === 'Inactive') {
+        // Anything but 'active' — the web toggle writes lowercase 'inactive', which
+        // the old exact match on 'Inactive' let straight through. Tokens are only
+        // ever issued to active accounts, so this blocks nothing legitimate.
+        if (strtolower(trim((string)($user['acctStat'] ?? ''))) !== 'active') {
             $this->MobileTokenModel->revoke($raw);
             $this->json(['ok' => false, 'message' => 'Account has been deactivated.'], 401);
             return null;
