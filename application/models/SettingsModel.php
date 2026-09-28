@@ -209,13 +209,13 @@ public function getSectionsByCourseAndMajor($course, $major)
 
         );
         $this->db->where('expensesid', $expensesid);
-        $this->db->update('expenses', $data);
+        return $this->db->update('expenses', $data);
     }
 
     public function Delete_expenses($expensesid)
     {
         $this->db->where('expensesid', $expensesid);
-        $this->db->delete('expenses');
+        return $this->db->delete('expenses');
     }
 
 
@@ -242,13 +242,13 @@ public function getSectionsByCourseAndMajor($course, $major)
             'Category' => $Category,
         );
         $this->db->where('categoryID', $categoryID);
-        $this->db->update('expensescategory', $data);
+        return $this->db->update('expensescategory', $data);
     }
 
     public function Delete_expensescategory($categoryID)
     {
         $this->db->where('categoryID', $categoryID);
-        $this->db->delete('expensescategory');
+        return $this->db->delete('expensescategory');
     }
 
     public function get_staff()

@@ -348,4 +348,36 @@ class MobileApi extends CI_Controller
         $mtd = strtolower((string)$this->router->fetch_method());
         return ($dir !== '' ? $dir . '/' : '') . $cls . '/' . ($mtd ?: 'index');
     }
+
+    // ─── Audit ─────────────────────────────────────────────────────────────
+
+    /**
+     * Record an expense, expense-category or fee change in audit_logs, the
+     * same row Accounting::logAccountingChange writes for the web screens.
+     * The mobile API has no CI session, so the actor comes from the token;
+     * AuditLogModel reads the reserved _actor_* keys for exactly this case.
+     */
+    protected function log_accounting_change(array $tokenRow, $action, $table, $recordPk, $old, $new, $ok, $label, $name): void
+    {
+        $username = (string)($tokenRow['username'] ?? '');
+        $user = $this->db->select('position')->from('o_users')
+            ->where('username', $username)->limit(1)->get()->row();
+
+        $this->load->model('AuditLogModel');
+        $this->AuditLogModel->write(
+            $action,
+            'Accounting',
+            $table,
+            $recordPk !== null ? (string)$recordPk : null,
+            $old,
+            $new,
+            $ok ? 1 : 0,
+            $label . ($ok ? '' : ' (failed)') . ': ' . mb_substr(trim((string)$name), 0, 100),
+            [
+                '_actor_username' => $username,
+                '_actor_level'    => $user ? (string)$user->position : '',
+                'source'          => 'mobile',
+            ]
+        );
+    }
 }

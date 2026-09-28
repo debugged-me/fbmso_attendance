@@ -720,13 +720,17 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Description, amount, and date are required.'], 422);
         }
 
-        $ok = $this->db->insert('expenses', [
+        $row = [
             'Description' => $desc,
             'Amount' => $amount,
             'Responsible' => $responsible,
             'ExpenseDate' => $date,
             'Category' => $category,
-        ]);
+        ];
+        $ok = $this->db->insert('expenses', $row);
+        $id = $ok ? (int)$this->db->insert_id() : 0;
+        $this->log_accounting_change($tokenRow, 'create', 'expenses', $id ?: null, null,
+            ($id ? ['expensesid' => $id] : []) + $row, $ok, 'Added expense', $desc);
         if (!$ok) {
             return $this->json(['ok' => false, 'message' => 'Failed to save.'], 500);
         }
@@ -762,7 +766,12 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Nothing to update.'], 422);
         }
 
-        $this->db->where('expensesid', $id)->update('expenses', $data);
+        $before = $this->db->where('expensesid', $id)->limit(1)->get('expenses')->row();
+        $ok = $this->db->where('expensesid', $id)->update('expenses', $data);
+        if ($before) {
+            $this->log_accounting_change($tokenRow, 'update', 'expenses', $id, (array)$before, $data,
+                $ok, 'Updated expense', $data['Description'] ?? $before->Description);
+        }
         return $this->json(['ok' => true, 'message' => 'Expense updated.']);
     }
 
@@ -784,7 +793,12 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Invalid expense ID.'], 422);
         }
 
-        $this->db->where('expensesid', $id)->delete('expenses');
+        $before = $this->db->where('expensesid', $id)->limit(1)->get('expenses')->row();
+        $ok = $this->db->where('expensesid', $id)->delete('expenses');
+        if ($before) {
+            $this->log_accounting_change($tokenRow, 'delete', 'expenses', $id, (array)$before, null,
+                $ok, 'Deleted expense', $before->Description);
+        }
         return $this->json(['ok' => true, 'message' => 'Expense deleted.']);
     }
 
@@ -829,7 +843,10 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Category name is required.'], 422);
         }
 
-        $this->db->insert('expensescategory', ['Category' => $category]);
+        $ok = $this->db->insert('expensescategory', ['Category' => $category]);
+        $id = $ok ? (int)$this->db->insert_id() : 0;
+        $this->log_accounting_change($tokenRow, 'create', 'expensescategory', $id ?: null, null,
+            ($id ? ['categoryID' => $id] : []) + ['Category' => $category], $ok, 'Added expense category', $category);
         return $this->json(['ok' => true, 'message' => 'Category saved.']);
     }
 
@@ -851,7 +868,12 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Invalid category ID.'], 422);
         }
 
-        $this->db->where('categoryID', $id)->delete('expensescategory');
+        $before = $this->db->where('categoryID', $id)->limit(1)->get('expensescategory')->row();
+        $ok = $this->db->where('categoryID', $id)->delete('expensescategory');
+        if ($before) {
+            $this->log_accounting_change($tokenRow, 'delete', 'expensescategory', $id, (array)$before, null,
+                $ok, 'Deleted expense category', $before->Category);
+        }
         return $this->json(['ok' => true, 'message' => 'Category deleted.']);
     }
 

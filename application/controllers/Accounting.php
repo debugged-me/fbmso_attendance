@@ -14,6 +14,7 @@ class Accounting extends CI_Controller
 		$this->load->library(['session', 'form_validation', 'term']);
 		$this->load->library('securityaudit');
 		$this->load->model('SettingsModel');
+		$this->load->model('AuditLogModel');
 		$this->config->load('mass_announcement_email', true);
 
 		if ($this->session->userdata('logged_in') !== TRUE) {
@@ -121,6 +122,23 @@ class Accounting extends CI_Controller
 			'actor_level'    => (string)$this->session->userdata('level') ?: null,
 			'changed_at'     => (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s'),
 		]);
+	}
+
+	// Expenses, expense categories and fees feed the ledger and the payment
+	// screen, so every change to them goes to audit_logs (Super Admin's Audit
+	// Trail) with the record before and after, the same way payments do.
+	private function logAccountingChange($action, $table, $recordPk, $old, $new, $ok, $label, $name)
+	{
+		$this->AuditLogModel->write(
+			$action,
+			'Accounting',
+			$table,
+			$recordPk !== null ? (string)$recordPk : null,
+			$old,
+			$new,
+			$ok ? 1 : 0,
+			$label . ($ok ? '' : ' (failed)') . ': ' . mb_substr(trim((string)$name), 0, 100)
+		);
 	}
 
 	private function nextTableId($table, $idColumn)
@@ -265,7 +283,10 @@ class Accounting extends CI_Controller
 				'ExpenseDate' => $this->input->post('ExpenseDate'),
 				'Category' => $this->input->post('Category')
 			);
-			$this->SettingsModel->insertexpenses($data);
+			$ok = $this->SettingsModel->insertexpenses($data);
+			$id = $ok ? (int)$this->db->insert_id() : 0;
+			$this->logAccountingChange('create', 'expenses', $id ?: null, null,
+				($id ? ['expensesid' => $id] : []) + $data, $ok, 'Added expense', $data['Description']);
 
 			// Redirect back to the expenses page after saving
 			redirect('Accounting/expenses');
@@ -291,7 +312,19 @@ class Accounting extends CI_Controller
 			$ExpenseDate = $this->input->post('ExpenseDate');
 			$Category = $this->input->post('Category');
 
-			$this->SettingsModel->updateexpenses($expensesid, $Description, $Amount, $Responsible, $ExpenseDate, $Category);
+			$ok = $this->SettingsModel->updateexpenses($expensesid, $Description, $Amount, $Responsible, $ExpenseDate, $Category);
+
+			// $result['data'] was read before the update: it is the "before".
+			$before = $result['data'][0] ?? null;
+			if ($before) {
+				$this->logAccountingChange('update', 'expenses', $expensesid, (array)$before, [
+					'Description' => $Description,
+					'Amount'      => $Amount,
+					'Responsible' => $Responsible,
+					'ExpenseDate' => $ExpenseDate,
+					'Category'    => $Category,
+				], $ok, 'Updated expense', $Description);
+			}
 			$this->session->set_flashdata('expenses', 'Record updated successfully');
 			redirect("Accounting/expenses");
 		}
@@ -304,7 +337,12 @@ class Accounting extends CI_Controller
 		$this->ensureWriteAccess();
 		$expensesid = $this->input->get('expensesid');
 		if ($expensesid) {
-			$this->SettingsModel->Delete_expenses($expensesid);
+			$before = $this->SettingsModel->getexpensesbyId($expensesid)[0] ?? null;
+			$ok = $this->SettingsModel->Delete_expenses($expensesid);
+			if ($before) {
+				$this->logAccountingChange('delete', 'expenses', $expensesid, (array)$before, null,
+					$ok, 'Deleted expense', $before->Description ?? '');
+			}
 			$this->session->set_flashdata('expenses', 'Record deleted successfully');
 		} else {
 			$this->session->set_flashdata('expenses', 'Error deleting record');
@@ -327,7 +365,10 @@ class Accounting extends CI_Controller
 			$data = array(
 				'Category' => $this->input->post('Category'),
 			);
-			$this->SettingsModel->insertexpensesCategory($data);
+			$ok = $this->SettingsModel->insertexpensesCategory($data);
+			$id = $ok ? (int)$this->db->insert_id() : 0;
+			$this->logAccountingChange('create', 'expensescategory', $id ?: null, null,
+				($id ? ['categoryID' => $id] : []) + $data, $ok, 'Added expense category', $data['Category']);
 
 			// Redirect back to the expenses category page after saving
 			redirect('Accounting/expensescategory');
@@ -346,7 +387,13 @@ class Accounting extends CI_Controller
 			$Category = $this->input->post('Category');
 
 
-			$this->SettingsModel->updateexpensescategory($categoryID, $Category);
+			$ok = $this->SettingsModel->updateexpensescategory($categoryID, $Category);
+
+			$before = $result['data'][0] ?? null;
+			if ($before) {
+				$this->logAccountingChange('update', 'expensescategory', $categoryID, (array)$before,
+					['Category' => $Category], $ok, 'Updated expense category', $Category);
+			}
 			$this->session->set_flashdata('expenses', 'Record updated successfully');
 			redirect("Accounting/expensescategory");
 		}
@@ -358,7 +405,12 @@ class Accounting extends CI_Controller
 		$this->ensureWriteAccess();
 		$categoryID = $this->input->get('categoryID');
 		if ($categoryID) {
-			$this->SettingsModel->Delete_expensescategory($categoryID);
+			$before = $this->SettingsModel->getexpensescategorybyId($categoryID)[0] ?? null;
+			$ok = $this->SettingsModel->Delete_expensescategory($categoryID);
+			if ($before) {
+				$this->logAccountingChange('delete', 'expensescategory', $categoryID, (array)$before, null,
+					$ok, 'Deleted expense category', $before->Category ?? '');
+			}
 			$this->session->set_flashdata('expensescategory', 'Record deleted successfully');
 		} else {
 			$this->session->set_flashdata('expensescategory', 'Error deleting record');
@@ -1713,7 +1765,8 @@ class Accounting extends CI_Controller
 					$data['feesType'] = 'School Fee';
 				}
 
-				$this->db->insert('fees', $data);
+				$ok = $this->db->insert('fees', $data);
+				$this->logAccountingChange('create', 'fees', $data['feesid'], null, $data, $ok, 'Added fee', $data['Description']);
 				$this->session->set_flashdata('success', 'Fee added successfully.');
 				redirect('Accounting/course_setUp');
 				return;
@@ -1722,7 +1775,12 @@ class Accounting extends CI_Controller
 			if ($action === 'delete') {
 				$feeId = (int)$this->input->post('feesid', true);
 				if ($feeId > 0) {
-					$this->db->where('feesid', $feeId)->delete('fees');
+					$before = $this->db->select('feesid, feesType, Description, Amount')
+						->from('fees')->where('feesid', $feeId)->limit(1)->get()->row();
+					$ok = $this->db->where('feesid', $feeId)->delete('fees');
+					if ($before) {
+						$this->logAccountingChange('delete', 'fees', $feeId, (array)$before, null, $ok, 'Deleted fee', $before->Description);
+					}
 					$this->session->set_flashdata('success', 'Fee deleted successfully.');
 				} else {
 					$this->session->set_flashdata('danger', 'Invalid fee record.');
@@ -1753,7 +1811,7 @@ class Accounting extends CI_Controller
 				// the balances already recorded under the old name, and the
 				// price is what those students were quoted. Next term starts
 				// clean, so this is a freeze, not a permanent lock.
-				$existing = $this->db->select('Description, Amount')
+				$existing = $this->db->select('feesid, feesType, Description, Amount')
 					->from('fees')
 					->where('feesid', $feeId)
 					->limit(1)
@@ -1787,6 +1845,10 @@ class Accounting extends CI_Controller
 
 				$ok = $feeId > 0
 					&& $this->db->where('feesid', $feeId)->update('fees', $updateData);
+
+				if ($existing) {
+					$this->logAccountingChange('update', 'fees', $feeId, (array)$existing, $updateData, $ok, 'Updated fee', $updateData['Description']);
+				}
 
 				if ($ok) {
 					$this->session->set_flashdata('success', 'Fee updated successfully.');

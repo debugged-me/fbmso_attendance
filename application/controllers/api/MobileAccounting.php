@@ -1432,7 +1432,8 @@ class MobileAccounting extends MobileApi
         if ($this->input->method(true) !== 'POST') {
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
-        if ($this->require_accounting_write() === null) return;
+        $tokenRow = $this->require_accounting_write();
+        if ($tokenRow === null) return;
         if ($this->replay_if_duplicate()) return;
 
         $p = $this->read_payload();
@@ -1449,12 +1450,14 @@ class MobileAccounting extends MobileApi
             $feesType = 'School Fee';
         }
 
-        $this->db->insert('fees', [
+        $row = [
             'feesid'      => $this->nextTableId('fees', 'feesid'),
             'feesType'    => $feesType,
             'Description' => $description,
             'Amount'      => $amount,
-        ]);
+        ];
+        $ok = $this->db->insert('fees', $row);
+        $this->log_accounting_change($tokenRow, 'create', 'fees', $row['feesid'], null, $row, $ok, 'Added fee', $description);
 
         $body = json_encode(['ok' => true, 'message' => 'Fee added successfully.']);
         $this->record_idempotent_response(200, $body);
@@ -1466,7 +1469,8 @@ class MobileAccounting extends MobileApi
         if ($this->input->method(true) !== 'POST') {
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
-        if ($this->require_accounting_write() === null) return;
+        $tokenRow = $this->require_accounting_write();
+        if ($tokenRow === null) return;
         if ($this->replay_if_duplicate()) return;
 
         $p = $this->read_payload();
@@ -1487,7 +1491,12 @@ class MobileAccounting extends MobileApi
             $updateData['feesType'] = $feesType;
         }
 
+        $before = $this->db->select('feesid, feesType, Description, Amount')
+            ->from('fees')->where('feesid', $feeId)->limit(1)->get()->row();
         $ok = $this->db->where('feesid', $feeId)->update('fees', $updateData);
+        if ($before) {
+            $this->log_accounting_change($tokenRow, 'update', 'fees', $feeId, (array)$before, $updateData, $ok, 'Updated fee', $description);
+        }
         $result = $ok
             ? ['ok' => true, 'message' => 'Fee updated successfully.']
             : ['ok' => false, 'message' => 'Unable to update fee. Please try again.'];
@@ -1501,7 +1510,8 @@ class MobileAccounting extends MobileApi
         if ($this->input->method(true) !== 'POST') {
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
-        if ($this->require_accounting_write() === null) return;
+        $tokenRow = $this->require_accounting_write();
+        if ($tokenRow === null) return;
         if ($this->replay_if_duplicate()) return;
 
         $p = $this->read_payload();
@@ -1512,7 +1522,12 @@ class MobileAccounting extends MobileApi
             return $this->json(json_decode($body, true), 422);
         }
 
-        $this->db->where('feesid', $feeId)->delete('fees');
+        $before = $this->db->select('feesid, feesType, Description, Amount')
+            ->from('fees')->where('feesid', $feeId)->limit(1)->get()->row();
+        $ok = $this->db->where('feesid', $feeId)->delete('fees');
+        if ($before) {
+            $this->log_accounting_change($tokenRow, 'delete', 'fees', $feeId, (array)$before, null, $ok, 'Deleted fee', $before->Description);
+        }
         $body = json_encode(['ok' => true, 'message' => 'Fee deleted successfully.']);
         $this->record_idempotent_response(200, $body);
         return $this->json(json_decode($body, true));
