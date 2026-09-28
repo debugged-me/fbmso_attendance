@@ -705,8 +705,8 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_accounting_writer($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        if (!$this->is_expense_writer($tokenRow)) {
+            return $this->deny_expense_write($tokenRow);
         }
 
         $p = $this->read_payload();
@@ -745,8 +745,8 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_accounting_writer($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        if (!$this->is_expense_writer($tokenRow)) {
+            return $this->deny_expense_write($tokenRow);
         }
 
         $p = $this->read_payload();
@@ -783,8 +783,8 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_accounting_writer($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        if (!$this->is_expense_writer($tokenRow)) {
+            return $this->deny_expense_write($tokenRow);
         }
 
         $p = $this->read_payload();
@@ -833,8 +833,8 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_accounting_writer($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        if (!$this->is_expense_writer($tokenRow)) {
+            return $this->deny_expense_write($tokenRow);
         }
 
         $p = $this->read_payload();
@@ -858,8 +858,8 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_accounting_writer($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        if (!$this->is_expense_writer($tokenRow)) {
+            return $this->deny_expense_write($tokenRow);
         }
 
         $p = $this->read_payload();
@@ -1364,11 +1364,36 @@ class MobileMisc extends MobileApi
         return in_array($pos, ['admin', 'cashier', 'auditor'], true);
     }
 
-    /** Accounting mutations remain Admin/Cashier only. */
-    private function is_accounting_writer(array $tokenRow): bool
+    /**
+     * Expenses and expense categories are the Cashier's to manage; Admin and
+     * Auditor may view them only. Same rule as Accounting::canManageExpenses.
+     */
+    private function is_expense_writer(array $tokenRow): bool
     {
-        $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
-        return in_array($pos, ['admin', 'cashier'], true);
+        return strtolower(trim($this->position_of((string)$tokenRow['username']))) === 'cashier';
+    }
+
+    /** Log the refused change, as the web does, and answer 403. */
+    private function deny_expense_write(array $tokenRow)
+    {
+        $username = (string)$tokenRow['username'];
+        $level    = $this->position_of($username);
+
+        $this->load->library('securityaudit');
+        $this->securityaudit->event('ACCESS_DENIED', [
+            'status'      => 'denied',
+            'module'      => 'Mobile Accounting',
+            'actor'       => $username,
+            'actor_level' => $level,
+            'target'      => $username,
+            'description' => $level . ' attempted to change expenses (view-only access)',
+            'extra'       => ['route' => uri_string()],
+        ]);
+
+        return $this->json([
+            'ok'      => false,
+            'message' => 'Expenses are managed by the Cashier. Your account can view them only.',
+        ], 403);
     }
 
     private function is_auditor(array $tokenRow): bool

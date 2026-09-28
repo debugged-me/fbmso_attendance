@@ -56,6 +56,37 @@ class Accounting extends CI_Controller
 		}
 	}
 
+	/** Expenses and expense categories are managed by the Cashier only. */
+	private function canManageExpenses()
+	{
+		return (string)$this->session->userdata('level') === 'Cashier';
+	}
+
+	/**
+	 * Admin and Auditor can view expenses but not change them. A change they
+	 * attempt (an old Edit link, a bookmark, a direct request) is logged and
+	 * sent back to the list with a notice, rather than ending on an error page.
+	 */
+	private function ensureExpenseWriteAccess($backTo)
+	{
+		$this->ensureAccess();
+		if ($this->canManageExpenses()) {
+			return;
+		}
+
+		$level = (string)$this->session->userdata('level');
+		$this->securityaudit->event('ACCESS_DENIED', [
+			'status'      => 'denied',
+			'module'      => 'Accounting',
+			'target'      => (string)$this->session->userdata('username'),
+			'description' => $level . ' attempted to change expenses (view-only access)',
+			'extra'       => ['route' => uri_string()],
+		]);
+		$this->session->set_flashdata('expenses_notice', 'Expenses are managed by the Cashier. Your account can view them only.');
+		redirect($backTo);
+		exit;
+	}
+
 	public function index()
 	{
 		$this->ensureAccess();
@@ -267,7 +298,7 @@ class Accounting extends CI_Controller
 	{
 		$this->ensureAccess();
 		if (strtoupper((string)$this->input->method()) === 'POST') {
-			$this->ensureWriteAccess();
+			$this->ensureExpenseWriteAccess('Accounting/expenses');
 		}
 
 		$data['data'] = $this->SettingsModel->expenses();
@@ -296,7 +327,7 @@ class Accounting extends CI_Controller
 
 	public function updateexpenses()
 	{
-		$this->ensureWriteAccess();
+		$this->ensureExpenseWriteAccess('Accounting/expenses');
 		$expensesid = $this->input->get('expensesid');
 		$result['data'] = $this->SettingsModel->getexpensesbyId($expensesid);
 		$data['data1'] = $this->SettingsModel->get_expensesCategory();
@@ -334,9 +365,16 @@ class Accounting extends CI_Controller
 
 	public function Deleteexpenses()
 	{
-		$this->ensureWriteAccess();
-		$expensesid = $this->input->get('expensesid');
-		if ($expensesid) {
+		$this->ensureExpenseWriteAccess('Accounting/expenses');
+
+		// POST only: a plain link must not be able to delete a record.
+		if (strtoupper((string)$this->input->method()) !== 'POST') {
+			redirect('Accounting/expenses');
+			return;
+		}
+
+		$expensesid = (int)$this->input->post('expensesid');
+		if ($expensesid > 0) {
 			$before = $this->SettingsModel->getexpensesbyId($expensesid)[0] ?? null;
 			$ok = $this->SettingsModel->Delete_expenses($expensesid);
 			if ($before) {
@@ -356,7 +394,7 @@ class Accounting extends CI_Controller
 	{
 		$this->ensureAccess();
 		if (strtoupper((string)$this->input->method()) === 'POST') {
-			$this->ensureWriteAccess();
+			$this->ensureExpenseWriteAccess('Accounting/expensescategory');
 		}
 		$data['data'] = $this->SettingsModel->get_expensesCategory();
 		$this->load->view('expensescategory', $data);
@@ -377,7 +415,7 @@ class Accounting extends CI_Controller
 
 	public function updateexpensescategory()
 	{
-		$this->ensureWriteAccess();
+		$this->ensureExpenseWriteAccess('Accounting/expensescategory');
 		$categoryID = $this->input->get('categoryID');
 		$result['data'] = $this->SettingsModel->getexpensescategorybyId($categoryID);
 		$this->load->view('updateexpensescategory', $result);
@@ -402,9 +440,16 @@ class Accounting extends CI_Controller
 
 	public function Deleteexpensescategory()
 	{
-		$this->ensureWriteAccess();
-		$categoryID = $this->input->get('categoryID');
-		if ($categoryID) {
+		$this->ensureExpenseWriteAccess('Accounting/expensescategory');
+
+		// POST only: a plain link must not be able to delete a record.
+		if (strtoupper((string)$this->input->method()) !== 'POST') {
+			redirect('Accounting/expensescategory');
+			return;
+		}
+
+		$categoryID = (int)$this->input->post('categoryID');
+		if ($categoryID > 0) {
 			$before = $this->SettingsModel->getexpensescategorybyId($categoryID)[0] ?? null;
 			$ok = $this->SettingsModel->Delete_expensescategory($categoryID);
 			if ($before) {
