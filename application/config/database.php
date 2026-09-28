@@ -6,19 +6,10 @@ $query_builder = TRUE;
 
 $db['default'] = array(
 	'dsn'	=> '',
-
 	'hostname' => '127.0.0.1',
 	'username' => 'root',
 	'password' => '',
-	// 'database' => 'srmsportal_tyrn',
-	//  'database' => 'srmsportal_amya',
-	// 'database' => 'srmsportal_vmc',
-	// 'database' => 'srmsportal_vmc1',
-	// 'database' => 'srmsportal_demo2',
 	'database' => 'softtech_fbmso',
-	// 'database' => 'knpsrms',
-	// 'database' => 'knpsrms_db',
-
 	'dbdriver' => 'mysqli',
 	'dbprefix' => '',
 	'pconnect' => FALSE,
