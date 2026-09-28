@@ -85,13 +85,13 @@
                                             <a href="<?= base_url('Page/accounting'); ?>" class="up-btn up-btn-ghost d-md-none">
                                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                                             </a>
-                                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#filterModal">
+                                            <button type="button" class="up-btn up-btn-ghost" data-cr-panel="filter">
                                                 <i class="mdi mdi-filter-outline"></i> Filter
                                             </button>
-                                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#monthlyModal">
+                                            <button type="button" class="up-btn up-btn-ghost" data-cr-panel="monthly">
                                                 <i class="mdi mdi-calendar-month-outline"></i> Monthly View
                                             </button>
-                                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#yearlyModal">
+                                            <button type="button" class="up-btn up-btn-ghost" data-cr-panel="yearly">
                                                 <i class="mdi mdi-calendar-range-outline"></i> Yearly View
                                             </button>
                                             <button type="button" class="up-btn up-btn-primary" onclick="window.open('<?= base_url('Accounting/collectionReport'); ?>?from=<?= urlencode((string)$from); ?>&to=<?= urlencode((string)$to); ?>&print=1', '_blank')">
@@ -127,7 +127,13 @@
                                                         <td data-label="Date" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="O.R." style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:var(--up-blue);"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Student No." style="font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--up-muted);"><?= htmlspecialchars((string)($row->StudentNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td data-label="Student" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Student" style="font-weight:600;color:var(--up-ink);">
+                                                            <?php if (trim((string)($row->StudentNumber ?? '')) !== ''): ?>
+                                                                <a href="#" class="sd-link" data-student-balance data-sd-key="<?= htmlspecialchars((string)$row->StudentNumber, ENT_QUOTES, 'UTF-8'); ?>" title="View balance"><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></a>
+                                                            <?php else: ?>
+                                                                <?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?>
+                                                            <?php endif; ?>
+                                                        </td>
                                                         <td data-label="Description" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-ink);">₱ <?= number_format((float)($row->Amount ?? 0), 2); ?></td>
                                                         <td data-label="Cashier" style="color:var(--up-muted);font-size:.82rem;"><?= htmlspecialchars((string)($row->Cashier ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
@@ -152,125 +158,91 @@
     <?php include('includes/footer_plugins.php'); ?>
     <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
-    <!-- FILTER MODAL -->
-    <div class="modal fade" id="filterModal" tabindex="-1" role="dialog" aria-labelledby="filterModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <form method="get" action="<?= base_url('Accounting/collectionReport'); ?>">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="filterModalLabel">
-                            <i class="mdi mdi-filter-outline"></i> Filter Collection Report
-                        </h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label for="from" class="mb-1">From</label>
-                            <input type="date" id="from" name="from" class="form-control"
-                                value="<?= htmlspecialchars((string)$from, ENT_QUOTES, 'UTF-8'); ?>" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="to" class="mb-1">To</label>
-                            <input type="date" id="to" name="to" class="form-control"
-                                value="<?= htmlspecialchars((string)$to, ENT_QUOTES, 'UTF-8'); ?>" required>
-                        </div>
-                        <div class="form-group mb-0">
-                            <label for="term" class="mb-1">Term</label>
-                            <select id="term" name="term" class="form-control">
-                                <option value="">All terms</option>
-                                <?php
-                                $selectedTerm = trim((string)($filter_sem ?? '') . '|' . (string)($filter_sy ?? ''), '|');
-                                foreach (($term_options ?? []) as $t):
-                                    $termVal = (string)$t->Semester . '|' . (string)$t->SY;
-                                    $termLabel = trim((string)$t->Semester . ' ' . (string)$t->SY);
-                                ?>
-                                    <option value="<?= htmlspecialchars($termVal, ENT_QUOTES, 'UTF-8'); ?>" <?= $termVal === $selectedTerm ? 'selected' : ''; ?>><?= htmlspecialchars($termLabel, ENT_QUOTES, 'UTF-8'); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="up-btn up-btn-primary">
-                            <i class="mdi mdi-filter-outline"></i> Apply Filters
-                        </button>
-                    </div>
-                </form>
+    <!-- Filter / Monthly / Yearly panels (open on the right; see the SideDrawer setup below) -->
+    <form method="get" action="<?= base_url('Accounting/collectionReport'); ?>" id="crFilterPanel" hidden>
+        <div class="sd-form-fields">
+            <div class="sd-form-row">
+                <div class="form-group">
+                    <label for="from">From</label>
+                    <input type="date" id="from" name="from" class="form-control"
+                        value="<?= htmlspecialchars((string)$from, ENT_QUOTES, 'UTF-8'); ?>" required>
+                </div>
+                <div class="form-group">
+                    <label for="to">To</label>
+                    <input type="date" id="to" name="to" class="form-control"
+                        value="<?= htmlspecialchars((string)$to, ENT_QUOTES, 'UTF-8'); ?>" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="term">Term</label>
+                <select id="term" name="term" class="form-control">
+                    <option value="">All terms</option>
+                    <?php
+                    $selectedTerm = trim((string)($filter_sem ?? '') . '|' . (string)($filter_sy ?? ''), '|');
+                    foreach (($term_options ?? []) as $t):
+                        $termVal = (string)$t->Semester . '|' . (string)$t->SY;
+                        $termLabel = trim((string)$t->Semester . ' ' . (string)$t->SY);
+                    ?>
+                        <option value="<?= htmlspecialchars($termVal, ENT_QUOTES, 'UTF-8'); ?>" <?= $termVal === $selectedTerm ? 'selected' : ''; ?>><?= htmlspecialchars($termLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
         </div>
-    </div>
+        <div class="sd-actions">
+            <a href="<?= base_url('Accounting/collectionReport'); ?>" class="sd-btn-ghost">Reset</a>
+            <button type="submit" class="sd-btn"><i class="mdi mdi-filter-outline"></i> Apply filters</button>
+        </div>
+    </form>
 
-    <!-- MONTHLY MODAL -->
-    <div class="modal fade" id="monthlyModal" tabindex="-1" role="dialog" aria-labelledby="monthlyModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <form method="get" action="<?= base_url('Accounting/collectionMonthly'); ?>">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="monthlyModalLabel">
-                            <i class="mdi mdi-calendar-month-outline"></i> Monthly View
-                        </h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
+    <form method="get" action="<?= base_url('Accounting/collectionMonthly'); ?>" id="crMonthlyPanel" hidden>
+        <div class="sd-form-fields">
+            <div class="sd-form-row">
+                <div class="form-group">
+                    <label for="crMonthYear">Year</label>
+                    <input type="number" id="crMonthYear" class="form-control" name="year" value="<?= date('Y'); ?>" min="2000" max="2100" required>
+                </div>
+                <div class="form-group">
+                    <label for="crMonth">Month</label>
+                    <input type="number" id="crMonth" class="form-control" name="month" value="<?= date('m'); ?>" min="1" max="12" required>
+                </div>
+            </div>
+            <small class="sd-help">Summary and collections for the chosen month.</small>
+        </div>
+        <div class="sd-actions">
+            <button type="submit" class="sd-btn">View monthly</button>
+        </div>
+    </form>
 
-                    <div class="modal-body">
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label class="mb-1">Year</label>
-                                <input type="number" class="form-control" name="year" value="<?= date('Y'); ?>" min="2000" max="2100" required>
-                            </div>
-                            <div class="form-group col-md-6">
-                                <label class="mb-1">Month</label>
-                                <input type="number" class="form-control" name="month" value="<?= date('m'); ?>" min="1" max="12" required>
-                            </div>
-                        </div>
-                        <small class="text-muted">Choose a year and month to view summary/collection for that month.</small>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="up-btn up-btn-primary">View Monthly</button>
-                    </div>
-                </form>
+    <form method="get" action="<?= base_url('Accounting/collectionYear'); ?>" id="crYearlyPanel" hidden>
+        <div class="sd-form-fields">
+            <div class="form-group">
+                <label for="crYear">Year</label>
+                <input type="number" id="crYear" class="form-control" name="year" value="<?= date('Y'); ?>" min="2000" max="2100" required>
+                <small class="sd-help">The yearly collection report for the chosen year.</small>
             </div>
         </div>
-    </div>
-
-    <!-- YEARLY MODAL -->
-    <div class="modal fade" id="yearlyModal" tabindex="-1" role="dialog" aria-labelledby="yearlyModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <form method="get" action="<?= base_url('Accounting/collectionYear'); ?>">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="yearlyModalLabel">
-                            <i class="mdi mdi-calendar-range-outline"></i> Yearly View
-                        </h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-
-                    <div class="modal-body">
-                        <div class="form-group mb-0">
-                            <label class="mb-1">Year</label>
-                            <input type="number" class="form-control" name="year" value="<?= date('Y'); ?>" min="2000" max="2100" required>
-                        </div>
-                        <small class="text-muted">Choose a year to view the yearly collection report.</small>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="up-btn up-btn-primary">View Yearly</button>
-                    </div>
-                </form>
-            </div>
+        <div class="sd-actions">
+            <button type="submit" class="sd-btn">View yearly</button>
         </div>
-    </div>
+    </form>
+
+    <?php include('includes/side_drawer.php'); ?>
+    <script>
+        if (window.SideDrawer) {
+            [
+                ['filter', 'crFilterPanel', 'Filter collection report', 'mdi-filter-outline'],
+                ['monthly', 'crMonthlyPanel', 'Monthly view', 'mdi-calendar-month-outline'],
+                ['yearly', 'crYearlyPanel', 'Yearly view', 'mdi-calendar-range-outline']
+            ].forEach(function(p) {
+                SideDrawer.fromElement(document.getElementById(p[1]), {
+                    title: p[2], icon: p[3], width: 400,
+                    trigger: '[data-cr-panel="' + p[0] + '"]',
+                    focus: 'input'
+                });
+            });
+            StudentBalancePanel({ url: <?= json_encode(site_url('Accounting/studentSummary')); ?> });
+        }
+    </script>
 
     <script>
         $(function() {

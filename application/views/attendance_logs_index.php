@@ -194,7 +194,13 @@ if (!empty($activity_id) && !empty($activities)) {
 <body>
     <style>
         .badge-course-code { font-size:.72rem; font-weight:700; letter-spacing:.4px; border-radius:6px; }
-        .student-number-cell .student-name-mobile { color:#6b7a99; font-size:.82rem; }
+        .al-student-name { font-weight:700; color:#0d1b4b; }
+        .al-student-no { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.76rem; font-weight:700; color:#2a4090; }
+        /* Course, year, remarks and checked-in-by live in the side panel on screen; print still shows every column. */
+        @media screen { #logsTable th.al-extra, #logsTable td.al-extra { display:none !important; } }
+        #logsTable th.al-open-col, #logsTable td.al-open-col { width:52px; }
+        @media print { #logsTable th.al-open-col, #logsTable td.al-open-col { display:none !important; } }
+        @media (max-width: 767.98px) { #logsTable td.al-open-col { display:none !important; } }
         .pl-actions { display:flex; flex-wrap:wrap; gap:10px; margin:0; }
         .pl-actions > .up-btn, .pl-actions > a.up-btn, .pl-actions > button.up-btn { margin-right:10px; margin-bottom:6px; }
         @supports (gap:10px) { .pl-actions > .up-btn { margin-right:0; } }
@@ -528,7 +534,7 @@ if (!empty($activity_id) && !empty($activities)) {
 											<a href="<?= base_url($this->session->userdata('level') === 'Auditor' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                                             </a>
-                                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#filterModal">
+                                            <button type="button" class="up-btn up-btn-primary" data-al-filter>
                                                 <i class="mdi mdi-filter-variant"></i> Select Activity
                                             </button>
                                         </div>
@@ -544,16 +550,17 @@ if (!empty($activity_id) && !empty($activities)) {
                                                 <table id="logsTable" class="table table-hover nowrap" style="width:100%;margin:0;">
                                                     <thead>
                                                         <tr>
-                                                            <th>Student #</th>
-                                                            <th class="d-none d-lg-table-cell">Name</th>
+                                                            <th>Student</th>
+                                                            <th class="al-extra">Name</th>
                                                             <th>Section</th>
                                                             <th>Session</th>
                                                             <th>Check-In</th>
                                                             <th>Check-Out</th>
-                                                            <th>Course</th>
-                                                            <th>Year</th>
-                                                            <th>Remarks</th>
-                                                            <th>Checked-In By</th>
+                                                            <th class="al-extra">Course</th>
+                                                            <th class="al-extra">Year</th>
+                                                            <th class="al-extra">Remarks</th>
+                                                            <th class="al-extra">Checked-In By</th>
+                                                            <th class="al-open-col"><span class="sr-only">Details</span></th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -562,7 +569,8 @@ if (!empty($activity_id) && !empty($activities)) {
                                                             usort($rows, 'compare_attendance_rows_view');
                                                         }
                                                         ?>
-                                                        <?php foreach ($rows as $r):
+                                                        <?php $alLog = []; ?>
+                                                        <?php foreach ($rows as $alIndex => $r):
                                                             $mins = ($r->checked_out_at && $r->checked_in_at)
                                                                 ? max(0, (int) round((strtotime($r->checked_out_at) - strtotime($r->checked_in_at)) / 60))
                                                                 : null;
@@ -576,15 +584,32 @@ if (!empty($activity_id) && !empty($activities)) {
                                                             $remarkRaw = trim((string)($r->remarks ?? ''));
                                                             $srcLower  = strtolower((string)($r->source ?? ''));
                                                             $remarkOut = $remarkRaw !== '' ? $remarkRaw : ($srcLower === 'qr' ? 'Scanned via QR' : '—');
+                                                            $inTs  = $r->checked_in_at ? strtotime($r->checked_in_at) : false;
+                                                            $outTs = $r->checked_out_at ? strtotime($r->checked_out_at) : false;
+                                                            $alLog[] = [
+                                                                'studno'   => (string)$r->student_number,
+                                                                'name'     => trim((string)$r->student_name),
+                                                                'session'  => $sessionCode,
+                                                                'date'     => $inTs ? date('D, M j, Y', $inTs) : '',
+                                                                'in'       => $inTs ? date('g:i A', $inTs) : '',
+                                                                'out'      => $outTs ? date('g:i A', $outTs) : '',
+                                                                'minutes'  => $mins,
+                                                                'course'   => $courseRaw,
+                                                                'code'     => $courseDisplay,
+                                                                'year'     => trim((string)$r->YearLevel),
+                                                                'section'  => trim((string)$r->section),
+                                                                'remarks'  => $remarkRaw !== '' ? $remarkRaw : ($srcLower === 'qr' ? 'Scanned via QR' : ''),
+                                                                'by'       => trim((string)$r->checked_in_by),
+                                                            ];
                                                         ?>
-                                                            <tr>
-                                                                <td data-label="Student #" class="student-number-cell">
-                                                                    <span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:#2a4090;"><?= h($r->student_number) ?></span>
+                                                            <tr class="sd-clickable" data-sd-key="<?= (int)$alIndex ?>" tabindex="0">
+                                                                <td data-label="Student" class="student-number-cell">
                                                                     <?php if (trim((string)$r->student_name) !== ''): ?>
-                                                                        <small class="student-name-mobile d-block d-lg-none"><?= h($r->student_name) ?></small>
+                                                                        <div class="al-student-name"><?= h($r->student_name) ?></div>
                                                                     <?php endif; ?>
+                                                                    <span class="al-student-no"><?= h($r->student_number) ?></span>
                                                                 </td>
-                                                                <td data-label="Name" class="d-none d-lg-table-cell" style="font-weight:600;"><?= h($r->student_name) ?></td>
+                                                                <td data-label="Name" class="al-extra" style="font-weight:600;"><?= h($r->student_name) ?></td>
                                                                 <td data-label="Section" style="color:#6b7a99;"><?= h($r->section) ?></td>
                                                                 <td data-label="Session">
                                                                     <?php if ($sessionCode !== ''): ?>
@@ -593,14 +618,15 @@ if (!empty($activity_id) && !empty($activities)) {
                                                                 </td>
                                                                 <td data-label="Check-In" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;"><?= h(fmt_time_ampm($r->checked_in_at)) ?></td>
                                                                 <td data-label="Check-Out" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.82rem;"><?= h(fmt_time_ampm($r->checked_out_at)) ?></td>
-                                                                <td data-label="Course">
+                                                                <td data-label="Course" class="al-extra">
                                                                     <?php if ($courseDisplay !== ''): ?>
                                                                         <span class="badge badge-secondary badge-course-code" title="<?= h($courseRaw) ?>"><?= h($courseDisplay) ?></span>
                                                                     <?php endif; ?>
                                                                 </td>
-                                                                <td data-label="Year" style="color:#6b7a99;"><?= h($r->YearLevel) ?></td>
-                                                                <td data-label="Remarks" style="color:#6b7a99;font-size:.82rem;"><?= h($remarkOut) ?></td>
-                                                                <td data-label="Checked-In By" style="color:#6b7a99;font-size:.82rem;"><?= h($r->checked_in_by) ?></td>
+                                                                <td data-label="Year" class="al-extra" style="color:#6b7a99;"><?= h($r->YearLevel) ?></td>
+                                                                <td data-label="Remarks" class="al-extra" style="color:#6b7a99;font-size:.82rem;"><?= h($remarkOut) ?></td>
+                                                                <td data-label="Checked-In By" class="al-extra" style="color:#6b7a99;font-size:.82rem;"><?= h($r->checked_in_by) ?></td>
+                                                                <td class="al-open-col text-right"><button type="button" class="sd-open-btn" data-sd-open aria-label="View attendance details" title="Details"><i class="mdi mdi-chevron-right"></i></button></td>
                                                             </tr>
                                                         <?php endforeach; ?>
                                                     </tbody>
@@ -631,85 +657,73 @@ if (!empty($activity_id) && !empty($activities)) {
         </div>
     </div>
 
-    <!-- FILTER MODAL -->
-    <div class="modal fade" id="filterModal" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-            <div class="modal-content" style="border-radius:18px;overflow:hidden;border:none;box-shadow:0 24px 60px rgba(13,27,75,.25);">
-                <div class="modal-header" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;padding:18px 24px;">
-                    <h5 class="modal-title" style="font-weight:800;color:#fff !important;display:flex;align-items:center;gap:8px;"><i class="mdi mdi-filter-variant"></i> Filter Attendance Logs</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="font-size:1.6rem;opacity:.9;text-shadow:none;color:#fff !important;"><span>&times;</span></button>
+    <!-- FILTER PANEL (opens on the right; see the SideDrawer setup below) -->
+    <form method="get" id="filterForm" onsubmit="return cleanFilterForm(this);" hidden>
+        <div class="sd-form-fields">
+            <div class="form-group">
+                <label for="alActivity">Activity</label>
+                <select id="alActivity" name="activity_id" class="form-control select2" required>
+                    <option value="">Select an activity</option>
+                    <?php foreach ($activities as $a): ?>
+                        <option value="<?= (int)$a->activity_id ?>" <?= ((int)($activity_id ?? 0) === (int)$a->activity_id ? 'selected' : '') ?>><?= h($a->title) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="sd-form-group-title">Narrow down</div>
+            <div class="form-group">
+                <label for="alYear">Year level</label>
+                <select id="alYear" name="year_level" class="form-control select2" data-placeholder="All year levels">
+                    <option value="">All year levels</option>
+                    <?php if (!empty($year_levels)): foreach ($year_levels as $yl):
+                            $lvl = (string)($yl->year_level ?? '');
+                            if ($lvl === '') continue;
+                    ?>
+                            <option value="<?= h($lvl) ?>" <?= (($year_level ?? '') === $lvl ? 'selected' : '') ?>><?= h($lvl) ?></option>
+                    <?php endforeach;
+                    endif; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="alSection">Section</label>
+                <select id="alSection" name="section" class="form-control select2" data-placeholder="All sections">
+                    <option value="">All sections</option>
+                    <?php if (!empty($sections)): foreach ($sections as $s):
+                            $sec = trim((string)($s->section ?? ''));
+                            if ($sec === '') continue;
+                            $year = trim((string)($s->year_level ?? ''));
+                            $course = trim((string)($s->course_code ?? ''));
+                            $labelParts = array_filter([$course, $year, $sec], function ($v) {
+                                return $v !== '';
+                            });
+                            $label = implode(' • ', $labelParts) ?: $sec;
+                            $selected = (($section ?? '') === $sec) ? 'selected' : '';
+                    ?>
+                            <option value="<?= h($sec) ?>" data-year="<?= h($year) ?>" data-course="<?= h($course) ?>" <?= $selected ?>><?= h($label) ?></option>
+                    <?php endforeach;
+                    endif; ?>
+                </select>
+            </div>
+            <div class="sd-form-row">
+                <div class="form-group">
+                    <label for="alDate">Date</label>
+                    <input id="alDate" type="date" name="date" value="<?= h($date ?? '') ?>" class="form-control">
                 </div>
-
-                <form method="get" id="filterForm" onsubmit="return cleanFilterForm(this);">
-                    <div class="modal-body" style="padding:24px;background:#f8fafc;">
-                        <div class="form-row">
-                            <div class="form-group col-lg-6">
-                                <label style="font-size:.78rem;font-weight:700;color:#3b4a6b;">Activity</label>
-                                <select name="activity_id" class="form-control select2" required style="border-radius:10px !important;border:1px solid #e6ebf5 !important;padding:10px 14px !important;font-size:.9rem !important;">
-                                    <option value="">Select an activity</option>
-                                    <?php foreach ($activities as $a): ?>
-                                        <option value="<?= (int)$a->activity_id ?>" <?= ((int)($activity_id ?? 0) === (int)$a->activity_id ? 'selected' : '') ?>><?= h($a->title) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="form-group col-lg-6">
-                                <label style="font-size:.78rem;font-weight:700;color:#3b4a6b;">Section</label>
-                                <select name="section" class="form-control select2" data-placeholder="All sections" style="border-radius:10px !important;border:1px solid #e6ebf5 !important;padding:10px 14px !important;font-size:.9rem !important;">
-                                    <option value="">All sections</option>
-                                    <?php if (!empty($sections)): foreach ($sections as $s):
-                                            $sec = trim((string)($s->section ?? ''));
-                                            if ($sec === '') continue;
-                                            $year = trim((string)($s->year_level ?? ''));
-                                            $course = trim((string)($s->course_code ?? ''));
-                                            $labelParts = array_filter([$course, $year, $sec], function ($v) {
-                                                return $v !== '';
-                                            });
-                                            $label = implode(' • ', $labelParts) ?: $sec;
-                                            $selected = (($section ?? '') === $sec) ? 'selected' : '';
-                                    ?>
-                                            <option value="<?= h($sec) ?>" data-year="<?= h($year) ?>" data-course="<?= h($course) ?>" <?= $selected ?>><?= h($label) ?></option>
-                                    <?php endforeach;
-                                    endif; ?>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group col-md-4">
-                                <label style="font-size:.78rem;font-weight:700;color:#3b4a6b;">Year Level</label>
-                                <select name="year_level" class="form-control select2" data-placeholder="All year levels" style="border-radius:10px !important;border:1px solid #e6ebf5 !important;padding:10px 14px !important;font-size:.9rem !important;">
-                                    <option value="">All year levels</option>
-                                    <?php if (!empty($year_levels)): foreach ($year_levels as $yl):
-                                            $lvl = (string)($yl->year_level ?? '');
-                                            if ($lvl === '') continue;
-                                    ?>
-                                            <option value="<?= h($lvl) ?>" <?= (($year_level ?? '') === $lvl ? 'selected' : '') ?>><?= h($lvl) ?></option>
-                                    <?php endforeach;
-                                    endif; ?>
-                                </select>
-                            </div>
-                            <div class="form-group col-md-4">
-                                <label style="font-size:.78rem;font-weight:700;color:#3b4a6b;">Date</label>
-                                <input type="date" name="date" value="<?= h($date ?? '') ?>" class="form-control" style="border-radius:10px !important;border:1px solid #e6ebf5 !important;padding:10px 14px !important;font-size:.9rem !important;">
-                            </div>
-                            <div class="form-group col-md-4">
-                                <label style="font-size:.78rem;font-weight:700;color:#3b4a6b;">Session</label>
-                                <select name="session" class="form-control" style="border-radius:10px !important;border:1px solid #e6ebf5 !important;padding:10px 14px !important;font-size:.9rem !important;">
-                                    <option value="">All</option>
-                                    <option value="am" <?= (($session ?? '') === 'am' ? 'selected' : '') ?>>AM</option>
-                                    <option value="pm" <?= (($session ?? '') === 'pm' ? 'selected' : '') ?>>PM</option>
-                                    <option value="eve" <?= (($session ?? '') === 'eve' ? 'selected' : '') ?>>EVE</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer" style="border:none;padding:14px 24px;background:#f8fafc;">
-                        <a href="<?= site_url('AttendanceLogs') ?>" class="up-btn up-btn-ghost">Clear</a>
-                        <button type="submit" class="up-btn up-btn-primary"><i class="mdi mdi-magnify"></i> View Results</button>
-                    </div>
-                </form>
+                <div class="form-group">
+                    <label for="alSession">Session</label>
+                    <select id="alSession" name="session" class="form-control">
+                        <option value="">All</option>
+                        <option value="am" <?= (($session ?? '') === 'am' ? 'selected' : '') ?>>AM</option>
+                        <option value="pm" <?= (($session ?? '') === 'pm' ? 'selected' : '') ?>>PM</option>
+                        <option value="eve" <?= (($session ?? '') === 'eve' ? 'selected' : '') ?>>EVE</option>
+                    </select>
+                </div>
             </div>
         </div>
-    </div>
+        <div class="sd-actions">
+            <a href="<?= site_url('AttendanceLogs') ?>" class="sd-btn-ghost">Clear</a>
+            <button type="submit" class="sd-btn"><i class="mdi mdi-magnify"></i> View results</button>
+        </div>
+    </form>
 
     <?php include('includes/themecustomizer.php'); ?>
 
@@ -731,6 +745,7 @@ if (!empty($activity_id) && !empty($activities)) {
     <script src="<?= base_url(); ?>assets/libs/bootstrap-datepicker/bootstrap-datepicker.min.js"></script>
     <script src="<?= base_url(); ?>assets/libs/datatables/dataTables.responsive.min.js"></script>
     <script src="<?= base_url(); ?>assets/libs/datatables/responsive.bootstrap4.min.js"></script>
+    <?php include('includes/side_drawer.php'); ?>
 
     <script>
         // Flash messages are shown by the shared toast bridge (includes/ui_kit.php).
@@ -752,8 +767,9 @@ if (!empty($activity_id) && !empty($activities)) {
     <script>
         $(function() {
             var $table = $('#logsTable');
+            var dt = null;
             if ($table.length && $.fn.DataTable) {
-                $table.DataTable({
+                dt = $table.DataTable({
                     pageLength: 25,
                     responsive: false,
                     autoWidth: false,
@@ -761,12 +777,13 @@ if (!empty($activity_id) && !empty($activities)) {
                         [7, 'asc'],
                         [2, 'asc'],
                         [1, 'asc']
-                    ]
+                    ],
+                    columnDefs: [{ targets: -1, orderable: false, searchable: false }]
 
                 });
             }
 
-            var $filterModal = $('#filterModal');
+            var $filterModal = $('#filterForm');
             var $sectionSelect = $filterModal.find('select[name="section"]');
             var $yearSelect = $filterModal.find('select[name="year_level"]');
             var originalSectionOptions = $sectionSelect.find('option').clone();
@@ -810,19 +827,69 @@ if (!empty($activity_id) && !empty($activities)) {
 
             refreshSectionOptions($yearSelect.val());
 
-            $filterModal.on('shown.bs.modal', function() {
-                var $modal = $(this);
-                if ($.fn.select2) {
-                    $modal.find('.select2').select2({
-                        width: '100%'
-                    });
-                }
-                refreshSectionOptions($yearSelect.val());
-            });
-
             $yearSelect.on('change', function() {
                 refreshSectionOptions($(this).val());
             });
+
+            if (window.SideDrawer) {
+                var SD = SideDrawer;
+                SD.fromElement(document.getElementById('filterForm'), {
+                    title: 'Filter attendance logs',
+                    icon: 'mdi-filter-variant',
+                    trigger: '[data-al-filter]',
+                    focus: 'select[name="activity_id"]',
+                    width: 420,
+                    onOpen: function(key, panel) {
+                        if ($.fn.select2 && !$filterModal.data('sdSelect2')) {
+                            $filterModal.find('.select2').select2({ width: '100%', dropdownParent: $(panel.el) });
+                            $filterModal.data('sdSelect2', true);
+                        }
+                        refreshSectionOptions($yearSelect.val());
+                    }
+                });
+
+                if (dt) {
+                    var AL_LOG = <?= json_encode($alLog ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
+                    var AL_ACTIVITY = <?= json_encode((string)$actTitle, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
+                    var duration = function(mins) {
+                        if (mins === null || mins === undefined) return '';
+                        var h = Math.floor(mins / 60), m = mins % 60;
+                        return (h ? h + ' h ' : '') + m + ' min';
+                    };
+                    SD.create({
+                        label: 'Attendance record',
+                        nav: true,
+                        rowSelector: '#logsTable tbody tr[data-sd-key]',
+                        dataTable: dt,
+                        render: function(key, panel) {
+                            var r = AL_LOG[key];
+                            if (!r) return;
+                            var done = !!r.out;
+                            var html = '<div class="sd-hero"><div class="sd-hero-media"><i class="mdi mdi-account-check-outline"></i></div><div class="sd-hero-text">'
+                                + '<h5 class="sd-title' + (r.name ? '' : ' sd-mono') + '">' + SD.esc(r.name || r.studno) + '</h5>'
+                                + (r.name ? '<div class="sd-sub">' + SD.esc(r.studno) + '</div>' : '<div class="sd-desc">No name on file</div>')'
+                                + '<div class="sd-tags">' + (r.session ? SD.pill(r.session, 'info') : '')
+                                + SD.status(done, done ? 'Checked out' : 'No check-out yet') + '</div></div></div>';
+
+                            html += SD.section('Attendance', SD.grid([
+                                SD.field('Activity', AL_ACTIVITY, true),
+                                SD.field('Date', r.date, true),
+                                SD.field('Check-in', r.in),
+                                SD.field('Check-out', r.out || '—'),
+                                SD.field('Time inside', duration(r.minutes)),
+                                SD.field('Checked in by', r.by)
+                            ]));
+                            html += SD.section('Student', SD.grid([
+                                SD.field('Course', r.course || r.code, true),
+                                SD.field('Year level', r.year),
+                                SD.field('Section', r.section)
+                            ]));
+                            if (r.remarks) html += SD.section('Remarks', '<p class="sd-desc" style="margin:0">' + SD.esc(r.remarks) + '</p>');
+                            panel.body(html);
+                        }
+                    });
+                }
+            }
 
             // Fallback: also handle browser's native print (Ctrl+P)
             var dtLogs = null;

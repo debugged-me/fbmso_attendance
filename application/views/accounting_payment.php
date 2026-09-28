@@ -191,7 +191,13 @@
                                                     <tr>
                                                         <td data-label="Date & Time" style="color:var(--up-muted);white-space:nowrap;"><?= htmlspecialchars($dateTimeLabel, ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="O.R." style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:var(--up-blue);"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td data-label="Student" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Student" style="font-weight:600;color:var(--up-ink);">
+                                                            <?php if (trim((string)($row->StudentNumber ?? '')) !== ''): ?>
+                                                                <a href="#" class="sd-link" data-student-balance data-sd-key="<?= htmlspecialchars((string)$row->StudentNumber, ENT_QUOTES, 'UTF-8'); ?>" title="View balance"><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></a>
+                                                            <?php else: ?>
+                                                                <?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?>
+                                                            <?php endif; ?>
+                                                        </td>
                                                         <td data-label="Description" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-ink);white-space:nowrap;">₱ <?= number_format($amount, 2); ?></td>
                                                         <td data-label="Status"><span class="badge <?= $statusClass; ?>" style="border-radius:6px;font-size:.72rem;font-weight:700;"><?= $statusLabel; ?></span></td>
@@ -248,6 +254,10 @@
 
     <?php include('includes/footer_plugins.php'); ?>
     <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
+    <?php include('includes/side_drawer.php'); ?>
+    <script>
+        if (window.StudentBalancePanel) StudentBalancePanel({ url: <?= json_encode(site_url('Accounting/studentSummary')); ?> });
+    </script>
 
 	<?php if (!$isAuditor): ?>
     <!-- ADD PAYMENT MODAL -->

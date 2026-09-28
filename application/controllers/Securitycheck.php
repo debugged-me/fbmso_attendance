@@ -239,8 +239,14 @@ class Securitycheck extends CI_Controller
         echo "  checkpoint also written to: " . $this->anchor_path() . "\n";
     }
 
-    /** Minimum gap between reports, whatever the cron says. */
-    const MIN_REPORT_INTERVAL = 21600; // 6 hours
+    /**
+     * Minimum gap between reports, whatever the cron says.
+     *
+     * The digest covers the preceding 24 hours and is advertised as a daily
+     * report, so the endpoint itself must never permit four runs per day when
+     * a hosting cron is configured too frequently.
+     */
+    const MIN_REPORT_INTERVAL = 86400; // 24 hours
 
     /**
      * Seconds still to wait, or NULL when a report is due.
@@ -415,7 +421,7 @@ class Securitycheck extends CI_Controller
             $out['warnings'][] = 'Oldest pending message is from ' . $out['oldest'] . ' -- delivery is stalled.';
         }
 
-        return $out;
+        return array_values(array_unique($out));
     }
 
     /** Where the on-disk checkpoint lives. */

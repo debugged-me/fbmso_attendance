@@ -84,7 +84,7 @@ require_once APPPATH . 'views/security_partials.php';
               <tbody>
                 <?php foreach ($blacklisted_ips as $ip): ?>
                 <tr>
-                  <td><a href="<?= base_url('Securityadmin/investigate?ip=' . urlencode($ip['ip_address'])) ?>" style="font-family:monospace;font-weight:600"><?= sec_e($ip['ip_address']) ?></a></td>
+                  <td><a href="<?= base_url('Securityadmin/investigate?ip=' . urlencode($ip['ip_address'])) ?>" data-ip-summary data-sd-key="<?= sec_e($ip['ip_address']) ?>" title="IP summary" style="font-family:monospace;font-weight:600"><?= sec_e($ip['ip_address']) ?></a></td>
                   <td><?= sec_e($ip['reason']) ?></td>
                   <td><?= sec_e($ip['blocked_by']) ?></td>
                   <td><small class="text-muted"><?= sec_e(substr($ip['blocked_at'],0,16)) ?></small></td>
@@ -128,7 +128,7 @@ require_once APPPATH . 'views/security_partials.php';
               <td><?= sec_e($e['target_username'] ?? '—') ?></td>
               <td style="font-family:monospace;font-weight:600">
                 <?php if (!empty($e['ip_address'])): ?>
-                  <a href="<?= base_url('Securityadmin/investigate?ip=' . urlencode($e['ip_address'])) ?>"><?= sec_e($e['ip_address']) ?></a>
+                  <a href="<?= base_url('Securityadmin/investigate?ip=' . urlencode($e['ip_address'])) ?>" data-ip-summary data-sd-key="<?= sec_e($e['ip_address']) ?>" title="IP summary"><?= sec_e($e['ip_address']) ?></a>
                 <?php else: ?>—<?php endif; ?>
               </td>
               <td><?= sec_e($e['description'] ?? '') ?></td>
@@ -145,5 +145,15 @@ require_once APPPATH . 'views/security_partials.php';
   </div>
 </div>
 <?php include('includes/themecustomizer.php'); ?>
+<?php include('includes/side_drawer.php'); ?>
+<script src="<?= base_url('assets/js/security-panels.js?v=2026092801'); ?>"></script>
+<script>
+  if (window.SecurityPanels) {
+    SecurityPanels.ipPanel({
+      url: <?= json_encode(base_url('Securityadmin/ip_summary')) ?>,
+      investigateUrl: <?= json_encode(base_url('Securityadmin/investigate')) ?>
+    });
+  }
+</script>
 </body>
 </html>

@@ -115,46 +115,12 @@ if (!function_exists('audit_context_items')) {
 if (!function_exists('audit_device_items')) {
     function audit_device_items($userAgent)
     {
-        $userAgent = trim((string)$userAgent);
-        if ($userAgent === '') return array();
-
-        $device = preg_match('/iPad|Tablet/i', $userAgent)
-            ? 'Tablet'
-            : (preg_match('/Mobile|Android|iPhone/i', $userAgent) ? 'Mobile' : 'Desktop');
-
-        $browser = 'Unknown browser';
-        if (preg_match('/Edg\/([\d.]+)/', $userAgent, $match)) {
-            $browser = 'Microsoft Edge ' . $match[1];
-        } elseif (preg_match('/OPR\/([\d.]+)/', $userAgent, $match)) {
-            $browser = 'Opera ' . $match[1];
-        } elseif (preg_match('/Chrome\/([\d.]+)/', $userAgent, $match)) {
-            $browser = 'Chrome ' . $match[1];
-        } elseif (preg_match('/Firefox\/([\d.]+)/', $userAgent, $match)) {
-            $browser = 'Firefox ' . $match[1];
-        } elseif (preg_match('/Version\/([\d.]+).*Safari\//', $userAgent, $match)) {
-            $browser = 'Safari ' . $match[1];
-        }
-
-        $operatingSystem = 'Unknown operating system';
-        if (preg_match('/Android\s+([\d.]+)/i', $userAgent, $match)) {
-            $operatingSystem = 'Android ' . $match[1];
-        } elseif (preg_match('/iPad.*OS\s+([\d_]+)/i', $userAgent, $match)) {
-            $operatingSystem = 'iPadOS ' . str_replace('_', '.', $match[1]);
-        } elseif (preg_match('/iPhone.*OS\s+([\d_]+)/i', $userAgent, $match)) {
-            $operatingSystem = 'iOS ' . str_replace('_', '.', $match[1]);
-        } elseif (preg_match('/Mac OS X\s+([\d_\.]+)/i', $userAgent, $match)) {
-            $operatingSystem = 'macOS ' . str_replace('_', '.', $match[1]);
-        } elseif (preg_match('/Windows NT\s+([\d.]+)/i', $userAgent, $match)) {
-            $windowsVersions = array('10.0' => '10 or 11', '6.3' => '8.1', '6.2' => '8', '6.1' => '7');
-            $operatingSystem = 'Windows ' . ($windowsVersions[$match[1]] ?? $match[1]);
-        } elseif (stripos($userAgent, 'Linux') !== false) {
-            $operatingSystem = 'Linux';
-        }
-
+        $device = device_summary($userAgent);
+        if ($device === null) return array();
         return array(
-            array('Device type', $device),
-            array('Operating system', $operatingSystem),
-            array('Browser', $browser),
+            array('Device type', $device['type']),
+            array('Operating system', $device['os']),
+            array('Browser', $device['browser']),
         );
     }
 }
@@ -432,7 +398,7 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($prepared as $p): $event = $p['event']; ?>
-                                <tr class="audit-row audit-row-<?= audit_e($p['tone']); ?>" data-audit-event="<?= audit_e($p['tpl']); ?>">
+                                <tr class="audit-row audit-row-<?= audit_e($p['tone']); ?>" data-sd-key="<?= audit_e($p['tpl']); ?>">
                                     <td>
                                         <div class="audit-time-day"><?= audit_e(audit_day_label($p['timestamp'])); ?></div>
                                         <div class="audit-time-clock"><?= audit_e(date('g:i A', $p['timestamp'])); ?></div>
@@ -454,7 +420,7 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
                                         <span class="audit-status audit-status-<?= $p['failed'] ? 'failed' : 'ok'; ?>"><i></i><?= $p['failed'] ? 'Failed' : 'Success'; ?></span>
                                     </td>
                                     <td class="text-right">
-                                        <button type="button" class="audit-inspect-btn" aria-label="Inspect event" data-toggle="tooltip" data-trigger="hover" data-placement="left" title="Inspect">
+                                        <button type="button" class="sd-open-btn" data-sd-open aria-label="Inspect event" title="Inspect">
                                             <i class="mdi mdi-chevron-right"></i>
                                         </button>
                                     </td>
@@ -476,19 +442,17 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
 
 <?php foreach ($prepared as $p): $event = $p['event']; ?>
 <template id="<?= audit_e($p['tpl']); ?>">
-    <div class="audit-d-hero">
-        <div class="audit-d-tags">
-            <span class="audit-pill audit-pill-<?= audit_e($p['tone']); ?>"><?= audit_e($p['action']); ?></span>
-            <span class="audit-status audit-status-<?= $p['failed'] ? 'failed' : 'ok'; ?>"><i></i><?= $p['failed'] ? 'Failed / blocked' : 'Success'; ?></span>
-        </div>
-        <h5 class="audit-d-title" id="auditDrawerTitle"><?= audit_e($event['module']); ?></h5>
-        <?php if (!empty($event['description'])): ?><p class="audit-d-desc"><?= audit_e($event['description']); ?></p><?php endif; ?>
-        <div class="audit-d-when"><i class="mdi mdi-clock-outline"></i> <?= audit_e(date('D, M j, Y · g:i:s A', $p['timestamp'])); ?></div>
+    <div class="sd-tags">
+        <span class="sd-pill sd-tone-<?= audit_e($p['tone']); ?>"><?= audit_e($p['action']); ?></span>
+        <span class="sd-status sd-status-<?= $p['failed'] ? 'failed' : 'ok'; ?>"><i></i><?= $p['failed'] ? 'Failed / blocked' : 'Success'; ?></span>
     </div>
+    <h5 class="sd-title"><?= audit_e($event['module']); ?></h5>
+    <?php if (!empty($event['description'])): ?><p class="sd-desc"><?= audit_e($event['description']); ?></p><?php endif; ?>
+    <div class="sd-when"><i class="mdi mdi-clock-outline"></i> <?= audit_e(date('D, M j, Y · g:i:s A', $p['timestamp'])); ?></div>
 
-    <section class="audit-d-section">
+    <section class="sd-section">
         <h6>Overview</h6>
-        <dl class="audit-d-grid">
+        <dl class="sd-grid">
             <div>
                 <dt>Actor</dt>
                 <dd>
@@ -503,44 +467,44 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
                 <dt>Record</dt>
                 <dd>
                     <?php if (!empty($event['record_pk'])): ?>#<?= audit_e($event['record_pk']); ?><?php endif; ?>
-                    <?php if (!empty($event['table_name'])): ?><small class="audit-mono"><?= audit_e($event['table_name']); ?></small><?php endif; ?>
+                    <?php if (!empty($event['table_name'])): ?><small class="sd-mono"><?= audit_e($event['table_name']); ?></small><?php endif; ?>
                 </dd>
             </div>
             <?php endif; ?>
             <?php if (!empty($event['ip_address'])): ?>
-            <div><dt>IP address</dt><dd class="audit-mono"><?= audit_e($event['ip_address']); ?></dd></div>
+            <div><dt>IP address</dt><dd class="sd-mono"><a class="sd-link" href="<?= base_url('Securityadmin/investigate?ip=' . urlencode((string)$event['ip_address'])); ?>" data-ip-summary data-sd-key="<?= audit_e($event['ip_address']); ?>" title="IP summary"><?= audit_e($event['ip_address']); ?></a></dd></div>
             <?php endif; ?>
         </dl>
     </section>
 
     <?php if ($p['oldMap'] !== null && $p['newMap'] !== null): ?>
-    <section class="audit-d-section">
-        <h6>Changes <?php if (!empty($p['changes'])): ?><span class="audit-d-count"><?= count($p['changes']); ?></span><?php endif; ?></h6>
+    <section class="sd-section">
+        <h6>Changes <?php if (!empty($p['changes'])): ?><span class="sd-count"><?= count($p['changes']); ?></span><?php endif; ?></h6>
         <?php if (empty($p['changes'])): ?>
-            <p class="audit-d-empty">No field values changed.</p>
+            <p class="sd-empty">No field values changed.</p>
         <?php else: ?>
-        <div class="audit-diff">
+        <div class="sd-diff">
             <?php foreach ($p['changes'] as $change): ?>
-            <div class="audit-diff-row">
-                <div class="audit-diff-field"><?= audit_e($change[0]); ?></div>
-                <div class="audit-diff-values">
-                    <span class="audit-diff-old<?= $change[1] === null ? ' is-empty' : ''; ?>"><?= audit_e($change[1] ?? 'empty'); ?></span>
+            <div class="sd-diff-row">
+                <div class="sd-diff-field"><?= audit_e($change[0]); ?></div>
+                <div class="sd-diff-values">
+                    <span class="sd-diff-old<?= $change[1] === null ? ' is-empty' : ''; ?>"><?= audit_e($change[1] ?? 'empty'); ?></span>
                     <i class="mdi mdi-arrow-right"></i>
-                    <span class="audit-diff-new<?= $change[2] === null ? ' is-empty' : ''; ?>"><?= audit_e($change[2] ?? 'empty'); ?></span>
+                    <span class="sd-diff-new<?= $change[2] === null ? ' is-empty' : ''; ?>"><?= audit_e($change[2] ?? 'empty'); ?></span>
                 </div>
             </div>
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
-        <?php if ($p['unchanged'] > 0): ?><p class="audit-d-note"><?= (int)$p['unchanged']; ?> unchanged field<?= $p['unchanged'] === 1 ? '' : 's'; ?> hidden</p><?php endif; ?>
+        <?php if ($p['unchanged'] > 0): ?><p class="sd-muted-note"><?= (int)$p['unchanged']; ?> unchanged field<?= $p['unchanged'] === 1 ? '' : 's'; ?> hidden</p><?php endif; ?>
     </section>
     <?php elseif ($p['oldMap'] !== null || $p['newMap'] !== null):
         $isRemoved = $p['oldMap'] !== null;
         $snapshot = $isRemoved ? $p['oldMap'] : $p['newMap'];
     ?>
-    <section class="audit-d-section">
+    <section class="sd-section">
         <h6><?= $isRemoved ? ($p['tone'] === 'danger' ? 'Deleted record' : 'Previous values') : 'Recorded values'; ?></h6>
-        <dl class="audit-kv<?= $isRemoved && $p['tone'] === 'danger' ? ' audit-kv-danger' : ''; ?>">
+        <dl class="sd-kv<?= $isRemoved && $p['tone'] === 'danger' ? ' sd-kv-danger' : ''; ?>">
             <?php foreach ($snapshot as $label => $value): ?>
             <div><dt><?= audit_e($label); ?></dt><dd><?= audit_e($value); ?></dd></div>
             <?php endforeach; ?>
@@ -549,9 +513,9 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
     <?php endif; ?>
 
     <?php if (!empty($p['context'])): ?>
-    <section class="audit-d-section">
+    <section class="sd-section">
         <h6>Context</h6>
-        <dl class="audit-kv">
+        <dl class="sd-kv">
             <?php foreach ($p['context'] as $item): ?>
             <div><dt><?= audit_e($item[0]); ?></dt><dd><?= audit_e($item[1]); ?></dd></div>
             <?php endforeach; ?>
@@ -560,14 +524,14 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
     <?php endif; ?>
 
     <?php if (!empty($p['device'])): ?>
-    <section class="audit-d-section">
+    <section class="sd-section">
         <h6>Device</h6>
-        <dl class="audit-kv">
+        <dl class="sd-kv">
             <?php foreach ($p['device'] as $item): ?>
             <div><dt><?= audit_e($item[0]); ?></dt><dd><?= audit_e($item[1]); ?></dd></div>
             <?php endforeach; ?>
         </dl>
-        <details class="audit-d-raw">
+        <details class="sd-raw">
             <summary>User agent string</summary>
             <pre><?= audit_e($event['user_agent']); ?></pre>
         </details>
@@ -575,31 +539,19 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
     <?php endif; ?>
 
     <?php if ($p['rawOld'] !== '' || $p['rawNew'] !== ''): ?>
-    <section class="audit-d-section">
-        <details class="audit-d-raw">
+    <section class="sd-section">
+        <details class="sd-raw">
             <summary>Raw JSON</summary>
-            <?php if ($p['rawOld'] !== ''): ?><div class="audit-d-raw-label">Before</div><pre><?= audit_e($p['rawOld']); ?></pre><?php endif; ?>
-            <?php if ($p['rawNew'] !== ''): ?><div class="audit-d-raw-label">After</div><pre><?= audit_e($p['rawNew']); ?></pre><?php endif; ?>
+            <?php if ($p['rawOld'] !== ''): ?><div class="sd-raw-label">Before</div><pre><?= audit_e($p['rawOld']); ?></pre><?php endif; ?>
+            <?php if ($p['rawNew'] !== ''): ?><div class="sd-raw-label">After</div><pre><?= audit_e($p['rawNew']); ?></pre><?php endif; ?>
         </details>
     </section>
     <?php endif; ?>
 
-    <div class="audit-d-foot">Event <span class="audit-mono"><?= audit_e($event['event_key']); ?></span></div>
+    <div class="sd-meta-foot">Event <span class="sd-mono"><?= audit_e($event['event_key']); ?></span></div>
 </template>
 <?php endforeach; ?>
 
-<div class="audit-drawer-backdrop" data-audit-close></div>
-<aside class="audit-drawer" id="auditDrawer" role="dialog" aria-modal="true" aria-labelledby="auditDrawerTitle" aria-hidden="true">
-    <div class="audit-drawer-bar">
-        <div class="audit-drawer-nav">
-            <button type="button" class="audit-icon-btn" data-audit-step="-1" aria-label="Previous event" title="Previous (↑)"><i class="mdi mdi-chevron-up"></i></button>
-            <button type="button" class="audit-icon-btn" data-audit-step="1" aria-label="Next event" title="Next (↓)"><i class="mdi mdi-chevron-down"></i></button>
-            <span class="audit-drawer-counter" id="auditDrawerCounter"></span>
-        </div>
-        <button type="button" class="audit-icon-btn" data-audit-close aria-label="Close" title="Close (Esc)"><i class="mdi mdi-close"></i></button>
-    </div>
-    <div class="audit-drawer-body" id="auditDrawerBody"></div>
-</aside>
 
 <?php include('includes/themecustomizer.php'); ?>
 <style>
@@ -613,8 +565,7 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
         padding-bottom: 1.5rem;
     }
 
-    .audit-page .btn:focus,
-    .audit-drawer button:focus { box-shadow: 0 0 0 3px rgba(56, 174, 183, .2); }
+    .audit-page .btn:focus { box-shadow: 0 0 0 3px rgba(56, 174, 183, .2); }
 
     /* Header */
     .audit-header {
@@ -743,7 +694,6 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
 
     .audit-row { cursor: pointer; transition: background-color .12s ease; }
     .audit-row:hover { background: #fafbfd; }
-    .audit-row.is-active { background: rgba(56, 174, 183, .07); }
     .audit-row td:first-child { box-shadow: inset 3px 0 0 transparent; }
     .audit-row-danger td:first-child { box-shadow: inset 3px 0 0 #ec8a96; }
     .audit-row-warning td:first-child { box-shadow: inset 3px 0 0 #f3c46b; }
@@ -779,15 +729,9 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
     .audit-status-failed { color: #b64250; }
     .audit-status-failed i { background: #e24c5e; box-shadow: 0 0 0 3px rgba(226, 76, 94, .15); }
 
-    .audit-inspect-btn {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 30px; height: 30px; padding: 0;
-        border: 1px solid var(--a-border); border-radius: 8px;
-        background: #fff; color: var(--a-muted); font-size: 18px;
-        transition: all .12s ease;
-    }
-    .audit-row:hover .audit-inspect-btn,
-    .audit-row.is-active .audit-inspect-btn { border-color: var(--a-accent); background: var(--a-accent); color: #fff; }
+    .audit-row.sd-row-active > td { background: rgba(56, 174, 183, .08) !important; }
+    .audit-row:hover .sd-open-btn,
+    .audit-row.sd-row-active .sd-open-btn { border-color: var(--a-accent); background: var(--a-accent); color: #fff; }
 
     .audit-empty-row td { padding: 3rem 1rem !important; color: var(--a-muted); text-align: center; cursor: default; }
     .audit-empty-row i { display: block; margin-bottom: .4rem; font-size: 34px; opacity: .6; }
@@ -795,102 +739,6 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
 
     .audit-pagination .pagination { margin-bottom: 0; }
     .audit-mono { font-family: SFMono-Regular, Menlo, Consolas, monospace; }
-
-    /* Drawer */
-    body.audit-drawer-lock { overflow: hidden; }
-    .audit-drawer-backdrop {
-        position: fixed; inset: 0; z-index: 1060;
-        background: rgba(17, 24, 39, .28);
-        opacity: 0; visibility: hidden;
-        transition: opacity .2s ease, visibility .2s ease;
-    }
-    .audit-drawer {
-        position: fixed; top: 0; right: 0; bottom: 0; z-index: 1061;
-        display: flex; flex-direction: column;
-        width: 460px; max-width: 100vw;
-        background: #fff; color: #273142;
-        box-shadow: -12px 0 40px rgba(17, 24, 39, .12);
-        transform: translateX(100%); visibility: hidden;
-        transition: transform .24s cubic-bezier(.2, .8, .2, 1), visibility .24s;
-    }
-    .audit-drawer.is-open { transform: none; visibility: visible; }
-    .audit-drawer-backdrop.is-open { opacity: 1; visibility: visible; }
-
-    .audit-drawer-bar {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: .6rem .75rem; border-bottom: 1px solid #eef1f4;
-    }
-    .audit-drawer-nav { display: flex; align-items: center; gap: .25rem; }
-    .audit-drawer-counter { margin-left: .35rem; color: #8792a4; font-size: .74rem; }
-    .audit-icon-btn {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 30px; height: 30px; padding: 0;
-        border: 0; border-radius: 8px; background: transparent;
-        color: #6b7587; font-size: 19px; cursor: pointer;
-    }
-    .audit-icon-btn:hover:not(:disabled) { background: #f2f4f7; color: #273142; }
-    .audit-icon-btn:disabled { opacity: .35; cursor: default; }
-
-    .audit-drawer-body { flex: 1; overflow-y: auto; padding: 1.25rem 1.35rem 1.5rem; overscroll-behavior: contain; }
-
-    .audit-d-hero { margin-bottom: 1.25rem; }
-    .audit-d-tags { display: flex; align-items: center; gap: .6rem; margin-bottom: .6rem; }
-    .audit-d-title { margin: 0; font-size: 1.1rem; font-weight: 700; color: #1f2937; }
-    .audit-d-desc { margin: .3rem 0 0; color: #5b6577; font-size: .84rem; line-height: 1.5; }
-    .audit-d-when { margin-top: .55rem; color: #8792a4; font-size: .76rem; }
-
-    .audit-d-section { padding-top: 1.1rem; margin-top: 1.1rem; border-top: 1px solid #f0f2f5; }
-    .audit-d-section h6 {
-        display: flex; align-items: center; gap: .4rem;
-        margin: 0 0 .7rem; color: #8792a4;
-        font-size: .68rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
-    }
-    .audit-d-count {
-        padding: 0 .4rem; border-radius: 999px; background: #eef1f5;
-        color: #566174; font-size: .66rem; letter-spacing: 0;
-    }
-
-    .audit-d-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem 1rem; margin: 0; }
-    .audit-d-grid dt { margin-bottom: .1rem; color: #8792a4; font-size: .7rem; font-weight: 500; }
-    .audit-d-grid dd { margin: 0; font-size: .84rem; font-weight: 600; overflow-wrap: anywhere; }
-    .audit-d-grid dd small { display: block; color: #8792a4; font-size: .72rem; font-weight: 400; }
-
-    .audit-kv { margin: 0; }
-    .audit-kv > div {
-        display: flex; justify-content: space-between; gap: 1rem;
-        padding: .45rem 0; border-bottom: 1px dashed #edf0f3; font-size: .8rem;
-    }
-    .audit-kv > div:last-child { border-bottom: 0; }
-    .audit-kv dt { color: #7a8597; font-weight: 400; }
-    .audit-kv dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
-    .audit-kv-danger { padding: .2rem .75rem; border-radius: 8px; background: #fff6f7; }
-    .audit-kv-danger > div { border-bottom-color: #f8dde1; }
-
-    .audit-diff { display: flex; flex-direction: column; gap: .5rem; }
-    .audit-diff-row { padding: .6rem .7rem; border: 1px solid #eef1f4; border-radius: 9px; }
-    .audit-diff-field { margin-bottom: .35rem; color: #6b7587; font-size: .72rem; font-weight: 600; }
-    .audit-diff-values { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; font-size: .8rem; }
-    .audit-diff-values i { color: #b0b8c5; }
-    .audit-diff-old, .audit-diff-new { padding: .1rem .4rem; border-radius: 5px; overflow-wrap: anywhere; }
-    .audit-diff-old { background: #fdeef0; color: #b23445; text-decoration: line-through; text-decoration-color: rgba(178, 52, 69, .4); }
-    .audit-diff-new { background: #e7f6ed; color: #17804a; font-weight: 600; }
-    .audit-diff-old.is-empty, .audit-diff-new.is-empty { background: #f2f4f7; color: #9aa3b2; font-style: italic; font-weight: 400; text-decoration: none; }
-
-    .audit-d-empty, .audit-d-note { margin: 0; color: #8792a4; font-size: .78rem; }
-    .audit-d-note { margin-top: .55rem; }
-
-    .audit-d-raw summary { color: #2b9aa3; font-size: .78rem; font-weight: 600; cursor: pointer; outline: none; }
-    .audit-d-raw summary:hover { color: #1f7f87; }
-    .audit-d-section > .audit-kv + .audit-d-raw { margin-top: .6rem; }
-    .audit-d-raw-label { margin: .7rem 0 .25rem; color: #8792a4; font-size: .7rem; font-weight: 600; }
-    .audit-d-raw pre {
-        max-height: 240px; margin: .5rem 0 0; padding: .7rem .8rem; overflow: auto;
-        border-radius: 8px; background: #f6f8fb; color: #3f4a5c;
-        font-size: .72rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
-    }
-    .audit-d-raw-label + pre { margin-top: 0; }
-
-    .audit-d-foot { margin-top: 1.5rem; color: #a3abb8; font-size: .7rem; }
 
     @media (max-width: 1199.98px) {
         .audit-filter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -903,89 +751,28 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
         .audit-toolbar-main { flex-wrap: wrap; }
         .audit-search { flex-basis: 100%; }
         .audit-filter-toggle, .audit-btn-primary { flex: 1; justify-content: center; }
-        .audit-d-grid { grid-template-columns: 1fr; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-        .audit-drawer, .audit-drawer-backdrop { transition: none; }
     }
 </style>
+<?php include('includes/side_drawer.php'); ?>
+<script src="<?= base_url('assets/js/security-panels.js?v=2026092801'); ?>"></script>
 <script>
 (function () {
-    var drawer = document.getElementById('auditDrawer');
-    if (!drawer) return;
-    var body = document.getElementById('auditDrawerBody');
-    var counter = document.getElementById('auditDrawerCounter');
-    var backdrop = document.querySelector('.audit-drawer-backdrop');
-    var closeBtn = drawer.querySelector('.audit-drawer-bar > [data-audit-close]');
-    var prevBtn = drawer.querySelector('[data-audit-step="-1"]');
-    var nextBtn = drawer.querySelector('[data-audit-step="1"]');
-    var rows = Array.prototype.slice.call(document.querySelectorAll('tr[data-audit-event]'));
-    var current = -1;
-    var lastFocus = null;
-
-    function isOpen() { return drawer.classList.contains('is-open'); }
-
-    function open(index) {
-        var row = rows[index];
-        var tpl = row && document.getElementById(row.getAttribute('data-audit-event'));
-        if (!tpl) return;
-        if (window.jQuery) jQuery('.audit-inspect-btn').tooltip('hide');
-        body.innerHTML = '';
-        body.appendChild(document.importNode(tpl.content, true));
-        body.scrollTop = 0;
-        if (rows[current]) rows[current].classList.remove('is-active');
-        row.classList.add('is-active');
-        current = index;
-        counter.textContent = (index + 1) + ' of ' + rows.length;
-        prevBtn.disabled = index === 0;
-        nextBtn.disabled = index === rows.length - 1;
-        if (!isOpen()) {
-            lastFocus = document.activeElement;
-            drawer.classList.add('is-open');
-            backdrop.classList.add('is-open');
-            drawer.setAttribute('aria-hidden', 'false');
-            document.body.classList.add('audit-drawer-lock');
-            setTimeout(function () { closeBtn.focus(); }, 50);
-        }
-    }
-
-    function close() {
-        if (!isOpen()) return;
-        drawer.classList.remove('is-open');
-        backdrop.classList.remove('is-open');
-        drawer.setAttribute('aria-hidden', 'true');
-        document.body.classList.remove('audit-drawer-lock');
-        if (rows[current]) rows[current].classList.remove('is-active');
-        current = -1;
-        if (lastFocus && lastFocus.focus) lastFocus.focus();
-    }
-
-    function step(delta) {
-        var next = current + delta;
-        if (next < 0 || next >= rows.length) return;
-        open(next);
-        rows[next].scrollIntoView({ block: 'nearest' });
-    }
-
-    rows.forEach(function (row, index) {
-        row.addEventListener('click', function (e) {
-            if (e.target.closest('a')) return;
-            open(index);
+    if (!window.SideDrawer) return;
+    if (window.SecurityPanels) {
+        SecurityPanels.ipPanel({
+            url: <?= json_encode(base_url('Securityadmin/ip_summary')); ?>,
+            investigateUrl: <?= json_encode(base_url('Securityadmin/investigate')); ?>
         });
-    });
-
-    Array.prototype.forEach.call(document.querySelectorAll('[data-audit-close]'), function (el) {
-        el.addEventListener('click', close);
-    });
-    prevBtn.addEventListener('click', function () { step(-1); });
-    nextBtn.addEventListener('click', function () { step(1); });
-
-    document.addEventListener('keydown', function (e) {
-        if (!isOpen()) return;
-        if (e.key === 'Escape') { close(); return; }
-        if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
-        if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); step(1); }
-        if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); step(-1); }
+    }
+    SideDrawer.create({
+        label: 'Event details',
+        nav: true,
+        accent: '#38aeb7',
+        rowSelector: '.audit-table tr[data-sd-key]',
+        render: function (key, panel) {
+            var tpl = document.getElementById(key);
+            if (tpl) panel.body(document.importNode(tpl.content, true));
+        }
     });
 })();
 </script>

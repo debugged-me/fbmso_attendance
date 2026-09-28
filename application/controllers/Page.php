@@ -5721,6 +5721,66 @@ class Page extends CI_Controller
 
 		return redirect($redirectTo);
 	}
+	/**
+	 * Read-only JSON for the side panel on Page/userAccounts: the account
+	 * plus its latest sign-ins. Never returns password fields.
+	 */
+	public function userAccountSummary()
+	{
+		$this->load->helper('device');
+		$this->output->set_content_type('application/json');
+
+		$username = trim((string)$this->input->get('u'));
+		$account = $username === '' ? null : $this->db
+			->select('username, fName, mName, lName, email, position, acctStat, dateCreated')
+			->where('username', $username)
+			->get('o_users')->row();
+		if (!$account) {
+			$this->output->set_status_header(404)->set_output(json_encode(['ok' => false, 'message' => 'Account not found.']));
+			return;
+		}
+
+		$when = function ($value, $format = 'M j, Y · g:i A') {
+			$ts = $value ? strtotime((string)$value) : false;
+			return $ts ? date($format, $ts) : '';
+		};
+
+		$recent = [];
+		foreach ($this->db->select('login_time, status, ip_address, user_agent')
+			->where('username', $username)
+			->order_by('login_time', 'DESC')
+			->limit(6)
+			->get('login_logs')->result() as $row) {
+			$recent[] = [
+				'time'   => $when($row->login_time),
+				'status' => (string)$row->status,
+				'ip'     => (string)$row->ip_address,
+				'device' => device_label($row->user_agent),
+			];
+		}
+
+		$lastSuccess = $this->db->select_max('login_time', 't')
+			->where('username', $username)->where('status', 'success')
+			->get('login_logs')->row();
+		$failed30 = $this->db->where('username', $username)->where('status', 'failed')
+			->where('login_time >=', date('Y-m-d H:i:s', strtotime('-30 days')))
+			->count_all_results('login_logs');
+
+		$this->output->set_output(json_encode([
+			'ok'          => true,
+			'username'    => (string)$account->username,
+			'name'        => trim(preg_replace('/\s+/', ' ', $account->fName . ' ' . $account->mName . ' ' . $account->lName)),
+			'email'       => (string)$account->email,
+			'position'    => (string)$account->position,
+			'status'      => strtolower((string)$account->acctStat),
+			'created'     => $when($account->dateCreated, 'M j, Y'),
+			'lastSignIn'  => $when($lastSuccess->t ?? null),
+			'failed30'    => (int)$failed30,
+			'recent'      => $recent,
+			'editable'    => !in_array((string)$account->position, ['Teacher', 'Student'], true),
+		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+	}
+
 	public function updateUserInfo()
 	{
 		if ($this->input->post('submitEdit')) {

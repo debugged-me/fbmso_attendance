@@ -21,7 +21,7 @@ class Securityadmin extends CI_Controller
     {
         parent::__construct();
         $this->load->library('session');
-        $this->load->helper('url');
+        $this->load->helper(['url', 'device']);
         $this->load->database();
         $this->load->library('securityaudit');
         $this->load->library('pagination');
@@ -209,6 +209,97 @@ class Securityadmin extends CI_Controller
         $data['ip'] = $ip;
 
         $this->load->view('security_investigate', $data);
+    }
+
+    /**
+     * JSON summary of one IP for the side panel on the security screens.
+     * Read-only; the full forensic report is still investigate().
+     */
+    public function ip_summary()
+    {
+        $level = (string)$this->session->userdata('level');
+        if (!in_array($level, ['Admin', 'HR Admin', 'Registrar', 'Super Admin'], true)) {
+            show_error('Access Denied — administrators only.', 403);
+        }
+
+        $this->output->set_content_type('application/json');
+        $ip = trim((string)$this->input->get('ip'));
+        if ($ip === '') {
+            $this->output->set_status_header(400)->set_output(json_encode(['ok' => false, 'message' => 'IP address required.']));
+            return;
+        }
+
+        $counts = $this->db
+            ->select("COUNT(*) AS total, SUM(status = 'success') AS success, SUM(status = 'failed') AS failed,
+                      COUNT(DISTINCT username) AS accounts, MIN(login_time) AS first_seen, MAX(login_time) AS last_seen", false)
+            ->where('ip_address', $ip)
+            ->get('login_logs')->row();
+
+        $accounts = $this->db
+            ->select("username, COUNT(*) AS attempts, SUM(status = 'failed') AS failed, MAX(login_time) AS last", false)
+            ->where('ip_address', $ip)
+            ->group_by('username')
+            ->order_by('attempts', 'DESC')
+            ->limit(8)
+            ->get('login_logs')->result_array();
+
+        $recent = $this->db
+            ->select('login_time, username, status')
+            ->where('ip_address', $ip)
+            ->order_by('login_time', 'DESC')
+            ->limit(6)
+            ->get('login_logs')->result_array();
+
+        $devices = [];
+        $agents = $this->db
+            ->select('user_agent, COUNT(*) AS n', false)
+            ->where('ip_address', $ip)
+            ->group_by('user_agent')
+            ->order_by('n', 'DESC')
+            ->limit(4)
+            ->get('login_logs')->result_array();
+        foreach ($agents as $agent) {
+            $label = device_label($agent['user_agent']);
+            if ($label !== '') $devices[] = ['label' => $label, 'count' => (int)$agent['n']];
+        }
+
+        $block = $this->db
+            ->select('reason, blocked_by, blocked_at, is_permanent, expires_at')
+            ->where('ip_address', $ip)
+            ->get('ip_blacklist')->row_array();
+
+        $events = $this->db->where('ip_address', $ip)->count_all_results('security_audit_logs');
+
+        $when = function ($value) {
+            $ts = $value ? strtotime((string)$value) : false;
+            return $ts ? date('M j, Y · g:i A', $ts) : '';
+        };
+
+        $this->output->set_output(json_encode([
+            'ok'        => true,
+            'ip'        => $ip,
+            'total'     => (int)($counts->total ?? 0),
+            'success'   => (int)($counts->success ?? 0),
+            'failed'    => (int)($counts->failed ?? 0),
+            'accounts'  => (int)($counts->accounts ?? 0),
+            'firstSeen' => $when($counts->first_seen ?? null),
+            'lastSeen'  => $when($counts->last_seen ?? null),
+            'events'    => (int)$events,
+            'blocked'   => $block ? [
+                'reason'    => (string)$block['reason'],
+                'by'        => (string)$block['blocked_by'],
+                'at'        => $when($block['blocked_at']),
+                'permanent' => (bool)$block['is_permanent'],
+                'expires'   => $when($block['expires_at']),
+            ] : null,
+            'topAccounts' => array_map(function ($a) use ($when) {
+                return ['username' => (string)$a['username'], 'attempts' => (int)$a['attempts'], 'failed' => (int)$a['failed'], 'last' => $when($a['last'])];
+            }, $accounts),
+            'recent' => array_map(function ($r) use ($when) {
+                return ['time' => $when($r['login_time']), 'username' => (string)$r['username'], 'status' => (string)$r['status']];
+            }, $recent),
+            'devices' => $devices,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
     /**

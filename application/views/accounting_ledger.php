@@ -112,7 +112,7 @@
                             <a href="<?= base_url('Page/accounting'); ?>" class="up-btn up-btn-ghost d-md-none">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
-                            <button type="button" class="up-btn up-btn-ghost" data-toggle="modal" data-target="#filterModal">
+                            <button type="button" class="up-btn up-btn-ghost" data-ledger-filter>
                                 <i class="mdi mdi-filter-outline"></i> Filter
                             </button>
                             <button type="button" class="up-btn up-btn-primary" onclick="window.open('<?= base_url('Accounting/ledger'); ?>?from=<?= urlencode((string)$from); ?>&to=<?= urlencode((string)$to); ?>&print=1', '_blank')">
@@ -171,43 +171,37 @@
 
     <?php include('includes/footer_plugins.php'); ?>
 
-    <!-- FILTER MODAL -->
-    <div class="modal fade" id="filterModal" tabindex="-1" role="dialog" aria-labelledby="filterModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <form method="get" action="<?= base_url('Accounting/ledger'); ?>">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="filterModalLabel">
-                            <i class="mdi mdi-filter-outline"></i> Filter Ledger
-                        </h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label for="from" class="mb-1">From</label>
-                            <input type="date" id="from" name="from" class="form-control"
-                                value="<?= htmlspecialchars((string)$from, ENT_QUOTES, 'UTF-8'); ?>" required>
-                        </div>
-                        <div class="form-group mb-0">
-                            <label for="to" class="mb-1">To</label>
-                            <input type="date" id="to" name="to" class="form-control"
-                                value="<?= htmlspecialchars((string)$to, ENT_QUOTES, 'UTF-8'); ?>" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="up-btn up-btn-primary">
-                            <i class="mdi mdi-filter-outline"></i> Apply Filter
-                        </button>
-                    </div>
-                </form>
+    <!-- FILTER PANEL (opens on the right) -->
+    <form method="get" action="<?= base_url('Accounting/ledger'); ?>" id="ledgerFilterPanel" hidden>
+        <div class="sd-form-fields">
+            <div class="sd-form-row">
+                <div class="form-group">
+                    <label for="from">From</label>
+                    <input type="date" id="from" name="from" class="form-control"
+                        value="<?= htmlspecialchars((string)$from, ENT_QUOTES, 'UTF-8'); ?>" required>
+                </div>
+                <div class="form-group">
+                    <label for="to">To</label>
+                    <input type="date" id="to" name="to" class="form-control"
+                        value="<?= htmlspecialchars((string)$to, ENT_QUOTES, 'UTF-8'); ?>" required>
+                </div>
             </div>
+            <small class="sd-help">Collections and expenses between these dates, with a running balance.</small>
         </div>
-    </div>
+        <div class="sd-actions">
+            <a href="<?= base_url('Accounting/ledger'); ?>" class="sd-btn-ghost">This month</a>
+            <button type="submit" class="sd-btn"><i class="mdi mdi-filter-outline"></i> Apply filter</button>
+        </div>
+    </form>
 
+    <?php include('includes/side_drawer.php'); ?>
     <script>
+        if (window.SideDrawer) {
+            SideDrawer.fromElement(document.getElementById('ledgerFilterPanel'), {
+                title: 'Filter ledger', icon: 'mdi-filter-outline', width: 400,
+                trigger: '[data-ledger-filter]', focus: 'input'
+            });
+        }
         $(function() {
             $('#ledgerTable').DataTable({
                 pageLength: 25,

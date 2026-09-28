@@ -191,7 +191,7 @@
                   <a href="<?= base_url(); ?>Page/admin" class="up-btn up-btn-ghost d-md-none">
                     <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                   </a>
-                  <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target=".bs-example-modal-lg">
+                  <button type="button" class="up-btn up-btn-primary" data-ua-add>
                     <i class="mdi mdi-account-plus"></i> Add New
                   </button>
                 </div>
@@ -217,9 +217,9 @@
                           continue;
                         }
 
-                        echo "<tr>";
-                        echo "<td>" . $row->fName . ', ' . $row->mName . ' ' . $row->lName . "</td>";
                       ?>
+                        <tr class="sd-clickable" data-sd-key="<?= htmlspecialchars($row->username, ENT_QUOTES, 'UTF-8'); ?>" tabindex="0">
+                        <td><a href="#" class="sd-link" data-sd-open><?= htmlspecialchars($row->fName . ', ' . $row->mName . ' ' . $row->lName, ENT_QUOTES, 'UTF-8'); ?></a></td>
 
                         <td><?php echo $row->username; ?></td>
                         <td><?php echo $row->position; ?></td>
@@ -328,45 +328,30 @@
   <!-- /Right-bar -->
 
 
-  <!--  Modal content for the above example -->
-  <div class="modal fade bs-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" style="display: none;" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="myLargeModalLabel">Add New User</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="font-size:1.2rem;line-height:1;"><i class="mdi mdi-close"></i></button>
-        </div>
-        <div class="modal-body">
-          <form class="form-horizontal parsley-examples" method="POST">
-            <div class="card-body">
-              <div class="form-group row">
-                <label for="inputEmail3" class="col-sm-4 col-form-label">First Name</label>
-                <div class="col-sm-8">
-                  <input type="text" class="form-control" name="fName" placeholder="" required>
-                </div>
+  <!-- Add New User panel (opens on the right) -->
+          <form class="parsley-examples" method="POST" id="addUserPanel" hidden>
+            <div class="sd-form-fields">
+              <div class="form-group">
+                <label for="addFName">First name</label>
+                <input type="text" class="form-control" id="addFName" name="fName" required>
               </div>
-              <div class="form-group row">
-                <label for="inputEmail3" class="col-sm-4 col-form-label">Middle Name</label>
-                <div class="col-sm-8">
-                  <input type="text" class="form-control" name="mName" placeholder="">
-                </div>
+              <div class="form-group">
+                <label for="addMName">Middle name</label>
+                <input type="text" class="form-control" id="addMName" name="mName">
               </div>
-              <div class="form-group row">
-                <label for="inputEmail3" class="col-sm-4 col-form-label">Last Name</label>
-                <div class="col-sm-8">
-                  <input type="text" class="form-control" name="lName" placeholder="" required>
-                </div>
+              <div class="form-group">
+                <label for="addLName">Last name</label>
+                <input type="text" class="form-control" id="addLName" name="lName" required>
               </div>
-              <div class="form-group row">
-                <label for="inputEmail3" class="col-sm-4 col-form-label">E-mail</label>
-                <div class="col-sm-8">
-                  <input type="email" class="form-control" name="email" placeholder="" required>
-                </div>
+              <div class="sd-form-group-title">Account</div>
+              <div class="form-group">
+                <label for="addEmail">E-mail</label>
+                <input type="email" class="form-control" id="addEmail" name="email" required>
+                <small class="sd-help">The temporary password is emailed here.</small>
               </div>
-              <div class="form-group row">
-                <label for="inputEmail3" class="col-sm-4 col-form-label">Account Level</label>
-                <div class="col-sm-8">
-                  <select class="form-control" name="acctLevel" required>
+              <div class="form-group">
+                <label for="addLevel">Account level</label>
+                  <select class="form-control" id="addLevel" name="acctLevel" required>
                     <option value="">-- Select Level --</option>
                     <option value="Admin">Admin</option>
 					<option value="Auditor">Auditor</option>
@@ -385,30 +370,16 @@
                     <option value="Encoder">Encoder</option>
                     <option value="BAC">BAC</option> -->
                   </select>
-                </div>
               </div>
-
-
-              <div class="form-group row">
-                <label for="inputEmail3" class="col-sm-4 col-form-label">Username</label>
-                <div class="col-sm-8">
-                  <input type="text" class="form-control" name="username" placeholder="" required>
-                </div>
+              <div class="form-group">
+                <label for="addUsername">Username</label>
+                <input type="text" class="form-control" id="addUsername" name="username" required>
               </div>
             </div>
-            <!-- /.card-body -->
-            <div class="card-footer">
-              <input type="submit" name="submit" class="btn btn-info float-right" value="Create Account">
+            <div class="sd-actions">
+              <input type="submit" name="submit" class="sd-btn" value="Create account">
             </div>
-            <!-- /.card-footer -->
           </form>
-        </div>
-      </div>
-      <!-- /.modal-content -->
-    </div>
-    <!-- /.modal-dialog -->
-  </div>
-  <!-- /.modal -->
 
   <!-- Vendor js -->
   <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
@@ -461,19 +432,14 @@
   <!-- Validation init js-->
   <script src="<?= base_url(); ?>assets/js/pages/form-validation.init.js"></script>
 
+  <?php include('includes/side_drawer.php'); ?>
 
 
 
-  <!-- Edit User Modal -->
-  <div class="modal fade" id="editUserModal" tabindex="-1" role="dialog" aria-labelledby="editUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-      <form method="POST" action="<?= base_url('Page/updateUserInfo'); ?>">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Edit User Info</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
-          </div>
-          <div class="modal-body">
+
+  <!-- Edit form: shown inside the account side panel for editable accounts -->
+  <div hidden>
+      <form method="POST" action="<?= base_url('Page/updateUserInfo'); ?>" id="editUserForm" class="sd-form" style="min-height:0">
             <!-- Hidden input for username -->
             <input type="hidden" name="username" id="modalUsername">
 
@@ -506,15 +472,11 @@
               <label for="modalEmail">Email</label>
               <input type="email" class="form-control" name="email" id="modalEmail" required>
             </div>
-          </div>
 
-          <div class="modal-footer">
-            <input type="submit" name="submitEdit" class="btn btn-primary" value="Update">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          </div>
-        </div>
+            <div class="d-flex" style="gap:.5rem">
+              <input type="submit" name="submitEdit" class="sd-btn" value="Save changes">
+            </div>
       </form>
-    </div>
   </div>
 
 
@@ -638,29 +600,86 @@
           });
         }
 
-        $(document).on('click', '.edit-user-btn', function(e) {
-          e.preventDefault();
-          var $btn = $(this);
-          var username = $btn.data('username');
-          var email = $btn.data('email');
-          var position = $btn.data('position');
-          var name = $btn.data('name') || username;
-
-          confirmAction({
-            title: 'Edit Account?',
-            text: 'Open edit form for ' + name + '?',
-            icon: 'question',
-            confirmText: 'Edit',
-            confirmColor: '#10b981',
-            busy: false,
-            onConfirm: function() {
-              var modal = $('#editUserModal');
-              modal.find('#modalUsername').val(username);
-              modal.find('#modalEmail').val(email);
-              modal.find('#modalAcctLevel').val(position);
-              modal.modal('show');
+        // Account side panel: details, latest sign-ins, and the edit form.
+        var accountPanel = null;
+        if (window.SideDrawer) {
+          var SD = SideDrawer;
+          var editForm = document.getElementById('editUserForm');
+          var cache = {};
+          var statusPill = function(status) {
+            return SD.pill(status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown', status === 'success' ? 'success' : status === 'failed' ? 'danger' : 'neutral');
+          };
+          var hero = function(username, info) {
+            var active = info && info.status === 'active';
+            return '<div class="sd-hero"><div class="sd-hero-media"><i class="mdi mdi-shield-account-outline"></i></div><div class="sd-hero-text">'
+              + '<h5 class="sd-title">' + SD.esc(info ? (info.name || username) : username) + '</h5>'
+              + '<div class="sd-sub">' + SD.esc(username) + '</div>'
+              + (info ? '<div class="sd-tags">' + SD.pill(info.position || 'No role', 'info') + SD.status(active, active ? 'Active' : 'Inactive') + '</div>' : '')
+              + '</div></div>';
+          };
+          var show = function(panel, username, info) {
+            var wrap = document.createElement('div');
+            wrap.innerHTML = hero(username, info)
+              + SD.section('Account', SD.grid([
+                  SD.field('Email', info.email, true),
+                  SD.field('Created', info.created),
+                  SD.field('Last sign-in', info.lastSignIn || 'Never'),
+                  SD.field('Failed attempts (30 days)', String(info.failed30), true)
+                ]))
+              + SD.section('Latest sign-ins', info.recent.length
+                  ? '<ul class="sd-list">' + info.recent.map(function(r) {
+                      return '<li><div class="sd-list-main"><div class="sd-list-title">' + SD.esc(r.time) + '</div>'
+                        + '<div class="sd-list-sub">' + SD.esc([r.ip, r.device].filter(Boolean).join(' \u00b7 ')) + '</div></div>'
+                        + '<div class="sd-list-end">' + statusPill(r.status) + '</div></li>';
+                    }).join('') + '</ul>'
+                  : '<p class="sd-empty">No sign-ins recorded.</p>');
+            if (info.editable && editForm) {
+              editForm.querySelector('#modalUsername').value = username;
+              editForm.querySelector('#modalEmail').value = info.email;
+              editForm.querySelector('#modalAcctLevel').value = info.position;
+              var section = document.createElement('section');
+              section.className = 'sd-section';
+              section.id = 'sdEditSection';
+              section.innerHTML = '<h6>Edit account</h6>';
+              section.appendChild(editForm);
+              wrap.appendChild(section);
+            }
+            panel.body(wrap);
+            if (panel.wantsEdit) {
+              panel.wantsEdit = false;
+              var target = document.getElementById('sdEditSection');
+              if (target) { target.scrollIntoView({ block: 'start' }); editForm.querySelector('#modalAcctLevel').focus(); }
+            }
+          };
+          accountPanel = SD.create({
+            label: 'Account details',
+            nav: true,
+            width: 440,
+            rowSelector: '#datatable-buttons tbody tr[data-sd-key]',
+            dataTable: $.fn.dataTable.isDataTable($table) ? $table.DataTable() : null,
+            render: function(username, panel) {
+              if (cache[username]) { show(panel, username, cache[username]); return; }
+              panel.loading(hero(username, null));
+              SD.fetchJSON(<?= json_encode(base_url('Page/userAccountSummary')); ?> + '?u=' + encodeURIComponent(username)).then(function(info) {
+                cache[username] = info;
+                if (panel.current === username) show(panel, username, info);
+              }).catch(function(err) {
+                if (panel.current === username) panel.error(err.message, hero(username, null));
+              });
             }
           });
+
+          SD.fromElement(document.getElementById('addUserPanel'), {
+            title: 'Add new user', icon: 'mdi-account-plus', width: 420,
+            trigger: '[data-ua-add]', focus: 'input[name="fName"]'
+          });
+        }
+
+        $(document).on('click', '.edit-user-btn', function(e) {
+          e.preventDefault();
+          if (!accountPanel) return;
+          accountPanel.wantsEdit = true;
+          accountPanel.open(String($(this).data('username')));
         });
 
         // Submit a POST form to the given URL, preserving any query params

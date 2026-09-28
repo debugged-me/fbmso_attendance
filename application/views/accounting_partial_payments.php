@@ -124,7 +124,7 @@
                                                         $studentName .= trim((string)(($row->FirstName ?? '') . ' ' . ($row->MiddleName ?? '')));
                                                         if (trim($studentName) === '') $studentName = (string)($row->StudentNumber ?? '');
                                                         ?>
-                                                        <tr>
+                                                        <tr class="sd-clickable" data-student-balance data-sd-key="<?= htmlspecialchars((string)$row->StudentNumber, ENT_QUOTES, 'UTF-8'); ?>" tabindex="0">
                                                             <td data-label="Student" style="font-weight:600;color:var(--up-ink);">
                                                                 <?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?>
                                                                 <div style="font-size:.76rem;color:var(--up-muted);font-family:ui-monospace,Menlo,Consolas,monospace;"><?= htmlspecialchars((string)$row->StudentNumber, ENT_QUOTES, 'UTF-8'); ?></div>
@@ -160,7 +160,15 @@
     </div>
 
     <?php include('includes/footer_plugins.php'); ?>
+    <?php include('includes/side_drawer.php'); ?>
     <script>
+        if (window.StudentBalancePanel) {
+            StudentBalancePanel({ url: <?= json_encode(site_url('Accounting/studentSummary')); ?> });
+            // Keyboard: Enter on a focused row opens the same panel.
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && e.target.matches && e.target.matches('#partialTable tr[data-student-balance]')) e.target.click();
+            });
+        }
         $(function() {
             $('#partialTable').DataTable({
                 pageLength: 25,

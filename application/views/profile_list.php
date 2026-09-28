@@ -690,7 +690,7 @@
         data: PL_DATA,
         deferRender: true,
         order: [[PL_CAN_MANAGE ? 1 : 0, 'asc']],
-        createdRow: function(tr, row) { tr.setAttribute('data-studno', row.studno); },
+        createdRow: function(tr, row) { tr.setAttribute('data-sd-key', row.studno); tr.classList.add('sd-clickable'); },
         columns: (PL_CAN_MANAGE ? [{
           data: null,
           orderable: false,
@@ -708,8 +708,7 @@
             data: 'name',
             render: function(d, type, row) {
               if (type === 'sort' || type === 'type') return d;
-              var html = '<a class="pv-open pl-name-link" href="' + PL_URL_VIEW + '?id=' + encodeURIComponent(row.studno) + '"'
-                + ' data-studno="' + plEsc(row.studno) + '">' + plEsc(d) + '</a>';
+              var html = '<a class="sd-link" data-sd-open href="' + PL_URL_VIEW + '?id=' + encodeURIComponent(row.studno) + '">' + plEsc(d) + '</a>';
               if (row.sub) {
                 html += '<div style="font-size:.76rem;color:#6b7a99;margin-top:2px;">' + plEsc(row.sub) + '</div>';
               }
@@ -760,7 +759,7 @@
             render: function(d, type, row) {
               if (type !== 'display') return '';
               var studno = plEsc(row.studno);
-              var items = '<a class="dropdown-item pv-open" href="' + PL_URL_VIEW + '?id=' + encodeURIComponent(row.studno) + '" data-studno="' + studno + '">'
+              var items = '<a class="dropdown-item" data-sd-open href="' + PL_URL_VIEW + '?id=' + encodeURIComponent(row.studno) + '">'
                 + '<i class="mdi mdi-eye-outline"></i> View Profile</a>';
 
               // Reset and status need a login account to act on.
@@ -1194,297 +1193,79 @@
     });
   </script>
 
-  <!-- Student profile side panel: opened from the student name or Actions → View Profile -->
-  <div class="pv-backdrop" data-pv-close></div>
-  <aside class="pv-drawer" id="pvDrawer" role="dialog" aria-modal="true" aria-labelledby="pvName" aria-hidden="true">
-    <div class="pv-bar">
-      <div class="pv-nav">
-        <button type="button" class="pv-icon-btn" data-pv-step="-1" aria-label="Previous student" title="Previous (↑)"><i class="mdi mdi-chevron-up"></i></button>
-        <button type="button" class="pv-icon-btn" data-pv-step="1" aria-label="Next student" title="Next (↓)"><i class="mdi mdi-chevron-down"></i></button>
-        <span class="pv-counter" id="pvCounter"></span>
-      </div>
-      <button type="button" class="pv-icon-btn" data-pv-close aria-label="Close" title="Close (Esc)"><i class="mdi mdi-close"></i></button>
-    </div>
-    <div class="pv-body" id="pvBody"></div>
-    <div class="pv-foot" id="pvFoot" hidden>
-      <a class="pv-btn" id="pvFull" href="#"></a>
-    </div>
-  </aside>
+  <!-- Student profile side panel: opened by clicking a row, the student name, or Actions → View Profile -->
+  <?php include('includes/side_drawer.php'); ?>
   <style>
-    .pl-name-link { font-weight:700; color:#0d1b4b; }
-    .pl-name-link:hover, .pl-name-link:focus { color:#4266d4; text-decoration:none; }
-    #datatable tbody tr.pv-active, #datatable tbody tr.pv-active:hover { background:#eef2ff !important; }
-
-    body.pv-lock { overflow:hidden; }
-    .pv-backdrop {
-      position:fixed; inset:0; z-index:1070; background:rgba(13,27,75,.28);
-      opacity:0; visibility:hidden; transition:opacity .2s ease, visibility .2s ease;
-    }
-    .pv-backdrop.is-open { opacity:1; visibility:visible; }
-    .pv-drawer {
-      position:fixed; top:0; right:0; bottom:0; z-index:1071;
-      display:flex; flex-direction:column; width:440px; max-width:100vw;
-      background:#fff; color:#0d1b4b; box-shadow:-12px 0 40px rgba(13,27,75,.14);
-      transform:translateX(100%); visibility:hidden;
-      transition:transform .24s cubic-bezier(.2,.8,.2,1), visibility .24s;
-    }
-    .pv-drawer.is-open { transform:none; visibility:visible; }
-    .pv-bar { display:flex; align-items:center; justify-content:space-between; padding:.6rem .75rem; border-bottom:1px solid #eef1f5; }
-    .pv-nav { display:flex; align-items:center; gap:.25rem; }
-    .pv-counter { margin-left:.35rem; color:#8a97b8; font-size:.74rem; }
-    .pv-icon-btn {
-      display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; padding:0;
-      border:0; border-radius:8px; background:transparent; color:#6b7a99; font-size:19px; cursor:pointer;
-    }
-    .pv-icon-btn:hover:not(:disabled) { background:#f2f5fb; color:#0d1b4b; }
-    .pv-icon-btn:disabled { opacity:.35; cursor:default; }
-    .pv-icon-btn:focus, .pv-btn:focus { outline:none; box-shadow:0 0 0 3px rgba(66,102,212,.2); }
-    .pv-body { flex:1; overflow-y:auto; padding:1.3rem 1.35rem 1.5rem; overscroll-behavior:contain; }
-
-    .pv-hero { display:flex; align-items:center; gap:.9rem; }
-    .pv-photo {
-      display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
-      width:56px; height:56px; overflow:hidden; border-radius:50%;
-      background:#eef2ff; color:#4266d4; font-size:28px;
-    }
-    .pv-photo img { width:100%; height:100%; object-fit:cover; }
-    .pv-hero-text { min-width:0; }
-    .pv-name { margin:0; font-size:1.08rem; font-weight:700; line-height:1.3; color:#0d1b4b; overflow-wrap:anywhere; }
-    .pv-studno { margin-top:.1rem; color:#2a4090; font:600 .8rem ui-monospace,Menlo,Consolas,monospace; }
-    .pv-tags { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; margin-top:.45rem; }
-    .pv-tag { padding:3px 9px; border-radius:999px; background:#f1f5f9; color:#4a5a7a; font-size:.7rem; font-weight:700; }
-
-    .pv-quick { display:flex; flex-wrap:wrap; gap:.4rem; margin-top:1rem; }
-    .pv-quick a {
-      display:inline-flex; align-items:center; gap:.3rem; max-width:100%; padding:.3rem .65rem;
-      border:1px solid #e6ebf5; border-radius:8px; color:#4a5a7a; font-size:.76rem; font-weight:600;
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    }
-    .pv-quick a:hover { border-color:#c7d2fe; background:#f8faff; color:#2a4090; text-decoration:none; }
-
-    .pv-section { margin-top:1.15rem; padding-top:1.1rem; border-top:1px solid #f0f3f8; }
-    .pv-section h6 { margin:0 0 .65rem; color:#8a97b8; font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; }
-    .pv-grid { display:grid; grid-template-columns:1fr 1fr; gap:.8rem 1rem; margin:0; }
-    .pv-grid > div.pv-wide { grid-column:1 / -1; }
-    .pv-grid dt { margin-bottom:.1rem; color:#8a97b8; font-size:.7rem; font-weight:500; }
-    .pv-grid dd { margin:0; font-size:.85rem; font-weight:600; overflow-wrap:anywhere; }
-
-    .pv-skel { height:12px; margin:.55rem 0; border-radius:6px; background:linear-gradient(90deg,#f1f4f9 25%,#e7ecf4 50%,#f1f4f9 75%); background-size:200% 100%; animation:pv-shimmer 1.2s infinite linear; }
-    @keyframes pv-shimmer { to { background-position:-200% 0; } }
-    .pv-note { margin:1.2rem 0 0; padding:.7rem .8rem; border-radius:10px; background:#f8faff; color:#6b7a99; font-size:.8rem; }
-    .pv-note.pv-error { background:#fef2f2; color:#b91c1c; }
-
-    .pv-foot { padding:.8rem 1.35rem calc(.8rem + env(safe-area-inset-bottom, 0px)); border-top:1px solid #eef1f5; }
-    .pv-foot[hidden] { display:none; }
-    .pv-btn {
-      display:flex; align-items:center; justify-content:center; gap:.4rem; width:100%; padding:.6rem 1rem;
-      border-radius:10px; background:linear-gradient(135deg,#2a4090,#4266d4); color:#fff !important;
-      font-size:.85rem; font-weight:700;
-    }
-    .pv-btn:hover { filter:brightness(1.07); text-decoration:none; }
-
-    @media (max-width: 575.98px) { .pv-grid { grid-template-columns:1fr; } }
-    @media (prefers-reduced-motion: reduce) { .pv-drawer, .pv-backdrop { transition:none; } .pv-skel { animation:none; } }
-    @media print { .pv-drawer, .pv-backdrop { display:none !important; } }
+    #datatable tbody tr.sd-clickable { cursor:pointer; }
   </style>
   <script>
-    (function() {
-      var drawer = document.getElementById('pvDrawer');
-      var body = document.getElementById('pvBody');
-      var foot = document.getElementById('pvFoot');
-      var fullLink = document.getElementById('pvFull');
-      var counter = document.getElementById('pvCounter');
-      var backdrop = document.querySelector('.pv-backdrop');
-      var closeBtn = drawer.querySelector('.pv-bar > [data-pv-close]');
-      var prevBtn = drawer.querySelector('[data-pv-step="-1"]');
-      var nextBtn = drawer.querySelector('[data-pv-step="1"]');
+    $(function() {
+      if (!window.SideDrawer) return;
+      var SD = SideDrawer;
+      var dt = $('#datatable').DataTable();
       var cache = {};
-      var current = null;
-      var lastFocus = null;
 
-      function isOpen() { return drawer.classList.contains('is-open'); }
-      function table() { return $('#datatable').DataTable(); }
-      function visibleRows() { return table().rows({ search: 'applied', order: 'applied' }).data().toArray(); }
       function rowFor(studno) {
         var found = null;
-        table().rows().data().each(function(r) { if (!found && r.studno === studno) found = r; });
+        dt.rows().data().each(function(r) { if (!found && r.studno === studno) found = r; });
         return found;
       }
 
-      function field(label, value, wide) {
-        if (value === null || value === undefined || String(value).trim() === '') return '';
-        return '<div' + (wide ? ' class="pv-wide"' : '') + '><dt>' + plEsc(label) + '</dt><dd>' + plEsc(value) + '</dd></div>';
+      function hero(studno, row, info) {
+        var meta = plStatusMeta(info ? info.status : (row ? row.status : null));
+        var place = info ? [info.yearLevel, info.section].filter(Boolean).join(' \u00b7 ') : (row && row.sub ? row.sub : '');
+        var photo = info && info.photoUrl ? '<img src="' + SD.esc(info.photoUrl) + '" alt="">' : '<i class="mdi mdi-account"></i>';
+        return '<div class="sd-hero"><div class="sd-hero-media">' + photo + '</div><div class="sd-hero-text">'
+          + '<h5 class="sd-title">' + SD.esc((info && info.name) || (row && row.name) || studno) + '</h5>'
+          + '<div class="sd-sub">' + SD.esc(studno) + '</div>'
+          + '<div class="sd-tags"><span class="acct-badge ' + meta.cls + '">' + SD.esc(meta.label) + '</span>'
+          + (place ? '<span class="sd-tag">' + SD.esc(place) + '</span>' : '') + '</div></div></div>';
       }
-      function section(title, fields) {
-        var html = fields.join('');
-        return html ? '<section class="pv-section"><h6>' + plEsc(title) + '</h6><dl class="pv-grid">' + html + '</dl></section>' : '';
+
+      function details(info) {
+        var F = SD.field;
+        var quick = '';
+        if (info.email) quick += '<a href="mailto:' + SD.esc(info.email) + '" title="' + SD.esc(info.email) + '"><i class="mdi mdi-email-outline"></i> ' + SD.esc(info.email) + '</a>';
+        if (info.contactNo) quick += '<a href="tel:' + SD.esc(info.contactNo.replace(/[^\d+]/g, '')) + '"><i class="mdi mdi-phone-outline"></i> ' + SD.esc(info.contactNo) + '</a>';
+        return (quick ? '<div class="sd-quick">' + quick + '</div>' : '')
+          + SD.section('Academic', SD.grid([F('Course', info.course, true), F('Major', info.major, true), F('Year level', info.yearLevel), F('Section', info.section)]))
+          + SD.section('Personal', SD.grid([F('Sex', info.sex), F('Civil status', info.civilStatus), F('Birth date', info.birthDate), F('Age', info.age)]))
+          + SD.section('Contact', SD.grid([F('Email', info.email, true), F('Mobile', info.contactNo), F('Address', info.address, true)]))
+          + SD.section('Guardian', SD.grid([F('Name', info.guardian, true), F('Relationship', info.guardianRelationship), F('Contact', info.guardianContact)]))
+          + SD.section('Account', SD.grid([F('Login', plStatusMeta(info.status).label), F('Created', info.accountCreated), F('Signup status', info.signupStatus)]))
+          + (info.hasSignup ? '' : '<p class="sd-note"><i class="mdi mdi-information-outline"></i> This student only has a login account — there is no registration record to open.</p>');
       }
 
-      function render(row, info, error) {
-        var name = (info && info.name) || (row && row.name) || current;
-        var status = info ? info.status : (row ? row.status : null);
-        var meta = plStatusMeta(status);
-        var place = info
-          ? [info.yearLevel, info.section].filter(Boolean).join(' \u00b7 ')
-          : (row && row.sub ? row.sub : '');
-        var photo = info && info.photoUrl
-          ? '<img src="' + plEsc(info.photoUrl) + '" alt="">'
-          : '<i class="mdi mdi-account"></i>';
+      function footer(studno) {
+        return '<a class="sd-btn" href="' + SD.esc(PL_URL_VIEW + '?id=' + encodeURIComponent(studno)) + '">'
+          + (PL_CAN_EDIT ? '<i class="mdi mdi-pencil-outline"></i> Edit profile' : '<i class="mdi mdi-open-in-new"></i> Open full profile') + '</a>';
+      }
 
-        var html = '<div class="pv-hero"><div class="pv-photo">' + photo + '</div><div class="pv-hero-text">'
-          + '<h5 class="pv-name" id="pvName">' + plEsc(name) + '</h5>'
-          + '<div class="pv-studno">' + plEsc(current) + '</div>'
-          + '<div class="pv-tags"><span class="acct-badge ' + meta.cls + '">' + plEsc(meta.label) + '</span>'
-          + (place ? '<span class="pv-tag">' + plEsc(place) + '</span>' : '') + '</div></div></div>';
+      function show(panel, studno, info) {
+        panel.body(hero(studno, rowFor(studno), info) + details(info));
+        panel.footer(info.hasSignup ? footer(studno) : null);
+      }
 
-        if (error) {
-          html += '<p class="pv-note pv-error"><i class="mdi mdi-alert-circle-outline"></i> ' + plEsc(error) + '</p>';
-        } else if (!info) {
-          html += '<section class="pv-section"><div class="pv-skel" style="width:40%"></div><div class="pv-skel"></div><div class="pv-skel" style="width:75%"></div></section>'
-            + '<section class="pv-section"><div class="pv-skel" style="width:35%"></div><div class="pv-skel" style="width:85%"></div><div class="pv-skel" style="width:60%"></div></section>';
-        } else {
-          var quick = '';
-          if (info.email) quick += '<a href="mailto:' + plEsc(info.email) + '" title="' + plEsc(info.email) + '"><i class="mdi mdi-email-outline"></i> ' + plEsc(info.email) + '</a>';
-          if (info.contactNo) quick += '<a href="tel:' + plEsc(info.contactNo.replace(/[^\d+]/g, '')) + '"><i class="mdi mdi-phone-outline"></i> ' + plEsc(info.contactNo) + '</a>';
-          if (quick) html += '<div class="pv-quick">' + quick + '</div>';
-
-          html += section('Academic', [
-            field('Course', info.course, true),
-            field('Major', info.major, true),
-            field('Year level', info.yearLevel),
-            field('Section', info.section)
-          ]);
-          html += section('Personal', [
-            field('Sex', info.sex),
-            field('Civil status', info.civilStatus),
-            field('Birth date', info.birthDate),
-            field('Age', info.age)
-          ]);
-          html += section('Contact', [
-            field('Email', info.email, true),
-            field('Mobile', info.contactNo),
-            field('Address', info.address, true)
-          ]);
-          html += section('Guardian', [
-            field('Name', info.guardian, true),
-            field('Relationship', info.guardianRelationship),
-            field('Contact', info.guardianContact)
-          ]);
-          html += section('Account', [
-            field('Login', meta.label),
-            field('Created', info.accountCreated),
-            field('Signup status', info.signupStatus)
-          ]);
-          if (!info.hasSignup) {
-            html += '<p class="pv-note"><i class="mdi mdi-information-outline"></i> This student only has a login account — there is no registration record to open.</p>';
-          }
+      SD.create({
+        label: 'Student profile',
+        nav: true,
+        width: 440,
+        rowSelector: '#datatable tbody tr[data-sd-key]',
+        dataTable: dt,
+        keyOf: function(data) { return data.studno; },
+        render: function(studno, panel) {
+          if (cache[studno]) { show(panel, studno, cache[studno]); return; }
+          panel.loading(hero(studno, rowFor(studno), null));
+          panel.footer(footer(studno));
+          SD.fetchJSON(PL_URL_PREVIEW + '?id=' + encodeURIComponent(studno)).then(function(info) {
+            cache[studno] = info;
+            if (panel.current === studno) show(panel, studno, info);
+          }).catch(function(err) {
+            if (panel.current === studno) panel.error(err.message, hero(studno, rowFor(studno), null));
+          });
         }
-        body.innerHTML = html;
-
-        var canOpen = !error && (!info || info.hasSignup);
-        foot.hidden = !canOpen;
-        if (canOpen) {
-          fullLink.href = PL_URL_VIEW + '?id=' + encodeURIComponent(current);
-          fullLink.innerHTML = PL_CAN_EDIT
-            ? '<i class="mdi mdi-pencil-outline"></i> Edit profile'
-            : '<i class="mdi mdi-open-in-new"></i> Open full profile';
-        }
-      }
-
-      function highlight() {
-        document.querySelectorAll('#datatable tbody tr').forEach(function(tr) {
-          tr.classList.toggle('pv-active', isOpen() && tr.getAttribute('data-studno') === current);
-        });
-      }
-
-      function updateNav() {
-        var list = visibleRows();
-        var index = -1;
-        for (var i = 0; i < list.length; i++) { if (list[i].studno === current) { index = i; break; } }
-        counter.textContent = index >= 0 ? (index + 1) + ' of ' + list.length : '';
-        prevBtn.disabled = index <= 0;
-        nextBtn.disabled = index < 0 || index >= list.length - 1;
-      }
-
-      function load(studno) {
-        if (cache[studno]) { render(rowFor(studno), cache[studno]); return; }
-        render(rowFor(studno), null);
-        fetch(PL_URL_PREVIEW + '?id=' + encodeURIComponent(studno), {
-          credentials: 'same-origin',
-          headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-        }).then(function(res) {
-          return res.json().catch(function() { throw new Error('Your session may have expired. Reload the page and try again.'); });
-        }).then(function(data) {
-          if (!data || !data.ok) throw new Error((data && data.message) || 'Could not load this profile.');
-          cache[studno] = data;
-          if (current === studno) render(rowFor(studno), data);
-        }).catch(function(err) {
-          if (current === studno) render(rowFor(studno), null, err.message || 'Could not load this profile.');
-        });
-      }
-
-      function open(studno) {
-        if (!studno) return;
-        current = studno;
-        load(studno);
-        body.scrollTop = 0;
-        if (!isOpen()) {
-          lastFocus = document.activeElement;
-          drawer.classList.add('is-open');
-          backdrop.classList.add('is-open');
-          drawer.setAttribute('aria-hidden', 'false');
-          document.body.classList.add('pv-lock');
-          setTimeout(function() { closeBtn.focus(); }, 50);
-        }
-        updateNav();
-        highlight();
-      }
-
-      function close() {
-        if (!isOpen()) return;
-        drawer.classList.remove('is-open');
-        backdrop.classList.remove('is-open');
-        drawer.setAttribute('aria-hidden', 'true');
-        document.body.classList.remove('pv-lock');
-        highlight();
-        current = null;
-        if (lastFocus && lastFocus.focus && document.contains(lastFocus)) lastFocus.focus();
-      }
-
-      function step(delta) {
-        var list = visibleRows();
-        for (var i = 0; i < list.length; i++) {
-          if (list[i].studno === current) {
-            var next = list[i + delta];
-            if (!next) return;
-            // Follow along in the table: jump to the page that holds the next student.
-            var info = table().page.info();
-            var target = Math.floor((i + delta) / info.length);
-            if (info.length > 0 && target !== info.page) table().page(target).draw('page');
-            open(next.studno);
-            return;
-          }
-        }
-      }
-
-      document.addEventListener('click', function(e) {
-        var trigger = e.target.closest && e.target.closest('.pv-open');
-        if (!trigger || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-        e.preventDefault();
-        open(trigger.getAttribute('data-studno'));
       });
-      document.querySelectorAll('[data-pv-close]').forEach(function(el) { el.addEventListener('click', close); });
-      prevBtn.addEventListener('click', function() { step(-1); });
-      nextBtn.addEventListener('click', function() { step(1); });
-      document.addEventListener('keydown', function(e) {
-        if (!isOpen()) return;
-        if (e.key === 'Escape') { close(); return; }
-        if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
-        if (e.key === 'ArrowDown') { e.preventDefault(); step(1); }
-        if (e.key === 'ArrowUp') { e.preventDefault(); step(-1); }
-      });
-      $('#datatable').on('draw.dt', function() { if (isOpen()) { updateNav(); highlight(); } });
-    })();
+    });
   </script>
 
 </body>

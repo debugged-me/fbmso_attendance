@@ -104,13 +104,18 @@ class MobileAccounting extends MobileApi
 
     private function logPaymentAudit($action, $payment, $changedBy, $newValues = null)
     {
-        $oldValues = [
+        $snapshot = [
             'StudentNumber' => (string)($payment->StudentNumber ?? ''),
             'ORNumber'      => (string)($payment->ORNumber ?? ''),
             'PDate'         => (string)($payment->PDate ?? ''),
             'Amount'        => (string)($payment->Amount ?? ''),
             'description'   => (string)($payment->description ?? ''),
         ];
+        $isCreate = strtolower((string)$action) === 'create';
+        $oldValues = $isCreate ? null : $snapshot;
+        if ($isCreate && $newValues === null) {
+            $newValues = $snapshot;
+        }
 
         $this->db->insert('payment_audit_log', [
             'payment_id'     => (int)($payment->ID ?? 0),
@@ -119,7 +124,7 @@ class MobileAccounting extends MobileApi
             'student_number' => (string)($payment->StudentNumber ?? ''),
             'description'    => (string)($payment->description ?? ''),
             'amount'         => (float)($payment->Amount ?? 0),
-            'old_values'     => json_encode($oldValues),
+            'old_values'     => $oldValues !== null ? json_encode($oldValues) : null,
             'new_values'     => $newValues !== null ? json_encode($newValues) : null,
             'changed_by'     => $changedBy,
             'actor_level'    => $this->position_of($changedBy) ?: null,
@@ -954,6 +959,8 @@ class MobileAccounting extends MobileApi
         if ($useReservedOr) {
             $this->or_sequence->mark_consumed($deviceId, $orNumber);
         }
+
+        $this->logPaymentAudit('create', (object)$paymentData, (string)$tokenRow['username'], $paymentData);
 
         // Queue the receipt email exactly like the web flow — non-fatal.
         $emailResult = ['attempted' => false, 'sent' => false];

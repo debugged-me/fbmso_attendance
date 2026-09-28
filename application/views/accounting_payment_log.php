@@ -105,10 +105,22 @@
                                                     <th>Description</th>
                                                     <th class="text-right">Amount</th>
                                                     <th>Changed By</th>
+                                                    <th class="text-center" style="width:52px;"><span class="sr-only">Details</span></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php foreach ($rows as $row): ?>
+                                                <?php
+                                                // Before/after for the side panel, formatted once here.
+                                                $plFieldLabels = ['StudentNumber' => 'Student no.', 'ORNumber' => 'O.R. number', 'PDate' => 'Payment date', 'Amount' => 'Amount', 'description' => 'Description'];
+                                                $plFormat = function ($field, $value) {
+                                                    if ($value === null || trim((string)$value) === '') return null;
+                                                    if ($field === 'Amount') return '₱ ' . number_format((float)$value, 2);
+                                                    if ($field === 'PDate' && strtotime((string)$value)) return date('M j, Y', strtotime((string)$value));
+                                                    return (string)$value;
+                                                };
+                                                $plLog = [];
+                                                ?>
+                                                <?php foreach ($rows as $i => $row): ?>
                                                     <?php
                                                     $studentName = trim((string)($row->LastName ?? ''));
                                                     if ($studentName !== '') $studentName .= ', ';
@@ -118,15 +130,55 @@
                                                     $action = (string)($row->action ?? '');
                                                     $badgeClass = $action === 'delete' ? 'badge-danger' : 'badge-warning';
                                                     $badgeLabel = $action === 'delete' ? 'Deleted' : 'Edited';
+
+                                                    $old = json_decode((string)($row->old_values ?? ''), true);
+                                                    $new = json_decode((string)($row->new_values ?? ''), true);
+                                                    $old = is_array($old) ? $old : null;
+                                                    $new = is_array($new) ? $new : null;
+                                                    $changes = $snapshot = [];
+                                                    $unchanged = 0;
+                                                    foreach (array_unique(array_merge(array_keys($old ?? []), array_keys($new ?? []))) as $field) {
+                                                        $label = $plFieldLabels[$field] ?? ucwords(str_replace('_', ' ', (string)$field));
+                                                        $before = $plFormat($field, $old[$field] ?? null);
+                                                        $after = $plFormat($field, $new[$field] ?? null);
+                                                        if ($old !== null && $new !== null) {
+                                                            if ($before === $after) $unchanged++; else $changes[] = [$label, $before, $after];
+                                                        }
+                                                        $snapshot[] = [$label, $old !== null ? $before : $after];
+                                                    }
+                                                    $plLog[] = [
+                                                        'action'    => $badgeLabel,
+                                                        'tone'      => $action === 'delete' ? 'danger' : 'warning',
+                                                        'when'      => date('D, M j, Y · g:i A', strtotime((string)$row->changed_at)),
+                                                        'or'        => (string)($row->or_number ?? ''),
+                                                        'paymentId' => (string)($row->payment_id ?? ''),
+                                                        'studno'    => (string)($row->student_number ?? ''),
+                                                        'student'   => $studentName,
+                                                        'desc'      => (string)($row->description ?? ''),
+                                                        'amount'    => (float)($row->amount ?? 0),
+                                                        'by'        => (string)($row->changed_by ?? ''),
+                                                        'byRole'    => (string)($row->actor_level ?? ''),
+                                                        'diff'      => $old !== null && $new !== null,
+                                                        'changes'   => $changes,
+                                                        'unchanged' => $unchanged,
+                                                        'snapshot'  => $snapshot,
+                                                    ];
                                                     ?>
-                                                    <tr>
+                                                    <tr class="sd-clickable" data-sd-key="<?= (int)$i; ?>" tabindex="0">
                                                         <td data-label="Date & Time" style="color:var(--up-muted);white-space:nowrap;"><?= htmlspecialchars(date('M d, Y h:i A', strtotime((string)$row->changed_at)), ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Action"><span class="badge <?= $badgeClass; ?>"><?= $badgeLabel; ?></span></td>
                                                         <td data-label="O.R." style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:var(--up-blue);"><?= htmlspecialchars((string)($row->or_number ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td data-label="Student" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Student" style="font-weight:600;color:var(--up-ink);">
+                                                            <?php if (trim((string)($row->student_number ?? '')) !== ''): ?>
+                                                                <a href="#" class="sd-link" data-student-balance data-sd-key="<?= htmlspecialchars((string)$row->student_number, ENT_QUOTES, 'UTF-8'); ?>" title="View balance"><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></a>
+                                                            <?php else: ?>
+                                                                <?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?>
+                                                            <?php endif; ?>
+                                                        </td>
                                                         <td data-label="Description" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-ink);white-space:nowrap;">₱ <?= number_format((float)($row->amount ?? 0), 2); ?></td>
                                                         <td data-label="Changed By" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->changed_by ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Details" class="text-center"><button type="button" class="sd-open-btn" data-sd-open aria-label="View change details" title="Details"><i class="mdi mdi-chevron-right"></i></button></td>
                                                     </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
@@ -146,14 +198,62 @@
 
     <?php include('includes/footer_plugins.php'); ?>
     <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
+    <?php include('includes/side_drawer.php'); ?>
     <script>
+        var PL_LOG = <?= json_encode($plLog, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
         $(function() {
-            $('#paymentLogTable').DataTable({
+            var dt = $('#paymentLogTable').DataTable({
                 pageLength: 25,
                 lengthMenu: [10, 25, 50, 100],
                 order: [
                     [0, 'desc']
-                ]
+                ],
+                columnDefs: [{ targets: -1, orderable: false, searchable: false }]
+            });
+
+            if (!window.SideDrawer) return;
+            var SD = SideDrawer;
+            StudentBalancePanel({ url: <?= json_encode(site_url('Accounting/studentSummary')); ?> });
+
+            SD.create({
+                label: 'Payment change',
+                nav: true,
+                rowSelector: '#paymentLogTable tbody tr[data-sd-key]',
+                dataTable: dt,
+                render: function(key, panel) {
+                    var e = PL_LOG[key];
+                    if (!e) return;
+                    var html = '<div class="sd-tags">' + SD.pill(e.action, e.tone) + '</div>'
+                        + '<h5 class="sd-title">' + SD.esc(e.or ? 'O.R. ' + e.or : 'Payment') + '</h5>'
+                        + (e.desc ? '<p class="sd-desc">' + SD.esc(e.desc) + '</p>' : '')
+                        + '<div class="sd-amount">' + SD.money(e.amount) + '</div>'
+                        + '<div class="sd-when"><i class="mdi mdi-clock-outline"></i> ' + SD.esc(e.when) + '</div>';
+
+                    html += SD.section('Overview', SD.grid([
+                        SD.field('Student', SD.esc(e.student) + (e.studno && e.studno !== e.student ? '<small>' + SD.esc(e.studno) + '</small>' : ''), false, true),
+                        SD.field('Changed by', SD.esc(e.by) + (e.byRole ? '<small>' + SD.esc(e.byRole) + '</small>' : ''), false, true),
+                        SD.field('Payment ID', e.paymentId && e.paymentId !== '0' ? '#' + e.paymentId : '')
+                    ]));
+
+                    if (e.diff) {
+                        var rows = e.changes.map(function(c) {
+                            return '<div class="sd-diff-row"><div class="sd-diff-field">' + SD.esc(c[0]) + '</div><div class="sd-diff-values">'
+                                + '<span class="sd-diff-old' + (c[1] === null ? ' is-empty' : '') + '">' + SD.esc(c[1] === null ? 'empty' : c[1]) + '</span>'
+                                + '<i class="mdi mdi-arrow-right"></i>'
+                                + '<span class="sd-diff-new' + (c[2] === null ? ' is-empty' : '') + '">' + SD.esc(c[2] === null ? 'empty' : c[2]) + '</span></div></div>';
+                        }).join('');
+                        html += SD.section('Changes', (rows ? '<div class="sd-diff">' + rows + '</div>' : '<p class="sd-empty">No field values changed.</p>')
+                            + (e.unchanged ? '<p class="sd-muted-note">' + e.unchanged + ' unchanged field' + (e.unchanged === 1 ? '' : 's') + ' hidden</p>' : ''),
+                            e.changes.length || null);
+                    } else if (e.snapshot.length) {
+                        html += SD.section(e.tone === 'danger' ? 'Deleted payment' : 'Recorded values', SD.kv(e.snapshot, e.tone === 'danger' ? 'sd-kv-danger' : ''));
+                    }
+
+                    panel.body(html);
+                    panel.footer(e.studno
+                        ? '<button type="button" class="sd-btn-ghost" data-student-balance data-sd-key="' + SD.esc(e.studno) + '"><i class="mdi mdi-account-cash-outline"></i> Student balance</button>'
+                        : null);
+                }
             });
         });
         $(document).on('click', '.nx-stat[data-dtfilter]', function(e) {

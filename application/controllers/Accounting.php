@@ -94,13 +94,18 @@ class Accounting extends CI_Controller
 			$changedBy = trim((string)$this->session->userdata('IDNumber'));
 		}
 
-		$oldValues = [
+		$snapshot = [
 			'StudentNumber' => (string)($payment->StudentNumber ?? ''),
 			'ORNumber'      => (string)($payment->ORNumber ?? ''),
 			'PDate'         => (string)($payment->PDate ?? ''),
 			'Amount'        => (string)($payment->Amount ?? ''),
 			'description'   => (string)($payment->description ?? ''),
 		];
+		$isCreate = strtolower((string)$action) === 'create';
+		$oldValues = $isCreate ? null : $snapshot;
+		if ($isCreate && $newValues === null) {
+			$newValues = $snapshot;
+		}
 
 		$this->db->insert('payment_audit_log', [
 			'payment_id'     => (int)($payment->ID ?? 0),
@@ -109,7 +114,7 @@ class Accounting extends CI_Controller
 			'student_number' => (string)($payment->StudentNumber ?? ''),
 			'description'    => (string)($payment->description ?? ''),
 			'amount'         => (float)($payment->Amount ?? 0),
-			'old_values'     => json_encode($oldValues),
+			'old_values'     => $oldValues !== null ? json_encode($oldValues) : null,
 			'new_values'     => $newValues !== null ? json_encode($newValues) : null,
 			'changed_by'     => $changedBy,
 			'actor_level'    => (string)$this->session->userdata('level') ?: null,
@@ -1381,6 +1386,8 @@ class Accounting extends CI_Controller
 				return;
 			}
 
+			$this->logPaymentAudit('create', (object)$paymentData, $paymentData);
+
 				$receiptSettings = $this->getReceiptSettings();
 				$receiptPayment = $this->buildReceiptEmailPayment($paymentData, $student);
 				$emailResult = $this->sendReceiptEmailForPayment($receiptPayment, $receiptSettings);
@@ -2194,5 +2201,95 @@ class Accounting extends CI_Controller
 		];
 
 		$this->load->view('accounting_partial_payments', $data);
+	}
+
+	// Read-only balance + payment history for one student, shown in the side
+	// panel on Payment, Partial Payments, Collection Report and the Log.
+	public function studentSummary()
+	{
+		$this->ensureAccess();
+		$this->output->set_content_type('application/json');
+
+		$studentNumber = trim((string)$this->input->get('id', true));
+		[$sem, $sy] = $this->currentSemSy();
+		$student = $studentNumber === '' ? null : $this->getStudentContext($studentNumber, $sem, $sy);
+
+		$base = function () use ($studentNumber) {
+			return $this->db->from('paymentsaccounts')
+				->where('StudentNumber', $studentNumber)
+				->where('ORStatus', 'Valid')
+				->where('CollectionSource', "Student's Account");
+		};
+
+		$allTime = $studentNumber === '' ? null : $base()
+			->select('COUNT(*) AS n, COALESCE(SUM(Amount),0) AS total', false)
+			->get()->row();
+
+		if (!$student && (int)($allTime->n ?? 0) === 0) {
+			$this->output->set_status_header(404)->set_output(json_encode(['ok' => false, 'message' => 'Student not found.']));
+			return;
+		}
+
+		$feeQuery = $base()->select('description, MAX(FeeFullAmount) AS full, SUM(Amount) AS paid, COUNT(*) AS n, MAX(PDate) AS last', false);
+		if ($sem !== '') $feeQuery->where('Sem', $sem);
+		if ($sy !== '') $feeQuery->where('SY', $sy);
+		$fees = [];
+		$termPaid = 0.0;
+		$termOutstanding = 0.0;
+		foreach ($feeQuery->group_by('description')->order_by('description', 'ASC')->get()->result() as $fee) {
+			$full = (float)$fee->full;
+			$paid = (float)$fee->paid;
+			$outstanding = $full > 0 ? max($full - $paid, 0.0) : 0.0;
+			$termPaid += $paid;
+			$termOutstanding += $outstanding;
+			$fees[] = [
+				'description' => (string)$fee->description,
+				'full'        => $full,
+				'paid'        => $paid,
+				'outstanding' => $outstanding,
+				'status'      => $full <= 0 ? 'n/a' : ($outstanding > 0.004 ? 'partial' : 'paid'),
+				'count'       => (int)$fee->n,
+				'last'        => $fee->last ? date('M j, Y', strtotime((string)$fee->last)) : '',
+			];
+		}
+
+		$payments = [];
+		$recent = $base()
+			->select('PDate, pTime, ORNumber, description, Amount, PaymentType, Cashier, Sem, SY')
+			->order_by('PDate', 'DESC')->order_by('pTime', 'DESC')->order_by('ID', 'DESC')
+			->limit(30)->get()->result();
+		foreach ($recent as $p) {
+			$payments[] = [
+				'date'        => date('M j, Y', strtotime((string)$p->PDate)),
+				'time'        => trim((string)$p->pTime) !== '' ? date('g:i A', strtotime((string)$p->pTime)) : '',
+				'or'          => (string)$p->ORNumber,
+				'description' => (string)$p->description,
+				'amount'      => (float)$p->Amount,
+				'type'        => (string)$p->PaymentType,
+				'cashier'     => (string)$p->Cashier,
+				'term'        => trim($p->Sem . ' ' . $p->SY),
+			];
+		}
+
+		$name = trim((string)($student->LastName ?? ''));
+		$first = trim(preg_replace('/\s+/', ' ', (string)($student->FirstName ?? '') . ' ' . (string)($student->MiddleName ?? '')));
+		if ($first !== '') $name .= ($name !== '' ? ', ' : '') . $first;
+
+		$this->output->set_output(json_encode([
+			'ok'              => true,
+			'studno'          => $studentNumber,
+			'name'            => $name !== '' ? $name : $studentNumber,
+			'course'          => trim((string)($student->Course ?? '')),
+			'major'           => trim((string)($student->Major ?? '')),
+			'yearLevel'       => trim((string)($student->YearLevel ?? '')),
+			'email'           => trim((string)($student->Email ?? '')),
+			'term'            => trim($sem . ' ' . $sy),
+			'fees'            => $fees,
+			'termPaid'        => $termPaid,
+			'termOutstanding' => $termOutstanding,
+			'payments'        => $payments,
+			'paymentCount'    => (int)($allTime->n ?? 0),
+			'allTimePaid'     => (float)($allTime->total ?? 0),
+		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 	}
 }
