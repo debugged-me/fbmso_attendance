@@ -142,7 +142,7 @@
               <div class="pl-header">
                 <div class="page-title-box">
                   <h4 class="up-page-title"><?= htmlspecialchars($schoolName, ENT_QUOTES, 'UTF-8'); ?></h4>
-				  <div class="up-page-sub"><?= $isAuditor ? 'Auditor Dashboard — read-only cash inflow and outflow' : 'Cashier Dashboard — collections at a glance'; ?> for <?= htmlspecialchars($schoolAddress, ENT_QUOTES, 'UTF-8'); ?></div>
+				  <div class="up-page-sub"><?= $isAuditor ? 'Auditor Dashboard — cash inflow and outflow' : 'Cashier Dashboard — collections at a glance'; ?> for <?= htmlspecialchars($schoolAddress, ENT_QUOTES, 'UTF-8'); ?></div>
                   <hr class="up-divider" />
                 </div>
 				<?php if (!$isAuditor): ?>
@@ -265,7 +265,7 @@
 				  <div style="display:flex;gap:8px;flex-wrap:wrap;">
 					<?php if ($isAuditor): ?>
 					  <a href="<?= base_url('Accounting/paymentAuditLog'); ?>" class="up-btn up-btn-ghost" style="padding:6px 14px;font-size:.8rem;">
-						Payment Audit Log <i class="mdi mdi-history"></i>
+						Payment Activity Log <i class="mdi mdi-history"></i>
 					  </a>
 					<?php endif; ?>
 					<a href="<?= base_url($isAuditor ? 'Accounting/ledger' : 'Accounting/Payment'); ?>" class="up-btn up-btn-ghost" style="padding:6px 14px;font-size:.8rem;">

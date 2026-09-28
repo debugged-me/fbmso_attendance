@@ -66,6 +66,7 @@ switch ($msLevel) {
 		$msAddTab($msTabs, 'Accounting/ledger', 'Cash Flow', 'mdi-swap-vertical-bold');
 		$msAddTab($msTabs, 'Accounting/Payment', 'Payments', 'mdi-cash-multiple');
 		$msAddTab($msTabs, 'Accounting/expenses', 'Expenses', 'mdi-receipt');
+		$msAddTab($msTabs, 'Accounting/paymentAuditLog', 'Activity', 'mdi-history');
 		break;
 
     case 'Committee':

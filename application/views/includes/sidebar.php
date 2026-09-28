@@ -1157,7 +1157,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
             <div id="sidebar-menu">
                 <ul class="metismenu" id="side-menu">
 
-                    <li class="menu-title"><?= $isAuditor ? 'AUDITOR · READ ONLY' : 'Navigation'; ?></li>
+                    <li class="menu-title">Navigation</li>
 
                     <li class="<?= $active('Page/accounting'); ?>">
                         <a href="<?= base_url('Page/accounting'); ?>" class="waves-effect">
@@ -1165,6 +1165,15 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                             <span> Dashboard </span>
                         </a>
                     </li>
+
+					<?php if ($isAuditor): ?>
+					<li class="<?= $active('Accounting/paymentAuditLog'); ?>">
+						<a href="<?= base_url('Accounting/paymentAuditLog'); ?>" class="waves-effect">
+							<i class="mdi mdi-history"></i>
+							<span> Payment Activity Log </span>
+						</a>
+					</li>
+					<?php endif; ?>
 
                     <li class="<?= $active('Accounting/Payment'); ?>">
                         <a href="<?= base_url('Accounting/Payment'); ?>" class="waves-effect">
@@ -1197,12 +1206,12 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     <li class="<?= $configsShow ? 'mm-active' : '' ?>">
                         <a href="javascript:void(0);" class="waves-effect" aria-expanded="<?= $configsExpanded; ?>">
                             <i class="ion ion-md-settings"></i>
-							<span> <?= $isAuditor ? 'Fee Schedule' : 'Payment Setup'; ?> </span>
+							<span> Payment Setup </span>
                             <span class="menu-arrow"></span>
                         </a>
                         <ul class="nav-second-level nav <?= $configsShow; ?>" aria-expanded="<?= $configsExpanded; ?>">
                             <li class="<?= $active('Accounting/course_setUp'); ?>">
-                                <a href="<?= base_url('Accounting/course_setUp'); ?>"><?= $isAuditor ? 'Fee Schedule' : 'Fees Setup'; ?></a>
+                                <a href="<?= base_url('Accounting/course_setUp'); ?>">Fees Setup</a>
                             </li>
                         </ul>
                     </li>
@@ -1230,12 +1239,14 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         </a>
                     </li>
 
-                    <li class="<?= $active('Accounting/paymentAuditLog'); ?>">
-                        <a href="<?= base_url('Accounting/paymentAuditLog'); ?>" class="waves-effect">
-                            <i class="mdi mdi-history"></i>
-                            <span> Payment Activity Log </span>
-                        </a>
-                    </li>
+					<?php if (!$isAuditor): ?>
+					<li class="<?= $active('Accounting/paymentAuditLog'); ?>">
+						<a href="<?= base_url('Accounting/paymentAuditLog'); ?>" class="waves-effect">
+							<i class="mdi mdi-history"></i>
+							<span> Payment Activity Log </span>
+						</a>
+					</li>
+					<?php endif; ?>
 
                 </ul>
             </div>
