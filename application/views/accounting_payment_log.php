@@ -135,14 +135,16 @@
                                                     $new = json_decode((string)($row->new_values ?? ''), true);
                                                     $old = is_array($old) ? $old : null;
                                                     $new = is_array($new) ? $new : null;
-                                                    $changes = $snapshot = [];
-                                                    $unchanged = 0;
+                                                    $changes = $snapshot = $unchanged = [];
                                                     foreach (array_unique(array_merge(array_keys($old ?? []), array_keys($new ?? []))) as $field) {
                                                         $label = $plFieldLabels[$field] ?? ucwords(str_replace('_', ' ', (string)$field));
                                                         $before = $plFormat($field, $old[$field] ?? null);
                                                         $after = $plFormat($field, $new[$field] ?? null);
                                                         if ($old !== null && $new !== null) {
-                                                            if ($before === $after) $unchanged++; else $changes[] = [$label, $before, $after];
+                                                            // A field the edit did not write (the O.R. number is never
+                                                            // editable) kept its value; it was not emptied.
+                                                            if (!array_key_exists($field, $new) || $before === $after) $unchanged[] = $label;
+                                                            else $changes[] = [$label, $before, $after];
                                                         }
                                                         $snapshot[] = [$label, $old !== null ? $before : $after];
                                                     }
@@ -243,7 +245,7 @@
                                 + '<span class="sd-diff-new' + (c[2] === null ? ' is-empty' : '') + '">' + SD.esc(c[2] === null ? 'empty' : c[2]) + '</span></div></div>';
                         }).join('');
                         html += SD.section('Changes', (rows ? '<div class="sd-diff">' + rows + '</div>' : '<p class="sd-empty">No field values changed.</p>')
-                            + (e.unchanged ? '<p class="sd-muted-note">' + e.unchanged + ' unchanged field' + (e.unchanged === 1 ? '' : 's') + ' hidden</p>' : ''),
+                            + (e.unchanged.length ? '<p class="sd-muted-note">Not changed: ' + SD.esc(e.unchanged.join(', ')) + '</p>' : ''),
                             e.changes.length || null);
                     } else if (e.snapshot.length) {
                         html += SD.section(e.tone === 'danger' ? 'Deleted payment' : 'Recorded values', SD.kv(e.snapshot, e.tone === 'danger' ? 'sd-kv-danger' : ''));

@@ -53,6 +53,20 @@ if (!function_exists('audit_label')) {
             'route'            => 'Requested page',
             'posted_sy'        => 'School year',
             'posted_semester'  => 'Semester',
+            // Payment, expense and fee records
+            'StudentNumber'    => 'Student no.',
+            'ORNumber'         => 'O.R. number',
+            'or_number'        => 'O.R. number',
+            'student_number'   => 'Student no.',
+            'PDate'            => 'Payment date',
+            'PaymentType'      => 'Payment type',
+            'Sem'              => 'Semester',
+            'SY'               => 'School year',
+            'expensesid'       => 'Expense ID',
+            'ExpenseDate'      => 'Expense date',
+            'categoryID'       => 'Category ID',
+            'feesid'           => 'Fee ID',
+            'feesType'         => 'Fee type',
         );
         $key = (string)$key;
         return $labels[$key] ?? ucwords(str_replace(array('_', '-'), ' ', $key));
@@ -212,13 +226,14 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
     $oldMap = audit_value_map($event['old_values']);
     $newMap = audit_value_map($event['new_values']);
     $changes = array();
-    $unchanged = 0;
+    $unchanged = array();
     if ($oldMap !== null && $newMap !== null) {
         foreach (array_unique(array_merge(array_keys($oldMap), array_keys($newMap))) as $field) {
             $before = $oldMap[$field] ?? null;
             $after = $newMap[$field] ?? null;
-            if ($before === $after) {
-                $unchanged++;
+            // A field the change did not write kept its value; it was not emptied.
+            if (!array_key_exists($field, $newMap) || $before === $after) {
+                $unchanged[] = $field;
             } else {
                 $changes[] = array($field, $before, $after);
             }
@@ -496,7 +511,7 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
-        <?php if ($p['unchanged'] > 0): ?><p class="sd-muted-note"><?= (int)$p['unchanged']; ?> unchanged field<?= $p['unchanged'] === 1 ? '' : 's'; ?> hidden</p><?php endif; ?>
+        <?php if (!empty($p['unchanged'])): ?><p class="sd-muted-note">Not changed: <?= audit_e(implode(', ', $p['unchanged'])); ?></p><?php endif; ?>
     </section>
     <?php elseif ($p['oldMap'] !== null || $p['newMap'] !== null):
         $isRemoved = $p['oldMap'] !== null;
