@@ -243,7 +243,10 @@
 
                           <?php
                           $resetHref   = base_url('page/resetPass?u=' . urlencode($row->username));
-                          $deleteHref  = base_url('Login/deleteUser/' . urlencode($row->username));
+                          // Username goes in ?u= (posted as a field by postTo), not a URI segment:
+                          // CI hands segments over still percent-encoded, so an email username
+                          // like a@b.com arrived as a%40b.com and matched no row.
+                          $deleteHref  = base_url('Login/deleteUser?u=' . urlencode($row->username));
                           $deactHref   = base_url('page/changeUserStat?u=' . urlencode($row->username) . '&t=Deactivate');
                           $activateHref = base_url('page/changeUserStat?u=' . urlencode($row->username) . '&t=Activate');
                           $displayName = trim($row->fName . ' ' . $row->lName);

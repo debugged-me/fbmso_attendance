@@ -443,7 +443,7 @@ class Login extends CI_Controller
         }
     }
 
-    public function deleteUser($user)
+    public function deleteUser($user = null)
     {
         // Defense in depth: the authguard role rule blocks unauthenticated
         // access, but never trust a single layer. Require a logged-in admin.
@@ -457,6 +457,17 @@ class Login extends CI_Controller
         // an email or another site) must not be able to delete a user account.
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             show_error('This action requires a POST request.', 405);
+            return;
+        }
+
+        // The page posts the username as 'u'. The URI segment is kept only as
+        // a fallback and must be decoded: CI passes segments through still
+        // percent-encoded, so 'a@b.com' would otherwise arrive as 'a%40b.com'.
+        $posted = trim((string)$this->input->post('u'));
+        $user   = ($posted !== '') ? $posted : trim(rawurldecode((string)$user));
+        if ($user === '') {
+            $this->session->set_flashdata('danger', '<div class="alert alert-danger">No account was selected to delete.</div>');
+            redirect(base_url('Page/userAccounts'));
             return;
         }
 
@@ -492,7 +503,8 @@ class Login extends CI_Controller
                 ['target_username' => $user]
             );
 
-            $this->session->set_flashdata('error', '<div class="alert alert-danger">Error deleting enrollment. Please try again.</div>');
+            // 'danger' is the key user_accounts.php reads; 'error' was never shown.
+            $this->session->set_flashdata('danger', '<div class="alert alert-danger">The account could not be deleted. It may have already been removed.</div>');
         }
 
         redirect(base_url('Page/userAccounts'));

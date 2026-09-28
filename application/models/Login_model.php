@@ -340,8 +340,9 @@ class Login_model extends CI_Model
     $loggedInUser = $this->session->userdata('username');
     date_default_timezone_set('Asia/Manila');
 
+    // delete() returns TRUE even when no row matched, so count what was removed.
     $this->db->where('username', $user);
-    $deleteResult = $this->db->delete('o_users');
+    $deleteResult = $this->db->delete('o_users') && $this->db->affected_rows() > 0;
 
     $logData = [
       'atDesc' => $deleteResult ?
