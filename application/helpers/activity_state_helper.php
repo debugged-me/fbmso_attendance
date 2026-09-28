@@ -362,10 +362,14 @@ if (!function_exists('activity_clamp_scan_time')) {
      * silently re-stamped an older scan to server now — writing a morning scan
      * into whatever session happened to be current when the queue flushed.
      *
-     * A backdated scan is instead validated against the activity's own window:
-     * accepted as-is inside it, rejected outside it. That is also the answer to
-     * a tampered device clock, since a forged time can only place a scan inside
-     * a window where the scan was already permitted.
+     * A backdated scan is instead validated against the rule a live scan at
+     * that moment would have faced: accepted as-is inside it, rejected outside
+     * it. With auto-close on that is the check-in window. With it off a live
+     * scan is accepted at any hour, so only the activity's own day(s) bound a
+     * queued one — early arrivals and an event that ran late still count, while
+     * a phone whose clock is on the wrong date is still refused. That is also
+     * the answer to a tampered device clock, since a forged time can only place
+     * a scan where the scan was already permitted.
      *
      * @return array{ts:int, source:string, ok:bool, reason:string}
      */
@@ -391,15 +395,18 @@ if (!function_exists('activity_clamp_scan_time')) {
         }
 
         // Genuinely backdated: this came out of an offline queue.
-        $window = activity_checkin_window($row);
+        $autoClose = activity_auto_close_settings($row)['auto_close'];
+        $window    = $autoClose ? activity_checkin_window($row) : activity_scan_days($row);
+        $dated     = 'This queued scan is dated ' . date('M j, Y \a\t g:i A', $ts);
 
         if ($window['start'] !== null && $ts < $window['start'] - $skew) {
             return [
                 'ts'     => $ts,
                 'source' => 'client',
                 'ok'     => false,
-                'reason' => 'This queued scan is dated ' . date('M j, Y \a\t g:i A', $ts)
-                    . ', before check-in opened for this activity.',
+                'reason' => $dated . ($autoClose
+                    ? ', before check-in opened for this activity.'
+                    : ', before this activity\'s date.'),
             ];
         }
 
@@ -408,11 +415,116 @@ if (!function_exists('activity_clamp_scan_time')) {
                 'ts'     => $ts,
                 'source' => 'client',
                 'ok'     => false,
-                'reason' => 'This queued scan is dated ' . date('M j, Y \a\t g:i A', $ts)
-                    . ', after check-in closed for this activity.',
+                'reason' => $dated . ($autoClose
+                    ? ', after check-in closed for this activity.'
+                    : ', after this activity\'s date.'),
             ];
         }
 
         return ['ts' => $ts, 'source' => 'client', 'ok' => true, 'reason' => ''];
+    }
+}
+
+if (!function_exists('activity_scan_days')) {
+    /**
+     * The calendar day(s) an activity runs on: 00:00:00 of its first day to
+     * 23:59:59 of its last, taken from start_at, end_at and activity_date.
+     * Nulls when the row carries no date at all.
+     *
+     * @return array{start:?int, end:?int} Unix timestamps.
+     */
+    function activity_scan_days($row): array
+    {
+        $row  = is_array($row) ? (object)$row : $row;
+        $days = [];
+        foreach (['start_at', 'end_at', 'activity_date'] as $col) {
+            $day = substr(trim((string)($row->$col ?? '')), 0, 10);
+            if ($day !== '' && $day !== '0000-00-00' && strtotime($day) !== false) {
+                $days[] = $day;
+            }
+        }
+        if (!$days) {
+            return ['start' => null, 'end' => null];
+        }
+        sort($days);
+
+        return [
+            'start' => strtotime($days[0] . ' 00:00:00'),
+            'end'   => strtotime($days[count($days) - 1] . ' 23:59:59'),
+        ];
+    }
+}
+
+if (!function_exists('attendance_pair_scans')) {
+    /**
+     * Pair one student's scans for one day into check-in/check-out rows the way
+     * Activity_attendance_model::consume_token's AUTO toggle does live, but fed
+     * in the order the scans happened rather than the order they arrived.
+     *
+     * Offline phones sync whenever they reconnect, so a student's exit scan
+     * from one phone can reach the server before their entry scan from another.
+     * Replaying the day in time order gives the rows an in-order sync would
+     * have produced, whatever order the phones synced in.
+     *
+     * The rules match consume_token: an open row is closed by the next scan
+     * more than $outDebounce seconds after its check-in; with nothing open, a
+     * scan is a repeat when its session already has a closed row or a check-in
+     * within $inDebounce seconds, and otherwise opens a new row.
+     *
+     * @param int[]    $times    Unix timestamps, any order.
+     * @param callable $classify fn(int $ts): string — the session a time falls in.
+     * @return array{
+     *   pairs: list<array{in:int, out:?int, session:string}>,
+     *   fate: array<int, array{mode:string, pair:?int}>
+     * } Pairs oldest first; fate says what became of each input, by its key:
+     *   checked_in | checked_out | too_soon_after_in | duplicate.
+     */
+    function attendance_pair_scans(array $times, callable $classify, int $outDebounce = 10, int $inDebounce = 5): array
+    {
+        $order = array_keys($times);
+        usort($order, static function ($a, $b) use ($times) {
+            return ($times[$a] <=> $times[$b]) ?: ($a <=> $b);
+        });
+
+        $pairs = [];
+        $fate  = [];
+        foreach ($order as $key) {
+            $t    = (int)$times[$key];
+            $sess = (string)$classify($t);
+
+            // The most recent check-in that is still open closes on this scan.
+            $open = null;
+            foreach ($pairs as $i => $p) {
+                if ($p['out'] === null && ($open === null || $p['in'] >= $pairs[$open]['in'])) {
+                    $open = $i;
+                }
+            }
+            if ($open !== null) {
+                if ($t - $pairs[$open]['in'] <= $outDebounce) {
+                    $fate[$key] = ['mode' => 'too_soon_after_in', 'pair' => $open];
+                } else {
+                    $pairs[$open]['out'] = $t;
+                    $fate[$key] = ['mode' => 'checked_out', 'pair' => $open];
+                }
+                continue;
+            }
+
+            $done   = false;
+            $recent = null;
+            foreach ($pairs as $i => $p) {
+                if ($p['session'] !== $sess) continue;
+                if ($p['out'] !== null) $done = true;
+                if ($recent === null || $p['in'] >= $pairs[$recent]['in']) $recent = $i;
+            }
+            if ($done || ($recent !== null && $t - $pairs[$recent]['in'] <= $inDebounce)) {
+                $fate[$key] = ['mode' => 'duplicate', 'pair' => null];
+                continue;
+            }
+
+            $pairs[] = ['in' => $t, 'out' => null, 'session' => $sess];
+            $fate[$key] = ['mode' => 'checked_in', 'pair' => count($pairs) - 1];
+        }
+
+        return ['pairs' => $pairs, 'fate' => $fate];
     }
 }

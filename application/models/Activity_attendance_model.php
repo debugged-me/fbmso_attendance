@@ -173,6 +173,8 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
             'ok' => false,
             'mode' => 'server_error',
             'message' => 'The attendance database could not validate this QR. Please try again.',
+            // Not a verdict on the scan: a queued copy should be sent again.
+            'retry' => true,
         ];
     }
     $qr = $qrQuery->row();
@@ -216,7 +218,7 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
     $gotLock = $this->db->query("SELECT GET_LOCK(?, 3) AS ok", [$lockKey])->row();
     if (!$gotLock || (int)$gotLock->ok !== 1) {
         return ['ok' => false, 'mode' => 'err', 'message' => 'Please try again',
-            'student' => $this->resolve_student_min($student_number)];
+            'student' => $this->resolve_student_min($student_number), 'retry' => true];
     }
 
     try {
@@ -286,7 +288,7 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
                 $err = $this->db->error();
                 $this->db->trans_rollback();
                 return ['ok'=>false,'mode'=>'err','message'=>'DB error (insert): '.$err['code'],
-                    'student'=>$student_payload];
+                    'student'=>$student_payload, 'retry'=>true];
             }
             $newId = (int)$this->db->insert_id();
             $this->db->trans_commit();
@@ -318,6 +320,16 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
         }
 
         /* AUTO TOGGLE */
+        // A queued scan can arrive after later scans of this student from other
+        // phones that synced first. Decided against today's rows as they stand,
+        // it is paired wrong or refused, so that day is replayed in time order.
+        $replayed = $this->replay_day_in_order(
+            $activity_id, $student_number, $today, $scanTs, $scan, $client_scan_id, $student_payload
+        );
+        if ($replayed !== null) {
+            return $replayed;
+        }
+
         if ($openRow) {
             // Anti-accidental-double-scan: if the check-in happened very
             // recently, don't immediately check them out.  This prevents
@@ -386,7 +398,7 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
             $err = $this->db->error();
             $this->db->trans_rollback();
             return ['ok'=>false,'mode'=>'err','message'=>'DB error (insert): '.$err['code'],
-                'student'=>$student_payload];
+                'student'=>$student_payload, 'retry'=>true];
         }
 
         $newId = (int)$this->db->insert_id();
@@ -397,6 +409,131 @@ public function consume_token($activity_id, $token, $direction = 'auto', $occurr
     } finally {
         $this->db->query("DO RELEASE_LOCK(?)", [$lockKey]);
     }
+}
+
+/**
+ * AUTO scans only, inside consume_token's lock and transaction.
+ *
+ * When this scan is older than something already recorded for the student
+ * today, today's rows are rebuilt from every recorded time plus this one with
+ * attendance_pair_scans() — the rows an in-order sync would have produced —
+ * and written back over the existing rows (oldest first; extra pairs become
+ * new rows). Returns null to let the normal path decide the scan: when it is
+ * in order, or when today's rows were not produced by these rules (a forced
+ * web IN, a manual edit) and replaying would have to drop one.
+ *
+ * Otherwise returns the response, with the transaction committed or rolled back.
+ */
+private function replay_day_in_order($activity_id, $student_number, $today, $scanTs, array $scan, $client_scan_id, array $student_payload)
+{
+    $query = $this->db->query("
+        SELECT id, session, checked_in_at, checked_out_at
+        FROM activity_attendance
+        WHERE activity_id = ? AND student_number = ? AND scan_date = ?
+        ORDER BY checked_in_at ASC, id ASC
+        FOR UPDATE
+    ", [$activity_id, $student_number, $today]);
+    $rows = $query === false ? [] : $query->result();
+
+    $times  = [];
+    $latest = null;
+    foreach ($rows as $r) {
+        foreach ([$r->checked_in_at, $r->checked_out_at] as $value) {
+            $t = $value ? strtotime((string)$value) : false;
+            if (!$t) continue;
+            // This exact second is already on record: a resend of a scan that
+            // landed (its reply was lost, or its idempotency entry expired).
+            if ($t === $scanTs) {
+                $this->db->trans_rollback();
+                return ['ok'=>true,'mode'=>'duplicate','student_number'=>$student_number,
+                    'session'=>(string)$r->session,'student'=>$student_payload];
+            }
+            $times[] = $t;
+            $latest  = $latest === null ? $t : max($latest, $t);
+        }
+    }
+    if ($latest === null || $scanTs > $latest) {
+        return null;
+    }
+
+    $mine    = count($times);
+    $times[] = $scanTs;
+    $replay  = attendance_pair_scans($times, function ($ts) use ($activity_id) {
+        return $this->classify_session($activity_id, date('H:i', $ts));
+    });
+    $pairs = $replay['pairs'];
+    $fate  = $replay['fate'][$mine];
+
+    // A repeat changes nothing, exactly as if it had arrived in order.
+    if ($fate['mode'] === 'duplicate') {
+        $this->db->trans_rollback();
+        return ['ok'=>true,'mode'=>'duplicate','student_number'=>$student_number,
+            'session'=>$this->classify_session($activity_id, date('H:i', $scanTs)),'student'=>$student_payload];
+    }
+    if ($fate['mode'] === 'too_soon_after_in') {
+        $this->db->trans_rollback();
+        $elapsed = $scanTs - $pairs[$fate['pair']]['in'];
+        return [
+            'ok'             => false,
+            'mode'           => 'too_soon_after_in',
+            'message'        => 'Checked in ' . $elapsed . 's ago — scan again to check out.',
+            'student_number' => $student_number,
+            'session'        => $pairs[$fate['pair']]['session'],
+            'student'        => $student_payload,
+        ];
+    }
+    if (count($pairs) < count($rows)) {
+        return null;
+    }
+
+    $ids = [];
+    foreach ($pairs as $k => $p) {
+        $set = [
+            'checked_in_at'  => date('Y-m-d H:i:s', $p['in']),
+            'checked_out_at' => $p['out'] !== null ? date('Y-m-d H:i:s', $p['out']) : null,
+            'session'        => $p['session'],
+        ];
+        $opensHere = $fate['mode'] === 'checked_in' && $fate['pair'] === $k;
+
+        if (isset($rows[$k])) {
+            if ($opensHere) {
+                // This scan is the row's check-in now; the caller stamps its scanner.
+                $set['checked_in_by'] = null;
+                $set['time_source']   = $scan['source'];
+            }
+            $ok = $this->db->where('id', (int)$rows[$k]->id)->update('activity_attendance', $set);
+            $ids[$k] = (int)$rows[$k]->id;
+        } else {
+            $ok = $this->db->insert('activity_attendance', $set + [
+                'activity_id'    => $activity_id,
+                'student_number' => $student_number,
+                'scan_date'      => $today,
+                'source'         => 'qr',
+                'remarks'        => 'Scanned via QR',
+                'recorded_at'    => date('Y-m-d H:i:s'),
+                'time_source'    => $scan['source'],
+                'client_scan_id' => $opensHere && $client_scan_id !== '' ? $client_scan_id : null,
+            ]);
+            $ids[$k] = (int)$this->db->insert_id();
+        }
+        if (!$ok) {
+            $err = $this->db->error();
+            $this->db->trans_rollback();
+            return ['ok'=>false,'mode'=>'err','message'=>'DB error (reorder): '.$err['code'],
+                'student'=>$student_payload, 'retry'=>true];
+        }
+    }
+    $this->db->trans_commit();
+
+    return [
+        'ok'             => true,
+        'mode'           => $fate['mode'],
+        'id'             => $ids[$fate['pair']],
+        'student_number' => $student_number,
+        'session'        => $pairs[$fate['pair']]['session'],
+        'student'        => $student_payload,
+        'reordered'      => true,
+    ];
 }
 
 private function student_exists_and_active_strict(string $sn): bool

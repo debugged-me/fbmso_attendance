@@ -199,12 +199,14 @@ class MobileAttendance extends MobileApi
         $payload   = $this->read_payload();
         $activityId = (int)($payload['activity_id'] ?? 0);
         $raw        = (string)($payload['token'] ?? '');
-        $direction  = strtolower((string)($payload['direction'] ?? 'auto'));
         $remarks    = trim((string)($payload['remarks'] ?? ''));
 
-        if (!in_array($direction, ['in', 'out', 'auto'], true)) {
-            $direction = 'auto';
-        }
+        // The app has no IN/OUT switch. Older builds sent a direction guessed
+        // from that one phone's history, which is wrong as soon as a student
+        // uses two phones (in at one gate, out at another) and got the scan
+        // refused as already_in / no_open. The server's own toggle decides.
+        $direction = 'auto';
+
         if (!$activityId || $raw === '') {
             $body = json_encode(['ok' => false, 'message' => 'Missing activity_id or token.']);
             $this->record_idempotent_response(400, $body);
@@ -221,6 +223,15 @@ class MobileAttendance extends MobileApi
             $payload['client_scan_id'] ?? null
         );
         $this->db->db_debug = $oldDebug;
+
+        // A lock timeout or database error is not a verdict on the scan. Answer
+        // 503 and keep it out of the idempotency log, so the phone keeps the
+        // scan queued and sends it again instead of recording a rejection.
+        if (!empty($op['retry'])) {
+            unset($op['retry']);
+            log_message('error', 'Mobile consume deferred for retry: ' . ($op['message'] ?? ''));
+            return $this->json($op, 503);
+        }
 
         // Annotate the row exactly like the web flow.
         if (!empty($op['ok']) && !empty($op['id'])) {
