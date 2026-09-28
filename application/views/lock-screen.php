@@ -15,7 +15,7 @@
         <link href="<?= base_url(); ?>assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" id="bootstrap-stylesheet" />
         <link href="<?= base_url(); ?>assets/css/icons.min.css" rel="stylesheet" type="text/css" />
     <link href="<?= base_url(); ?>assets/css/app.css?v=20260922" rel="stylesheet" type="text/css" id="app-stylesheet" />
-        <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=10'); ?>">
+        <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=12'); ?>">
         <meta name="theme-color" content="#1a2942">
         <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
         <meta name="apple-mobile-web-app-capable" content="yes">

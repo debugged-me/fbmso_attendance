@@ -93,6 +93,13 @@ body.ms-drawer-locked {
   html,
   body {
     max-width: 100%;
+  }
+
+  /* Viewport only. Standalone pages (registration, etc.) give body its own
+     overflow-y while app.css does the same for html, which turns body into
+     a nested scroller that can't scroll; "contain" on it then swallows every
+     swipe instead of chaining to the page, so the page never scrolls. */
+  html {
     overscroll-behavior-y: contain;
   }
 
@@ -925,6 +932,13 @@ body.ms-drawer-locked {
 
   body.ms-has-tabbar form .ms-form-actions:not(.modal-footer) {
     bottom: calc(var(--ms-tabbar-h) + var(--ms-safe-bottom));
+  }
+
+  /* Inside a sheet the bar sticks to the modal-body scroller, which already
+     sits above the tab bar. The page-level offset would park it ~64px up and
+     leave it covering the last field once the form is scrolled to the end. */
+  .modal .modal-body form .ms-form-actions:not(.modal-footer) {
+    bottom: 0;
   }
 
   /* ------------------------------------------------------------------------

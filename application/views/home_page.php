@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="<?= base_url(); ?>assets/fonts/font-awesome-4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/css/home.css?v=30260836">
-  <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=10'); ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=12'); ?>">
   <meta name="theme-color" content="#1a2942">
   <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
   <meta name="apple-mobile-web-app-capable" content="yes">

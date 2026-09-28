@@ -27,7 +27,7 @@
     <link rel="stylesheet" href="<?= base_url('assets/fonts/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/custom-sidebar-icons.css?v=3'); ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/masterlist-responsive.css'); ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=10'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=12'); ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/nx-shell.css?v=14'); ?>">
 
     <?php include(APPPATH . 'views/includes/ui_kit.php'); ?>
