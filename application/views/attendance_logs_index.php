@@ -867,7 +867,7 @@ if (!empty($activity_id) && !empty($activities)) {
                             var done = !!r.out;
                             var html = '<div class="sd-hero"><div class="sd-hero-media"><i class="mdi mdi-account-check-outline"></i></div><div class="sd-hero-text">'
                                 + '<h5 class="sd-title' + (r.name ? '' : ' sd-mono') + '">' + SD.esc(r.name || r.studno) + '</h5>'
-                                + (r.name ? '<div class="sd-sub">' + SD.esc(r.studno) + '</div>' : '<div class="sd-desc">No name on file</div>')'
+                                + (r.name ? '<div class="sd-sub">' + SD.esc(r.studno) + '</div>' : '<div class="sd-desc">No name on file</div>')
                                 + '<div class="sd-tags">' + (r.session ? SD.pill(r.session, 'info') : '')
                                 + SD.status(done, done ? 'Checked out' : 'No check-out yet') + '</div></div></div>';
 
