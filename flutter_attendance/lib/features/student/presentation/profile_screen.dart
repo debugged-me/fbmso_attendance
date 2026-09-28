@@ -7,6 +7,7 @@ import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/student_api.dart';
 import '../domain/student_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Student profile detail. Cache-first so it renders offline.
 class ProfileScreen extends StatefulWidget {
@@ -69,10 +70,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       titleWidget: const SizedBox.shrink(),
       actions: [
         if (_profile != null)
-          IconButton(
+          AppCircleButton(
             tooltip: 'Edit profile',
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: _showEdit,
+            icon: AppIcons.edit_outlined,
+            onTap: _showEdit,
           ),
       ],
       body: Column(
@@ -88,7 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             const SizedBox(height: 120),
                             AppEmptyState(
-                              icon: Icons.person_outline,
+                              icon: AppIcons.person_outline,
                               title: 'No profile data',
                               subtitle:
                                   'Your profile information will appear here.',
@@ -99,67 +100,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                           children: [
                             const AppPageHeader(
-                              title: 'My Profile',
-                              icon: Icons.badge_outlined,
-                              subtitle:
-                                  'Your account and academic information',
+                              title: 'My profile',
+                              subtitle: 'Your account and school records.',
                             ),
-                            AppCard.elevated(
-                              padding: const EdgeInsets.all(20),
-                              child: Row(
+                            AppCard(
+                              padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+                              child: Column(
                                 children: [
-                                  Container(
-                                    width: 52,
-                                    height: 52,
-                                    decoration: BoxDecoration(
-                                      color:
-                                          AppInk.accent.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(16),
-                                      child: widget.session.avatar.isNotEmpty
-                                          ? Image.network(
-                                              widget.session.avatar,
-                                              fit: BoxFit.cover,
-                                              width: 52,
-                                              height: 52,
-                                              errorBuilder: (c, e, s) =>
-                                                  const Icon(Icons.person,
-                                                      size: 26,
-                                                      color: AppInk.accent),
-                                            )
-                                          : const Icon(Icons.person,
-                                              size: 26, color: AppInk.accent),
+                                  AppAvatar(
+                                    name: _profile!.fullName,
+                                    url: widget.session.avatar,
+                                    size: 76,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    _profile!.fullName,
+                                    textAlign: TextAlign.center,
+                                    style: AppType.headline.copyWith(fontSize: 20),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _profile!.studentNumber,
+                                    style: AppType.value.copyWith(
+                                      fontSize: 14,
+                                      color: AppInk.secondary,
+                                      letterSpacing: 0.4,
                                     ),
                                   ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _profile!.fullName,
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppInk.heading,
-                                            height: 1.25,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          _profile!.studentNumber,
-                                          style: const TextStyle(
-                                            fontSize: 13.5,
-                                            fontWeight: FontWeight.w500,
-                                            color: AppInk.muted,
-                                          ),
-                                        ),
-                                      ],
+                                  if (_profile!.status.isNotEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    AppChip(
+                                      label: _profile!.status,
+                                      tone: _profile!.status.toLowerCase() ==
+                                              'enrolled'
+                                          ? AppInk.positive
+                                          : AppInk.caution,
+                                      dot: true,
                                     ),
-                                  ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -170,7 +148,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ('Course', _profile!.course),
                                 ('Major', _profile!.major),
                                 ('Status', _profile!.status),
-                                ('Enrollment Date', _profile!.enrollmentDate),
+                                ('Enrollment date', _profile!.enrollmentDate),
                               ],
                             ),
                             const SizedBox(height: 24),
@@ -178,8 +156,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               title: 'Personal',
                               rows: [
                                 ('Sex', _profile!.sex),
-                                ('Birth Date', _profile!.birthDate),
-                                ('Civil Status', _profile!.civilStatus),
+                                ('Birth date', _profile!.birthDate),
+                                ('Civil status', _profile!.civilStatus),
                                 ('Ethnicity', _profile!.ethnicity),
                                 ('Religion', _profile!.religion),
                               ],
@@ -189,7 +167,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               title: 'Contact',
                               rows: [
                                 ('Email', _profile!.email),
-                                ('Contact No', _profile!.contactNo),
+                                ('Mobile no.', _profile!.contactNo),
                               ],
                             ),
                             const SizedBox(height: 24),
@@ -222,8 +200,10 @@ class _Section extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppSectionHeader(title: title),
-        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          child: Text(title, style: AppType.section),
+        ),
         AppCard(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Column(
@@ -254,23 +234,14 @@ class _Row extends StatelessWidget {
         children: [
           SizedBox(
             width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppInk.muted,
-              ),
-            ),
+            child: Text(label, style: AppType.caption.copyWith(fontSize: 13.5)),
           ),
           Expanded(
             child: Text(
               value.isEmpty ? '—' : value,
-              style: const TextStyle(
-                fontSize: 14,
+              style: AppType.row.copyWith(
+                fontSize: 14.5,
                 fontWeight: FontWeight.w500,
-                color: AppInk.heading,
-                height: 1.35,
               ),
             ),
           ),
@@ -396,43 +367,37 @@ class _ProfileEditFormState extends State<_ProfileEditForm> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: AppInk.rule,
+                    color: AppInk.ruleStrong,
                     borderRadius: BorderRadius.circular(999)),
               ),
             ),
             const SizedBox(height: 20),
-            const Text('Edit Profile',
-                style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppInk.heading)),
+            Text('Edit profile', style: AppType.headline.copyWith(fontSize: 20)),
             const SizedBox(height: 20),
             if (_error != null) ...[
-              Text(_error!,
-                  style:
-                      const TextStyle(color: AppInk.critical, fontSize: 13)),
+              AppNotice(message: _error!),
               const SizedBox(height: 12),
             ],
             AppInput(
                 controller: _firstName,
-                label: 'First Name',
-                prefixIcon: Icons.person_outline_rounded),
+                label: 'First name',
+                prefixIcon: AppIcons.person_outline_rounded),
             const SizedBox(height: 14),
             AppInput(
                 controller: _middleName,
-                label: 'Middle Name',
-                prefixIcon: Icons.person_outline_rounded),
+                label: 'Middle name',
+                prefixIcon: AppIcons.person_outline_rounded),
             const SizedBox(height: 14),
             AppInput(
                 controller: _lastName,
-                label: 'Last Name',
-                prefixIcon: Icons.person_outline_rounded),
+                label: 'Last name',
+                prefixIcon: AppIcons.person_outline_rounded),
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               initialValue: _sex.isEmpty ? null : _sex,
               decoration: InputDecoration(
                 labelText: 'Sex',
-                prefixIcon: const Icon(Icons.wc_outlined,
+                prefixIcon: const Icon(AppIcons.wc_outlined,
                     size: 20, color: AppInk.muted),
                 filled: true,
                 fillColor: Colors.white,
@@ -463,8 +428,8 @@ class _ProfileEditFormState extends State<_ProfileEditForm> {
               child: AbsorbPointer(
                 child: AppInput(
                   controller: _birthDate,
-                  label: 'Birth Date',
-                  prefixIcon: Icons.cake_outlined,
+                  label: 'Birth date',
+                  prefixIcon: AppIcons.cake_outlined,
                 ),
               ),
             ),
@@ -473,7 +438,7 @@ class _ProfileEditFormState extends State<_ProfileEditForm> {
               initialValue: _civilStatus.isEmpty ? null : _civilStatus,
               decoration: InputDecoration(
                 labelText: 'Civil Status',
-                prefixIcon: const Icon(Icons.favorite_outline_rounded,
+                prefixIcon: const Icon(AppIcons.favorite_outline_rounded,
                     size: 20, color: AppInk.muted),
                 filled: true,
                 fillColor: Colors.white,
@@ -493,35 +458,35 @@ class _ProfileEditFormState extends State<_ProfileEditForm> {
             AppInput(
                 controller: _email,
                 label: 'Email',
-                prefixIcon: Icons.mail_outline_rounded),
+                prefixIcon: AppIcons.mail_outline_rounded),
             const SizedBox(height: 14),
             AppInput(
                 controller: _contactNo,
-                label: 'Contact No',
-                prefixIcon: Icons.phone_outlined),
+                label: 'Mobile no.',
+                prefixIcon: AppIcons.phone_outlined),
             const SizedBox(height: 14),
             AppInput(
                 controller: _sitio,
                 label: 'Sitio',
-                prefixIcon: Icons.location_on_outlined),
+                prefixIcon: AppIcons.location_on_outlined),
             const SizedBox(height: 14),
             AppInput(
                 controller: _brgy,
                 label: 'Barangay',
-                prefixIcon: Icons.location_on_outlined),
+                prefixIcon: AppIcons.location_on_outlined),
             const SizedBox(height: 14),
             AppInput(
                 controller: _city,
                 label: 'City',
-                prefixIcon: Icons.location_city_outlined),
+                prefixIcon: AppIcons.location_city_outlined),
             const SizedBox(height: 14),
             AppInput(
                 controller: _province,
                 label: 'Province',
-                prefixIcon: Icons.map_outlined),
+                prefixIcon: AppIcons.map_outlined),
             const SizedBox(height: 20),
             AppButton(
-              label: 'Save Changes',
+              label: 'Save changes',
               fullWidth: true,
               size: AppButtonSize.lg,
               loading: _saving,

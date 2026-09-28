@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/anim_helpers.dart';
 import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../../core/widgets/sync_status_banner.dart';
@@ -17,6 +19,7 @@ import '../../misc/domain/misc_models.dart';
 import '../../student/data/student_api.dart';
 import '../../student/domain/student_models.dart';
 import 'activity_detail_sheet.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Dashboard: welcome header, announcements feed, activities list.
 /// Admin-level roles additionally get the same stat cards and Student
@@ -139,7 +142,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final perms = StaffPermissions.of(widget.session);
     return AppScaffold(
-      title: 'Dashboard',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: false,
       leading: widget.menuButton,
       actions: const [NotificationBell()],
@@ -152,98 +155,117 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: _loading
                   ? const ListSkeleton(itemCount: 5)
                   : _error != null
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(32),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.cloud_off_rounded,
-                                    size: 48, color: AppInk.muted),
-                                const SizedBox(height: 14),
-                                Text(_error!,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                        color: AppInk.muted)),
-                                const SizedBox(height: 16),
-                                AppButton(label: 'Retry', onTap: _load),
-                              ],
+                      ? ListView(
+                          children: [
+                            const SizedBox(height: 80),
+                            AppEmptyState(
+                              icon: AppIcons.cloud_off_rounded,
+                              title: "Couldn't load the dashboard",
+                              subtitle: _error,
+                              action: 'Try again',
+                              onAction: _load,
                             ),
-                          ),
+                          ],
                         )
                       : ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                      children: [
-                        // ── Welcome header ──────────────────────────────
-                        _WelcomeHeader(
-                          name: widget.session.displayName,
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                          children: [
+                            // ── Greeting ────────────────────────────────
+                            FadeSlideIn(
+                              child: _WelcomeHeader(session: widget.session),
+                            ),
+                            const SizedBox(height: 20),
+
+                            // ── Student: digital ID card ────────────────
+                            if (perms.isStudent) ...[
+                              FadeSlideIn(
+                                delay: const Duration(milliseconds: 60),
+                                child: _StudentIdCard(session: widget.session),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
+                            // ── Flagged account (web parity: the
+                            // "pending concern" banner + details modal) ──
+                            if (_flag?.isFlagged == true) ...[
+                              _FlagBanner(flag: _flag!),
+                              const SizedBox(height: 16),
+                            ],
+
+                            // ── Admin: student overview ─────────────────
+                            if (_stats != null) ...[
+                              FadeSlideIn(
+                                delay: const Duration(milliseconds: 60),
+                                child: _StudentOverviewCard(stats: _stats!),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
+                            // ── Cashier / Auditor: collections ─────────
+                            if (_cashierStats != null) ...[
+                              FadeSlideIn(
+                                delay: const Duration(milliseconds: 60),
+                                child: _CashierOverviewCard(
+                                  stats: _cashierStats!,
+                                  isAuditor: perms.isAuditor,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
+                            // ── Committee: scan operations ─────────────
+                            if (_committeeStats != null) ...[
+                              FadeSlideIn(
+                                delay: const Duration(milliseconds: 60),
+                                child: _CommitteeOverviewCard(
+                                    stats: _committeeStats!),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
+                            // ── Activities ─────────────────────────────
+                            if (_activities.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              const _SectionLabel('Activities'),
+                              const SizedBox(height: 10),
+                              AppCard(
+                                padding: EdgeInsets.zero,
+                                child: ClipRRect(
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.lg),
+                                  child: Column(
+                                    children: appRuled(
+                                      [
+                                        for (final a in _activities.take(5))
+                                          ActivityRow(
+                                            activity: a,
+                                            onTap: () =>
+                                                showActivityDetailSheet(
+                                                    context, a, widget.session),
+                                          ),
+                                      ],
+                                      indent: 74,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                            ],
+
+                            // ── Announcements ──────────────────────────
+                            const _SectionLabel('Announcements'),
+                            const SizedBox(height: 10),
+                            if (_announcements.isEmpty)
+                              const _EmptyCard(
+                                icon: AppIcons.campaign_outlined,
+                                message: 'No announcements right now.',
+                              )
+                            else
+                              ..._announcements
+                                  .take(3)
+                                  .map((a) => _AnnouncementCard(item: a)),
+                          ],
                         ),
-                        const SizedBox(height: 20),
-
-                        // ── Student ID-card hero — the digital student
-                        // card: avatar, name, number, SY/sem. ──────────
-                        if (perms.isStudent) ...[
-                          _StudentIdCard(session: widget.session),
-                          const SizedBox(height: 24),
-                        ],
-
-                        // ── Flagged account warning (web parity: the
-                        // "pending concern" banner + details modal) ─────
-                        if (_flag?.isFlagged == true) ...[
-                          _FlagBanner(flag: _flag!),
-                          const SizedBox(height: 24),
-                        ],
-
-                        // ── Admin stats: one glanceable card, breakdowns
-                        // tucked behind a tap instead of a wall of KPIs.
-                        if (_stats != null) ...[
-                          _StudentOverviewCard(stats: _stats!),
-                          const SizedBox(height: 24),
-                        ],
-
-                        // ── Cashier: the web Page::accounting dashboard —
-                        // collections today/month/year + recent payments.
-                        if (_cashierStats != null) ...[
-                          _CashierOverviewCard(
-                            stats: _cashierStats!,
-                            isAuditor: perms.isAuditor,
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-
-                        // ── Committee: the web Page::committee scan-ops
-                        // dashboard — today's scans + 14-day trend.
-                        if (_committeeStats != null) ...[
-                          _CommitteeOverviewCard(stats: _committeeStats!),
-                          const SizedBox(height: 24),
-                        ],
-
-                        // ── Announcements ──────────────────────────────
-                        const _SectionLabel('Announcements'),
-                        const SizedBox(height: 10),
-                        if (_announcements.isEmpty)
-                          const _EmptyCard(
-                            icon: Icons.campaign_outlined,
-                            message: 'No active announcements.',
-                          )
-                        else
-                          ..._announcements
-                              .take(3)
-                              .map((a) => _AnnouncementCard(item: a)),
-                        const SizedBox(height: 24),
-
-                        // ── Recent activities ─────────────────────────
-                        if (_activities.isNotEmpty) ...[
-                          const _SectionLabel('Recent Activities'),
-                          const SizedBox(height: 10),
-                          ..._activities
-                              .map((a) => _ActivityMiniCard(
-                                    activity: a,
-                                    session: widget.session,
-                                  )),
-                        ],
-                      ],
-                    ),
             ),
           ),
         ],
@@ -252,276 +274,216 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
+String _thousands(num v) {
+  final neg = v < 0;
+  final whole = v.abs().truncate().toString();
+  final out = StringBuffer();
+  for (var i = 0; i < whole.length; i++) {
+    if (i > 0 && (whole.length - i) % 3 == 0) out.write(',');
+    out.write(whole[i]);
+  }
+  return '${neg ? '-' : ''}$out';
+}
+
+String _peso(double v) {
+  final cents = ((v.abs() * 100).round() % 100).toString().padLeft(2, '0');
+  return '₱${_thousands(v.truncate())}.$cents';
+}
+
+String _pesoCompact(double v) {
+  if (v >= 1000000) return '₱${(v / 1000000).toStringAsFixed(1)}M';
+  if (v >= 10000) return '₱${(v / 1000).toStringAsFixed(1)}k';
+  return '₱${_thousands(v)}';
+}
+
 class _WelcomeHeader extends StatelessWidget {
-  const _WelcomeHeader({required this.name});
-  final String name;
+  const _WelcomeHeader({required this.session});
+  final AppSession session;
 
   String _greeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    if (hour < 21) return 'Good evening';
-    return 'Good night';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  String _today() {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
+        'Saturday', 'Sunday'];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+    final now = DateTime.now();
+    return '${days[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final first = session.firstName.trim().isNotEmpty
+        ? session.firstName.trim()
+        : session.displayName;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const _WavingHand(),
-        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(_today(), style: AppType.caption.copyWith(fontSize: 13.5)),
+              const SizedBox(height: 4),
               Text(
-                '${_greeting()},',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppInk.muted,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: AppInk.heading,
-                  height: 1.15,
-                ),
-                maxLines: 1,
+                '${_greeting()}, $first',
+                style: AppType.title,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
+        const SizedBox(width: 12),
+        AppAvatar(name: session.displayName, url: session.avatar, size: 48),
       ],
     );
   }
 }
 
-/// Animated waving hand emoji.
-class _WavingHand extends StatefulWidget {
-  const _WavingHand();
-
-  @override
-  State<_WavingHand> createState() => _WavingHandState();
-}
-
-class _WavingHandState extends State<_WavingHand>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
-    // Wave 3 times then stop.
-    _ctrl.addStatusListener((status) {
-      if (status == AnimationStatus.completed && _ctrl.value < 1.0) {
-        // no-op
-      }
-    });
-    _ctrl.repeat(reverse: true);
-    // Stop after ~4 seconds.
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted) _ctrl.stop();
-    });
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (context, child) {
-        return Transform.rotate(
-          angle: (_ctrl.value - 0.5) * 0.6,
-          child: child,
-        );
-      },
-      child: const Text(
-        '👋',
-        style: TextStyle(fontSize: 32),
-      ),
-    );
-  }
-}
-
-/// Digital student ID card — gradient hero with avatar, name, student
-/// number and the active SY/sem. Rendered only on the student dashboard.
+/// Digital student ID: who, which number, which term. White card with the
+/// app mark's gradient as a thin top edge.
 class _StudentIdCard extends StatelessWidget {
   const _StudentIdCard({required this.session});
   final AppSession session;
 
-  String get _initials {
-    final f = session.firstName.trim();
-    final l = session.lastName.trim();
-    final a = f.isNotEmpty ? f[0] : '';
-    final b = l.isNotEmpty ? l[0] : '';
-    return (a + b).isEmpty ? '?' : (a + b).toUpperCase();
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF14294B), Color(0xFF1E3FA0), Color(0xFF4A7CF7)],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E3FA0).withValues(alpha: 0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.25)),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: session.avatar.isNotEmpty
-                      ? Image.network(
-                          session.avatar,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _initialsBox(),
-                        )
-                      : _initialsBox(),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      session.displayName,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        height: 1.15,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      session.idNumber.isNotEmpty
-                          ? session.idNumber
-                          : session.username,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white.withValues(alpha: 0.8),
-                        letterSpacing: 0.4,
-                      ),
-                    ),
+    final number =
+        session.idNumber.isNotEmpty ? session.idNumber : session.username;
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 4,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.brandCyan,
+                    AppTheme.accent,
+                    AppTheme.brandViolet,
                   ],
                 ),
               ),
-              Icon(Icons.badge_outlined,
-                  size: 26, color: Colors.white.withValues(alpha: 0.5)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(height: 1, color: Colors.white.withValues(alpha: 0.18)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _IdChip(label: 'SY', value: session.activeSy),
-              const SizedBox(width: 10),
-              _IdChip(label: 'SEM', value: session.activeSem),
-              const Spacer(),
-              Text(
-                'STUDENT',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.2,
-                  color: Colors.white.withValues(alpha: 0.6),
-                ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          session.schoolName.isNotEmpty
+                              ? session.schoolName
+                              : 'Student ID',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppType.caption.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const AppChip(
+                        label: 'Student',
+                        tone: AppInk.accent,
+                        icon: AppIcons.badge_outlined,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      AppAvatar(
+                        name: session.displayName,
+                        url: session.avatar,
+                        size: 56,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              session.displayName,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppType.headline,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              number,
+                              style: AppType.value.copyWith(
+                                fontSize: 14,
+                                color: AppInk.secondary,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (session.activeSy.isNotEmpty ||
+                      session.activeSem.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _IdField(
+                              label: 'School year', value: session.activeSy),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _IdField(
+                              label: 'Semester', value: session.activeSem),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
-
-  Widget _initialsBox() => Center(
-        child: Text(
-          _initials,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
-          ),
-        ),
-      );
 }
 
-class _IdChip extends StatelessWidget {
-  const _IdChip({required this.label, required this.value});
+class _IdField extends StatelessWidget {
+  const _IdField({required this.label, required this.value});
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    if (value.isEmpty) return const SizedBox.shrink();
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(8),
+        color: AppInk.page,
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(label, style: AppType.caption.copyWith(fontSize: 12)),
+          const SizedBox(height: 2),
           Text(
-            '$label ',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.5,
-              color: Colors.white.withValues(alpha: 0.65),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
+            value.isEmpty ? '—' : value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppType.row.copyWith(fontSize: 14),
           ),
         ],
       ),
@@ -535,14 +497,9 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text.toUpperCase(),
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 0.8,
-        color: AppInk.muted,
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(left: 2),
+      child: Text(text, style: AppType.headline.copyWith(fontSize: 17)),
     );
   }
 }
@@ -554,26 +511,14 @@ class _EmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppInk.rule),
-      ),
+    return AppCard(
+      padding: const EdgeInsets.all(18),
       child: Row(
         children: [
-          Icon(icon, size: 24, color: AppInk.muted),
+          AppIconBox(icon: icon, color: AppInk.muted),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppInk.muted,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            child: Text(message, style: AppType.rowSub.copyWith(fontSize: 14)),
           ),
         ],
       ),
@@ -587,159 +532,50 @@ class _AnnouncementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppInk.rule),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: IntrinsicHeight(
+    final meta = [item.author, item.datePosted]
+        .where((e) => e.trim().isNotEmpty)
+        .join(' · ');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AppCard(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Accent spine — marks it as a bulletin item.
-            Container(width: 4, color: AppInk.accent),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  item.title,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppInk.heading,
-                    height: 1.3,
-                  ),
-                ),
-              ),
-              if (item.audience.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppInk.accent.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    item.audience,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppInk.accent,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            item.message,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppInk.body,
-              height: 1.5,
-            ),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (item.author.isNotEmpty || item.datePosted.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                if (item.author.isNotEmpty)
-                  Text(
-                    item.author,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppInk.muted,
-                    ),
-                  ),
-                if (item.author.isNotEmpty && item.datePosted.isNotEmpty)
-                  const Text('  •  ',
-                      style: TextStyle(fontSize: 12, color: AppInk.muted)),
-                if (item.datePosted.isNotEmpty)
-                  Text(
-                    item.datePosted,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppInk.muted,
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ActivityMiniCard extends StatelessWidget {
-  const _ActivityMiniCard({required this.activity, required this.session});
-  final Activity activity;
-  final AppSession session;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => showActivityDetailSheet(context, activity, session),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppInk.rule),
-        ),
-        child: Row(
-          children: [
+            const AppIconBox(icon: AppIcons.megaphone, size: 40),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(item.title, style: AppType.row),
+                  const SizedBox(height: 6),
                   Text(
-                    activity.title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppInk.heading,
-                    ),
-                    maxLines: 1,
+                    item.message,
+                    style: AppType.body.copyWith(fontSize: 14, height: 1.45),
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    activity.activityDate,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppInk.muted,
-                    ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      if (item.audience.isNotEmpty) ...[
+                        AppChip(label: item.audience, tone: AppInk.accent),
+                        const SizedBox(width: 8),
+                      ],
+                      Expanded(
+                        child: Text(
+                          meta,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppType.caption,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            ActivityStatePill(activity: activity, dense: true),
-            const SizedBox(width: 6),
-            Icon(Icons.chevron_right_rounded,
-                size: 18, color: AppInk.muted),
           ],
         ),
       ),
@@ -755,40 +591,12 @@ class _FlagBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFFFFF8E1),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _showDetails(context),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFFFC107)),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded,
-                  size: 22, color: Color(0xFF856404)),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Your account has a pending concern. Tap for details.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF856404),
-                    height: 1.35,
-                  ),
-                ),
-              ),
-              Icon(Icons.chevron_right_rounded,
-                  size: 18, color: Color(0xFF856404)),
-            ],
-          ),
-        ),
-      ),
+    return AppNotice(
+      tone: AppInk.caution,
+      title: 'Your account has a pending concern',
+      message: 'Settle it with the office that flagged it to avoid holds.',
+      action: 'View details',
+      onAction: () => _showDetails(context),
     );
   }
 
@@ -796,31 +604,28 @@ class _FlagBanner extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Flagged Account Details'),
+        title: const Text('Flagged account'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (final row in [
               ('Reason', flag.reason),
-              ('Flagged By', flag.flaggedBy),
+              ('Flagged by', flag.flaggedBy),
               ('Office', flag.office),
-              ('School Year', flag.sy),
+              ('School year', flag.sy),
               ('Semester', flag.semester),
             ])
               if (row.$2.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '${row.$1}: ',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        TextSpan(text: row.$2),
-                      ],
-                    ),
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(row.$1, style: AppType.caption),
+                      const SizedBox(height: 2),
+                      Text(row.$2, style: AppType.row.copyWith(fontSize: 14)),
+                    ],
                   ),
                 ),
           ],
@@ -836,9 +641,38 @@ class _FlagBanner extends StatelessWidget {
   }
 }
 
-/// Native-feeling student overview: one card with the headline number and
-/// year-level chips up front; course/year/section breakdowns stay tucked
-/// behind a tap so the dashboard opens on content, not a wall of KPIs.
+/// Card header: small label with an icon, optional trailing chip.
+class _CardHeader extends StatelessWidget {
+  const _CardHeader({required this.icon, required this.label, this.chip});
+  final IconData icon;
+  final String label;
+  final String? chip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        AppIconBox(icon: icon, size: 32, iconSize: 17),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: AppType.caption.copyWith(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              color: AppInk.secondary,
+            ),
+          ),
+        ),
+        if (chip != null && chip!.isNotEmpty)
+          AppChip(label: chip!, tone: AppInk.muted),
+      ],
+    );
+  }
+}
+
+/// Student overview for admin roles: the head count, year levels as one
+/// stacked bar with a legend, and course/section breakdowns behind a tap.
 /// Same numbers as the web admin dashboard (Page/admin).
 class _StudentOverviewCard extends StatelessWidget {
   const _StudentOverviewCard({required this.stats});
@@ -846,135 +680,122 @@ class _StudentOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final years = stats.yearCards;
+    final enrolled = years.fold<int>(0, (s, y) => s + y.count);
+    final term = [stats.sy, stats.sem].where((e) => e.isNotEmpty).join(' · ');
     return AppCard(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const _CardHeader(
+            icon: AppIcons.users_three,
+            label: 'Registered students',
+          ),
+          const SizedBox(height: 14),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              Text(_thousands(stats.registeredStudents),
+                  style: AppType.display),
+              const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'REGISTERED STUDENTS',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.8,
-                        color: AppInk.muted,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${stats.registeredStudents}',
-                      style: const TextStyle(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                        color: AppInk.heading,
-                        height: 1.05,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppInk.accent.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.groups_rounded,
-                        size: 18, color: AppInk.accent),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${stats.yearCards.fold<int>(0, (s, y) => s + y.count)} enrolled',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppInk.accent,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // Year-level chips — one glanceable row instead of four cards.
-          Row(
-            children: [
-              for (var i = 0; i < stats.yearCards.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppChart.at(i)
-                          .withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          '${stats.yearCards[i].count}',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color:
-                                AppChart.at(i),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          stats.yearCards[i].label,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: AppInk.muted,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 5),
+                  child: Text(
+                    [
+                      '${_thousands(enrolled)} enrolled',
+                      if (term.isNotEmpty) term,
+                    ].join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.caption.copyWith(fontSize: 13),
                   ),
                 ),
-              ],
+              ),
             ],
           ),
-
-          // Progressive disclosure — breakdowns on tap.
+          if (years.isNotEmpty && enrolled > 0) ...[
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: SizedBox(
+                height: 10,
+                child: Row(
+                  children: [
+                    for (var i = 0; i < years.length; i++)
+                      if (years[i].count > 0)
+                        Expanded(
+                          flex: years[i].count,
+                          child: Container(
+                            margin: EdgeInsets.only(
+                                right: i == years.length - 1 ? 0 : 2),
+                            color: AppChart.at(i),
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 16,
+              runSpacing: 8,
+              children: [
+                for (var i = 0; i < years.length; i++)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: AppChart.at(i),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        years[i].label,
+                        style: AppType.caption.copyWith(fontSize: 13),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _thousands(years[i].count),
+                        style: AppType.value.copyWith(fontSize: 13),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 6),
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
               childrenPadding: const EdgeInsets.only(bottom: 10),
-              title: const Text(
+              iconColor: AppInk.accent,
+              collapsedIconColor: AppInk.muted,
+              title: Text(
                 'Breakdowns',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                style: AppType.row.copyWith(
+                  fontSize: 14,
                   color: AppInk.accent,
                 ),
               ),
               subtitle: const Text(
-                'By course, year level & section',
-                style: TextStyle(fontSize: 11.5, color: AppInk.muted),
+                'By course, major, year level, sex and section',
+                style: AppType.caption,
               ),
               children: [
-                _BarBreakdown(title: 'By Course', slices: stats.byCourse),
-                _BarBreakdown(title: 'By Major', slices: stats.byMajor),
-                _BarBreakdown(title: 'By Year Level', slices: stats.byYearLevel),
-                _BarBreakdown(title: 'By Sex', slices: stats.bySex),
+                _BarBreakdown(title: 'By course', slices: stats.byCourse),
+                _BarBreakdown(title: 'By major', slices: stats.byMajor),
                 _BarBreakdown(
-                    title: 'By Section', slices: stats.bySection, maxRows: 10),
+                    title: 'By year level', slices: stats.byYearLevel),
+                _BarBreakdown(title: 'By sex', slices: stats.bySex),
+                _BarBreakdown(
+                    title: 'By section', slices: stats.bySection, maxRows: 10),
               ],
             ),
           ),
@@ -984,8 +805,8 @@ class _StudentOverviewCard extends StatelessWidget {
   }
 }
 
-/// Slim label-bar-count rows for one breakdown — more compact and readable
-/// on a phone than a donut + legend. Long tails roll into "Others".
+/// Slim label-bar-count rows for one breakdown. Long tails roll into
+/// "Others".
 class _BarBreakdown extends StatelessWidget {
   const _BarBreakdown({
     required this.title,
@@ -1009,76 +830,52 @@ class _BarBreakdown extends StatelessWidget {
     final total = shown.fold<int>(0, (s, e) => s + e.count);
 
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  title.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.8,
-                    color: AppInk.muted,
-                  ),
-                ),
-              ),
-              Text(
-                'Total: $total',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppInk.accent,
-                ),
-              ),
+              Expanded(child: Text(title, style: AppType.section)),
+              Text('Total ${_thousands(total)}', style: AppType.caption),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           for (var i = 0; i < shown.length; i++)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 10),
               child: Row(
                 children: [
                   SizedBox(
-                    width: 92,
+                    width: 112,
                     child: Text(
-                      shown[i].label.isEmpty ? 'Not Set' : shown[i].label,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppInk.heading,
+                      shown[i].label.isEmpty ? 'Not set' : shown[i].label,
+                      style: AppType.caption.copyWith(
+                        fontSize: 12.5,
+                        color: AppInk.body,
+                        fontWeight: FontWeight.w500,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Expanded(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(99),
                       child: LinearProgressIndicator(
                         value: max > 0 ? shown[i].count / max : 0,
-                        minHeight: 8,
-                        backgroundColor:
-                            AppInk.rule.withValues(alpha: 0.5),
-                        valueColor: AlwaysStoppedAnimation(
-                          AppChart.at(i),
-                        ),
+                        minHeight: 6,
+                        backgroundColor: AppInk.subtle,
+                        valueColor: AlwaysStoppedAnimation(AppChart.at(i)),
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   SizedBox(
-                    width: 34,
+                    width: 40,
                     child: Text(
-                      '${shown[i].count}',
+                      _thousands(shown[i].count),
                       textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppInk.muted,
-                      ),
+                      style: AppType.value.copyWith(fontSize: 12.5),
                     ),
                   ),
                 ],
@@ -1090,10 +887,9 @@ class _BarBreakdown extends StatelessWidget {
   }
 }
 
-/// Cashier overview — the web Page::accounting dashboard as one glanceable
-/// card: today's collection headline, month/year totals, accounts with
-/// balance, and the most recent payments. Same numbers, disclosed
-/// progressively instead of a KPI grid.
+/// Cashier overview — the web Page::accounting dashboard as one card:
+/// today's collection, month/year totals, accounts with a balance, and the
+/// latest payments.
 class _CashierOverviewCard extends StatelessWidget {
   const _CashierOverviewCard({required this.stats, this.isAuditor = false});
   final AccountingDashboard stats;
@@ -1101,130 +897,87 @@ class _CashierOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1E3FA0), Color(0xFF285CCC), Color(0xFF4A7CF7)],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppInk.accent.withValues(alpha: 0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  isAuditor ? 'AUDIT SNAPSHOT · COLLECTIONS TODAY' : 'COLLECTIONS TODAY',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.9,
-                    color: Colors.white.withValues(alpha: 0.75),
-                  ),
-                ),
-              ),
-              Icon(Icons.account_balance_wallet_outlined,
-                  size: 18,
-                  color: Colors.white.withValues(alpha: 0.75)),
-            ],
+          _CardHeader(
+            icon: AppIcons.wallet,
+            label: isAuditor
+                ? 'Audit snapshot · collections today'
+                : 'Collections today',
           ),
-          const SizedBox(height: 8),
-          Text(
-            '₱${stats.collectionToday.toStringAsFixed(2)}',
-            style: const TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              height: 1.05,
-              letterSpacing: -0.5,
-            ),
-          ),
+          const SizedBox(height: 12),
+          Text(_peso(stats.collectionToday), style: AppType.display),
           const SizedBox(height: 16),
           Row(
             children: [
-              _CashierMiniStat(
+              _MiniStat(
                 label: 'This month',
-                value: '₱${_compact(stats.collectionMonth)}',
+                value: _pesoCompact(stats.collectionMonth),
               ),
-              const SizedBox(width: 10),
-              _CashierMiniStat(
+              const SizedBox(width: 8),
+              _MiniStat(
                 label: 'This year',
-                value: '₱${_compact(stats.collectionYear)}',
+                value: _pesoCompact(stats.collectionYear),
               ),
-              const SizedBox(width: 10),
-              _CashierMiniStat(
+              const SizedBox(width: 8),
+              _MiniStat(
                 label: 'With balance',
-                value: '${stats.accountsBalance}',
+                value: _thousands(stats.accountsBalance),
               ),
             ],
           ),
           if (stats.recentPayments.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Container(height: 1, color: Colors.white.withValues(alpha: 0.18)),
-            const SizedBox(height: 12),
-            Text(
-              'RECENT PAYMENTS',
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.6,
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...stats.recentPayments.take(5).map((p) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${p.studentName.isNotEmpty ? p.studentName : p.studentNumber} · ${p.description}',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.92),
+            const SizedBox(height: 18),
+            const Text('Recent payments', style: AppType.section),
+            const SizedBox(height: 4),
+            ...appRuled(
+              [
+                for (final p in stats.recentPayments.take(5))
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                p.studentName.isNotEmpty
+                                    ? p.studentName
+                                    : p.studentNumber,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppType.row.copyWith(fontSize: 14),
+                              ),
+                              Text(
+                                p.description,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppType.rowSub,
+                              ),
+                            ],
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Text(
-                        '₱${p.amount.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
+                        const SizedBox(width: 10),
+                        Text(_peso(p.amount), style: AppType.value),
+                      ],
+                    ),
                   ),
-                )),
+              ],
+              indent: 0,
+            ),
           ],
         ],
       ),
     );
   }
-
-  String _compact(double v) {
-    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';
-    if (v >= 1000) return '${(v / 1000).toStringAsFixed(1)}k';
-    return v.toStringAsFixed(0);
-  }
 }
 
-class _CashierMiniStat extends StatelessWidget {
-  const _CashierMiniStat({required this.label, required this.value});
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({required this.label, required this.value});
   final String label;
   final String value;
 
@@ -1232,32 +985,26 @@ class _CashierMiniStat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(12),
+          color: AppInk.page,
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              label.toUpperCase(),
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
+              label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+              style: AppType.caption.copyWith(fontSize: 12),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.value.copyWith(fontSize: 15.5),
             ),
           ],
         ),
@@ -1267,117 +1014,50 @@ class _CashierMiniStat extends StatelessWidget {
 }
 
 /// Committee overview — the web Page::committee dashboard: open activities,
-/// today's scan count, and the 14-day scan trend as slim bars. Scan-ops
-/// first, since scanning is the committee's job.
+/// today's scan count, the 14-day trend as slim bars, and recent scans.
 class _CommitteeOverviewCard extends StatelessWidget {
   const _CommitteeOverviewCard({required this.stats});
   final CommitteeDashboard stats;
 
   @override
   Widget build(BuildContext context) {
-    final maxTrend = stats.trend.fold<int>(
-        0, (m, t) => t.count > m ? t.count : m);
+    final maxTrend =
+        stats.trend.fold<int>(0, (m, t) => t.count > m ? t.count : m);
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0B6E4F), Color(0xFF0F8A5F), Color(0xFF22B07E)],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F8A5F).withValues(alpha: 0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'SCANS TODAY',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.9,
-                    color: Colors.white.withValues(alpha: 0.75),
-                  ),
-                ),
-              ),
-              Icon(Icons.qr_code_scanner_rounded,
-                  size: 18,
-                  color: Colors.white.withValues(alpha: 0.75)),
-            ],
+          _CardHeader(
+            icon: AppIcons.scan,
+            label: 'Scans today',
+            chip: '${stats.openCount} open · ${stats.totalCount} total',
           ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${stats.todayScans}',
-                style: const TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  height: 1.05,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 5),
-                child: Text(
-                  '${stats.openCount} open · ${stats.totalCount} activities',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.85),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          const SizedBox(height: 12),
+          Text(_thousands(stats.todayScans), style: AppType.display),
           if (stats.trend.isNotEmpty) ...[
             const SizedBox(height: 16),
-            Container(height: 1, color: Colors.white.withValues(alpha: 0.18)),
-            const SizedBox(height: 12),
-            Text(
-              'LAST 14 DAYS',
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.6,
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 10),
-            // Slim bar strip — same trend the web committee dashboard draws.
             SizedBox(
-              height: 48,
+              height: 56,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  for (final t in stats.trend)
+                  for (var i = 0; i < stats.trend.length; i++)
                     Expanded(
                       child: Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 1.5),
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
                         child: Container(
                           height: maxTrend > 0
-                              ? (t.count / maxTrend) * 44 + 4
+                              ? (stats.trend[i].count / maxTrend) * 50 + 4
                               : 4,
                           decoration: BoxDecoration(
-                            color: t.count > 0
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.22),
-                            borderRadius: BorderRadius.circular(3),
+                            color: i == stats.trend.length - 1
+                                ? AppInk.accent
+                                : stats.trend[i].count > 0
+                                    ? AppInk.accent.withValues(alpha: 0.28)
+                                    : AppInk.subtle,
+                            borderRadius: BorderRadius.circular(4),
                           ),
                         ),
                       ),
@@ -1385,52 +1065,62 @@ class _CommitteeOverviewCard extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Text('14 days ago', style: AppType.caption.copyWith(fontSize: 11.5)),
+                const Spacer(),
+                Text('Today', style: AppType.caption.copyWith(fontSize: 11.5)),
+              ],
+            ),
           ],
           if (stats.recentScans.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            Container(height: 1, color: Colors.white.withValues(alpha: 0.18)),
-            const SizedBox(height: 12),
-            Text(
-              'RECENT SCANS',
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.6,
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...stats.recentScans.take(5).map((s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
-                      Icon(Icons.qr_code_scanner_rounded,
-                          size: 14,
-                          color: Colors.white.withValues(alpha: 0.8)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '${s['student_name'] ?? s['student_number'] ?? ''}'
-                          '${s['activity_title'] != null ? ' · ${s['activity_title']}' : ''}',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.92),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+            const SizedBox(height: 16),
+            const Text('Recent scans', style: AppType.section),
+            const SizedBox(height: 4),
+            ...appRuled(
+              [
+                for (final s in stats.recentScans.take(5))
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    child: Row(
+                      children: [
+                        AppAvatar(
+                          name: '${s['student_name'] ?? s['student_number'] ?? ''}',
+                          size: 32,
                         ),
-                      ),
-                      Text(
-                        (s['checked_in_at'] ?? s['scanned_at'] ?? '')
-                            .toString(),
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.white.withValues(alpha: 0.65)),
-                      ),
-                    ],
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${s['student_name'] ?? s['student_number'] ?? ''}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppType.row.copyWith(fontSize: 14),
+                              ),
+                              if (s['activity_title'] != null)
+                                Text(
+                                  '${s['activity_title']}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppType.rowSub,
+                                ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          (s['checked_in_at'] ?? s['scanned_at'] ?? '')
+                              .toString(),
+                          style: AppType.caption,
+                        ),
+                      ],
+                    ),
                   ),
-                )),
+              ],
+              indent: 42,
+            ),
           ],
         ],
       ),

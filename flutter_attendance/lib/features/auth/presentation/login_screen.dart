@@ -5,7 +5,7 @@ import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_brand.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_icons.dart';
-import '../domain/mobile_config.dart';
+import '../../../core/widgets/anim_helpers.dart';
 import 'auth_controller.dart';
 import 'forgot_password_screen.dart';
 import 'legal_dialogs.dart';
@@ -119,193 +119,222 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: AppInk.page,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 60,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // ── Compact logo + brand ──────────────────────────
-                    const SizedBox(height: 8),
-                    Center(child: _Logo(config: config)),
-                    const SizedBox(height: 16),
-                    Center(
-                      child: Text(
-                        _schoolName,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: AppInk.heading,
-                          height: 1.3,
-                        ),
-                      ),
+      body: Stack(
+        children: [
+          const AppDotGrid(height: 320),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight - 28,
                     ),
-                    const SizedBox(height: 4),
-                    Center(
-                      child: Text(
-                        AppBrand.tagline,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppInk.muted,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-
-                    Column(
+                    child: IntrinsicHeight(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-
-                    // ── Error banner ─────────────────────────────────
-                    if ((_error ?? '').isNotEmpty) ...[
-                      _ErrorBanner(message: _error!),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // ── Inputs ───────────────────────────────────────
-                    AppInput(
-                      controller: _usernameController,
-                      label: 'Username',
-                      textInputAction: TextInputAction.next,
-                      prefixIcon: AppIcons.person_outline_rounded,
-                      autofillHints: const ['username'],
-                    ),
-                    const SizedBox(height: 14),
-                    AppInput(
-                      controller: _passwordController,
-                      label: 'Password',
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      prefixIcon: AppIcons.lock_outline_rounded,
-                      autofillHints: const ['password'],
-                      onSubmitted: (_) => _signIn(),
-                      suffixIcon: GestureDetector(
-                        onTap: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
-                        child: Icon(
-                          _obscurePassword
-                              ? AppIcons.visibility_off
-                              : AppIcons.visibility,
-                          size: 20,
-                          color: AppInk.muted,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // ── Sign-in button ───────────────────────────────
-                    AppButton(
-                      label: 'Sign in',
-                      fullWidth: true,
-                      size: AppButtonSize.lg,
-                      loading: _busy,
-                      disabled: _busy,
-                      onTap: _signIn,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ── Register link (prominent, right after sign-in) ─
-                    Center(
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  RegisterScreen(controller: widget.controller),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: _SchoolSwitch(
+                              name: _schoolName,
+                              onTap: _changeSchool,
                             ),
-                          );
-                        },
-                        child: const Text.rich(
-                          TextSpan(
-                            text: 'No account? ',
-                            style: TextStyle(
-                              color: AppInk.muted,
-                              fontSize: 14,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: 'Create one',
-                                style: TextStyle(
-                                  color: AppInk.accent,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
+                          ),
+                          const Spacer(),
+                          const SizedBox(height: 24),
+                          FadeSlideIn(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                AppBrandMark(
+                                  size: 64,
+                                  logoUrl: config?.loginLogoUrl,
                                 ),
+                                const SizedBox(height: 28),
+                                Text('Welcome back', style: AppType.title
+                                    .copyWith(fontSize: 28)),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Sign in with your portal account.',
+                                  style: AppType.body
+                                      .copyWith(color: AppInk.muted),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          FadeSlideIn(
+                            delay: const Duration(milliseconds: 80),
+                            child: AutofillGroup(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  AppInput(
+                                    controller: _usernameController,
+                                    label: 'Username',
+                                    hint: 'Student number or username',
+                                    textInputAction: TextInputAction.next,
+                                    prefixIcon: AppIcons.person_outline_rounded,
+                                    autocorrect: false,
+                                    autofillHints: const [
+                                      AutofillHints.username
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  AppInput(
+                                    controller: _passwordController,
+                                    label: 'Password',
+                                    hint: 'Your password',
+                                    obscureText: _obscurePassword,
+                                    textInputAction: TextInputAction.done,
+                                    prefixIcon: AppIcons.lock_outline_rounded,
+                                    autocorrect: false,
+                                    autofillHints: const [
+                                      AutofillHints.password
+                                    ],
+                                    onSubmitted: (_) => _signIn(),
+                                    suffixIcon: IconButton(
+                                      tooltip: _obscurePassword
+                                          ? 'Show password'
+                                          : 'Hide password',
+                                      onPressed: () => setState(() =>
+                                          _obscurePassword = !_obscurePassword),
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? AppIcons.visibility_outlined
+                                            : AppIcons.visibility_off_outlined,
+                                        size: 20,
+                                        color: AppInk.muted,
+                                      ),
+                                    ),
+                                  ),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: _forgotPassword,
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 4, vertical: 12),
+                                        textStyle: AppType.caption.copyWith(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      child: const Text('Forgot password?'),
+                                    ),
+                                  ),
+                                  AnimatedSize(
+                                    duration: AppMotion.base,
+                                    curve: AppMotion.ease,
+                                    child: (_error ?? '').isEmpty
+                                        ? const SizedBox(
+                                            width: double.infinity)
+                                        : Padding(
+                                            padding: const EdgeInsets.only(
+                                                bottom: 16),
+                                            child:
+                                                AppNotice(message: _error!),
+                                          ),
+                                  ),
+                                  AppButton(
+                                    label: 'Sign in',
+                                    fullWidth: true,
+                                    size: AppButtonSize.lg,
+                                    loading: _busy,
+                                    onTap: _signIn,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  AppButton(
+                                    label: 'Create an account',
+                                    style: AppButtonStyle.outline,
+                                    fullWidth: true,
+                                    size: AppButtonSize.lg,
+                                    onTap: _busy ? null : _register,
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    // ── Links ────────────────────────────────────────
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 4,
-                      children: [
-                        TextButton(
-                          onPressed: _forgotPassword,
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 6),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text(
-                            'Forgot Password',
-                            style: TextStyle(
-                              color: AppInk.muted,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
                             ),
                           ),
-                        ),
-                        const Text('|',
-                            style:
-                                TextStyle(color: AppInk.rule, fontSize: 13)),
-                        TextButton(
-                          onPressed: _changeSchool,
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 6),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          const Spacer(),
+                          const SizedBox(height: 28),
+                          _LegalFooter(
+                            onPrivacy: _showDataPrivacy,
+                            onTerms: _showTermsOfUse,
+                            onAbout: _showAbout,
+                            copyrightName: _schoolName,
                           ),
-                          child: const Text(
-                            'Switch School',
-                            style: TextStyle(
-                              color: AppInk.accent,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // ── Legal footer (mirrors home_page.php legal-footer) ──
-                    _LegalFooter(
-                      onPrivacy: _showDataPrivacy,
-                      onTerms: _showTermsOfUse,
-                      onAbout: _showAbout,
-                      copyrightName: _schoolName,
-                    ),
                         ],
                       ),
-                  ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _register() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RegisterScreen(controller: widget.controller),
+      ),
+    );
+  }
+}
+
+/// The connected school as a tappable chip: switching schools is rare, so
+/// it lives up here instead of competing with the sign-in button.
+class _SchoolSwitch extends StatelessWidget {
+  const _SchoolSwitch({required this.name, required this.onTap});
+
+  final String name;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: const StadiumBorder(side: BorderSide(color: AppInk.rule)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(AppIcons.school_outlined,
+                  size: 16, color: AppInk.accent),
+              const SizedBox(width: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 220),
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.caption.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppInk.heading,
+                  ),
                 ),
               ),
-            );
-          },
+              const SizedBox(width: 8),
+              Text(
+                'Switch',
+                style: AppType.caption.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppInk.accent,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -329,142 +358,39 @@ class _LegalFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const linkStyle = TextStyle(
-      fontSize: 12,
-      fontWeight: FontWeight.w700,
-      color: AppInk.muted,
-    );
+    Widget link(String label, VoidCallback onTap) => TextButton(
+          onPressed: onTap,
+          style: TextButton.styleFrom(
+            foregroundColor: AppInk.muted,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            minimumSize: const Size(0, 32),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            textStyle: AppType.caption.copyWith(fontWeight: FontWeight.w600),
+          ),
+          child: Text(label),
+        );
+    const dot = Text('·', style: TextStyle(color: AppInk.faint));
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Wrap(
           alignment: WrapAlignment.center,
           crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 4,
           children: [
-            TextButton(
-              onPressed: onPrivacy,
-              style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text('Data Privacy', style: linkStyle),
-            ),
-            const Text('·', style: TextStyle(color: AppInk.rule, fontSize: 12)),
-            TextButton(
-              onPressed: onTerms,
-              style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text('Terms of Use', style: linkStyle),
-            ),
-            const Text('·', style: TextStyle(color: AppInk.rule, fontSize: 12)),
-            TextButton(
-              onPressed: onAbout,
-              style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text('About', style: linkStyle),
-            ),
+            link('Privacy', onPrivacy),
+            dot,
+            link('Terms', onTerms),
+            dot,
+            link('About', onAbout),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(
-          '© ${DateTime.now().year} $copyrightName. All rights reserved.',
-          style: const TextStyle(
-            fontSize: 11,
-            color: AppInk.muted,
-            fontWeight: FontWeight.w500,
-          ),
+          '© ${DateTime.now().year} $copyrightName',
+          textAlign: TextAlign.center,
+          style: AppType.caption.copyWith(fontSize: 12, color: AppInk.faint),
         ),
       ],
-    );
-  }
-}
-
-/// School logo from the server config; falls back to the bundled app logo.
-class _Logo extends StatelessWidget {
-  const _Logo({this.config});
-  final MobileConfig? config;
-
-  @override
-  Widget build(BuildContext context) {
-    const size = 84.0;
-    const outer = size + 20; // 104
-    final url = (config?.loginLogoUrl ?? '').trim();
-
-    final fallback = Image.asset(
-      'assets/img/icon-logo.png',
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-    );
-
-    return Container(
-      width: outer,
-      height: outer,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: AppInk.rule),
-        boxShadow: [
-          BoxShadow(
-            color: AppInk.accent.withValues(alpha: 0.06),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipOval(
-        child: url.isEmpty
-            ? fallback
-            : Image.network(
-                url,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => fallback,
-              ),
-      ),
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppInk.critical.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppInk.critical.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          const Icon(AppIcons.error_outline,
-              size: 18, color: AppInk.critical),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: AppInk.critical,
-                fontWeight: FontWeight.w600,
-                height: 1.4,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -7,6 +7,7 @@ import '../../../core/services/outbox_service.dart';
 import '../../../core/services/scan_ledger_service.dart';
 import '../../../core/services/sync_orchestrator.dart';
 import '../../../core/widgets/sync_status_banner.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Everything the device is still holding, and everything the server refused.
 ///
@@ -77,7 +78,7 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.sync_rounded),
+              : const Icon(AppIcons.sync_rounded),
         ),
       ],
       body: Column(
@@ -114,7 +115,7 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
                                       await OutboxService.retryAllConflicts();
                                       await _load();
                                     },
-                                    icon: const Icon(Icons.replay_rounded,
+                                    icon: const Icon(AppIcons.replay_rounded,
                                         size: 18),
                                     label: const Text('Retry all'),
                                   )
@@ -141,7 +142,7 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
         padding: const EdgeInsets.only(top: 48),
         child: Column(
           children: [
-            const Icon(Icons.cloud_done_rounded,
+            const Icon(AppIcons.cloud_done_rounded,
                 size: 48, color: AppInk.positive),
             const SizedBox(height: 12),
             const Text(
@@ -172,7 +173,7 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
               title,
               style: const TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   color: AppInk.heading),
             ),
             const SizedBox(width: 8),
@@ -305,13 +306,13 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
       };
 
   static IconData _iconFor(Object? operation) => switch (operation) {
-        'scanner_consume' || 'self_checkin' => Icons.qr_code_scanner_rounded,
-        'payment_create' => Icons.receipt_long_rounded,
+        'scanner_consume' || 'self_checkin' => AppIcons.qr_code_scanner_rounded,
+        'payment_create' => AppIcons.receipt_long_rounded,
         'activity_create' ||
         'activity_update' ||
         'activity_delete' =>
-          Icons.event_note_rounded,
-        _ => Icons.cloud_upload_rounded,
+          AppIcons.event_note_rounded,
+        _ => AppIcons.cloud_upload_rounded,
       };
 
   static String _age(int millis) {

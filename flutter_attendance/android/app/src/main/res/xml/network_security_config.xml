@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Plain http:// is permitted so the app can reach a portal on the local
+  network (a school LAN server or a developer PC at http://192.168.x.x/...),
+  which Android blocks by default. Android can't scope this to private IP
+  ranges, so the app enforces it instead: AuthApi.checkPortalUrl refuses
+  http:// for any public host, and public portals stay https-only.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

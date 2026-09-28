@@ -7,6 +7,7 @@ import '../../auth/domain/app_session.dart';
 import '../../auth/domain/staff_permissions.dart';
 import '../data/accounting_api.dart';
 import '../domain/accounting_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Fees Setup — web: Accounting::course_setUp. The fee templates that
 /// drive the payment form's description picker.
@@ -85,7 +86,7 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppInk.rule,
+                    color: AppInk.ruleStrong,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -95,7 +96,7 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
                 fee == null ? 'Add Fee' : 'Edit Fee',
                 style: const TextStyle(
                   fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   color: AppInk.heading,
                 ),
               ),
@@ -103,7 +104,7 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
               AppInput(
                 controller: descCtrl,
                 label: 'Description',
-                prefixIcon: Icons.sell_outlined,
+                prefixIcon: AppIcons.sell_outlined,
               ),
               const SizedBox(height: 14),
               AppInput(
@@ -111,13 +112,13 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
                 label: 'Amount',
                 keyboardType: const TextInputType.numberWithOptions(
                     decimal: true),
-                prefixIcon: Icons.payments_outlined,
+                prefixIcon: AppIcons.payments_outlined,
               ),
               const SizedBox(height: 14),
               AppInput(
                 controller: typeCtrl,
                 label: 'Fee Type',
-                prefixIcon: Icons.category_outlined,
+                prefixIcon: AppIcons.category_outlined,
               ),
               const SizedBox(height: 24),
               FilledButton(
@@ -208,7 +209,7 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
               onPressed: () => _edit(null),
-              icon: const Icon(Icons.add_rounded),
+              icon: const Icon(AppIcons.add_rounded),
               label: const Text('Add Fee'),
             )
           : null,
@@ -219,7 +220,7 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(32),
                     child: AppEmptyState(
-            icon: Icons.cloud_off_rounded,
+            icon: AppIcons.cloud_off_rounded,
             title: 'Failed to load',
             subtitle: _error,
             action: 'Retry',
@@ -236,7 +237,6 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
                       if (i == 0) {
                         return AppPageHeader(
                           title: 'Fees Setup',
-                          icon: Icons.sell_outlined,
                           subtitle: canManage
                               ? '${_fees.length} fee template${_fees.length == 1 ? '' : 's'} · swipe to edit or delete'
                               : '${_fees.length} fee template${_fees.length == 1 ? '' : 's'} · read-only',
@@ -246,7 +246,7 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
                         return const Padding(
                           padding: EdgeInsets.only(top: 60),
                           child: AppEmptyState(
-                            icon: Icons.sell_outlined,
+                            icon: AppIcons.sell_outlined,
                             title: 'No fees configured',
                             subtitle: 'Tap Add Fee to create one.',
                           ),
@@ -288,11 +288,7 @@ class _FeeTile extends StatelessWidget {
                 children: [
                   Text(
                     fee.description,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppInk.heading,
-                    ),
+                    style: AppType.row,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -309,13 +305,13 @@ class _FeeTile extends StatelessWidget {
               '₱${fee.amount.toStringAsFixed(2)}',
               style: const TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
                 color: AppInk.accent,
               ),
             ),
             if (onEdit != null) const SizedBox(width: 4),
             if (onEdit != null) IconButton(
-              icon: const Icon(Icons.edit_outlined,
+              icon: const Icon(AppIcons.edit_outlined,
                   size: 20, color: AppInk.muted),
               onPressed: onEdit,
               tooltip: 'Edit fee',

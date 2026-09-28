@@ -6,6 +6,7 @@ import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/accounting_api.dart';
 import '../domain/accounting_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Partial Payments — web: Accounting::partialPayments. Per (student, fee)
 /// balance remaining for the active term, for follow-up.
@@ -75,7 +76,7 @@ class _PartialPaymentsScreenState extends State<PartialPaymentsScreen> {
                   children: [
                     const SizedBox(height: 80),
                     AppEmptyState(
-                      icon: Icons.cloud_off_rounded,
+                      icon: AppIcons.cloud_off_rounded,
                       title: 'Failed to load',
                       subtitle: _error,
                       action: 'Retry',
@@ -92,8 +93,6 @@ class _PartialPaymentsScreenState extends State<PartialPaymentsScreen> {
                       if (i == 0) {
                         return AppPageHeader(
                           title: 'Partial Payments',
-                          icon: Icons.pie_chart_outline_rounded,
-                          iconColor: AppInk.caution,
                           subtitle:
                               '₱${_totalOutstanding.toStringAsFixed(2)} outstanding · $_studentCount students · $_sem $_sy',
                         );
@@ -102,7 +101,7 @@ class _PartialPaymentsScreenState extends State<PartialPaymentsScreen> {
                         return const Padding(
                           padding: EdgeInsets.only(top: 60),
                           child: AppEmptyState(
-                            icon: Icons.check_circle_outline_rounded,
+                            icon: AppIcons.check_circle_outline_rounded,
                             title: 'No partial payments',
                             subtitle:
                                 'Everyone is fully paid this term.',
@@ -142,11 +141,7 @@ class _PartialRow extends StatelessWidget {
                     children: [
                       Text(
                         row.studentName,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppInk.heading,
-                        ),
+                        style: AppType.row,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -166,7 +161,7 @@ class _PartialRow extends StatelessWidget {
                   '₱${row.outstanding.toStringAsFixed(2)} left',
                   style: const TextStyle(
                     fontSize: 13,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     color: AppInk.caution,
                   ),
                 ),

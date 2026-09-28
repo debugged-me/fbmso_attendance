@@ -247,9 +247,9 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
           begin: Alignment(-1.5 + _ctrl.value * 3.0, 0),
           end: Alignment(-0.5 + _ctrl.value * 3.0, 0),
           colors: const [
-            Color(0xFFE2E8F0),
-            Color(0xFFF1F5F9),
-            Color(0xFFE2E8F0),
+            Color(0xFFEEF0F3),
+            Color(0xFFF8F9FB),
+            Color(0xFFEEF0F3),
           ],
         ).createShader(bounds),
         child: widget.child,
@@ -277,7 +277,7 @@ class SkeletonBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: const Color(0xFFE2E8F0),
+        color: const Color(0xFFEEF0F3),
         borderRadius: BorderRadius.circular(borderRadius),
       ),
     );

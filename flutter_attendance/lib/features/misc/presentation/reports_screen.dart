@@ -8,6 +8,7 @@ import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/misc_api.dart';
 import '../domain/misc_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Reports screen — enrollment + attendance summary.
 /// Mirrors the web /reports page.
@@ -64,7 +65,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           AppEmptyState(
-                            icon: Icons.cloud_off_rounded, title: 'Failed to load',
+                            icon: AppIcons.cloud_off_rounded, title: 'Failed to load',
                             subtitle: _error, action: 'Retry', onAction: _load,
                           ),
                         ])
@@ -72,7 +73,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ? ListView(children: [
                               const SizedBox(height: 80),
                               const AppEmptyState(
-                                icon: Icons.assessment_outlined,
+                                icon: AppIcons.assessment_outlined,
                                 title: 'No data', subtitle: 'No report data available.',
                               ),
                             ])
@@ -96,7 +97,6 @@ class _ReportContent extends StatelessWidget {
       children: [
         const AppPageHeader(
           title: 'Reports',
-          icon: Icons.assessment_outlined,
           subtitle: 'Enrollment & attendance summary',
         ),
         // ── SY/Sem badge ────────────────────────────────────────
@@ -122,14 +122,14 @@ class _ReportContent extends StatelessWidget {
             Expanded(
               child: _StatCard(
                 label: 'Total Events', value: '${report.eventsTotal}',
-                icon: Icons.event_rounded, tone: AppInk.accent,
+                icon: AppIcons.event_rounded, tone: AppInk.accent,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _StatCard(
                 label: 'Total Scans', value: '${report.eventScans}',
-                icon: Icons.qr_code_scanner_rounded, tone: AppInk.positive,
+                icon: AppIcons.qr_code_scanner_rounded, tone: AppInk.positive,
               ),
             ),
           ],
@@ -151,7 +151,7 @@ class _ReportContent extends StatelessWidget {
                           color: AppInk.accent.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.event_outlined, color: AppInk.accent, size: 20),
+                        child: const Icon(AppIcons.event_outlined, color: AppInk.accent, size: 20),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -224,7 +224,7 @@ class _ReportContent extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text('${r.sections}',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppInk.accent)),
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppInk.accent)),
                     ),
                   ],
                 ),
@@ -305,7 +305,7 @@ class _StatCard extends StatelessWidget {
               style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppInk.muted, letterSpacing: 0.5)),
           const SizedBox(height: 4),
           Text(value,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppInk.heading)),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppInk.heading)),
         ],
       ),
     );
@@ -334,7 +334,7 @@ class _BarRow extends StatelessWidget {
                     maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
               Text('$value',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppInk.accent)),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppInk.accent)),
             ],
           ),
           const SizedBox(height: 6),

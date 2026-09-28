@@ -8,6 +8,7 @@ import '../../auth/domain/app_session.dart';
 import '../../auth/domain/staff_permissions.dart';
 import '../../misc/data/misc_api.dart';
 import '../../misc/domain/misc_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Registered Students screen — mirrors the web Page/profileList.
 /// Shows students from studentsignup with search, pagination, and delete.
@@ -157,34 +158,7 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
           const SyncStatusBanner(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Search name, ID, email...',
-                prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppInk.muted),
-                suffixIcon: _search.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 20),
-                        onPressed: () {
-                          _searchController.clear();
-                          _onSearchChanged('');
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppInk.rule, width: 1.5),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppInk.accent, width: 2),
-                ),
-              ),
-            ),
+            child: AppSearchField(controller: _searchController, hint: 'Search name, ID, email', onChanged: _onSearchChanged),
           ),
           Expanded(
             child: RefreshIndicator(
@@ -195,7 +169,7 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           AppEmptyState(
-                            icon: Icons.cloud_off_rounded,
+                            icon: AppIcons.cloud_off_rounded,
                             title: 'Failed to load',
                             subtitle: _error,
                             action: 'Retry',
@@ -206,7 +180,7 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
                           ? ListView(children: [
                               const SizedBox(height: 80),
                               const AppEmptyState(
-                                icon: Icons.school_outlined,
+                                icon: AppIcons.school_outlined,
                                 title: 'No students found',
                                 subtitle: 'Try a different search term.',
                               ),
@@ -219,7 +193,6 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
                                 if (i == 0) {
                                   return AppPageHeader(
                                     title: 'Registered Students',
-                                  icon: Icons.groups_outlined,
                                     subtitle:
                                         '${_rows.length} of $_total students',
                                   );
@@ -277,7 +250,7 @@ class _StudentCard extends StatelessWidget {
                 child: Text(initials,
                     style: const TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         color: AppInk.accent)),
               ),
             ),

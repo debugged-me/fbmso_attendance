@@ -7,6 +7,7 @@ import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/misc_api.dart';
 import '../domain/misc_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Personnel management screen — admin can add, edit, delete.
 /// Mirrors the web Page/employeelist (staff table).
@@ -132,7 +133,7 @@ class _PersonnelManageScreenState extends State<PersonnelManageScreen> {
       showBackButton: true,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(),
-        icon: const Icon(Icons.person_add_rounded),
+        icon: const Icon(AppIcons.person_add_rounded),
         label: const Text('Add Personnel'),
       ),
       body: Column(
@@ -140,31 +141,7 @@ class _PersonnelManageScreenState extends State<PersonnelManageScreen> {
           const SyncStatusBanner(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Search name, ID, position...',
-                prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppInk.muted),
-                suffixIcon: _search.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 20),
-                        onPressed: () { _searchController.clear(); _onSearchChanged(''); },
-                      )
-                    : null,
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppInk.rule, width: 1.5),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppInk.accent, width: 2),
-                ),
-              ),
-            ),
+            child: AppSearchField(controller: _searchController, hint: 'Search name, ID, position', onChanged: _onSearchChanged),
           ),
           if (!_loading && _error == null)
             Padding(
@@ -185,7 +162,7 @@ class _PersonnelManageScreenState extends State<PersonnelManageScreen> {
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           AppEmptyState(
-                            icon: Icons.cloud_off_rounded, title: 'Failed to load',
+                            icon: AppIcons.cloud_off_rounded, title: 'Failed to load',
                             subtitle: _error, action: 'Retry', onAction: _load,
                           ),
                         ])
@@ -193,7 +170,7 @@ class _PersonnelManageScreenState extends State<PersonnelManageScreen> {
                           ? ListView(children: [
                               const SizedBox(height: 80),
                               const AppEmptyState(
-                                icon: Icons.people_outline_rounded,
+                                icon: AppIcons.people_outline_rounded,
                                 title: 'No personnel found',
                                 subtitle: 'Tap Add Personnel to register one.',
                               ),
@@ -206,7 +183,6 @@ class _PersonnelManageScreenState extends State<PersonnelManageScreen> {
                                 if (i == 0) {
                                   return AppPageHeader(
                                     title: 'Personnel',
-                                  icon: Icons.badge_outlined,
                                     subtitle: '$_total people',
                                   );
                                 }
@@ -258,7 +234,7 @@ class _PersonnelCard extends StatelessWidget {
               ),
               child: Center(
                 child: Text(initials,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppInk.accent)),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppInk.accent)),
               ),
             ),
             const SizedBox(width: 12),
@@ -406,27 +382,27 @@ class _PersonnelFormState extends State<_PersonnelForm> {
             ),
             const SizedBox(height: 20),
             Text(isEdit ? 'Edit Personnel' : 'Add Personnel',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppInk.heading)),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppInk.heading)),
             const SizedBox(height: 20),
             if (_error != null) ...[
-              Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),
+              AppNotice(message: _error!),
               const SizedBox(height: 12),
             ],
-            AppInput(controller: _idNumber, label: 'ID Number *', prefixIcon: Icons.badge_outlined),
+            AppInput(controller: _idNumber, label: 'ID Number *', prefixIcon: AppIcons.badge_outlined),
             const SizedBox(height: 14),
-            AppInput(controller: _firstName, label: 'First Name *', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _firstName, label: 'First Name *', prefixIcon: AppIcons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _middleName, label: 'Middle Name', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _middleName, label: 'Middle Name', prefixIcon: AppIcons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _lastName, label: 'Last Name *', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _lastName, label: 'Last Name *', prefixIcon: AppIcons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _title, label: 'Position', prefixIcon: Icons.work_outlined),
+            AppInput(controller: _title, label: 'Position', prefixIcon: AppIcons.work_outlined),
             const SizedBox(height: 14),
-            AppInput(controller: _department, label: 'Department', prefixIcon: Icons.business_outlined),
+            AppInput(controller: _department, label: 'Department', prefixIcon: AppIcons.business_outlined),
             const SizedBox(height: 14),
-            AppInput(controller: _email, label: 'Email', prefixIcon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+            AppInput(controller: _email, label: 'Email', prefixIcon: AppIcons.email_outlined, keyboardType: TextInputType.emailAddress),
             const SizedBox(height: 14),
-            AppInput(controller: _mobile, label: 'Mobile', prefixIcon: Icons.phone_outlined, keyboardType: TextInputType.phone),
+            AppInput(controller: _mobile, label: 'Mobile', prefixIcon: AppIcons.phone_outlined, keyboardType: TextInputType.phone),
             const SizedBox(height: 20),
             AppButton(
               label: isEdit ? 'Save Changes' : 'Add Personnel',

@@ -7,7 +7,9 @@ import '../../../core/design/tokens/app_tokens.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
 import '../domain/attendance_models.dart';
+import 'scan_viewfinder.dart';
 import '../domain/qr_payload_parser.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Student poster QR scanner. The student scans an activity poster QR
 /// (which contains a URL like `.../attendance/checkin/{id}`), the activity
@@ -129,55 +131,59 @@ class _PosterScanScreenState extends State<PosterScanScreen> {
     final size = MediaQuery.sizeOf(context);
     final scanSize = (size.shortestSide * 0.66).clamp(210.0, 300.0);
 
+    final (Color tone, IconData icon) = _statusColor == AppInk.positive
+        ? (AppInk.positive, AppIcons.check_circle_rounded)
+        : _statusColor == AppInk.critical
+            ? (AppInk.critical, AppIcons.error_rounded)
+            : (AppInk.info, AppIcons.info_rounded);
+
     return AppScaffold(
-      title: 'Scan Poster QR',
+      title: 'Scan poster QR',
+      backgroundColor: Colors.white,
       showBackButton: true,
       actions: [
-        IconButton(
-          onPressed: _controller.toggleTorch,
+        AppCircleButton(
+          onTap: _controller.toggleTorch,
           tooltip: 'Flashlight',
-          icon: const Icon(Icons.flashlight_on_rounded),
+          icon: AppIcons.flashlight_on_rounded,
         ),
-        IconButton(
-          onPressed: _controller.switchCamera,
+        const SizedBox(width: 8),
+        AppCircleButton(
+          onTap: _controller.switchCamera,
           tooltip: 'Switch camera',
-          icon: const Icon(Icons.cameraswitch_rounded),
+          icon: AppIcons.cameraswitch_rounded,
         ),
       ],
       body: Stack(
         children: [
+          const Positioned.fill(child: ColoredBox(color: Colors.black)),
           // ── Camera scanner ──────────────────────────────────────────
           MobileScanner(
             controller: _controller,
             onDetect: _onDetect,
           ),
 
-          // ── Overlay frame ───────────────────────────────────────────
-          Center(
-            child: Container(
+          // ── Viewfinder ──────────────────────────────────────────────
+          Align(
+            alignment: const Alignment(0, -0.35),
+            child: SizedBox(
               width: scanSize,
               height: scanSize,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  width: 3,
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
+              child: ScanViewfinder(scanning: !_processing),
             ),
           ),
 
-          // ── Bottom status panel ─────────────────────────────────────
+          // ── Bottom status sheet ─────────────────────────────────────
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.85),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              decoration: const BoxDecoration(
+                color: Colors.white,
                 borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
+                    BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
               ),
               child: SafeArea(
                 top: false,
@@ -186,65 +192,61 @@ class _PosterScanScreenState extends State<PosterScanScreen> {
                   children: [
                     if (_processing)
                       const Padding(
-                        padding: EdgeInsets.only(bottom: 12),
+                        padding: EdgeInsets.symmetric(vertical: 10),
                         child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
                         ),
                       )
                     else if (_statusMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              _statusColor == AppInk.positive
-                                  ? Icons.check_circle_rounded
-                                  : _statusColor == AppInk.critical
-                                      ? Icons.error_rounded
-                                      : Icons.info_rounded,
-                              color: _statusColor ?? Colors.white,
-                              size: 20,
+                      Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: tone.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                _statusMessage!,
-                                style: TextStyle(
-                                  color: _statusColor ?? Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                textAlign: TextAlign.center,
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
+                            child: Icon(icon, color: tone, size: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _statusMessage!,
+                              style: AppType.row.copyWith(
+                                fontSize: 15,
+                                color: AppInk.onTint(tone),
                               ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       )
                     else
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          'Point your camera at the activity poster QR code.',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
+                      Column(
+                        children: [
+                          Text('Scan the activity poster',
+                              style: AppType.headline),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Point your camera at the QR code on the poster to '
+                            'check in or out.',
+                            style: AppType.body
+                                .copyWith(fontSize: 14, color: AppInk.muted),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
+                        ],
                       ),
                     if (_lastResult != null && _lastResult!.ok) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 16),
                       AppButton(
                         label: 'Done',
-                        icon: Icons.check_rounded,
+                        icon: AppIcons.check_rounded,
+                        fullWidth: true,
+                        size: AppButtonSize.lg,
                         onTap: () => Navigator.of(context).pop(),
                       ),
                     ],

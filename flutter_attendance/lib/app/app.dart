@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/design/components/components.dart';
 import '../core/design/tokens/app_brand.dart';
+import '../core/design/tokens/app_tokens.dart';
 import '../core/services/biometric_service.dart';
 import '../core/services/notification_service.dart';
 import '../core/theme/app_theme.dart';
@@ -15,6 +17,7 @@ import '../features/auth/presentation/welcome_screen.dart';
 import '../features/misc/data/misc_api.dart';
 import '../features/shell/presentation/admin_shell.dart';
 import '../features/shell/presentation/student_shell.dart';
+import '../core/theme/app_icons.dart';
 
 class FlutterAttendanceApp extends StatefulWidget {
   const FlutterAttendanceApp({super.key});
@@ -214,33 +217,30 @@ class _SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = schoolName.trim().isEmpty ? AppBrand.name : schoolName;
     return Scaffold(
+      backgroundColor: AppInk.page,
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              'assets/img/icon-logo.png',
-              width: 120,
-              height: 120,
-              fit: BoxFit.contain,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              name,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textDark,
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AppBrandMark(size: 88),
+              const SizedBox(height: 24),
+              Text(
+                name,
+                textAlign: TextAlign.center,
+                style: AppType.headline.copyWith(fontSize: 19),
               ),
-            ),
-            const SizedBox(height: 24),
-            const SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            ),
-          ],
+              const SizedBox(height: 20),
+              const SizedBox(
+                width: 120,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.all(Radius.circular(99)),
+                  child: LinearProgressIndicator(minHeight: 4),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -263,44 +263,42 @@ class _LockedScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = schoolName.trim().isEmpty ? AppBrand.name : schoolName;
     return Scaffold(
-      body: Center(
+      backgroundColor: AppInk.page,
+      body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Image.asset(
-                'assets/img/icon-logo.png',
-                width: 96,
-                height: 96,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 20),
+              const Spacer(),
+              const Center(child: AppBrandMark(size: 72)),
+              const SizedBox(height: 24),
               Text(
-                name,
+                'Locked',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textDark,
-                ),
+                style: AppType.title,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Locked. Unlock to continue.',
+              Text(
+                'Unlock $name to continue. Scans waiting to sync stay on '
+                'this phone.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: AppTheme.textMuted),
+                style: AppType.body.copyWith(color: AppInk.muted),
               ),
-              const SizedBox(height: 28),
-              FilledButton.icon(
-                onPressed: onUnlock,
-                icon: const Icon(Icons.fingerprint_rounded),
-                label: const Text('Unlock'),
+              const Spacer(),
+              AppButton(
+                label: 'Unlock',
+                icon: AppIcons.fingerprint_rounded,
+                fullWidth: true,
+                size: AppButtonSize.lg,
+                onTap: onUnlock,
               ),
               const SizedBox(height: 8),
-              TextButton(
-                onPressed: onSignOut,
-                child: const Text('Sign out'),
+              AppButton(
+                label: 'Sign out',
+                style: AppButtonStyle.ghost,
+                fullWidth: true,
+                onTap: onSignOut,
               ),
             ],
           ),
@@ -317,11 +315,13 @@ class _ErrorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppInk.page,
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Text('Failed to start: $message',
-              textAlign: TextAlign.center),
+        child: AppEmptyState(
+          icon: AppIcons.warning_amber_rounded,
+          tone: AppInk.critical,
+          title: 'The app could not start',
+          subtitle: message,
         ),
       ),
     );

@@ -7,6 +7,7 @@ import '../../auth/domain/app_session.dart';
 import '../../misc/data/misc_api.dart';
 import '../data/accounting_api.dart';
 import '../domain/accounting_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Expenses Report — web: Accounting::expenseSGenerate. Category + date
 /// range filter over the expenses table with a running total.
@@ -163,7 +164,7 @@ class _ExpensesReportScreenState extends State<ExpensesReportScreen> {
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: AppEmptyState(
-            icon: Icons.cloud_off_rounded,
+            icon: AppIcons.cloud_off_rounded,
             title: 'Failed to load',
             subtitle: _error,
             action: 'Retry',
@@ -180,7 +181,6 @@ class _ExpensesReportScreenState extends State<ExpensesReportScreen> {
         children: [
           AppPageHeader(
             title: 'Expenses Report',
-            icon: Icons.receipt_long_outlined,
             subtitle:
                 '${_rows.length} entries · ₱${_total.toStringAsFixed(2)} total',
           ),
@@ -188,7 +188,7 @@ class _ExpensesReportScreenState extends State<ExpensesReportScreen> {
             const Padding(
               padding: EdgeInsets.only(top: 60),
               child: AppEmptyState(
-                icon: Icons.receipt_outlined,
+                icon: AppIcons.receipt_outlined,
                 title: 'No expenses matched',
                 subtitle: 'Adjust the category or date filters.',
               ),
@@ -255,7 +255,7 @@ class _DateBtn extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.event_rounded,
+              const Icon(AppIcons.event_rounded,
                   size: 15, color: AppInk.muted),
               const SizedBox(width: 6),
               Expanded(
@@ -317,7 +317,7 @@ class _Row extends StatelessWidget {
               '₱${r.amount.toStringAsFixed(2)}',
               style: const TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
                 color: AppInk.critical,
               ),
             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/design/components/components.dart';
 import '../../../core/widgets/app_drawer.dart';
 import '../../activities/presentation/dashboard_screen.dart';
 import '../../auth/domain/app_session.dart';
@@ -8,6 +9,7 @@ import '../../misc/presentation/personnel_screen.dart';
 import '../../student/presentation/finance_screen.dart';
 import '../../student/presentation/my_qr_screen.dart';
 import '../../student/presentation/profile_screen.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Student shell: Dashboard + My QR in the bottom nav, matching the web
 /// student sidebar (Dashboard, My Profile, My Payment Records, My QR Code,
@@ -31,12 +33,13 @@ class _StudentShellState extends State<StudentShell> {
 
   /// Menu button that opens the drawer — used in every page's app bar.
   Widget _menuButton(BuildContext context) {
-    return IconButton(
-      icon: const Icon(Icons.menu_rounded, size: 24),
-      onPressed: () => Scaffold.of(context).openDrawer(),
-      style: IconButton.styleFrom(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    return Padding(
+      padding: const EdgeInsets.only(left: 12),
+      child: Center(
+        child: AppCircleButton(
+          icon: AppIcons.menu_rounded,
+          tooltip: 'Menu',
+          onTap: () => Scaffold.of(context).openDrawer(),
         ),
       ),
     );
@@ -44,8 +47,9 @@ class _StudentShellState extends State<StudentShell> {
 
   List<DrawerItem> get _drawerItems => [
         DrawerItem(
-          icon: Icons.badge_outlined,
-          title: 'My Profile',
+          group: 'You',
+          icon: AppIcons.badge_outlined,
+          title: 'My profile',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -56,8 +60,8 @@ class _StudentShellState extends State<StudentShell> {
           },
         ),
         DrawerItem(
-          icon: Icons.account_balance_wallet_outlined,
-          title: 'My Payment Records',
+          icon: AppIcons.account_balance_wallet_outlined,
+          title: 'Payment records',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -68,8 +72,9 @@ class _StudentShellState extends State<StudentShell> {
           },
         ),
         DrawerItem(
-          icon: Icons.groups_outlined,
-          title: 'FBMSO Officials',
+          group: 'Organization',
+          icon: AppIcons.groups_outlined,
+          title: 'FBMSO officials',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -106,19 +111,19 @@ class _StudentShellState extends State<StudentShell> {
           ][_index];
         },
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
+      bottomNavigationBar: AppBottomNav(
+        currentIndex: _index,
+        onSelect: (i) => setState(() => _index = i),
+        items: const [
+          AppNavItem(
+            icon: AppIcons.house,
+            selectedIcon: AppIcons.house_fill,
+            label: 'Home',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.qr_code_2_outlined),
-            selectedIcon: Icon(Icons.qr_code_2),
+          AppNavItem(
+            icon: AppIcons.qr_code_2,
             label: 'My QR',
+            prominent: true,
           ),
         ],
       ),

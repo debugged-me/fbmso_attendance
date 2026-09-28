@@ -6,6 +6,7 @@ import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/accounting_api.dart';
 import '../domain/accounting_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Ledger — web: Accounting::ledger. Collections vs expenses merged into
 /// one chronological running balance for a date range.
@@ -123,7 +124,7 @@ class _LedgerScreenState extends State<LedgerScreen> {
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: AppEmptyState(
-            icon: Icons.cloud_off_rounded,
+            icon: AppIcons.cloud_off_rounded,
             title: 'Failed to load',
             subtitle: _error,
             action: 'Retry',
@@ -140,7 +141,6 @@ class _LedgerScreenState extends State<LedgerScreen> {
         children: [
           AppPageHeader(
             title: 'Ledger',
-            icon: Icons.account_balance_wallet_outlined,
             subtitle:
                 '₱${_gross.toStringAsFixed(2)} in · ₱${_spent.toStringAsFixed(2)} out',
           ),
@@ -170,7 +170,7 @@ class _LedgerScreenState extends State<LedgerScreen> {
             const Padding(
               padding: EdgeInsets.only(top: 60),
               child: AppEmptyState(
-                icon: Icons.book_outlined,
+                icon: AppIcons.book_outlined,
                 title: 'No entries this period',
                 subtitle:
                     'Collections and expenses in range appear here.',
@@ -205,7 +205,7 @@ class _DateButton extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.event_rounded,
+              const Icon(AppIcons.event_rounded,
                   size: 15, color: AppInk.muted),
               const SizedBox(width: 6),
               Expanded(
@@ -254,7 +254,7 @@ class _SummaryPill extends StatelessWidget {
               label.toUpperCase(),
               style: TextStyle(
                 fontSize: 9.5,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
                 letterSpacing: 0.5,
                 color: color,
               ),
@@ -264,7 +264,7 @@ class _SummaryPill extends StatelessWidget {
               '₱${value.toStringAsFixed(0)}',
               style: TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
                 color: color,
               ),
               maxLines: 1,
@@ -301,8 +301,8 @@ class _LedgerTile extends StatelessWidget {
               ),
               child: Icon(
                 row.isIncome
-                    ? Icons.south_east_rounded
-                    : Icons.north_east_rounded,
+                    ? AppIcons.south_east_rounded
+                    : AppIcons.north_east_rounded,
                 size: 16,
                 color: color,
               ),
@@ -340,7 +340,7 @@ class _LedgerTile extends StatelessWidget {
                   '${row.isIncome ? '+' : '−'}₱${row.amount.toStringAsFixed(2)}',
                   style: TextStyle(
                     fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     color: color,
                   ),
                 ),

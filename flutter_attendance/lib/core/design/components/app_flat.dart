@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../tokens/app_tokens.dart';
+import '../../theme/app_icons.dart';
 
 /// Flat presentation primitives.
 ///
 /// These deliberately expose no `border`, `shadow`, `gradient` or `elevation`
 /// parameter. Separation comes from [AppRule] and [AppSpace.xxl]; emphasis
-/// comes from [AppType]. A screen built out of these cannot drift back into
-/// nested boxes without importing Material's Card directly.
+/// comes from [AppType].
 
 /// The hairline between two rows. Inset on the left so it starts under the
-/// text rather than under the leading icon — that alignment is what makes a
-/// list read as one group instead of a stack of separate items.
+/// text rather than under the leading icon.
 class AppRule extends StatelessWidget {
   const AppRule({super.key, this.indent = 0});
 
@@ -30,9 +29,9 @@ class AppRule extends StatelessWidget {
   }
 }
 
-/// A titled group of rows. The header is quiet; the content is the point.
+/// A titled group of rows. The label is quiet; the content is the point.
 ///
-/// [action] renders a trailing text button on the header line (e.g. "See all").
+/// [action] renders a trailing text link on the label line (e.g. "See all").
 class AppSection extends StatelessWidget {
   const AppSection({
     super.key,
@@ -58,10 +57,10 @@ class AppSection extends StatelessWidget {
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(padded ? AppSpace.lg : 0, 0,
-              padded ? AppSpace.lg : 0, AppSpace.md),
+              padded ? AppSpace.lg : 0, AppSpace.sm),
           child: Row(
             children: [
-              Expanded(child: Text(title.toUpperCase(), style: AppType.section)),
+              Expanded(child: Text(title, style: AppType.section)),
               if (action != null)
                 GestureDetector(
                   onTap: onActionTap,
@@ -88,9 +87,6 @@ class AppSection extends StatelessWidget {
 
 /// A single flat row: optional leading icon, title, optional subtitle,
 /// optional right-hand value, optional chevron.
-///
-/// This is the widget that replaces the 315 `Card(` instances — one row of
-/// information, no container of its own.
 class AppRow extends StatelessWidget {
   const AppRow({
     super.key,
@@ -118,9 +114,9 @@ class AppRow extends StatelessWidget {
     final row = Padding(
       padding: EdgeInsets.fromLTRB(
         AppSpace.lg,
-        dense ? AppSpace.md : AppSpace.lg,
+        dense ? AppSpace.md : 14,
         AppSpace.lg,
-        dense ? AppSpace.md : AppSpace.lg,
+        dense ? AppSpace.md : 14,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -136,7 +132,7 @@ class AppRow extends StatelessWidget {
               children: [
                 Text(title, style: AppType.row),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
-                  const SizedBox(height: AppSpace.xs),
+                  const SizedBox(height: 2),
                   Text(subtitle!, style: AppType.rowSub),
                 ],
               ],
@@ -153,8 +149,8 @@ class AppRow extends StatelessWidget {
           ],
           if (onTap != null) ...[
             const SizedBox(width: AppSpace.xs),
-            const Icon(Icons.chevron_right_rounded,
-                size: 20, color: AppInk.muted),
+            const Icon(AppIcons.chevron_right_rounded,
+                size: 18, color: AppInk.faint),
           ],
         ],
       ),
@@ -165,8 +161,8 @@ class AppRow extends StatelessWidget {
   }
 }
 
-/// A headline figure with its label underneath. Used where a stat card used
-/// to be — the number carries the emphasis instead of a coloured box.
+/// A headline figure with its label above. The number carries the emphasis
+/// instead of a coloured box.
 class AppStat extends StatelessWidget {
   const AppStat({
     super.key,
@@ -189,13 +185,14 @@ class AppStat extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label.toUpperCase(), style: AppType.section),
-        const SizedBox(height: AppSpace.sm),
+        Text(label, style: AppType.caption.copyWith(fontSize: 13)),
+        const SizedBox(height: 6),
         Text(
           value,
-          style: valueColor == null
-              ? AppType.display
-              : AppType.display.copyWith(color: valueColor),
+          style: AppType.display.copyWith(
+            fontSize: 28,
+            color: valueColor ?? AppInk.heading,
+          ),
         ),
         if (caption != null && caption!.isNotEmpty) ...[
           const SizedBox(height: AppSpace.xs),
@@ -213,26 +210,52 @@ class AppStat extends StatelessWidget {
   }
 }
 
-/// A small status pill. The one place a filled shape is still allowed,
+/// A small status pill. The one place a filled shape is always allowed,
 /// because the colour *is* the information.
 class AppChip extends StatelessWidget {
-  const AppChip({super.key, required this.label, required this.tone});
+  const AppChip({
+    super.key,
+    required this.label,
+    required this.tone,
+    this.dot = false,
+    this.icon,
+  });
 
   final String label;
   final Color tone;
 
+  /// Leading status dot.
+  final bool dot;
+
+  /// Leading icon (ignored when [dot] is set).
+  final IconData? icon;
+
   @override
   Widget build(BuildContext context) {
+    final ink = AppInk.onTint(tone);
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpace.sm,
-        vertical: AppSpace.xs,
-      ),
+      padding: EdgeInsets.fromLTRB(dot || icon != null ? 8 : 10, 4, 10, 4),
       decoration: BoxDecoration(
         color: tone.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(AppRadius.sm),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
-      child: Text(label, style: AppType.chip.copyWith(color: tone)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (dot) ...[
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: tone, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+          ] else if (icon != null) ...[
+            Icon(icon, size: 13, color: ink),
+            const SizedBox(width: 4),
+          ],
+          Text(label, style: AppType.chip.copyWith(color: ink)),
+        ],
+      ),
     );
   }
 }
@@ -247,9 +270,8 @@ class AppGap extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(height: height);
 }
 
-/// Renders [rows] with a hairline between each — never above the first or
-/// below the last. That "inner rules only" detail is most of what separates a
-/// tidy list from a noisy one.
+/// Renders [rows] with a hairline between each: never above the first or
+/// below the last.
 List<Widget> appRuled(List<Widget> rows, {double indent = AppSpace.lg}) {
   final out = <Widget>[];
   for (var i = 0; i < rows.length; i++) {

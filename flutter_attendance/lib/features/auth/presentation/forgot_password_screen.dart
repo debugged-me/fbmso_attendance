@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import 'auth_controller.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Email-only password recovery. The server sends a temporary password to
 /// the registered address; passwords can no longer be reset directly from
@@ -70,110 +71,65 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppInk.page,
-      appBar: AppBar(
-        title: const Text('Reset Password'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Reset password',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: AppInk.heading,
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: AppBackButton(),
+              ),
+              const SizedBox(height: 28),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: AppIconBox(
+                  icon: AppIcons.lock_key,
+                  size: 52,
+                  iconSize: 26,
                 ),
               ),
+              const SizedBox(height: 20),
+              Text('Reset your password',
+                  style: AppType.title.copyWith(fontSize: 28)),
               const SizedBox(height: 8),
-              const Text(
-                'Enter your registered email to receive a temporary password.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppInk.muted,
-                  height: 1.5,
-                ),
+              Text(
+                'Enter the email on your account. We will send you a '
+                'temporary password to sign in with.',
+                style: AppType.body.copyWith(color: AppInk.muted),
               ),
-              const SizedBox(height: 24),
-              if (_error != null) ...[
-                _Banner(message: _error!, color: AppInk.critical),
-                const SizedBox(height: 16),
-              ],
-              if (_success != null) ...[
-                _Banner(message: _success!, color: AppInk.positive),
-                const SizedBox(height: 16),
-              ],
+              const SizedBox(height: 28),
               AppInput(
                 controller: _emailController,
                 label: 'Email address',
-                prefixIcon: Icons.email_outlined,
+                hint: 'you@example.com',
+                prefixIcon: AppIcons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.done,
-                autofillHints: const ['email'],
+                autocorrect: false,
+                autofillHints: const [AutofillHints.email],
                 onSubmitted: (_) => _submit(),
               ),
+              if (_error != null) ...[
+                const SizedBox(height: 16),
+                AppNotice(message: _error!),
+              ],
+              if (_success != null) ...[
+                const SizedBox(height: 16),
+                AppNotice(message: _success!, tone: AppInk.positive),
+              ],
               const SizedBox(height: 24),
               AppButton(
                 label: 'Send temporary password',
                 fullWidth: true,
                 size: AppButtonSize.lg,
                 loading: _busy,
-                disabled: _busy,
                 onTap: _submit,
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _Banner extends StatelessWidget {
-  const _Banner({required this.message, required this.color});
-
-  final String message;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            color == AppInk.positive
-                ? Icons.check_circle_rounded
-                : Icons.error_rounded,
-            size: 18,
-            color: color,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w600,
-                height: 1.4,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

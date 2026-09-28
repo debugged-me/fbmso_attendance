@@ -128,20 +128,27 @@ class MobileApi extends CI_Controller
      * matters for browser-based callers. We restrict the allowed origins to
      * the school's own domains rather than reflecting any Origin back,
      * which would let attacker-controlled web pages call the API.
+     *
+     * Pages served from this machine (localhost / 127.0.0.1 / [::1], any
+     * port) are also allowed so the app can be previewed in a browser during
+     * development (`flutter run -d chrome` picks a random port). The API is
+     * bearer-token only, so a local page still needs a valid token.
      */
     private function send_cors_headers(): void
     {
-        $origin = $this->input->get_request_header('Origin');
+        $origin = (string) $this->input->get_request_header('Origin');
 
         // Allowlist of origins that may call the API from a browser.
         $allowed_origins = [
             'https://fbmso.srmsportal.com',
             'https://fbmso.softtechco.biz',
-            'http://localhost:3000',
-            'http://127.0.0.1:3000',
         ];
+        $is_local_origin = (bool) preg_match(
+            '#^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?$#i',
+            $origin
+        );
 
-        if ($origin && in_array($origin, $allowed_origins, true)) {
+        if ($origin !== '' && ($is_local_origin || in_array($origin, $allowed_origins, true))) {
             header('Access-Control-Allow-Origin: ' . $origin);
             header('Vary: Origin');
         }

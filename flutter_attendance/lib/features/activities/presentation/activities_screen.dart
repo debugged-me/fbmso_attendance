@@ -11,6 +11,7 @@ import '../../attendance/domain/attendance_models.dart';
 import '../../attendance/presentation/activity_form_screen.dart';
 import '../../attendance/presentation/activity_state_style.dart';
 import 'activity_detail_sheet.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Activities list. Tapping an activity opens a detail sheet with actions:
 /// - Students: "Show my QR" or "Scan Poster QR" (for self check-in).
@@ -83,22 +84,42 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
     if (result == true) _load();
   }
 
+  int _filter = 0;
+  static const _filters = ['All', 'Open', 'Upcoming', 'Past'];
+
+  bool _matches(Activity a) {
+    switch (_filter) {
+      case 1:
+        return a.isOpen;
+      case 2:
+        return !a.isOpen && a.state == 'scheduled';
+      case 3:
+        return !a.isOpen && a.state != 'scheduled';
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final open = _activities.where((a) => a.isOpen).toList();
-    final closed = _activities.where((a) => !a.isOpen).toList();
+    final shown = _activities.where(_matches).toList();
+    final open = shown.where((a) => a.isOpen).toList();
+    final upcoming =
+        shown.where((a) => !a.isOpen && a.state == 'scheduled').toList();
+    final past =
+        shown.where((a) => !a.isOpen && a.state != 'scheduled').toList();
+    final openCount = _activities.where((a) => a.isOpen).length;
     final canManage =
         StaffPermissions.of(widget.session).canManageActivities;
 
     return AppScaffold(
-      title: 'Activities',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: false,
       leading: widget.menuButton,
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
               onPressed: _createActivity,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('New Activity'),
+              icon: const Icon(AppIcons.add_rounded, size: 20),
+              label: const Text('New activity'),
             )
           : null,
       body: Column(
@@ -114,50 +135,65 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
                           children: [
                             const SizedBox(height: 80),
                             AppEmptyState(
-                              icon: Icons.cloud_off_rounded,
-                              title: 'Failed to load',
+                              icon: AppIcons.cloud_off_rounded,
+                              title: "Couldn't load activities",
                               subtitle: _error,
-                              action: 'Retry',
+                              action: 'Try again',
                               onAction: _load,
                             ),
                           ],
                         )
                       : ListView(
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 8, 16, 88),
+                          padding: const EdgeInsets.fromLTRB(0, 4, 0, 96),
                           children: [
-                            if (widget.showWelcomeHeader) ...[
-                              _WelcomeHeader(
-                                name: widget.session.displayName,
-                                openCount: open.length,
-                                totalCount: _activities.length,
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                              child: AppPageHeader(
+                                title: widget.showWelcomeHeader
+                                    ? 'Hi, ${widget.session.firstName.isNotEmpty ? widget.session.firstName : widget.session.displayName}'
+                                    : 'Activities',
+                                subtitle: _activities.isEmpty
+                                    ? null
+                                    : '$openCount open · ${_activities.length} total',
+                                padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
                               ),
-                              const SizedBox(height: 8),
-                            ],
-                            if (open.isNotEmpty) ...[
-                              const _SectionLabel('Happening now'),
-                              ...open.map((a) => _ActivityCard(
-                                    activity: a,
-                                    session: widget.session,
-                                    onTap: () => _openActivitySheet(a),
-                                  )),
-                            ],
-                            if (closed.isNotEmpty) ...[
-                              const _SectionLabel('Closed'),
-                              ...closed.map((a) => _ActivityCard(
-                                    activity: a,
-                                    session: widget.session,
-                                    onTap: () => _openActivitySheet(a),
-                                  )),
-                            ],
-                            if (_activities.isEmpty &&
-                                !widget.showWelcomeHeader)
-                              const AppEmptyState(
-                                icon: Icons.event_busy_rounded,
-                                title: 'No activities yet',
-                                subtitle:
-                                    'Activities will appear here once created.',
+                            ),
+                            if (_activities.isNotEmpty)
+                              AppFilterChips(
+                                labels: _filters,
+                                selected: _filter,
+                                onSelected: (i) => setState(() => _filter = i),
                               ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (open.isNotEmpty) ...[
+                                    const _SectionLabel('Open now'),
+                                    ...open.map(_card),
+                                  ],
+                                  if (upcoming.isNotEmpty) ...[
+                                    const _SectionLabel('Upcoming'),
+                                    ...upcoming.map(_card),
+                                  ],
+                                  if (past.isNotEmpty) ...[
+                                    const _SectionLabel('Past and closed'),
+                                    ...past.map(_card),
+                                  ],
+                                  if (shown.isEmpty)
+                                    AppEmptyState(
+                                      icon: AppIcons.event_busy_rounded,
+                                      title: _activities.isEmpty
+                                          ? 'No activities yet'
+                                          : 'Nothing here',
+                                      subtitle: _activities.isEmpty
+                                          ? 'Activities will appear here once created.'
+                                          : 'No activities match this filter.',
+                                    ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
             ),
@@ -166,130 +202,12 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
       ),
     );
   }
-}
 
-/// Welcome header shown at the top of the student Dashboard tab.
-class _WelcomeHeader extends StatelessWidget {
-  const _WelcomeHeader({
-    required this.name,
-    required this.openCount,
-    required this.totalCount,
-  });
-
-  final String name;
-  final int openCount;
-  final int totalCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Welcome,',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppInk.muted,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            name,
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              color: AppInk.heading,
-              height: 1.15,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _StatChip(
-                  icon: Icons.event_available_rounded,
-                  label: 'Open now',
-                  value: '$openCount',
-                  tone: AppInk.positive,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatChip(
-                  icon: Icons.event_note_rounded,
-                  label: 'Total',
-                  value: '$totalCount',
-                  tone: AppInk.accent,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  const _StatChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.tone,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: tone.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 20, color: tone),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppInk.muted,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppInk.heading,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _card(Activity a) => _ActivityCard(
+        activity: a,
+        session: widget.session,
+        onTap: () => _openActivitySheet(a),
+      );
 }
 
 class _SectionLabel extends StatelessWidget {
@@ -299,16 +217,8 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 16, 4, 10),
-      child: Text(
-        text.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.8,
-          color: AppInk.muted,
-        ),
-      ),
+      padding: const EdgeInsets.fromLTRB(2, 16, 2, 10),
+      child: Text(text, style: AppType.headline.copyWith(fontSize: 16.5)),
     );
   }
 }
@@ -326,63 +236,51 @@ class _ActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppInk.rule),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+    final time = _timeRange(activity);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AppCard(
+        onTap: onTap,
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ActivityDateBadge(
+              date: activity.activityDate,
+              highlight: activity.isOpen,
             ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      activity.title,
-                      style: const TextStyle(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppInk.heading,
-                        height: 1.3,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(activity.title, style: AppType.row),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      ActivityStatePill(activity: activity, dense: true),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  ActivityStatePill(activity: activity),
+                  const SizedBox(height: 8),
+                  if (time.isNotEmpty)
+                    _Meta(icon: AppIcons.clock, text: time),
+                  if (activity.location.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    _Meta(icon: AppIcons.map_pin, text: activity.location),
+                  ],
+                  if (activity.program.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    _Meta(
+                        icon: AppIcons.school_outlined,
+                        text: activity.program),
+                  ],
                 ],
               ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 14,
-                runSpacing: 4,
-                children: [
-                  if (activity.activityDate.isNotEmpty)
-                    _Meta(icon: Icons.event_rounded, text: activity.activityDate),
-                  if (activity.startTime.isNotEmpty)
-                    _Meta(
-                        icon: Icons.schedule_rounded,
-                        text: _timeRange(activity)),
-                  if (activity.location.isNotEmpty)
-                    _Meta(
-                        icon: Icons.place_rounded, text: activity.location),
-                ],
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -407,7 +305,6 @@ class _ActivityCard extends StatelessWidget {
   }
 }
 
-
 class _Meta extends StatelessWidget {
   const _Meta({required this.icon, required this.text});
   final IconData icon;
@@ -416,20 +313,18 @@ class _Meta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: AppInk.muted),
-        const SizedBox(width: 5),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 12.5,
-            color: AppInk.muted,
-            fontWeight: FontWeight.w500,
+        Icon(icon, size: 15, color: AppInk.muted),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppType.rowSub,
           ),
         ),
       ],
     );
   }
 }
-

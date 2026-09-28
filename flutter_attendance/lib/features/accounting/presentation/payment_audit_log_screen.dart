@@ -6,6 +6,7 @@ import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/accounting_api.dart';
 import '../domain/accounting_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Payment Activity Log — web: Accounting::paymentAuditLog. Who edited or
 /// deleted a payment, with the amount and O.R. it touched.
@@ -66,7 +67,7 @@ class _PaymentAuditLogScreenState extends State<PaymentAuditLogScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(32),
                     child: AppEmptyState(
-            icon: Icons.cloud_off_rounded,
+            icon: AppIcons.cloud_off_rounded,
             title: 'Failed to load',
             subtitle: _error,
             action: 'Retry',
@@ -83,7 +84,6 @@ class _PaymentAuditLogScreenState extends State<PaymentAuditLogScreen> {
                       if (i == 0) {
                         return AppPageHeader(
                           title: 'Payment Activity Log',
-                          icon: Icons.history_rounded,
                           subtitle:
                               '${_entries.length} entr${_entries.length == 1 ? 'y' : 'ies'} · edits & deletions',
                         );
@@ -92,7 +92,7 @@ class _PaymentAuditLogScreenState extends State<PaymentAuditLogScreen> {
                         return const Padding(
                           padding: EdgeInsets.only(top: 60),
                           child: AppEmptyState(
-                            icon: Icons.history_rounded,
+                            icon: AppIcons.history_rounded,
                             title: 'No activity yet',
                             subtitle:
                                 'Payment edits and deletions appear here.',
@@ -133,8 +133,8 @@ class _AuditTile extends StatelessWidget {
               ),
               child: Icon(
                 isDelete
-                    ? Icons.delete_outline_rounded
-                    : Icons.edit_outlined,
+                    ? AppIcons.delete_outline_rounded
+                    : AppIcons.edit_outlined,
                 color: tone,
                 size: 19,
               ),
@@ -149,11 +149,7 @@ class _AuditTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           entry.studentName,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppInk.heading,
-                          ),
+                          style: AppType.row,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -162,7 +158,7 @@ class _AuditTile extends StatelessWidget {
                         '₱${entry.amount.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                           color: tone,
                         ),
                       ),
@@ -190,7 +186,7 @@ class _AuditTile extends StatelessWidget {
                           entry.action.toUpperCase(),
                           style: TextStyle(
                             fontSize: 10,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                             letterSpacing: 0.4,
                             color: tone,
                           ),

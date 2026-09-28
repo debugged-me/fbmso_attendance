@@ -7,6 +7,7 @@ import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/misc_api.dart';
 import '../domain/misc_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Manage Users screen — admin can view, create, and delete user accounts.
 /// Mirrors the web Page/userAccounts page.
@@ -163,7 +164,7 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
       showBackButton: true,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreateForm,
-        icon: const Icon(Icons.person_add_rounded),
+        icon: const Icon(AppIcons.person_add_rounded),
         label: const Text('New Account'),
       ),
       body: Column(
@@ -171,34 +172,7 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
           const SyncStatusBanner(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Search name, username, email...',
-                prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppInk.muted),
-                suffixIcon: _search.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 20),
-                        onPressed: () {
-                          _searchController.clear();
-                          _onSearchChanged('');
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppInk.rule, width: 1.5),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppInk.accent, width: 2),
-                ),
-              ),
-            ),
+            child: AppSearchField(controller: _searchController, hint: 'Search name, username, email', onChanged: _onSearchChanged),
           ),
           if (!_loading && _error == null)
             Padding(
@@ -207,11 +181,7 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
                 children: [
                   Text(
                     '${_rows.length} of $_total users',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppInk.muted,
-                    ),
+                    style: AppType.rowSub,
                   ),
                 ],
               ),
@@ -225,7 +195,7 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           AppEmptyState(
-                            icon: Icons.cloud_off_rounded,
+                            icon: AppIcons.cloud_off_rounded,
                             title: 'Failed to load',
                             subtitle: _error,
                             action: 'Retry',
@@ -236,7 +206,7 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
                           ? ListView(children: [
                               const SizedBox(height: 80),
                               const AppEmptyState(
-                                icon: Icons.people_outline_rounded,
+                                icon: AppIcons.people_outline_rounded,
                                 title: 'No users found',
                                 subtitle: 'Tap New Account to create one.',
                               ),
@@ -249,7 +219,6 @@ class _UserAccountsScreenState extends State<UserAccountsScreen> {
                                 if (i == 0) {
                                   return AppPageHeader(
                                     title: 'Admin Accounts',
-                                    icon: Icons.admin_panel_settings_outlined,
                                     subtitle: '$_total accounts',
                                   );
                                 }
@@ -312,7 +281,7 @@ class _UserCard extends StatelessWidget {
                 child: Text(initials,
                     style: const TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         color: AppInk.accent)),
               ),
             ),
@@ -493,22 +462,21 @@ class _CreateUserFormState extends State<_CreateUserForm> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text('Create User Account',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppInk.heading)),
+            Text('Create User Account', style: AppType.headline.copyWith(fontSize: 20)),
             const SizedBox(height: 20),
             if (_error != null) ...[
-              Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),
+              AppNotice(message: _error!),
               const SizedBox(height: 12),
             ],
-            AppInput(controller: _username, label: 'Username *', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _username, label: 'Username *', prefixIcon: AppIcons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _idNumber, label: 'ID Number *', prefixIcon: Icons.badge_outlined),
+            AppInput(controller: _idNumber, label: 'ID Number *', prefixIcon: AppIcons.badge_outlined),
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               initialValue: _acctLevel,
               decoration: InputDecoration(
                 labelText: 'Account Level *',
-                prefixIcon: const Icon(Icons.shield_outlined, size: 20, color: AppInk.muted),
+                prefixIcon: const Icon(AppIcons.shield_outlined, size: 20, color: AppInk.muted),
                 filled: true, fillColor: Colors.white,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),
@@ -518,22 +486,22 @@ class _CreateUserFormState extends State<_CreateUserForm> {
               onChanged: (v) => setState(() => _acctLevel = v ?? 'Admin'),
             ),
             const SizedBox(height: 14),
-            AppInput(controller: _fName, label: 'First Name *', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _fName, label: 'First Name *', prefixIcon: AppIcons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _mName, label: 'Middle Name', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _mName, label: 'Middle Name', prefixIcon: AppIcons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _lName, label: 'Last Name *', prefixIcon: Icons.person_outline_rounded),
+            AppInput(controller: _lName, label: 'Last Name *', prefixIcon: AppIcons.person_outline_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _email, label: 'Email *', prefixIcon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+            AppInput(controller: _email, label: 'Email *', prefixIcon: AppIcons.email_outlined, keyboardType: TextInputType.emailAddress),
             const SizedBox(height: 14),
             AppInput(
               controller: _password,
               label: 'Password *',
-              prefixIcon: Icons.lock_outline_rounded,
+              prefixIcon: AppIcons.lock_outline_rounded,
               obscureText: _obscurePass,
               suffixIcon: GestureDetector(
                 onTap: () => setState(() => _obscurePass = !_obscurePass),
-                child: Icon(_obscurePass ? Icons.visibility_off : Icons.visibility, size: 20, color: AppInk.muted),
+                child: Icon(_obscurePass ? AppIcons.visibility_off : AppIcons.visibility, size: 20, color: AppInk.muted),
               ),
             ),
             const SizedBox(height: 20),

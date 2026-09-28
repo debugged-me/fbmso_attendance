@@ -10,6 +10,7 @@ import '../domain/attendance_models.dart';
 import 'activity_form_screen.dart';
 import 'activity_state_style.dart';
 import 'activity_poster_screen.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Staff activity management — list all activities with create / edit /
 /// delete actions.
@@ -183,7 +184,7 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
             child: Row(
               children: [
                 Icon(
-                  _posterMode ? Icons.image_rounded : Icons.qr_code_scanner_rounded,
+                  _posterMode ? AppIcons.image_rounded : AppIcons.qr_code_scanner_rounded,
                   size: 22,
                   color: _posterMode ? AppInk.accent : AppInk.muted,
                 ),
@@ -232,7 +233,7 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.cloud_off_rounded,
+                                const Icon(AppIcons.cloud_off_rounded,
                                     size: 48, color: AppInk.muted),
                                 const SizedBox(height: 14),
                                 Text(_error!,
@@ -252,7 +253,6 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
                             if (i == 0) {
                               return AppPageHeader(
                                 title: 'Manage Activities',
-                                icon: Icons.event_note_rounded,
                                 subtitle:
                                     '${_activities.length} activities · tap a card to manage',
                               );
@@ -273,7 +273,7 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openForm(),
-        icon: const Icon(Icons.add_rounded),
+        icon: const Icon(AppIcons.add_rounded),
         label: const Text('New Activity'),
       ),
     );
@@ -327,18 +327,14 @@ class _ActivityManageCard extends StatelessWidget {
                     children: [
                       Text(
                         activity.title,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppInk.heading,
-                        ),
+                        style: AppType.row,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(Icons.event_rounded,
+                          Icon(AppIcons.event_rounded,
                               size: 14, color: AppInk.muted),
                           const SizedBox(width: 4),
                           Text(
@@ -348,7 +344,7 @@ class _ActivityManageCard extends StatelessWidget {
                           ),
                           if (activity.location.isNotEmpty) ...[
                             const SizedBox(width: 10),
-                            Icon(Icons.place_outlined,
+                            Icon(AppIcons.place_outlined,
                                 size: 14, color: AppInk.muted),
                             const SizedBox(width: 4),
                             Flexible(
@@ -369,7 +365,7 @@ class _ActivityManageCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 ActivityStatePill(activity: activity),
                 const SizedBox(width: 6),
-                const Icon(Icons.edit_rounded, color: AppInk.muted, size: 20),
+                const Icon(AppIcons.edit_rounded, color: AppInk.muted, size: 20),
               ],
             ),
 
@@ -383,7 +379,7 @@ class _ActivityManageCard extends StatelessWidget {
             const SizedBox(height: 10),
             AppButton(
               label: isOpen ? 'Close check-ins' : 'Open check-ins',
-              icon: isOpen ? Icons.lock_outline_rounded : Icons.lock_open_rounded,
+              icon: isOpen ? AppIcons.lock_outline_rounded : AppIcons.lock_open_rounded,
               size: AppButtonSize.sm,
               style: AppButtonStyle.outline,
               fullWidth: true,
@@ -397,7 +393,7 @@ class _ActivityManageCard extends StatelessWidget {
                   Expanded(
                     child: AppButton(
                       label: 'View Poster QR',
-                      icon: Icons.qr_code_2_rounded,
+                      icon: AppIcons.qr_code_2_rounded,
                       size: AppButtonSize.sm,
                       fullWidth: true,
                       onTap: () => _openPoster(context),

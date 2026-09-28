@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 
+import '../design/tokens/app_tokens.dart';
+
+/// A grey placeholder block with a soft shimmer sweeping across it.
 class SkeletonLoader extends StatefulWidget {
   const SkeletonLoader({super.key, this.width, this.height, this.borderRadius});
 
@@ -14,22 +16,13 @@ class SkeletonLoader extends StatefulWidget {
 
 class _SkeletonLoaderState extends State<SkeletonLoader>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat();
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
-
-    _animation = Tween<double>(
-      begin: -2,
-      end: 2,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
+  static const _base = Color(0xFFEEF0F3);
+  static const _highlight = Color(0xFFF8F9FB);
 
   @override
   void dispose() {
@@ -40,22 +33,18 @@ class _SkeletonLoaderState extends State<SkeletonLoader>
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _animation,
+      animation: _controller,
       builder: (context, child) {
+        final t = Curves.easeInOut.transform(_controller.value);
         return Container(
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
             borderRadius: widget.borderRadius ?? BorderRadius.circular(8),
             gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                Colors.grey.shade300,
-                Colors.grey.shade200,
-                Colors.grey.shade300,
-              ],
-              stops: [0.0, _animation.value.abs(), 1.0],
+              begin: Alignment(-3 + t * 4, 0),
+              end: Alignment(-1 + t * 4, 0),
+              colors: const [_base, _highlight, _base],
             ),
           ),
         );
@@ -70,43 +59,25 @@ class DashboardTileSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.cardBorder),
-        boxShadow: AppTheme.subtleShadow,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppInk.rule),
+        boxShadow: AppShadow.xs,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                ),
-              ),
-              const Spacer(),
-              Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ],
+          SkeletonLoader(
+            width: 38,
+            height: 38,
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(height: 10),
-          const SkeletonLoader(height: 14, width: 110),
-          const SizedBox(height: 6),
-          const SkeletonLoader(height: 10, width: 70),
           const SizedBox(height: 12),
-          const SkeletonLoader(height: 8, width: 50),
+          const SkeletonLoader(height: 14, width: 110),
+          const SizedBox(height: 8),
+          const SkeletonLoader(height: 10, width: 70),
         ],
       ),
     );
@@ -121,28 +92,33 @@ class ListSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       itemCount: itemCount,
       itemBuilder: (context, index) {
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          padding: const EdgeInsets.only(bottom: 10),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppInk.rule),
             ),
             child: Row(
               children: [
-                const SkeletonLoader(width: 48, height: 48),
-                const SizedBox(width: 12),
-                Expanded(
+                SkeletonLoader(
+                  width: 44,
+                  height: 44,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SkeletonLoader(height: 14, width: 150),
-                      const SizedBox(height: 8),
-                      const SkeletonLoader(height: 12, width: 100),
+                      SkeletonLoader(height: 13, width: 160),
+                      SizedBox(height: 8),
+                      SkeletonLoader(height: 11, width: 100),
                     ],
                   ),
                 ),
@@ -164,19 +140,19 @@ class CardSkeleton extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppInk.rule),
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SkeletonLoader(height: 24, width: 100),
-          const SizedBox(height: 16),
-          const SkeletonLoader(height: 16, width: double.infinity),
-          const SizedBox(height: 8),
-          const SkeletonLoader(height: 16, width: double.infinity),
-          const SizedBox(height: 8),
-          const SkeletonLoader(height: 16, width: 200),
+          SkeletonLoader(height: 22, width: 110),
+          SizedBox(height: 16),
+          SkeletonLoader(height: 14, width: double.infinity),
+          SizedBox(height: 8),
+          SkeletonLoader(height: 14, width: double.infinity),
+          SizedBox(height: 8),
+          SkeletonLoader(height: 14, width: 200),
         ],
       ),
     );

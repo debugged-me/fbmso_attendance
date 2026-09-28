@@ -5,6 +5,7 @@ import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../data/auth_api.dart';
 import '../domain/app_session.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Change password screen. Three fields: current, new, confirm.
 /// Calls `POST /api/mobile/auth/change-password`.
@@ -127,9 +128,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const AppPageHeader(
-                    title: 'Change Password',
-                    icon: Icons.lock_reset_rounded,
-                    subtitle: 'Keep your account secure',
+                    title: 'Change password',
+                    subtitle: 'Pick one you don\'t use anywhere else.',
                   ),
                   AppCard(
                     padding: const EdgeInsets.all(18),
@@ -138,17 +138,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       children: [
                   AppInput(
                     controller: _currentController,
-                    label: 'Current Password',
+                    label: 'Current password',
                     obscureText: _obscureCurrent,
-                    prefixIcon: Icons.lock_outline_rounded,
+                    prefixIcon: AppIcons.lock_outline_rounded,
                     textInputAction: TextInputAction.next,
                     suffixIcon: GestureDetector(
                       onTap: () =>
                           setState(() => _obscureCurrent = !_obscureCurrent),
                       child: Icon(
                         _obscureCurrent
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
+                            ? AppIcons.visibility_off_outlined
+                            : AppIcons.visibility_outlined,
                         size: 20,
                         color: AppInk.muted,
                       ),
@@ -157,17 +157,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   const SizedBox(height: 14),
                   AppInput(
                     controller: _newController,
-                    label: 'New Password',
+                    label: 'New password',
                     obscureText: _obscureNew,
-                    prefixIcon: Icons.lock_outline_rounded,
+                    prefixIcon: AppIcons.lock_outline_rounded,
                     textInputAction: TextInputAction.next,
                     suffixIcon: GestureDetector(
                       onTap: () =>
                           setState(() => _obscureNew = !_obscureNew),
                       child: Icon(
                         _obscureNew
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
+                            ? AppIcons.visibility_off_outlined
+                            : AppIcons.visibility_outlined,
                         size: 20,
                         color: AppInk.muted,
                       ),
@@ -176,9 +176,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   const SizedBox(height: 14),
                   AppInput(
                     controller: _confirmController,
-                    label: 'Confirm New Password',
+                    label: 'Confirm new password',
                     obscureText: _obscureConfirm,
-                    prefixIcon: Icons.lock_outline_rounded,
+                    prefixIcon: AppIcons.lock_outline_rounded,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _submit(),
                     suffixIcon: GestureDetector(
@@ -186,8 +186,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                           setState(() => _obscureConfirm = !_obscureConfirm),
                       child: Icon(
                         _obscureConfirm
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
+                            ? AppIcons.visibility_off_outlined
+                            : AppIcons.visibility_outlined,
                         size: 20,
                         color: AppInk.muted,
                       ),
@@ -195,7 +195,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   ),
                   const SizedBox(height: 24),
                   AppButton(
-                    label: 'Change Password',
+                    label: 'Update password',
                     fullWidth: true,
                     size: AppButtonSize.lg,
                     loading: _busy,
@@ -220,35 +220,10 @@ class _ErrorBanner extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppInk.critical.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppInk.critical.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline_rounded,
-              size: 18, color: AppInk.critical),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: AppInk.critical,
-                fontWeight: FontWeight.w600,
-                height: 1.4,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: AppNotice(message: message),
+      );
 }
 
 class _SuccessBanner extends StatelessWidget {
@@ -256,33 +231,8 @@ class _SuccessBanner extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppInk.positive.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppInk.positive.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle_outline_rounded,
-              size: 18, color: AppInk.positive),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: AppInk.positive,
-                fontWeight: FontWeight.w600,
-                height: 1.4,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: AppNotice(message: message, tone: AppInk.positive),
+      );
 }

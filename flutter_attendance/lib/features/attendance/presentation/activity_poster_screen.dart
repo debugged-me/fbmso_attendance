@@ -5,6 +5,7 @@ import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Displays a full-screen QR poster for an activity.
 /// Students scan this QR with their phone (via the PosterScanScreen)
@@ -70,12 +71,12 @@ class _ActivityPosterScreenState extends State<ActivityPosterScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Activity Poster',
+      title: 'Check-in poster',
       showBackButton: true,
       actions: [
-        IconButton(
-          icon: const Icon(Icons.refresh_rounded),
-          onPressed: _load,
+        AppCircleButton(
+          icon: AppIcons.refresh_rounded,
+          onTap: _load,
           tooltip: 'Refresh',
         ),
       ],
@@ -83,132 +84,101 @@ class _ActivityPosterScreenState extends State<ActivityPosterScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: AppEmptyState(
-                      icon: Icons.cloud_off_rounded,
-                      title: 'Failed to load',
-                      subtitle: _error,
-                      action: 'Retry',
-                      onAction: _load,
-                    ),
+                  child: AppEmptyState(
+                    icon: AppIcons.cloud_off_rounded,
+                    title: "Couldn't load the poster",
+                    subtitle: _error,
+                    action: 'Try again',
+                    onAction: _load,
                   ),
                 )
               : SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                    child: Column(
-                      children: [
-                        // ── QR Code ──────────────────────────────────────
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 20,
-                                offset: const Offset(0, 8),
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                  child: Column(
+                    children: [
+                      AppCard.elevated(
+                        radius: AppRadius.xl,
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+                        child: Column(
+                          children: [
+                            const AppChip(
+                              label: 'Scan to check in or out',
+                              tone: AppInk.accent,
+                              icon: AppIcons.scan,
+                            ),
+                            const SizedBox(height: 18),
+                            QrImageView(
+                              data: _checkinUrl,
+                              version: QrVersions.auto,
+                              size: 264,
+                              gapless: true,
+                              padding: EdgeInsets.zero,
+                              errorCorrectionLevel: QrErrorCorrectLevel.H,
+                              backgroundColor: Colors.white,
+                              eyeStyle: const QrEyeStyle(
+                                eyeShape: QrEyeShape.square,
+                                color: AppInk.heading,
+                              ),
+                              dataModuleStyle: const QrDataModuleStyle(
+                                dataModuleShape: QrDataModuleShape.square,
+                                color: AppInk.heading,
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            Text(
+                              _title,
+                              style: AppType.title.copyWith(fontSize: 22),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 6),
+                            if (_activityDate.isNotEmpty || _location.isNotEmpty)
+                              Text(
+                                [
+                                  if (_activityDate.isNotEmpty) _activityDate,
+                                  if (_location.isNotEmpty) _location,
+                                ].join(' · '),
+                                style: AppType.body.copyWith(
+                                    fontSize: 14, color: AppInk.muted),
+                                textAlign: TextAlign.center,
+                              ),
+                            if (_program.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                'For $_program',
+                                style: AppType.caption,
+                                textAlign: TextAlign.center,
                               ),
                             ],
-                          ),
-                          child: QrImageView(
-                            data: _checkinUrl,
-                            version: QrVersions.auto,
-                            size: 280,
-                            gapless: true,
-                            errorCorrectionLevel: QrErrorCorrectLevel.H,
-                            backgroundColor: Colors.white,
-                          ),
+                          ],
                         ),
-                        const SizedBox(height: 24),
-
-                        // ── Activity info ────────────────────────────────
-                        Text(
-                          _title,
+                      ),
+                      const SizedBox(height: 16),
+                      const AppNotice(
+                        tone: AppInk.accent,
+                        message: 'Students open the app, tap "Scan an activity '
+                            'poster" and point their camera here to check in '
+                            'or out on their own.',
+                      ),
+                      const SizedBox(height: 12),
+                      // Check-in URL (for manual entry or troubleshooting).
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppInk.subtle,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: SelectableText(
+                          _checkinUrl,
                           style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: AppInk.heading,
+                            fontSize: 11.5,
+                            fontFamily: 'monospace',
+                            color: AppInk.muted,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 8),
-                        if (_activityDate.isNotEmpty || _location.isNotEmpty)
-                          Text(
-                            [
-                              if (_activityDate.isNotEmpty) _activityDate,
-                              if (_location.isNotEmpty) _location,
-                            ].join(' • '),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppInk.muted,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        if (_program.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            'Program: $_program',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppInk.muted,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-
-                        const SizedBox(height: 20),
-
-                        // ── Instructions ─────────────────────────────────
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: AppInk.accent.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.info_outline_rounded,
-                                  size: 20, color: AppInk.accent),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Students scan this QR with their phone to self check-in/out.',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: AppInk.accent.withValues(alpha: 0.9),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // ── Check-in URL (for debugging/manual entry) ────
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppInk.rule),
-                          ),
-                          child: SelectableText(
-                            _checkinUrl,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontFamily: 'monospace',
-                              color: AppInk.muted,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
     );

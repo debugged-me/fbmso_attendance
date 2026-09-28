@@ -7,6 +7,7 @@ import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../../misc/data/misc_api.dart';
 import '../../misc/domain/misc_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Personnel directory — shows officials and staff.
 class PersonnelScreen extends StatefulWidget {
@@ -72,7 +73,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           AppEmptyState(
-                            icon: Icons.cloud_off_rounded,
+                            icon: AppIcons.cloud_off_rounded,
                             title: 'Failed to load',
                             subtitle: _error,
                             action: 'Retry',
@@ -83,7 +84,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                           ? ListView(children: [
                               const SizedBox(height: 80),
                               const AppEmptyState(
-                                icon: Icons.people_outline_rounded,
+                                icon: AppIcons.people_outline_rounded,
                                 title: 'No personnel found',
                                 subtitle:
                                     'Personnel and officials will appear here.',
@@ -97,7 +98,6 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                                 if (i == 0) {
                                   return AppPageHeader(
                                     title: 'FBMSO Officials',
-                                    icon: Icons.groups_outlined,
                                     subtitle: '${_personnel.length} people',
                                   );
                                 }
@@ -137,13 +137,13 @@ class _PersonnelCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(
                           color: AppInk.accent.withValues(alpha: 0.12),
-                          child: const Icon(Icons.person_rounded,
+                          child: const Icon(AppIcons.person_rounded,
                               color: AppInk.accent, size: 28),
                         ),
                       )
                     : Container(
                         color: AppInk.accent.withValues(alpha: 0.12),
-                        child: const Icon(Icons.person_rounded,
+                        child: const Icon(AppIcons.person_rounded,
                             color: AppInk.accent, size: 28),
                       ),
               ),
@@ -155,11 +155,7 @@ class _PersonnelCard extends StatelessWidget {
                 children: [
                   Text(
                     person.fullName,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppInk.heading,
-                    ),
+                    style: AppType.row,
                   ),
                   if (person.title.isNotEmpty) ...[
                     const SizedBox(height: 3),
@@ -176,11 +172,7 @@ class _PersonnelCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       person.bio,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppInk.muted,
-                        height: 1.4,
-                      ),
+                      style: AppType.rowSub,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),

@@ -9,6 +9,7 @@ import '../../auth/domain/app_session.dart';
 import '../../auth/domain/staff_permissions.dart';
 import '../../misc/data/misc_api.dart';
 import '../../misc/domain/misc_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Expenses management screen — admin can view, create, edit, delete expenses
 /// and manage categories. Mirrors the web Accounting/expenses page.
@@ -159,7 +160,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 child: Text('Filter by category',
                     style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         color: AppInk.heading)),
               ),
             ),
@@ -204,7 +205,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
               onPressed: () => _showForm(),
-              icon: const Icon(Icons.add_rounded),
+              icon: const Icon(AppIcons.add_rounded),
               label: const Text('Add Expense'),
             )
           : null,
@@ -220,7 +221,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           AppEmptyState(
-                            icon: Icons.cloud_off_rounded,
+                            icon: AppIcons.cloud_off_rounded,
                             title: 'Failed to load',
                             subtitle: _error,
                             action: 'Retry',
@@ -235,7 +236,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             if (i == 0) {
                               return AppPageHeader(
                                 title: 'Expenses',
-                                icon: Icons.receipt_long_outlined,
                                 subtitle:
                                     '₱${_total.toStringAsFixed(2)} · ${visible.length} record${visible.length == 1 ? '' : 's'}',
                               );
@@ -266,7 +266,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                           child: Row(
                                             children: [
                                               const Icon(
-                                                  Icons
+                                                  AppIcons
                                                       .filter_list_rounded,
                                                   size: 18,
                                                   color: AppInk.accent),
@@ -287,7 +287,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                                 ),
                                               ),
                                               const Icon(
-                                                  Icons
+                                                  AppIcons
                                                       .keyboard_arrow_down_rounded,
                                                   size: 20,
                                                   color: AppInk.muted),
@@ -313,7 +313,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                         child: const Row(
                                           children: [
                                             Icon(
-                                                Icons
+                                                AppIcons
                                                     .sell_outlined,
                                                 size: 16,
                                                 color: AppInk.accent),
@@ -337,7 +337,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             }
                             if (visible.isEmpty) {
                               return const AppEmptyState(
-                                icon: Icons.receipt_long_outlined,
+                                icon: AppIcons.receipt_long_outlined,
                                 title: 'No expenses yet',
                                 subtitle: 'Tap Add Expense to record one.',
                               );
@@ -380,7 +380,7 @@ class _ExpenseCard extends StatelessWidget {
                 color: AppInk.critical.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.receipt_long_rounded,
+              child: const Icon(AppIcons.receipt_long_rounded,
                   color: AppInk.critical, size: 22),
             ),
             const SizedBox(width: 12),
@@ -392,11 +392,7 @@ class _ExpenseCard extends StatelessWidget {
                     expense.description.isEmpty
                         ? '(no description)'
                         : expense.description,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppInk.heading,
-                    ),
+                    style: AppType.row,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -435,11 +431,7 @@ class _ExpenseCard extends StatelessWidget {
               children: [
                 Text(
                   '₱${(double.tryParse(expense.amount.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0).toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppInk.heading,
-                  ),
+                  style: AppType.row,
                 ),
               ],
             ),
@@ -588,30 +580,30 @@ class _ExpenseFormState extends State<_ExpenseForm> {
             Text(
               widget.existing != null ? 'Edit Expense' : 'Add Expense',
               style: const TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.w800, color: AppInk.heading),
+                  fontSize: 20, fontWeight: FontWeight.w700, color: AppInk.heading),
             ),
             const SizedBox(height: 20),
             if (_error != null) ...[
-              Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),
+              AppNotice(message: _error!),
               const SizedBox(height: 12),
             ],
             AppInput(
               controller: _desc,
               label: 'Description *',
-              prefixIcon: Icons.description_outlined,
+              prefixIcon: AppIcons.description_outlined,
             ),
             const SizedBox(height: 14),
             AppInput(
               controller: _amount,
               label: 'Amount *',
-              prefixIcon: Icons.payments_outlined,
+              prefixIcon: AppIcons.payments_outlined,
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 14),
             AppInput(
               controller: _responsible,
               label: 'Responsible',
-              prefixIcon: Icons.person_outline_rounded,
+              prefixIcon: AppIcons.person_outline_rounded,
             ),
             const SizedBox(height: 14),
             GestureDetector(
@@ -620,7 +612,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
                 child: AppInput(
                   controller: _date,
                   label: 'Expense Date *',
-                  prefixIcon: Icons.calendar_today_rounded,
+                  prefixIcon: AppIcons.calendar_today_rounded,
                 ),
               ),
             ),
@@ -629,7 +621,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
               initialValue: _category.isEmpty ? null : _category,
               decoration: InputDecoration(
                 labelText: 'Category',
-                prefixIcon: const Icon(Icons.category_outlined, size: 20, color: AppInk.muted),
+                prefixIcon: const Icon(AppIcons.category_outlined, size: 20, color: AppInk.muted),
                 filled: true, fillColor: Colors.white,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),
@@ -753,12 +745,10 @@ class _CategoriesSheetState extends State<_CategoriesSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text('Expense Categories',
-              style: TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.w800, color: AppInk.heading)),
+          Text('Expense Categories', style: AppType.headline.copyWith(fontSize: 20)),
           const SizedBox(height: 16),
           if (_error != null) ...[
-            Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),
+            AppNotice(message: _error!),
             const SizedBox(height: 12),
           ],
           Row(
@@ -767,7 +757,7 @@ class _CategoriesSheetState extends State<_CategoriesSheet> {
                 child: AppInput(
                   controller: _newCategory,
                   label: 'New Category',
-                  prefixIcon: Icons.add_outlined,
+                  prefixIcon: AppIcons.add_outlined,
                 ),
               ),
               const SizedBox(width: 8),
@@ -787,13 +777,13 @@ class _CategoriesSheetState extends State<_CategoriesSheet> {
               itemBuilder: (context, i) {
                 final c = widget.categories[i];
                 return ListTile(
-                  leading: const Icon(Icons.label_outline_rounded,
+                  leading: const Icon(AppIcons.label_outline_rounded,
                       color: AppInk.accent, size: 20),
                   title: Text(c.category,
                       style: const TextStyle(
                           fontSize: 14, fontWeight: FontWeight.w600)),
                   trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded,
+                    icon: const Icon(AppIcons.delete_outline_rounded,
                         color: AppInk.critical, size: 20),
                     onPressed: () => _delete(c),
                   ),
@@ -839,7 +829,7 @@ class _CategoryOption extends StatelessWidget {
               ),
             ),
             if (selected)
-              const Icon(Icons.check_rounded,
+              const Icon(AppIcons.check_rounded,
                   size: 20, color: AppInk.accent),
           ],
         ),

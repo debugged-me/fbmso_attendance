@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 
 import '../design/components/components.dart';
+import '../design/tokens/app_brand.dart';
 import '../design/tokens/app_tokens.dart';
 import '../services/biometric_service.dart';
 import '../services/connectivity_service.dart';
 import '../services/outbox_service.dart';
+import '../theme/app_icons.dart';
 import '../../features/auth/domain/app_session.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/change_avatar_screen.dart';
 import '../../features/auth/presentation/change_password_screen.dart';
 
-/// A consistent app drawer used by every shell. Shows the user header,
-/// navigation items, and account actions. This drawer is attached to the
-/// shell's Scaffold so it's available on every page via the hamburger icon
-/// in the app bar or by swiping from the left edge.
+/// A consistent app drawer used by every shell: the signed-in person at the
+/// top, navigation grouped by area, account actions at the bottom. It is
+/// attached to the shell's Scaffold so it's available on every page via the
+/// menu button or by swiping from the left edge.
 class AppAppDrawer extends StatelessWidget {
   const AppAppDrawer({
     super.key,
@@ -28,62 +30,43 @@ class AppAppDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final term = [session.activeSy, session.activeSem]
+        .where((e) => e.trim().isNotEmpty)
+        .join(' · ');
+
+    final nav = <Widget>[];
+    String? lastGroup;
+    for (final item in items) {
+      if (item.group != null && item.group != lastGroup) {
+        nav.add(_GroupLabel(item.group!));
+        lastGroup = item.group;
+      }
+      nav.add(_DrawerTile(item: item));
+    }
+
     return Drawer(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
-          topRight: Radius.circular(24),
-          bottomRight: Radius.circular(24),
+          topRight: Radius.circular(AppRadius.xl),
+          bottomRight: Radius.circular(AppRadius.xl),
         ),
       ),
-      width: 290,
+      width: 300,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Gradient header — avatar + name + role on brand color ──
-            Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF14294B),
-                    Color(0xFF1E3FA0),
-                    Color(0xFF4A7CF7),
-                  ],
-                ),
-                borderRadius: BorderRadius.only(
-                  topRight: Radius.circular(24),
-                ),
-              ),
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+            // ── Who is signed in ─────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               child: Row(
                 children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.35),
-                          width: 1.5),
-                    ),
-                    child: ClipOval(
-                      child: session.avatar.isNotEmpty
-                          ? Image.network(
-                              session.avatar,
-                              fit: BoxFit.cover,
-                              width: 52,
-                              height: 52,
-                              errorBuilder: (context, error, stack) =>
-                                  const Icon(Icons.person_rounded,
-                                      color: Colors.white, size: 28),
-                            )
-                          : const Icon(Icons.person_rounded,
-                              color: Colors.white, size: 28),
-                    ),
+                  AppAvatar(
+                    name: session.displayName,
+                    url: session.avatar,
+                    size: 52,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -92,30 +75,18 @@ class AppAppDrawer extends StatelessWidget {
                       children: [
                         Text(
                           session.displayName,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
+                          style: AppType.row.copyWith(fontSize: 16),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 5),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            session.position,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            AppChip(
+                              label: _roleLabel(session.position),
+                              tone: AppInk.accent,
                             ),
-                          ),
+                          ],
                         ),
                       ],
                     ),
@@ -123,62 +94,109 @@ class AppAppDrawer extends StatelessWidget {
                 ],
               ),
             ),
-            // ── Navigation items ─────────────────────────────────────
+            if (term.isNotEmpty || session.schoolName.isNotEmpty)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppInk.page,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(AppIcons.school_outlined,
+                        size: 18, color: AppInk.muted),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (session.schoolName.isNotEmpty)
+                            Text(
+                              session.schoolName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppType.caption.copyWith(
+                                color: AppInk.heading,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          if (term.isNotEmpty)
+                            Text(term, style: AppType.caption),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const AppRule(),
+            // ── Navigation ───────────────────────────────────────────
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.fromLTRB(10, 6, 10, 12),
                 children: [
-                  ...items.map((item) => _DrawerTile(item: item)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    child: const AppRule(),
-                  ),
-                  // ── Account actions (always present) ──────────────
+                  ...nav,
+                  const _GroupLabel('Account'),
                   _DrawerTile(
                     item: DrawerItem(
-                      icon: Icons.lock_outline_rounded,
-                      title: 'Change Password',
+                      icon: AppIcons.lock_key,
+                      title: 'Change password',
                       onTap: (ctx) {
-                      Navigator.of(ctx).pop();
-                      Navigator.of(ctx).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ChangePasswordScreen(session: session),
-                        ),
-                      );
-                    },
-                  ),
-                  ),
-                  _DrawerTile(
-                    item: DrawerItem(
-                      icon: Icons.photo_camera_outlined,
-                      title: 'Change Avatar',
-                      onTap: (ctx) {
-                      Navigator.of(ctx).pop();
-                      Navigator.of(ctx).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ChangeAvatarScreen(session: session),
-                        ),
-                      );
-                    },
+                        Navigator.of(ctx).pop();
+                        Navigator.of(ctx).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ChangePasswordScreen(session: session),
+                          ),
+                        );
+                      },
                     ),
                   ),
                   _DrawerTile(
                     item: DrawerItem(
-                      icon: Icons.logout_rounded,
+                      icon: AppIcons.camera,
+                      title: 'Profile photo',
+                      onTap: (ctx) {
+                        Navigator.of(ctx).pop();
+                        Navigator.of(ctx).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ChangeAvatarScreen(session: session),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  _DrawerTile(
+                    item: DrawerItem(
+                      icon: AppIcons.sign_out,
                       title: 'Sign out',
-                      iconColor: Colors.red,
+                      iconColor: AppInk.critical,
                       onTap: (ctx) => _confirmLogout(ctx),
                     ),
                   ),
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+              child: Text(
+                '${AppBrand.name} · ${AppBrand.aboutVersion}',
+                style: AppType.caption.copyWith(color: AppInk.faint),
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  static String _roleLabel(String position) {
+    final p = position.trim();
+    if (p.isEmpty) return 'Staff';
+    return p[0].toUpperCase() + p.substring(1);
   }
 
   void _confirmLogout(BuildContext context) async {
@@ -203,60 +221,42 @@ class AppAppDrawer extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: AppInk.critical.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Icon(Icons.logout_rounded,
-              color: AppInk.critical, size: 26),
+        icon: const AppIconBox(
+          icon: AppIcons.sign_out,
+          color: AppInk.critical,
+          size: 52,
+          iconSize: 24,
         ),
         title: const Text('Sign out?'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('You will need to sign in again to continue.'),
+            const Text(
+              'You will need to sign in again to continue.',
+              textAlign: TextAlign.center,
+            ),
             for (final w in warnings) ...[
               const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppInk.caution.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.warning_amber_rounded,
-                        color: AppInk.caution, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(w,
-                          style: const TextStyle(
-                              fontSize: 12.5, color: AppInk.heading)),
-                    ),
-                  ],
-                ),
-              ),
+              AppNotice(message: w, tone: AppInk.caution),
             ],
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('Cancel'),
+                  child: AppButton(
+                    label: 'Cancel',
+                    style: AppButtonStyle.outline,
+                    fullWidth: true,
+                    onTap: () => Navigator.pop(ctx, false),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                        backgroundColor: AppInk.critical),
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: Text(warnings.isEmpty ? 'Sign out' : 'Sign out anyway'),
+                  child: AppButton(
+                    label: warnings.isEmpty ? 'Sign out' : 'Sign out anyway',
+                    style: AppButtonStyle.destructive,
+                    fullWidth: true,
+                    onTap: () => Navigator.pop(ctx, true),
                   ),
                 ),
               ],
@@ -278,13 +278,32 @@ class DrawerItem {
     required this.icon,
     required this.title,
     required this.onTap,
-    this.iconColor = AppInk.accent,
+    this.iconColor,
+    this.group,
   });
 
   final IconData icon;
   final String title;
   final void Function(BuildContext context) onTap;
-  final Color iconColor;
+
+  /// Only for exceptions (Sign out). Navigation uses the neutral ink.
+  final Color? iconColor;
+
+  /// Heading shown above the first item of each group.
+  final String? group;
+}
+
+class _GroupLabel extends StatelessWidget {
+  const _GroupLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 16, 12, 6),
+      child: Text(text, style: AppType.section.copyWith(fontSize: 12.5)),
+    );
+  }
 }
 
 class _DrawerTile extends StatelessWidget {
@@ -293,39 +312,31 @@ class _DrawerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tone = item.iconColor;
     return Material(
       color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => item.onTap(context),
-        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           child: Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: item.iconColor.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(item.icon, size: 20, color: item.iconColor),
-              ),
-              const SizedBox(width: 12),
+              Icon(item.icon, size: 20, color: tone ?? AppInk.secondary),
+              const SizedBox(width: 14),
               Expanded(
                 child: Text(
                   item.title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppInk.heading,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: tone ?? AppInk.body,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppInk.muted, size: 20),
             ],
           ),
         ),

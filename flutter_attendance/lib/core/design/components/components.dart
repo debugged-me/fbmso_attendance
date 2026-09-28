@@ -15,6 +15,7 @@
 /// - [AppEmptyState] — empty state placeholders
 /// - [SquircleBorder] — the squircle shape itself
 /// - [AppChip] / [AppRow] / [AppSection] / [AppStat] / [AppGap] / [AppRule] — flat components
+/// - [AppBrandMark] / [AppAvatar] / [AppNotice] / [AppSearchField] / [AppBottomNav] — chrome
 library;
 
 export 'app_squircle.dart';
@@ -25,3 +26,4 @@ export 'app_list_tile.dart';
 export 'app_scaffold.dart';
 export 'app_flat.dart';
 export 'app_native.dart';
+export 'app_extras.dart';

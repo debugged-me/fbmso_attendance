@@ -7,6 +7,7 @@ import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
 import '../domain/attendance_models.dart';
 import 'activity_state_style.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Create or edit an activity. Staff only.
 ///
@@ -352,13 +353,13 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                   AppInput(
                     controller: _title,
                     label: 'Title',
-                    prefixIcon: Icons.event_rounded,
+                    prefixIcon: AppIcons.event_rounded,
                   ),
                   const SizedBox(height: 14),
                   AppInput(
                     controller: _date,
                     label: 'Date',
-                    prefixIcon: Icons.calendar_today_rounded,
+                    prefixIcon: AppIcons.calendar_today_rounded,
                     readOnly: true,
                     onTap: _pickDate,
                   ),
@@ -371,7 +372,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                     AppInput(
                       controller: _programCustom,
                       label: 'Custom program',
-                      prefixIcon: Icons.edit_outlined,
+                      prefixIcon: AppIcons.edit_outlined,
                     ),
                   ] else if (_programChoice != null &&
                       _programChoice!.isNotEmpty) ...[
@@ -383,13 +384,13 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                   AppInput(
                     controller: _location,
                     label: 'Location',
-                    prefixIcon: Icons.place_outlined,
+                    prefixIcon: AppIcons.place_outlined,
                   ),
                   const SizedBox(height: 14),
                   AppInput(
                     controller: _description,
                     label: 'Description',
-                    prefixIcon: Icons.description_outlined,
+                    prefixIcon: AppIcons.description_outlined,
                     maxLines: 3,
                   ),
                   const SizedBox(height: 14),
@@ -402,7 +403,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                       children: [
                         const Row(
                           children: [
-                            Icon(Icons.schedule_rounded,
+                            Icon(AppIcons.schedule_rounded,
                                 color: AppInk.accent, size: 22),
                             SizedBox(width: 12),
                             Expanded(
@@ -425,21 +426,21 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                         const SizedBox(height: 14),
                         _SessionRow(
                           label: 'Morning',
-                          icon: Icons.wb_sunny_outlined,
+                          icon: AppIcons.wb_sunny_outlined,
                           inCtrl: _amIn,
                           outCtrl: _amOut,
                           onPick: _pickTime,
                         ),
                         _SessionRow(
                           label: 'Afternoon',
-                          icon: Icons.wb_twilight_rounded,
+                          icon: AppIcons.wb_twilight_rounded,
                           inCtrl: _pmIn,
                           outCtrl: _pmOut,
                           onPick: _pickTime,
                         ),
                         _SessionRow(
                           label: 'Evening',
-                          icon: Icons.nightlight_round,
+                          icon: AppIcons.nightlight_round,
                           inCtrl: _eveIn,
                           outCtrl: _eveOut,
                           onPick: _pickTime,
@@ -457,7 +458,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.event_available_rounded,
+                            const Icon(AppIcons.event_available_rounded,
                                 color: AppInk.accent, size: 22),
                             const SizedBox(width: 12),
                             const Expanded(
@@ -575,7 +576,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline_rounded,
+                          const Icon(AppIcons.error_outline_rounded,
                               color: AppInk.critical, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
@@ -611,7 +612,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                 const Spacer(),
                 AppButton(
                   label: _isEdit ? 'Save changes' : 'Create activity',
-                  icon: _isEdit ? Icons.check_rounded : Icons.add_rounded,
+                  icon: _isEdit ? AppIcons.check_rounded : AppIcons.add_rounded,
                   onTap: _saving ? null : _save,
                   loading: _saving,
                 ),

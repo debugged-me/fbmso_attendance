@@ -7,6 +7,7 @@ import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../data/auth_api.dart';
 import '../domain/app_session.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Change avatar screen. Shows the current avatar and lets the user pick a
 /// new image to upload via `POST /api/mobile/auth/change-avatar` (multipart).
@@ -125,9 +126,8 @@ class _ChangeAvatarScreenState extends State<ChangeAvatarScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const AppPageHeader(
-                    title: 'Change Avatar',
-                    icon: Icons.photo_camera_outlined,
-                    subtitle: 'Shown on your profile and ID',
+                    title: 'Profile photo',
+                    subtitle: 'Shown on your profile and digital ID.',
                   ),
                   const SizedBox(height: 12),
                   // ── Avatar preview ───────────────────────────────────
@@ -142,8 +142,8 @@ class _ChangeAvatarScreenState extends State<ChangeAvatarScreen> {
 
                   // ── Pick button ──────────────────────────────────────
                   AppButton(
-                    label: 'Choose Image',
-                    icon: Icons.photo_library_outlined,
+                    label: 'Choose a photo',
+                    icon: AppIcons.photo_library_outlined,
                     style: AppButtonStyle.outline,
                     fullWidth: true,
                     size: AppButtonSize.lg,
@@ -152,8 +152,8 @@ class _ChangeAvatarScreenState extends State<ChangeAvatarScreen> {
                   if (_pickedFile != null) ...[
                     const SizedBox(height: 14),
                     AppButton(
-                      label: 'Upload Avatar',
-                      icon: Icons.cloud_upload_outlined,
+                      label: 'Save photo',
+                      icon: AppIcons.cloud_upload_outlined,
                       fullWidth: true,
                       size: AppButtonSize.lg,
                       loading: _uploading,
@@ -212,14 +212,15 @@ class _AvatarPreview extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: AppInk.accent.withValues(alpha: 0.08),
-        border: Border.all(color: AppInk.rule, width: 2),
+        color: AppInk.subtle,
+        border: Border.all(color: Colors.white, width: 4),
+        boxShadow: AppShadow.sm,
         image: imageProvider != null
             ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
             : null,
       ),
       child: imageProvider == null
-          ? const Icon(Icons.person_rounded, size: 56, color: AppInk.muted)
+          ? const Icon(AppIcons.person_rounded, size: 56, color: AppInk.muted)
           : null,
     );
   }
@@ -230,35 +231,10 @@ class _ErrorBanner extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppInk.critical.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppInk.critical.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline_rounded,
-              size: 18, color: AppInk.critical),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: AppInk.critical,
-                fontWeight: FontWeight.w600,
-                height: 1.4,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: AppNotice(message: message),
+      );
 }
 
 class _SuccessBanner extends StatelessWidget {
@@ -266,33 +242,8 @@ class _SuccessBanner extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppInk.positive.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppInk.positive.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle_outline_rounded,
-              size: 18, color: AppInk.positive),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: AppInk.positive,
-                fontWeight: FontWeight.w600,
-                height: 1.4,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: AppNotice(message: message, tone: AppInk.positive),
+      );
 }

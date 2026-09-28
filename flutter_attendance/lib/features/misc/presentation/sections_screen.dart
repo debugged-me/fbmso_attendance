@@ -8,6 +8,7 @@ import '../../auth/domain/app_session.dart';
 import '../../auth/domain/staff_permissions.dart';
 import '../data/misc_api.dart';
 import '../domain/misc_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Sections management screen — mirrors Page/manageSections.
 class SectionsScreen extends StatefulWidget {
@@ -102,7 +103,7 @@ class _SectionsScreenState extends State<SectionsScreen> {
       floatingActionButton: permissions.canCreateSections
           ? FloatingActionButton.extended(
               onPressed: _showForm,
-              icon: const Icon(Icons.add_rounded),
+              icon: const Icon(AppIcons.add_rounded),
               label: const Text('Add Section'),
             )
           : null,
@@ -111,25 +112,7 @@ class _SectionsScreenState extends State<SectionsScreen> {
           const SyncStatusBanner(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Search section...',
-                prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppInk.muted),
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppInk.rule, width: 1.5),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppInk.accent, width: 2),
-                ),
-              ),
-            ),
+            child: AppSearchField(controller: _searchController, hint: 'Search section', onChanged: _onSearchChanged),
           ),
           Expanded(
             child: RefreshIndicator(
@@ -140,7 +123,7 @@ class _SectionsScreenState extends State<SectionsScreen> {
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           AppEmptyState(
-                            icon: Icons.cloud_off_rounded,
+                            icon: AppIcons.cloud_off_rounded,
                             title: 'Failed to load',
                             subtitle: _error,
                             action: 'Retry',
@@ -151,7 +134,7 @@ class _SectionsScreenState extends State<SectionsScreen> {
                           ? ListView(children: [
                               const SizedBox(height: 80),
                               const AppEmptyState(
-                                icon: Icons.group_outlined,
+                                icon: AppIcons.group_outlined,
                                 title: 'No sections found',
                                 subtitle: 'Tap Add Section to create one.',
                               ),
@@ -163,7 +146,6 @@ class _SectionsScreenState extends State<SectionsScreen> {
                                 if (i == 0) {
                                   return AppPageHeader(
                                     title: 'Sections',
-                                  icon: Icons.grid_view_rounded,
                                     subtitle: '${_rows.length} sections',
                                   );
                                 }
@@ -188,7 +170,7 @@ class _SectionsScreenState extends State<SectionsScreen> {
                                             color: AppInk.accent.withValues(alpha: 0.12),
                                             borderRadius: BorderRadius.circular(12),
                                           ),
-                                          child: const Icon(Icons.group_rounded, color: AppInk.accent, size: 22),
+                                          child: const Icon(AppIcons.group_rounded, color: AppInk.accent, size: 22),
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(
@@ -316,20 +298,19 @@ class _SectionFormState extends State<_SectionForm> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text('Add Section',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppInk.heading)),
+            Text('Add Section', style: AppType.headline.copyWith(fontSize: 20)),
             const SizedBox(height: 20),
             if (_error != null) ...[
-              Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),
+              AppNotice(message: _error!),
               const SizedBox(height: 12),
             ],
-            AppInput(controller: _section, label: 'Section Name *', prefixIcon: Icons.group_add_outlined),
+            AppInput(controller: _section, label: 'Section Name *', prefixIcon: AppIcons.group_add_outlined),
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               initialValue: _yearLevel.isEmpty ? null : _yearLevel,
               decoration: InputDecoration(
                 labelText: 'Year Level',
-                prefixIcon: const Icon(Icons.stairs_outlined, size: 20, color: AppInk.muted),
+                prefixIcon: const Icon(AppIcons.stairs_outlined, size: 20, color: AppInk.muted),
                 filled: true, fillColor: Colors.white,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),

@@ -6,11 +6,12 @@ import 'package:flutter/services.dart';
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import 'auth_controller.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Student registration screen — mirrors the web Registration form.
 ///
 /// Web layout:
-/// - Gradient banner: "New Student Account" / "Create Your Profile"
+/// - Heading: "New student account" / "Create your account"
 /// - Section 1: Student Credentials (Student ID + availability, Password, Confirm)
 /// - Section 2: Personal Information (First, Middle, Last, Ext, Sex, DOB, Email + availability, Mobile)
 /// - Section 3: Academic Information (Course, Year Level, Section — cascading)
@@ -104,8 +105,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       setState(() {
         _courses = opts.courses;
-        _yearLevels =
-            opts.yearLevels.isNotEmpty ? opts.yearLevels : ['1st', '2nd', '3rd', '4th'];
+        _yearLevels = opts.yearLevels.isNotEmpty
+            ? opts.yearLevels
+            : ['1st', '2nd', '3rd', '4th'];
         _loadingOptions = false;
       });
     } catch (_) {
@@ -252,11 +254,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     // Validate availability
     if (_studentIdAvailable == false) {
-      setState(() => _error = 'Student ID already exists. Please choose a different one.');
+      setState(() =>
+          _error = 'Student ID already exists. Please choose a different one.');
       return;
     }
     if (_emailAvailable == false) {
-      setState(() => _error = 'Email already exists. Please use a different email.');
+      setState(
+          () => _error = 'Email already exists. Please use a different email.');
       return;
     }
 
@@ -330,390 +334,365 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   InputDecoration _dropdownDecoration(String label, IconData icon) {
     return InputDecoration(
-      labelText: label,
+      hintText: 'Select ${label.replaceAll(' *', '').toLowerCase()}',
       prefixIcon: Icon(icon, size: 20, color: AppInk.muted),
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFB7C9F3), width: 1.5),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppInk.accent, width: 2),
-      ),
     );
   }
+
+  /// Label above a dropdown, matching [AppInput]'s label.
+  Widget _labeled(String label, Widget field) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: AppType.label),
+          const SizedBox(height: 8),
+          field,
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xFFF0F4FF),
+      backgroundColor: AppInk.page,
       body: SafeArea(
         child: Column(
           children: [
             // ── Top bar ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded, color: AppInk.heading),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  const Spacer(),
-                ],
-              ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Row(children: [AppBackButton(), Spacer()]),
             ),
 
             // ── Scrollable form ──
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(20, 0, 20, 32 + bottomInset),
+                padding: EdgeInsets.fromLTRB(20, 16, 20, 32 + bottomInset),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _Banner(),
                     const SizedBox(height: 24),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_error != null) ...[
+                          _BannerMsg(message: _error!, isError: true),
+                          const SizedBox(height: 16),
+                        ],
+                        if (_success != null) ...[
+                          _BannerMsg(message: _success!, isError: false),
+                          const SizedBox(height: 16),
+                        ],
 
-                    // ── Glassmorphism card body ──
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.9), width: 1),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6482C8).withValues(alpha: 0.10),
-                            blurRadius: 40,
-                            offset: const Offset(0, 20),
+                        // ── Section 1: Student Credentials ──
+                        _SectionHeader(step: 1, label: 'Account'),
+                        const SizedBox(height: 16),
+                        AppInput(
+                          controller: _studentNumber,
+                          label: 'Student ID *',
+                          prefixIcon: AppIcons.badge_outlined,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const ['username'],
+                        ),
+                        // Availability indicator
+                        if (_checkingStudentId || _studentIdStatus != null) ...[
+                          const SizedBox(height: 6),
+                          _AvailabilityIndicator(
+                            checking: _checkingStudentId,
+                            available: _studentIdAvailable,
+                            message: _studentIdStatus,
+                          ),
+                        ] else ...[
+                          const SizedBox(height: 6),
+                          const Text(
+                            'This becomes your username. Match it to your school ID.',
+                            style: AppType.caption,
                           ),
                         ],
-                      ),
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (_error != null) ...[
-                            _BannerMsg(message: _error!, isError: true),
-                            const SizedBox(height: 16),
-                          ],
-                          if (_success != null) ...[
-                            _BannerMsg(message: _success!, isError: false),
-                            const SizedBox(height: 16),
-                          ],
+                        const SizedBox(height: 14),
+                        AppInput(
+                          controller: _password,
+                          label: 'Password *',
+                          prefixIcon: AppIcons.lock_outline_rounded,
+                          obscureText: _obscurePassword,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const ['new-password'],
+                          suffixIcon: GestureDetector(
+                            onTap: () => setState(
+                                () => _obscurePassword = !_obscurePassword),
+                            child: Icon(
+                              _obscurePassword
+                                  ? AppIcons.visibility_off
+                                  : AppIcons.visibility,
+                              size: 20,
+                              color: AppInk.muted,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        AppInput(
+                          controller: _confirmPassword,
+                          label: 'Confirm Password *',
+                          prefixIcon: AppIcons.lock_outline_rounded,
+                          obscureText: _obscureConfirm,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const ['new-password'],
+                          suffixIcon: GestureDetector(
+                            onTap: () => setState(
+                                () => _obscureConfirm = !_obscureConfirm),
+                            child: Icon(
+                              _obscureConfirm
+                                  ? AppIcons.visibility_off
+                                  : AppIcons.visibility,
+                              size: 20,
+                              color: AppInk.muted,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 28),
 
-                          // ── Section 1: Student Credentials ──
-                          _SectionHeader(label: 'Student Credentials'),
-                          const SizedBox(height: 16),
-                          AppInput(
-                            controller: _studentNumber,
-                            label: 'Student ID *',
-                            prefixIcon: Icons.badge_outlined,
-                            textInputAction: TextInputAction.next,
-                            autofillHints: const ['username'],
+                        // ── Section 2: Personal Information ──
+                        _SectionHeader(step: 2, label: 'Personal details'),
+                        const SizedBox(height: 16),
+                        AppInput(
+                          controller: _firstName,
+                          label: 'First Name *',
+                          prefixIcon: AppIcons.person_outline_rounded,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 14),
+                        AppInput(
+                          controller: _middleName,
+                          label: 'Middle Name',
+                          prefixIcon: AppIcons.person_outline_rounded,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 14),
+                        AppInput(
+                          controller: _lastName,
+                          label: 'Last Name *',
+                          prefixIcon: AppIcons.person_outline_rounded,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 14),
+                        AppInput(
+                          controller: _nameExtn,
+                          label: 'Ext.',
+                          prefixIcon: AppIcons.person_outline_rounded,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 14),
+                        _labeled(
+                            'Sex *',
+                            DropdownButtonFormField<String>(
+                              initialValue: _sex.isEmpty ? null : _sex,
+                              isExpanded: true,
+                              decoration: _dropdownDecoration(
+                                  'Sex *', AppIcons.wc_rounded),
+                              items: ['Female', 'Male', 'Others']
+                                  .map((s) => DropdownMenuItem(
+                                      value: s, child: Text(s)))
+                                  .toList(),
+                              onChanged: (v) => setState(() => _sex = v ?? ''),
+                            )),
+                        const SizedBox(height: 14),
+                        GestureDetector(
+                          onTap: _pickBirthDate,
+                          child: AbsorbPointer(
+                            child: AppInput(
+                              controller: TextEditingController(
+                                text: _birthDate != null
+                                    ? '${_birthDate!.year}-${_birthDate!.month.toString().padLeft(2, '0')}-${_birthDate!.day.toString().padLeft(2, '0')}'
+                                    : '',
+                              ),
+                              label: 'Date of Birth *',
+                              prefixIcon: AppIcons.calendar_today_rounded,
+                            ),
                           ),
-                          // Availability indicator
-                          if (_checkingStudentId ||
-                              _studentIdStatus != null) ...[
-                            const SizedBox(height: 6),
-                            _AvailabilityIndicator(
-                              checking: _checkingStudentId,
-                              available: _studentIdAvailable,
-                              message: _studentIdStatus,
-                            ),
-                          ] else ...[
-                            const SizedBox(height: 6),
-                            const Text(
-                              'This becomes your username — match it to your school ID.',
-                              style: TextStyle(
-                                  fontSize: 11, color: AppInk.muted, height: 1.4),
-                            ),
+                        ),
+                        const SizedBox(height: 14),
+                        AppInput(
+                          controller: _email,
+                          label: 'E-mail Address *',
+                          prefixIcon: AppIcons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const ['email'],
+                        ),
+                        // Email availability indicator
+                        if (_checkingEmail || _emailStatus != null) ...[
+                          const SizedBox(height: 6),
+                          _AvailabilityIndicator(
+                            checking: _checkingEmail,
+                            available: _emailAvailable,
+                            message: _emailStatus,
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+                        AppInput(
+                          controller: _contactNo,
+                          label: 'Mobile No. *',
+                          prefixIcon: AppIcons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.next,
+                          maxLength: 11,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
                           ],
-                          const SizedBox(height: 14),
-                          AppInput(
-                            controller: _password,
-                            label: 'Password *',
-                            prefixIcon: Icons.lock_outline_rounded,
-                            obscureText: _obscurePassword,
-                            textInputAction: TextInputAction.next,
-                            autofillHints: const ['new-password'],
-                            suffixIcon: GestureDetector(
-                              onTap: () =>
-                                  setState(() => _obscurePassword = !_obscurePassword),
-                              child: Icon(
-                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                                size: 20,
-                                color: AppInk.muted,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          AppInput(
-                            controller: _confirmPassword,
-                            label: 'Confirm Password *',
-                            prefixIcon: Icons.lock_outline_rounded,
-                            obscureText: _obscureConfirm,
-                            textInputAction: TextInputAction.next,
-                            autofillHints: const ['new-password'],
-                            suffixIcon: GestureDetector(
-                              onTap: () =>
-                                  setState(() => _obscureConfirm = !_obscureConfirm),
-                              child: Icon(
-                                _obscureConfirm ? Icons.visibility_off : Icons.visibility,
-                                size: 20,
-                                color: AppInk.muted,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 28),
+                        ),
+                        const SizedBox(height: 28),
 
-                          // ── Section 2: Personal Information ──
-                          _SectionHeader(label: 'Personal Information'),
-                          const SizedBox(height: 16),
-                          AppInput(
-                            controller: _firstName,
-                            label: 'First Name *',
-                            prefixIcon: Icons.person_outline_rounded,
-                            textInputAction: TextInputAction.next,
-                          ),
-                          const SizedBox(height: 14),
-                          AppInput(
-                            controller: _middleName,
-                            label: 'Middle Name',
-                            prefixIcon: Icons.person_outline_rounded,
-                            textInputAction: TextInputAction.next,
-                          ),
-                          const SizedBox(height: 14),
-                          AppInput(
-                            controller: _lastName,
-                            label: 'Last Name *',
-                            prefixIcon: Icons.person_outline_rounded,
-                            textInputAction: TextInputAction.next,
-                          ),
-                          const SizedBox(height: 14),
-                          AppInput(
-                            controller: _nameExtn,
-                            label: 'Ext.',
-                            prefixIcon: Icons.person_outline_rounded,
-                            textInputAction: TextInputAction.next,
-                          ),
-                          const SizedBox(height: 14),
-                          DropdownButtonFormField<String>(
-                            initialValue: _sex.isEmpty ? null : _sex,
-                            isExpanded: true,
-                            decoration: _dropdownDecoration('Sex *', Icons.wc_rounded),
-                            items: ['Female', 'Male', 'Others']
-                                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                                .toList(),
-                            onChanged: (v) => setState(() => _sex = v ?? ''),
-                          ),
-                          const SizedBox(height: 14),
-                          GestureDetector(
-                            onTap: _pickBirthDate,
-                            child: AbsorbPointer(
-                              child: AppInput(
-                                controller: TextEditingController(
-                                  text: _birthDate != null
-                                      ? '${_birthDate!.year}-${_birthDate!.month.toString().padLeft(2, '0')}-${_birthDate!.day.toString().padLeft(2, '0')}'
-                                      : '',
-                                ),
-                                label: 'Date of Birth *',
-                                prefixIcon: Icons.calendar_today_rounded,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          AppInput(
-                            controller: _email,
-                            label: 'E-mail Address *',
-                            prefixIcon: Icons.email_outlined,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            autofillHints: const ['email'],
-                          ),
-                          // Email availability indicator
-                          if (_checkingEmail || _emailStatus != null) ...[
-                            const SizedBox(height: 6),
-                            _AvailabilityIndicator(
-                              checking: _checkingEmail,
-                              available: _emailAvailable,
-                              message: _emailStatus,
-                            ),
-                          ],
-                          const SizedBox(height: 14),
-                          AppInput(
-                            controller: _contactNo,
-                            label: 'Mobile No. *',
-                            prefixIcon: Icons.phone_outlined,
-                            keyboardType: TextInputType.phone,
-                            textInputAction: TextInputAction.next,
-                            maxLength: 11,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                          ),
-                          const SizedBox(height: 28),
-
-                          // ── Section 3: Academic Information ──
-                          _SectionHeader(label: 'Academic Information'),
-                          const SizedBox(height: 16),
-                          _loadingOptions
-                              ? const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 20),
-                                  child: Center(
-                                    child: SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(strokeWidth: 2.5),
-                                    ),
+                        // ── Section 3: Academic Information ──
+                        _SectionHeader(step: 3, label: 'Academic details'),
+                        const SizedBox(height: 16),
+                        _loadingOptions
+                            ? const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 20),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2.5),
                                   ),
-                                )
-                              : Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    DropdownButtonFormField<String>(
-                                      initialValue: _course.isEmpty ? null : _course,
-                                      isExpanded: true,
-                                      decoration: _dropdownDecoration(
-                                          'Course / Program *', Icons.school_outlined),
-                                      items: _courses
-                                          .map((s) =>
-                                              DropdownMenuItem(value: s, child: Text(s)))
-                                          .toList(),
-                                      onChanged: (v) {
-                                        setState(() => _course = v ?? '');
-                                        _loadSections();
-                                      },
-                                    ),
-                                    const SizedBox(height: 14),
-                                    DropdownButtonFormField<String>(
-                                      initialValue:
-                                          _yearLevel.isEmpty ? null : _yearLevel,
-                                      isExpanded: true,
-                                      decoration: _dropdownDecoration(
-                                          'Year Level *', Icons.stairs_outlined),
-                                      items: _yearLevels
-                                          .map((s) => DropdownMenuItem(
-                                              value: s, child: Text('$s Year')))
-                                          .toList(),
-                                      onChanged: (v) {
-                                        setState(() => _yearLevel = v ?? '');
-                                        _loadSections();
-                                      },
-                                    ),
-                                    const SizedBox(height: 14),
-                                    // Section dropdown — cascading, depends on course + year
-                                    _loadingSections
-                                        ? const Padding(
-                                            padding: EdgeInsets.symmetric(vertical: 12),
-                                            child: Center(
-                                              child: SizedBox(
-                                                width: 22,
-                                                height: 22,
-                                                child: CircularProgressIndicator(
-                                                    strokeWidth: 2.5),
-                                              ),
+                                ),
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _labeled(
+                                      'Course / Program *',
+                                      DropdownButtonFormField<String>(
+                                        initialValue:
+                                            _course.isEmpty ? null : _course,
+                                        isExpanded: true,
+                                        decoration: _dropdownDecoration(
+                                            'Course / Program *',
+                                            AppIcons.school_outlined),
+                                        items: _courses
+                                            .map((s) => DropdownMenuItem(
+                                                value: s, child: Text(s)))
+                                            .toList(),
+                                        onChanged: (v) {
+                                          setState(() => _course = v ?? '');
+                                          _loadSections();
+                                        },
+                                      )),
+                                  const SizedBox(height: 14),
+                                  _labeled(
+                                      'Year Level *',
+                                      DropdownButtonFormField<String>(
+                                        initialValue: _yearLevel.isEmpty
+                                            ? null
+                                            : _yearLevel,
+                                        isExpanded: true,
+                                        decoration: _dropdownDecoration(
+                                            'Year Level *',
+                                            AppIcons.stairs_outlined),
+                                        items: _yearLevels
+                                            .map((s) => DropdownMenuItem(
+                                                value: s,
+                                                child: Text('$s Year')))
+                                            .toList(),
+                                        onChanged: (v) {
+                                          setState(() => _yearLevel = v ?? '');
+                                          _loadSections();
+                                        },
+                                      )),
+                                  const SizedBox(height: 14),
+                                  // Section dropdown — cascading, depends on course + year
+                                  _loadingSections
+                                      ? const Padding(
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 12),
+                                          child: Center(
+                                            child: SizedBox(
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(
+                                                  strokeWidth: 2.5),
                                             ),
-                                          )
-                                        : DropdownButtonFormField<String>(
-                                            initialValue:
-                                                _section.isEmpty ? null : _section,
+                                          ),
+                                        )
+                                      : _labeled(
+                                          'Section *',
+                                          DropdownButtonFormField<String>(
+                                            initialValue: _section.isEmpty
+                                                ? null
+                                                : _section,
                                             isExpanded: true,
                                             decoration: _dropdownDecoration(
-                                                'Section *', Icons.group_outlined),
+                                                'Section *',
+                                                AppIcons.group_outlined),
                                             items: _sections
                                                 .map((s) => DropdownMenuItem(
                                                     value: s, child: Text(s)))
                                                 .toList(),
-                                            onChanged: (v) =>
-                                                setState(() => _section = v ?? ''),
-                                          ),
-                                    if (_course.isEmpty || _yearLevel.isEmpty)
-                                      const Padding(
-                                        padding: EdgeInsets.only(top: 6),
-                                        child: Text(
-                                          'Select Course and Year Level to load sections.',
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              color: AppInk.muted,
-                                              height: 1.4),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                          const SizedBox(height: 28),
-
-                          // ── Submit ──
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF2A4090)
-                                      .withValues(alpha: 0.25),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: AppButton(
-                              label: 'Create My Account',
-                              fullWidth: true,
-                              size: AppButtonSize.lg,
-                              loading: _busy,
-                              disabled: _busy,
-                              onTap: _submit,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.lock_outline_rounded,
-                                  size: 14, color: AppInk.muted),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  'Your information is securely stored and used solely for attendance purposes.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: AppInk.muted,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Center(
-                            child: TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: const Text.rich(
-                                TextSpan(
-                                  text: 'Already have an account? ',
-                                  style: TextStyle(color: AppInk.muted, fontSize: 13),
-                                  children: [
-                                    TextSpan(
-                                      text: 'Sign in',
-                                      style: TextStyle(
-                                        color: AppInk.accent,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13,
+                                            onChanged: (v) => setState(
+                                                () => _section = v ?? ''),
+                                          )),
+                                  if (_course.isEmpty || _yearLevel.isEmpty)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 6),
+                                      child: Text(
+                                        'Choose a course and year level to load sections.',
+                                        style: AppType.caption,
                                       ),
                                     ),
-                                  ],
-                                ),
+                                ],
+                              ),
+                        const SizedBox(height: 28),
+
+                        // ── Submit ──
+                        AppButton(
+                          label: 'Create my account',
+                          fullWidth: true,
+                          size: AppButtonSize.lg,
+                          loading: _busy,
+                          onTap: _submit,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(AppIcons.lock_outline_rounded,
+                                size: 14, color: AppInk.muted),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Your information is securely stored and used solely for attendance purposes.',
+                                textAlign: TextAlign.center,
+                                style: AppType.caption,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Center(
+                          child: TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text.rich(
+                              TextSpan(
+                                text: 'Already have an account? ',
+                                style: TextStyle(
+                                    color: AppInk.muted, fontSize: 14),
+                                children: [
+                                  TextSpan(
+                                    text: 'Sign in',
+                                    style: TextStyle(
+                                      color: AppInk.accent,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -744,7 +723,8 @@ class _AvailabilityIndicator extends StatelessWidget {
       return Row(
         children: [
           const SizedBox(
-            width: 14, height: 14,
+            width: 14,
+            height: 14,
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
           const SizedBox(width: 8),
@@ -758,7 +738,7 @@ class _AvailabilityIndicator extends StatelessWidget {
     return Row(
       children: [
         Icon(
-          isAvailable ? Icons.check_circle_rounded : Icons.cancel_rounded,
+          isAvailable ? AppIcons.check_circle_rounded : AppIcons.cancel_rounded,
           size: 14,
           color: color,
         ),
@@ -776,77 +756,36 @@ class _AvailabilityIndicator extends StatelessWidget {
   }
 }
 
-/// Gradient banner matching the web registration card banner.
+/// Page heading for the sign-up form.
 class _Banner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1A2A6C), Color(0xFF2A4090), Color(0xFF3B5FD4)],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AppChip(
+          label: 'New student account',
+          tone: AppInk.accent,
+          icon: AppIcons.person_add_rounded,
         ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'NEW STUDENT ACCOUNT',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2,
-              color: Colors.white54,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Create Your Profile',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              height: 1.15,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Fill in the form to get started with\nyour attendance tracking account.',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.white54,
-              height: 1.6,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              for (int i = 0; i < 3; i++)
-                Container(
-                  width: 28,
-                  height: 28,
-                  margin: const EdgeInsets.only(right: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.25), width: 1.5),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
+        const SizedBox(height: 14),
+        Text('Create your account',
+            style: AppType.title.copyWith(fontSize: 28)),
+        const SizedBox(height: 8),
+        Text(
+          'Use the same details as your school records. It takes about two '
+          'minutes.',
+          style: AppType.body.copyWith(color: AppInk.muted),
+        ),
+      ],
     );
   }
 }
 
-/// Section header matching the web "section-head" style.
+/// Numbered step heading between the form's groups.
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label});
+  const _SectionHeader({required this.step, required this.label});
+  final int step;
   final String label;
 
   @override
@@ -854,36 +793,26 @@ class _SectionHeader extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: 26,
+          height: 26,
+          alignment: Alignment.center,
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF2A4090), Color(0xFF4266D4)],
-            ),
+            color: AppInk.accentSoft,
             shape: BoxShape.circle,
           ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          label.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 2,
-            color: Color(0xFF2A4090),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            height: 1,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [const Color(0xFFE2E9FF), Colors.transparent],
-              ),
+          child: Text(
+            '$step',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppInk.accentInk,
             ),
           ),
         ),
+        const SizedBox(width: 10),
+        Text(label, style: AppType.headline.copyWith(fontSize: 17)),
+        const SizedBox(width: 12),
+        const Expanded(child: AppRule()),
       ],
     );
   }
@@ -896,35 +825,9 @@ class _BannerMsg extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isError ? AppInk.critical : AppInk.positive;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isError ? Icons.error_rounded : Icons.check_circle_rounded,
-            size: 18,
-            color: color,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w600,
-                height: 1.4,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return AppNotice(
+      message: message,
+      tone: isError ? AppInk.critical : AppInk.positive,
     );
   }
 }

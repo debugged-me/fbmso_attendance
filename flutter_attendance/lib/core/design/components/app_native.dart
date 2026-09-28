@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../tokens/app_tokens.dart';
+import '../../theme/app_icons.dart';
 
 /// iOS-style large page header that scrolls with the list content — the big
 /// bold title + a live subtitle ("67 sections", "₱1,240 total") sits at the
@@ -34,38 +35,29 @@ class AppPageHeader extends StatelessWidget {
         children: [
           if (icon != null) ...[
             Container(
-              width: 46,
-              height: 46,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: ic.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: ic, size: 24),
+              child: Icon(icon, color: ic, size: 22),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
           ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppInk.heading,
-                    height: 1.15,
-                    letterSpacing: -0.4,
-                  ),
-                ),
+                Text(title, style: AppType.title),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Text(
                     subtitle!,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                    style: AppType.body.copyWith(
+                      fontSize: 14,
                       color: AppInk.muted,
+                      height: 1.35,
                     ),
                   ),
                 ],
@@ -89,7 +81,7 @@ class AppFilterChips extends StatelessWidget {
     required this.onSelected,
     this.manageLabel,
     this.onManage,
-    this.padding = const EdgeInsets.fromLTRB(16, 0, 16, 12),
+    this.padding = const EdgeInsets.fromLTRB(16, 4, 16, 8),
   });
 
   /// Chip labels; index 0 is conventionally "All".
@@ -105,7 +97,7 @@ class AppFilterChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 36,
+      height: 46,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: padding,
@@ -136,36 +128,37 @@ class AppFilterChips extends StatelessWidget {
     required VoidCallback onTap,
     bool action = false,
   }) {
+    final Color bg = selected
+        ? AppInk.heading
+        : action
+            ? AppInk.accentSoft
+            : Colors.white;
+    final Color fg = selected
+        ? Colors.white
+        : action
+            ? AppInk.accentInk
+            : AppInk.body;
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        duration: AppMotion.base,
+        curve: AppMotion.ease,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected
-              ? AppInk.accent
-              : action
-                  ? AppInk.accent.withValues(alpha: 0.08)
-                  : Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          color: bg,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
           border: Border.all(
-            color: selected
-                ? AppInk.accent
-                : action
-                    ? AppInk.accent.withValues(alpha: 0.3)
-                    : AppInk.rule,
+            color: selected || action ? bg : AppInk.rule,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            color: selected
-                ? Colors.white
-                : action
-                    ? AppInk.accent
-                    : AppInk.body,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: fg,
           ),
         ),
       ),
@@ -224,13 +217,13 @@ class AppSwipeActions extends StatelessWidget {
       onDismissed: (_) => onDeleted?.call(),
       background: _SwipeBackground(
         color: AppInk.accent,
-        icon: Icons.edit_outlined,
+        icon: AppIcons.edit_outlined,
         label: 'Edit',
         alignment: Alignment.centerLeft,
       ),
       secondaryBackground: _SwipeBackground(
         color: AppInk.critical,
-        icon: Icons.delete_outline_rounded,
+        icon: AppIcons.delete_outline_rounded,
         label: 'Delete',
         alignment: Alignment.centerRight,
       ),
@@ -260,7 +253,7 @@ class _SwipeBackground extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

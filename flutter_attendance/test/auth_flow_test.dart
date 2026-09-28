@@ -145,7 +145,7 @@ void main() {
     expect(controller.isAuthenticated, isTrue);
   });
 
-  testWidgets('Switch School unpairs and returns to URL entry', (tester) async {
+  testWidgets('Switch unpairs and returns to URL entry', (tester) async {
     final controller = await buildController(happyServer());
     await tester.pumpWidget(rootFlow(controller));
     await tester.pumpAndSettle();
@@ -156,10 +156,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LoginScreen), findsOneWidget);
 
-    // The link sits below the fold on a phone-sized test surface.
-    await tester.ensureVisible(find.text('Switch School'));
+    // The school chip at the top of the login screen carries the switch.
+    await tester.ensureVisible(find.text('Switch'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Switch School'));
+    await tester.tap(find.text('Switch'));
     await tester.pumpAndSettle();
 
     expect(find.byType(WelcomeScreen), findsOneWidget);

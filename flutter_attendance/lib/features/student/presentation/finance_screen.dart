@@ -8,6 +8,7 @@ import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/student_api.dart';
 import '../domain/student_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Finance / Accounting screen. Shows the student's payment records with a
 /// summary of valid and total payments at the top. Cache-first so it renders
@@ -81,7 +82,6 @@ class _FinanceScreenState extends State<FinanceScreen> {
                           children: [
                             AppPageHeader(
                               title: 'Finance',
-                              icon: Icons.account_balance_wallet_outlined,
                               subtitle:
                                   '${_payments.length} payment${_payments.length == 1 ? '' : 's'} on record',
                             ),
@@ -90,7 +90,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                               label: 'Total Valid Payments',
                               value: _formatAmount(totalValid),
                               tone: AppInk.positive,
-                              icon: Icons.check_circle_outline,
+                              icon: AppIcons.check_circle_outline,
                             ),
                             const SizedBox(height: 24),
 
@@ -103,7 +103,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                               const Padding(
                                 padding: EdgeInsets.only(top: 60),
                                 child: AppEmptyState(
-                                  icon: Icons.receipt_long_outlined,
+                                  icon: AppIcons.receipt_long_outlined,
                                   title: 'No payment records',
                                   subtitle:
                                       'Your payment history will appear here.',
@@ -175,7 +175,7 @@ class _SummaryCard extends StatelessWidget {
                   value,
                   style: const TextStyle(
                     fontSize: 26,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     color: AppInk.heading,
                   ),
                 ),
@@ -211,12 +211,7 @@ class _PaymentCard extends StatelessWidget {
                     payment.description.isNotEmpty
                         ? payment.description
                         : 'Payment',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppInk.heading,
-                      height: 1.3,
-                    ),
+                    style: AppType.row,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -234,38 +229,38 @@ class _PaymentCard extends StatelessWidget {
               children: [
                 if (payment.date.isNotEmpty)
                   _MetaItem(
-                      icon: Icons.event_rounded, label: 'Date', value: toDateTime12(payment.date)),
+                      icon: AppIcons.event_rounded, label: 'Date', value: toDateTime12(payment.date)),
                 if (payment.orNumber.isNotEmpty)
                   _MetaItem(
-                      icon: Icons.receipt_rounded,
+                      icon: AppIcons.receipt_rounded,
                       label: 'OR #',
                       value: payment.orNumber),
                 if (payment.amount > 0)
                   _MetaItem(
-                      icon: Icons.payments_outlined,
+                      icon: AppIcons.payments_outlined,
                       label: 'Amount',
                       value: payment.amount.toStringAsFixed(2)),
                 if (payment.paymentType.isNotEmpty)
                   _MetaItem(
-                      icon: Icons.account_balance_outlined,
+                      icon: AppIcons.account_balance_outlined,
                       label: 'Type',
                       value: payment.paymentType),
                 if (payment.collectionSource.isNotEmpty)
                   _MetaItem(
-                      icon: Icons.source_outlined,
+                      icon: AppIcons.source_outlined,
                       label: 'Source',
                       value: payment.collectionSource),
                 if (payment.refNo.isNotEmpty)
                   _MetaItem(
-                      icon: Icons.tag_rounded,
+                      icon: AppIcons.tag_rounded,
                       label: 'Ref',
                       value: payment.refNo),
                 if (payment.sy.isNotEmpty)
                   _MetaItem(
-                      icon: Icons.school_outlined, label: 'SY', value: payment.sy),
+                      icon: AppIcons.school_outlined, label: 'SY', value: payment.sy),
                 if (payment.sem.isNotEmpty)
                   _MetaItem(
-                      icon: Icons.calendar_view_week_outlined,
+                      icon: AppIcons.calendar_view_week_outlined,
                       label: 'Sem',
                       value: payment.sem),
               ],
@@ -297,11 +292,7 @@ class _MetaItem extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           '$label: ',
-          style: const TextStyle(
-            fontSize: 12.5,
-            color: AppInk.muted,
-            fontWeight: FontWeight.w500,
-          ),
+          style: AppType.rowSub,
         ),
         Text(
           value,
@@ -327,7 +318,7 @@ class _ErrorView extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: AppEmptyState(
-          icon: Icons.cloud_off_rounded,
+          icon: AppIcons.cloud_off_rounded,
           title: 'Failed to load',
           subtitle: message,
           action: 'Retry',

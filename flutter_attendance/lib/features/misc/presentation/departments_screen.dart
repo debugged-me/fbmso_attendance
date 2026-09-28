@@ -8,6 +8,7 @@ import '../../auth/domain/app_session.dart';
 import '../../auth/domain/staff_permissions.dart';
 import '../data/misc_api.dart';
 import '../domain/misc_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Departments / Courses management screen.
 class DepartmentsScreen extends StatefulWidget {
@@ -133,7 +134,7 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
       floatingActionButton: permissions.canCreateDepartments
           ? FloatingActionButton.extended(
               onPressed: _showForm,
-              icon: const Icon(Icons.add_rounded),
+              icon: const Icon(AppIcons.add_rounded),
               label: const Text('Add Course'),
             )
           : null,
@@ -142,25 +143,7 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
           const SyncStatusBanner(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Search course...',
-                prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppInk.muted),
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppInk.rule, width: 1.5),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppInk.accent, width: 2),
-                ),
-              ),
-            ),
+            child: AppSearchField(controller: _searchController, hint: 'Search course', onChanged: _onSearchChanged),
           ),
           Expanded(
             child: RefreshIndicator(
@@ -171,7 +154,7 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           AppEmptyState(
-                            icon: Icons.cloud_off_rounded,
+                            icon: AppIcons.cloud_off_rounded,
                             title: 'Failed to load',
                             subtitle: _error,
                             action: 'Retry',
@@ -182,7 +165,7 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
                           ? ListView(children: [
                               const SizedBox(height: 80),
                               const AppEmptyState(
-                                icon: Icons.school_outlined,
+                                icon: AppIcons.school_outlined,
                                 title: 'No courses found',
                                 subtitle: 'Tap Add Course to create one.',
                               ),
@@ -195,7 +178,6 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
                                 if (i == 0) {
                                   return AppPageHeader(
                                     title: 'Courses',
-                                    icon: Icons.school_outlined,
                                     subtitle: '$_total courses',
                                   );
                                 }
@@ -234,7 +216,7 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
                                             color: AppInk.accent.withValues(alpha: 0.12),
                                             borderRadius: BorderRadius.circular(12),
                                           ),
-                                          child: const Icon(Icons.school_rounded, color: AppInk.accent, size: 22),
+                                          child: const Icon(AppIcons.school_rounded, color: AppInk.accent, size: 22),
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(
@@ -390,19 +372,19 @@ class _DeptFormState extends State<_DeptForm> {
             ),
             const SizedBox(height: 20),
             Text(_isEdit ? 'Edit Course' : 'Add Course',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppInk.heading)),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppInk.heading)),
             const SizedBox(height: 20),
             if (_error != null) ...[
-              Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),
+              AppNotice(message: _error!),
               const SizedBox(height: 12),
             ],
-            AppInput(controller: _code, label: 'Course Code *', prefixIcon: Icons.code_rounded),
+            AppInput(controller: _code, label: 'Course Code *', prefixIcon: AppIcons.code_rounded),
             const SizedBox(height: 14),
-            AppInput(controller: _desc, label: 'Course Description *', prefixIcon: Icons.school_outlined),
+            AppInput(controller: _desc, label: 'Course Description *', prefixIcon: AppIcons.school_outlined),
             const SizedBox(height: 14),
-            AppInput(controller: _major, label: 'Major', prefixIcon: Icons.book_outlined),
+            AppInput(controller: _major, label: 'Major', prefixIcon: AppIcons.book_outlined),
             const SizedBox(height: 14),
-            AppInput(controller: _duration, label: 'Duration', prefixIcon: Icons.timer_outlined),
+            AppInput(controller: _duration, label: 'Duration', prefixIcon: AppIcons.timer_outlined),
             const SizedBox(height: 20),
             AppButton(
               label: 'Save',

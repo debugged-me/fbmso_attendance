@@ -11,6 +11,7 @@ import '../../attendance/presentation/poster_scan_screen.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/student_api.dart';
 import '../domain/student_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Student's permanent QR code. The token is the same 32-hex string the
 /// scanner consumes — so this QR is what the instructor's camera reads.
@@ -67,10 +68,7 @@ class _MyQrScreenState extends State<MyQrScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: const Text('Issue new QR?'),
+        title: const Text('Issue a new QR?'),
         content: const Text(
             'Your current QR will be revoked and a new one issued. '
             'The old QR will no longer work for check-ins.'),
@@ -93,26 +91,13 @@ class _MyQrScreenState extends State<MyQrScreen> {
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('New QR issued.'),
-            backgroundColor: AppInk.positive,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+          const SnackBar(content: Text('New QR issued.')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+          SnackBar(content: Text(e.toString())),
         );
       }
     }
@@ -121,7 +106,7 @@ class _MyQrScreenState extends State<MyQrScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'My QR',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: false,
       leading: widget.menuButton,
       body: Column(
@@ -143,10 +128,10 @@ class _MyQrScreenState extends State<MyQrScreen> {
                           children: [
                             const SizedBox(height: 120),
                             AppEmptyState(
-                              icon: Icons.error_outline,
-                              title: 'Could not load QR',
+                              icon: AppIcons.cloud_off_rounded,
+                              title: "Couldn't load your QR",
                               subtitle: _error,
-                              action: 'Retry',
+                              action: 'Try again',
                               onAction: _load,
                             ),
                           ],
@@ -156,11 +141,11 @@ class _MyQrScreenState extends State<MyQrScreen> {
                               children: [
                                 const SizedBox(height: 80),
                                 AppEmptyState(
-                                  icon: Icons.qr_code_2,
-                                  title: 'No active QR token',
+                                  icon: AppIcons.qr_code_2,
+                                  title: 'No active QR yet',
                                   subtitle:
-                                      'Issue a QR to check in to activities.',
-                                  action: 'Issue QR',
+                                      'Issue your QR code to check in to activities.',
+                                  action: 'Issue my QR',
                                   onAction: _issue,
                                 ),
                               ],
@@ -194,463 +179,179 @@ class _QrView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final schoolName =
-        session.schoolName.trim().isEmpty ? AppBrand.name : session.schoolName;
-
-    // Split the display name into LAST, FIRST lines like the web card.
-    final last = session.lastName.trim();
-    final first = session.firstName.trim();
-    final String line1;
-    final String line2;
-    if (last.isNotEmpty || first.isNotEmpty) {
-      line1 = last.toUpperCase();
-      line2 = first.toUpperCase();
-    } else {
-      line1 = displayName.toUpperCase();
-      line2 = '';
-    }
-
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
       children: [
-        const SizedBox(height: 12),
-        _QrBankCard(
-          qr: qr,
-          line1: line1,
-          line2: line2,
-          status: qr.status,
-          schoolName: schoolName,
+        const AppPageHeader(
+          title: 'My QR',
+          subtitle: 'Show this at the scanner to check in or out.',
+          padding: EdgeInsets.fromLTRB(4, 4, 4, 16),
         ),
-        const SizedBox(height: 22),
+        _PassCard(qr: qr, session: session, displayName: displayName),
+        const SizedBox(height: 20),
+        AppButton(
+          label: 'Scan an activity poster',
+          icon: AppIcons.scan,
+          size: AppButtonSize.lg,
+          fullWidth: true,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => PosterScanScreen(session: session),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
               child: AppButton(
-                label: 'Issue new QR',
-                icon: Icons.refresh,
-                size: AppButtonSize.lg,
+                label: 'My logs',
+                icon: AppIcons.history_rounded,
                 style: AppButtonStyle.outline,
-                onTap: onIssue,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: AppButton(
-                label: 'Scan Poster',
-                icon: Icons.qr_code_scanner_rounded,
-                size: AppButtonSize.lg,
+                fullWidth: true,
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => PosterScanScreen(session: session),
+                      builder: (_) => MyLogsScreen(session: session),
                     ),
                   );
                 },
               ),
             ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: AppButton(
+                label: 'New QR',
+                icon: AppIcons.refresh,
+                style: AppButtonStyle.outline,
+                fullWidth: true,
+                onTap: onIssue,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
-        const Text(
-          'Show this QR to the scanner at any activity to check in or out.\n'
-          'Or tap "Scan Poster" to scan an activity poster for self check-in.',
+        Text(
+          'Tip: turn up your screen brightness so the scanner reads it on '
+          'the first try.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12.5,
-            color: AppInk.muted,
-            height: 1.45,
-          ),
-        ),
-        const SizedBox(height: 18),
-
-        // Mirrors the "My Logs" link on the web student_my_qr page.
-        Center(
-          child: TextButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => MyLogsScreen(session: session),
-                ),
-              );
-            },
-            icon: const Icon(Icons.history_rounded, size: 18),
-            label: const Text('My attendance logs'),
-            style: TextButton.styleFrom(
-              foregroundColor: AppInk.accent,
-              textStyle: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
+          style: AppType.caption,
         ),
       ],
     );
   }
 }
 
-/// Bank-card style QR card mirroring the web's `.qr-card` in
-/// `application/views/student_my_qr.php`.
-///
-/// Layout (top → bottom):
-///  • Top row: gold chip + school name + "Attendance ID" sub, status pill
-///  • Mid row: white QR tile (left) + Cardholder name (right)
-///  • Bottom row: Student No. (left) + "Attendance Portal" wordmark (right)
-///
-/// Background uses the same gradient as the web card
-/// (`#1a2a6c → #2a4090 → #3b5fd4`) with two radial highlights.
-class _QrBankCard extends StatelessWidget {
-  const _QrBankCard({
+/// The QR as a pass: school and status on top, a large high-contrast code in
+/// the middle, and the holder's name and number under a perforation.
+class _PassCard extends StatelessWidget {
+  const _PassCard({
     required this.qr,
-    required this.line1,
-    required this.line2,
-    required this.status,
-    required this.schoolName,
+    required this.session,
+    required this.displayName,
   });
 
   final StudentQr qr;
-  final String line1;
-  final String line2;
-  final String status;
-  final String schoolName;
+  final AppSession session;
+  final String displayName;
 
   @override
   Widget build(BuildContext context) {
+    final schoolName =
+        session.schoolName.trim().isEmpty ? AppBrand.name : session.schoolName;
+    final active = qr.status.toLowerCase() == 'active';
+    final issued = qr.issuedAt.length >= 10 ? qr.issuedAt.substring(0, 10) : qr.issuedAt;
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: AspectRatio(
-          aspectRatio: 1.586,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF1A2A6C),
-                  Color(0xFF2A4090),
-                  Color(0xFF3B5FD4),
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: AppCard.elevated(
+          radius: AppRadius.xl,
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const AppBrandMark(size: 30),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          schoolName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppType.row.copyWith(fontSize: 14),
+                        ),
+                        Text('Attendance pass', style: AppType.caption),
+                      ],
+                    ),
+                  ),
+                  AppChip(
+                    label: active ? 'Active' : qr.status,
+                    tone: active ? AppInk.positive : AppInk.caution,
+                    dot: true,
+                  ),
                 ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF0D1B4B).withValues(alpha: 0.32),
-                  blurRadius: 50,
-                  offset: const Offset(0, 24),
-                ),
-                BoxShadow(
-                  color: const Color(0xFF0D1B4B).withValues(alpha: 0.18),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                // ── Radial highlights (mirrors the web's radial-gradient
-                //    overlays) ────────────────────────────────────────────
-                Positioned(
-                  top: -60,
-                  right: -40,
-                  child: Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      backgroundBlendMode: BlendMode.srcOver,
-                      gradient: RadialGradient(
-                        colors: [
-                          const Color(0xFF7CFFB2).withValues(alpha: 0.35),
-                          Colors.transparent,
-                        ],
-                      ),
+              const SizedBox(height: 20),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: AppInk.rule),
+                  ),
+                  child: QrImageView(
+                    data: qr.token,
+                    version: QrVersions.auto,
+                    size: 228,
+                    gapless: true,
+                    padding: EdgeInsets.zero,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: AppInk.heading,
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: AppInk.heading,
                     ),
                   ),
                 ),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(22),
-                      gradient: RadialGradient(
-                        radius: 1.2,
-                        center: const Alignment(-1, -1),
-                        colors: [
-                          Colors.white.withValues(alpha: 0.18),
-                          Colors.transparent,
-                        ],
-                        stops: const [0, 0.45],
-                      ),
-                    ),
-                  ),
-                ),
-                // ── Sheen sweep (subtle diagonal highlight) ─────────────
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(22),
-                      gradient: LinearGradient(
-                        begin: const Alignment(-0.6, 0),
-                        end: const Alignment(0.6, 0),
-                        colors: [
-                          Colors.transparent,
-                          Colors.white.withValues(alpha: 0.06),
-                          Colors.transparent,
-                        ],
-                        stops: const [0.3, 0.5, 0.7],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // ── Card content ────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Top row
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Gold chip
-                          _GoldChip(),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  AppBrand.name.toUpperCase(),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.6,
-                                    height: 1.1,
-                                  ),
-                                ),
-                                const Text(
-                                  'ATTENDANCE ID',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.2,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          _StatusPill(status: status),
-                        ],
-                      ),
-
-                      // Mid row
-                      Row(
-                        children: [
-                          // QR tile
-                          Container(
-                            width: 116,
-                            height: 116,
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.22),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: QrImageView(
-                              data: qr.token,
-                              version: QrVersions.auto,
-                              gapless: true,
-                              eyeStyle: const QrEyeStyle(
-                                eyeShape: QrEyeShape.square,
-                                color: Color(0xFF0F172A),
-                              ),
-                              dataModuleStyle: const QrDataModuleStyle(
-                                dataModuleShape: QrDataModuleShape.square,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 18),
-                          // Cardholder
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'CARDHOLDER',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 8.5,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.6,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  line1,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.4,
-                                    height: 1.2,
-                                  ),
-                                ),
-                                if (line2.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    line2,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.3,
-                                      height: 1.2,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Bottom row
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          // Student No.
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  'STUDENT NO.',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 8.5,
-                                    fontWeight: FontWeight.w400,
-                                    letterSpacing: 1.1,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  qr.studentNumber,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.6,
-                                    fontFamily: 'InstrumentSans',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Wordmark
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                AppBrand.name,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.8,
-                                ),
-                              ),
-                              Text(
-                                _shortSchoolName(schoolName),
-                                textAlign: TextAlign.right,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Shorten the school name for the bottom-right wordmark so it fits the
-  /// card. Mirrors the web's `<b>FBMSO</b>` line — but dynamic.
-  String _shortSchoolName(String name) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return AppBrand.name;
-    // Take the first letters of each significant word, capped at 6 chars.
-    final words = trimmed
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty && w.toLowerCase() != 'of' && w.toLowerCase() != 'and' && w.toLowerCase() != 'the')
-        .toList();
-    if (words.isEmpty) return trimmed.length > 12 ? trimmed.substring(0, 12) : trimmed;
-    final acronym = words.map((w) => w[0].toUpperCase()).join();
-    return acronym.length > 8 ? acronym.substring(0, 8) : acronym;
-  }
-}
-
-/// Gold EMV-style chip mirroring the web's `.qc-chip`.
-class _GoldChip extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 34,
-      height: 26,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(7),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFF6D365), Color(0xFFFDA085)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 0,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Center(
-        child: Container(
-          width: 22,
-          height: 16,
-          decoration: BoxDecoration(
-            border: Border.symmetric(
-              vertical: BorderSide(
-                color: Colors.black.withValues(alpha: 0.18),
-                width: 1,
               ),
-            ),
+              const SizedBox(height: 18),
+              const _Perforation(),
+              const SizedBox(height: 14),
+              Text(
+                displayName,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.headline.copyWith(fontSize: 20),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                qr.studentNumber,
+                textAlign: TextAlign.center,
+                style: AppType.value.copyWith(
+                  fontSize: 15,
+                  color: AppInk.secondary,
+                  letterSpacing: 0.6,
+                ),
+              ),
+              if (issued.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Issued $issued',
+                  textAlign: TextAlign.center,
+                  style: AppType.caption,
+                ),
+              ],
+            ],
           ),
         ),
       ),
@@ -658,51 +359,60 @@ class _GoldChip extends StatelessWidget {
   }
 }
 
-/// Active/inactive status pill mirroring the web's `.qr-card-status`.
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.status});
-  final String status;
+/// Ticket perforation: a dashed rule with a notch cut into each edge.
+class _Perforation extends StatelessWidget {
+  const _Perforation();
 
   @override
   Widget build(BuildContext context) {
-    final isActive = status.toLowerCase() == 'active';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    return SizedBox(
+      height: 20,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
         children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isActive ? const Color(0xFF7CFFB2) : Colors.amber,
-              boxShadow: [
-                BoxShadow(
-                  color: (isActive ? const Color(0xFF7CFFB2) : Colors.amber)
-                      .withValues(alpha: 0.8),
-                  blurRadius: 6,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            status.toUpperCase(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1,
-            ),
+          const Positioned(left: -32, child: _Notch()),
+          const Positioned(right: -32, child: _Notch()),
+          SizedBox(
+            height: 1,
+            width: double.infinity,
+            child: CustomPaint(painter: _DashPainter()),
           ),
         ],
       ),
     );
   }
+}
+
+class _Notch extends StatelessWidget {
+  const _Notch();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: const BoxDecoration(
+        color: AppInk.page,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+class _DashPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppInk.ruleStrong
+      ..strokeWidth = 1.2;
+    const dash = 6.0, gap = 5.0;
+    for (var x = 0.0; x < size.width; x += dash + gap) {
+      canvas.drawLine(Offset(x, 0), Offset((x + dash).clamp(0, size.width), 0),
+          paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

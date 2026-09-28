@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/design/components/components.dart';
+import '../../../core/design/tokens/app_brand.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_icons.dart';
+import '../../../core/widgets/anim_helpers.dart';
 import 'auth_controller.dart';
 
 /// First-run / unpaired screen: the user types their school's URL.
 ///
-/// "One app, many clients" — there is no hardcoded host. The typed URL is
-/// saved and a `/config` probe confirms the server before login.
+/// There is no hardcoded host. The typed URL is saved and a `/config` probe
+/// confirms the server before login.
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key, required this.controller});
 
@@ -42,7 +44,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
     final raw = _urlController.text.trim();
     if (raw.isEmpty) {
-      setState(() => _error = 'Please enter your school portal URL.');
+      setState(() => _error = 'Enter your school portal address.');
       return;
     }
 
@@ -71,173 +73,111 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppInk.page,
-      body: SafeArea(
-        top: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // ── Gradient hero band ────────────────────────────
-                    Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF14294B),
-                            Color(0xFF1E3FA0),
-                            Color(0xFF4A7CF7),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.vertical(
-                            bottom: Radius.circular(32)),
-                      ),
-                      child: SafeArea(
-                        bottom: false,
-                        child: Padding(
-                          padding:
-                              const EdgeInsets.fromLTRB(24, 32, 24, 40),
-                          child: Column(
-                            children: [
-                              const SizedBox(height: 16),
-                              Container(
-                                width: 120,
-                                height: 120,
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black
-                                          .withValues(alpha: 0.15),
-                                      blurRadius: 28,
-                                      offset: const Offset(0, 10),
-                                    ),
-                                  ],
-                                ),
-                                child: ClipOval(
-                                  child: Image.asset(
-                                    'assets/img/icon-logo.png',
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 22),
-                              const Text(
-                                'Welcome',
-                                style: TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Connect to your school portal to get started.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.white
-                                      .withValues(alpha: 0.8),
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+      body: Stack(
+        children: [
+          const AppDotGrid(height: 360),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight - 36,
                     ),
-
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+                    child: IntrinsicHeight(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-
-                    // ── Error banner ─────────────────────────────────
-                    if ((_error ?? '').isNotEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: AppInk.critical.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color:
-                                  AppInk.critical.withValues(alpha: 0.25)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(AppIcons.error_outline,
-                                size: 18, color: AppInk.critical),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _error!,
-                                style: const TextStyle(
-                                  color: AppInk.critical,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.4,
-                                  fontSize: 13,
-                                ),
-                              ),
+                          const Spacer(flex: 2),
+                          const FadeSlideIn(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: AppBrandMark(size: 64),
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // ── URL input ────────────────────────────────────
-                    AppInput(
-                      controller: _urlController,
-                      label: 'School Portal URL',
-                      keyboardType: TextInputType.url,
-                      textInputAction: TextInputAction.go,
-                      prefixIcon: AppIcons.link_rounded,
-                      onSubmitted: (_) => _continue(),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // ── Connect button ───────────────────────────────
-                    AppButton(
-                      label: 'Connect',
-                      fullWidth: true,
-                      size: AppButtonSize.lg,
-                      loading: _probing,
-                      disabled: _probing,
-                      onTap: _continue,
-                    ),
-
-                    const SizedBox(height: 32),
-                    const Center(
-                      child: Text(
-                        'One app, many schools — ask your school for its portal address.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppInk.muted,
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
+                          ),
+                          const SizedBox(height: 28),
+                          FadeSlideIn(
+                            delay: const Duration(milliseconds: 60),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Connect to your school',
+                                  style: AppType.title.copyWith(fontSize: 28),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Enter the portal address your school gave '
+                                  'you. You only need to do this once.',
+                                  style: AppType.body
+                                      .copyWith(color: AppInk.muted),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          FadeSlideIn(
+                            delay: const Duration(milliseconds: 120),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                AppInput(
+                                  controller: _urlController,
+                                  label: 'Portal address',
+                                  hint: 'portal.yourschool.edu',
+                                  keyboardType: TextInputType.url,
+                                  textInputAction: TextInputAction.go,
+                                  prefixIcon: AppIcons.language,
+                                  autocorrect: false,
+                                  autofillHints: const [AutofillHints.url],
+                                  onSubmitted: (_) => _continue(),
+                                  onChanged: (_) {
+                                    if (_error != null) {
+                                      setState(() => _error = null);
+                                    }
+                                  },
+                                ),
+                                AnimatedSize(
+                                  duration: AppMotion.base,
+                                  curve: AppMotion.ease,
+                                  child: (_error ?? '').isEmpty
+                                      ? const SizedBox(width: double.infinity)
+                                      : Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 14),
+                                          child: AppNotice(message: _error!),
+                                        ),
+                                ),
+                                const SizedBox(height: 20),
+                                AppButton(
+                                  label: _probing ? 'Connecting…' : 'Continue',
+                                  trailingIcon: _probing
+                                      ? null
+                                      : AppIcons.arrow_forward_rounded,
+                                  fullWidth: true,
+                                  size: AppButtonSize.lg,
+                                  loading: _probing,
+                                  onTap: _continue,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Spacer(flex: 3),
+                          Text(
+                            AppBrand.name,
+                            textAlign: TextAlign.center,
+                            style: AppType.caption,
+                          ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

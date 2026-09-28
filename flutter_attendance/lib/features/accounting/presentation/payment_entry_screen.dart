@@ -9,6 +9,7 @@ import '../../auth/domain/app_session.dart';
 import '../../auth/domain/staff_permissions.dart';
 import '../data/accounting_api.dart';
 import '../domain/accounting_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Payment Entry — the cashier's daily driver, mirroring the web
 /// Accounting/Payment page: pick a student, a fee (or free text), an
@@ -140,7 +141,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
               onPressed: _openForm,
-              icon: const Icon(Icons.add_rounded),
+              icon: const Icon(AppIcons.add_rounded),
               label: const Text('New Payment'),
             )
           : null,
@@ -151,7 +152,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(32),
                     child: AppEmptyState(
-            icon: Icons.cloud_off_rounded,
+            icon: AppIcons.cloud_off_rounded,
             title: 'Failed to load',
             subtitle: _error,
             action: 'Retry',
@@ -166,7 +167,6 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
                     children: [
                       AppPageHeader(
                         title: canManage ? 'Payment Entry' : 'Payment Records',
-                        icon: Icons.payments_outlined,
                         subtitle:
                             '₱${dateTotal.toStringAsFixed(2)} collected ${_dateFilter == 'all' ? 'overall' : 'on $_dateFilter'}',
                       ),
@@ -204,7 +204,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
                         const Padding(
                           padding: EdgeInsets.only(top: 60),
                           child: AppEmptyState(
-                            icon: Icons.payments_outlined,
+                            icon: AppIcons.payments_outlined,
                             title: 'No payments on this date',
                             subtitle: 'No payment records for this date.',
                           ),
@@ -283,11 +283,7 @@ class _PaymentTile extends StatelessWidget {
                     children: [
                       Text(
                         payment.studentName,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppInk.heading,
-                        ),
+                        style: AppType.row,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -307,7 +303,7 @@ class _PaymentTile extends StatelessWidget {
                   '₱${payment.amount.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     color: AppInk.positive,
                   ),
                 ),
@@ -522,8 +518,8 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
         builder: (ctx) => AlertDialog(
           icon: Icon(
             result.queued
-                ? Icons.cloud_upload_rounded
-                : Icons.check_circle_rounded,
+                ? AppIcons.cloud_upload_rounded
+                : AppIcons.check_circle_rounded,
             color: result.queued ? AppInk.caution : AppInk.positive,
             size: 40,
           ),
@@ -581,7 +577,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(32),
                     child: AppEmptyState(
-            icon: Icons.cloud_off_rounded,
+            icon: AppIcons.cloud_off_rounded,
             title: 'Failed to load',
             subtitle: _error,
             action: 'Retry',
@@ -597,7 +593,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
                       padding: const EdgeInsets.all(14),
                       child: Row(
                         children: [
-                          const Icon(Icons.receipt_long_rounded,
+                          const Icon(AppIcons.receipt_long_rounded,
                               color: AppInk.accent),
                           const SizedBox(width: 10),
                           const Expanded(
@@ -609,11 +605,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
                           ),
                           Text(
                             _nextOr,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: AppInk.heading,
-                            ),
+                            style: AppType.row,
                           ),
                         ],
                       ),
@@ -626,8 +618,8 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
                         children: [
                           Icon(
                             _orReserved <= 10
-                                ? Icons.warning_amber_rounded
-                                : Icons.offline_pin_rounded,
+                                ? AppIcons.warning_amber_rounded
+                                : AppIcons.offline_pin_rounded,
                             size: 15,
                             color: _orReserved <= 10
                                 ? AppInk.caution
@@ -669,11 +661,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
                                     children: [
                                       Text(
                                         _student!.fullName,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppInk.heading,
-                                        ),
+                                        style: AppType.row,
                                       ),
                                       Text(
                                         '${_student!.studentNumber} · ${_student!.course} ${_student!.yearLevel}',
@@ -684,7 +672,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
                                     ],
                                   ),
                           ),
-                          const Icon(Icons.search_rounded,
+                          const Icon(AppIcons.search_rounded,
                               color: AppInk.muted, size: 20),
                         ],
                       ),
@@ -713,11 +701,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
                                     children: [
                                       Text(
                                         _fee!.description,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppInk.heading,
-                                        ),
+                                        style: AppType.row,
                                       ),
                                       Text(
                                         '₱${_fee!.amount.toStringAsFixed(2)}'
@@ -729,7 +713,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
                                     ],
                                   ),
                           ),
-                          const Icon(Icons.keyboard_arrow_down_rounded,
+                          const Icon(AppIcons.keyboard_arrow_down_rounded,
                               color: AppInk.muted, size: 22),
                         ],
                       ),
@@ -787,7 +771,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
                       readOnly: !_isPartial,
                       keyboardType: const TextInputType.numberWithOptions(
                           decimal: true),
-                      prefixIcon: Icons.payments_outlined,
+                      prefixIcon: AppIcons.payments_outlined,
                     ),
                     if (_isPartial && _fee != null)
                       Padding(
@@ -805,7 +789,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
                       controller: _dateCtrl,
                       readOnly: true,
                       onTap: _pickDate,
-                      prefixIcon: Icons.event_rounded,
+                      prefixIcon: AppIcons.event_rounded,
                     ),
                     const SizedBox(height: 12),
 
@@ -847,7 +831,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2, color: Colors.white),
                               )
-                            : const Icon(Icons.check_rounded),
+                            : const Icon(AppIcons.check_rounded),
                         label: Text(_saving ? 'Saving…' : 'Save Payment'),
                         style: FilledButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -922,22 +906,7 @@ class _StudentPickerState extends State<_StudentPicker> {
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: TextField(
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Search name or student number',
-                prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                filled: true,
-                fillColor: AppInk.muted.withValues(alpha: 0.08),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding:
-                    const EdgeInsets.symmetric(vertical: 12),
-              ),
-              onChanged: (v) => setState(() => _query = v),
-            ),
+            child: AppSearchField(hint: 'Search name or student number', onChanged: (v) => setState(() => _query = v)),
           ),
           Expanded(
             child: ListView.builder(
@@ -1000,7 +969,7 @@ class _FeePicker extends StatelessWidget {
                 'Select Fee',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   color: AppInk.heading,
                 ),
               ),
@@ -1029,7 +998,7 @@ class _FeePicker extends StatelessWidget {
                     '₱${f.amount.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 13.5,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                       color: AppInk.accent,
                     ),
                   ),

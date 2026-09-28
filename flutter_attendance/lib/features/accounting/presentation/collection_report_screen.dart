@@ -6,6 +6,7 @@ import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/accounting_api.dart';
 import '../domain/accounting_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Collection Report — web: Accounting::collectionReport. Date-range +
 /// term filter over valid paymentsaccounts rows, with a total.
@@ -114,7 +115,7 @@ class _CollectionReportScreenState extends State<CollectionReportScreen> {
               children: [
                 Expanded(
                   child: _FilterButton(
-                    icon: Icons.event_rounded,
+                    icon: AppIcons.event_rounded,
                     label: _from.isEmpty ? 'From' : _from,
                     onTap: () => _pickDate(true),
                   ),
@@ -122,7 +123,7 @@ class _CollectionReportScreenState extends State<CollectionReportScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _FilterButton(
-                    icon: Icons.event_rounded,
+                    icon: AppIcons.event_rounded,
                     label: _to.isEmpty ? 'To' : _to,
                     onTap: () => _pickDate(false),
                   ),
@@ -130,7 +131,7 @@ class _CollectionReportScreenState extends State<CollectionReportScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _FilterButton(
-                    icon: Icons.school_outlined,
+                    icon: AppIcons.school_outlined,
                     label: _term.isEmpty ? 'All terms' : _term.split('|').join(' '),
                     onTap: _pickTerm,
                   ),
@@ -176,7 +177,7 @@ class _CollectionReportScreenState extends State<CollectionReportScreen> {
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: AppEmptyState(
-            icon: Icons.cloud_off_rounded,
+            icon: AppIcons.cloud_off_rounded,
             title: 'Failed to load',
             subtitle: _error,
             action: 'Retry',
@@ -193,7 +194,6 @@ class _CollectionReportScreenState extends State<CollectionReportScreen> {
         children: [
           AppPageHeader(
             title: 'Collection Report',
-            icon: Icons.summarize_outlined,
             subtitle:
                 '${_rows.length} payments · ₱${_total.toStringAsFixed(2)} total',
           ),
@@ -201,7 +201,7 @@ class _CollectionReportScreenState extends State<CollectionReportScreen> {
             const Padding(
               padding: EdgeInsets.only(top: 60),
               child: AppEmptyState(
-                icon: Icons.receipt_long_outlined,
+                icon: AppIcons.receipt_long_outlined,
                 title: 'No payments in this period',
                 subtitle: 'Widen the date range or clear the term filter.',
               ),
@@ -218,7 +218,7 @@ class _CollectionReportScreenState extends State<CollectionReportScreen> {
                       'TOTAL COLLECTION',
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.6,
                         color: AppInk.muted,
                       ),
@@ -228,7 +228,7 @@ class _CollectionReportScreenState extends State<CollectionReportScreen> {
                     '₱${_total.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 17,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                       color: AppInk.positive,
                     ),
                   ),
@@ -339,7 +339,7 @@ class _CollectionRow extends StatelessWidget {
               '₱${row.amount.toStringAsFixed(2)}',
               style: const TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
                 color: AppInk.positive,
               ),
             ),

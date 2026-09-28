@@ -19,17 +19,64 @@ class AuthApi {
   final http.Client _client;
 
   /// Normalize a user-typed URL into a bare `scheme://host[/path]` with no
-  /// trailing slash. Adds `https://` when no scheme is present.
+  /// trailing slash. With no scheme, a local address (localhost, a LAN IP,
+  /// a `.local` name) gets `http://`, since a dev PC or a school LAN server
+  /// rarely has a certificate. Anything else gets `https://`.
   String normalizeBaseUrl(String value) {
     var normalized = value.trim();
     if (normalized.isEmpty) return '';
 
-    if (!normalized.startsWith('http://') &&
-        !normalized.startsWith('https://')) {
-      normalized = 'https://$normalized';
+    if (!RegExp(r'^https?://', caseSensitive: false).hasMatch(normalized)) {
+      final host = normalized.startsWith('[')
+          ? normalized.substring(0, normalized.indexOf(']') + 1)
+          : normalized.split(RegExp(r'[/:?#]')).first;
+      normalized = '${isLocalHost(host) ? 'http' : 'https'}://$normalized';
     }
 
     return normalized.replaceFirst(RegExp(r'/+$'), '');
+  }
+
+  /// Why [baseUrl] (already normalized) can't be used, or null when it can.
+  /// Plain `http://` is only accepted for a server on this device or the
+  /// local network: a public portal must use https, so passwords and tokens
+  /// never cross the internet unencrypted.
+  String? checkPortalUrl(String baseUrl) {
+    final uri = Uri.tryParse(baseUrl);
+    if (uri == null || uri.host.isEmpty) {
+      return "That doesn't look like a web address. "
+          'Example: https://portal.yourschool.edu';
+    }
+    if (uri.scheme == 'http' && !isLocalHost(uri.host)) {
+      return 'Use https:// for this address. Plain http:// only works for '
+          'a server on your own network, such as http://192.168.1.10/fbmso_attendance.';
+    }
+    return null;
+  }
+
+  /// True for hosts that only exist on this device or the local network:
+  /// localhost, loopback and private IPv4 ranges (which include the Android
+  /// emulator's 10.0.2.2), link-local, `.local`/`.lan`/`.home.arpa`/
+  /// `.internal`/`.test` names and bare machine names like `office-pc`.
+  static bool isLocalHost(String host) {
+    final h = host.toLowerCase().replaceAll(RegExp(r'^\[|\]$'), '');
+    if (h.isEmpty) return false;
+    if (h == 'localhost' || h.endsWith('.localhost') || h == '::1') {
+      return true;
+    }
+    const localSuffixes = ['.local', '.lan', '.home.arpa', '.internal', '.test'];
+    if (localSuffixes.any(h.endsWith)) return true;
+
+    final ip = RegExp(r'^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$').firstMatch(h);
+    if (ip != null) {
+      final a = int.parse(ip[1]!);
+      final b = int.parse(ip[2]!);
+      return a == 127 ||
+          a == 10 ||
+          (a == 192 && b == 168) ||
+          (a == 172 && b >= 16 && b <= 31) ||
+          (a == 169 && b == 254);
+    }
+    return !h.contains('.') && !h.contains(':');
   }
 
   Future<MobileConfig> fetchConfig(String baseUrl, {Duration? timeout}) async {

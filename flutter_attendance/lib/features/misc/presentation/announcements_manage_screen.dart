@@ -7,6 +7,7 @@ import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/misc_api.dart';
 import '../domain/misc_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Announcements management screen — admin can view, create, delete.
 class AnnouncementsManageScreen extends StatefulWidget {
@@ -88,7 +89,7 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
       titleWidget: const SizedBox.shrink(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showForm,
-        icon: const Icon(Icons.add_rounded),
+        icon: const Icon(AppIcons.add_rounded),
         label: const Text('New Announcement'),
       ),
       showBackButton: true,
@@ -106,7 +107,7 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           AppEmptyState(
-                            icon: Icons.cloud_off_rounded,
+                            icon: AppIcons.cloud_off_rounded,
                             title: 'Failed to load',
                             subtitle: _error,
                             action: 'Retry',
@@ -117,7 +118,7 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
                           ? ListView(children: [
                               const SizedBox(height: 80),
                               const AppEmptyState(
-                                icon: Icons.campaign_outlined,
+                                icon: AppIcons.campaign_outlined,
                                 title: 'No announcements yet',
                                 subtitle: 'Tap New Announcement to post one.',
                               ),
@@ -129,7 +130,6 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
                                 if (i == 0) {
                                   return AppPageHeader(
                                     title: 'Announcements',
-                                  icon: Icons.campaign_outlined,
                                     subtitle:
                                         '${_announcements.length} posted',
                                   );
@@ -153,7 +153,7 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
                                             color: AppInk.accent.withValues(alpha: 0.12),
                                             borderRadius: BorderRadius.circular(12),
                                           ),
-                                          child: const Icon(Icons.campaign_rounded, color: AppInk.accent, size: 22),
+                                          child: const Icon(AppIcons.campaign_rounded, color: AppInk.accent, size: 22),
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(
@@ -325,13 +325,13 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
             ),
             const SizedBox(height: 20),
             Text(_isEdit ? 'Edit Announcement' : 'New Announcement',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppInk.heading)),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppInk.heading)),
             const SizedBox(height: 20),
             if (_error != null) ...[
-              Text(_error!, style: const TextStyle(color: AppInk.critical, fontSize: 13)),
+              AppNotice(message: _error!),
               const SizedBox(height: 12),
             ],
-            AppInput(controller: _title, label: 'Title *', prefixIcon: Icons.title_rounded),
+            AppInput(controller: _title, label: 'Title *', prefixIcon: AppIcons.title_rounded),
             const SizedBox(height: 14),
             AppInput(
               controller: _message,
@@ -343,7 +343,7 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
               initialValue: _audience,
               decoration: InputDecoration(
                 labelText: 'Audience',
-                prefixIcon: const Icon(Icons.group_outlined, size: 20, color: AppInk.muted),
+                prefixIcon: const Icon(AppIcons.group_outlined, size: 20, color: AppInk.muted),
                 filled: true, fillColor: Colors.white,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),
@@ -372,7 +372,7 @@ class _AnnouncementFormState extends State<_AnnouncementForm> {
                     text: _expireDate != null ? _formatDate(_expireDate!) : '',
                   ),
                   label: 'Expiry Date (optional)',
-                  prefixIcon: Icons.event_outlined,
+                  prefixIcon: AppIcons.event_outlined,
                 ),
               ),
             ),

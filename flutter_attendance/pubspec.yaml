@@ -39,15 +39,26 @@ flutter:
   uses-material-design: true
 
   fonts:
+    # Regular is the variable font (its default instance is 400). Flutter does
+    # not map FontWeight onto a variable font's weight axis, so the heavier
+    # weights ship as static instances cut from it — otherwise every bold
+    # label is synthetic bold.
     - family: InstrumentSans
       fonts:
         - asset: assets/fonts/instrument-sans/InstrumentSans-Regular.ttf
+        - asset: assets/fonts/instrument-sans/InstrumentSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/instrument-sans/InstrumentSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/instrument-sans/InstrumentSans-Bold.ttf
+          weight: 700
         - asset: assets/fonts/instrument-sans/InstrumentSans-Italic.ttf
           style: italic
 
   assets:
     - assets/avatar.png
     - assets/img/icon-logo.png
+    - assets/img/logo-mark.png
     - assets/sounds/scan_success.wav
     - assets/sounds/scan_duplicate.wav
     - assets/sounds/scan_error.wav

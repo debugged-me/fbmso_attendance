@@ -3,32 +3,30 @@ import 'package:flutter/material.dart';
 import '../tokens/app_tokens.dart';
 import 'app_squircle.dart';
 
-/// A clean, minimal card with a hairline border and no shadow.
+/// A white surface with a hairline border and a barely-there shadow.
 ///
-/// This is the card for the clean & minimal style. It uses a 1px border
-/// instead of elevation, which looks crisper and more modern on mobile.
-/// If you need a shadow (e.g. floating action area), use [AppCard.elevated].
+/// Use [AppCard.elevated] for the one block on a screen that should float
+/// (a hero figure, a summary above a list).
 class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
     required this.child,
     this.onTap,
     this.padding = const EdgeInsets.all(16),
-    this.radius = 16,
+    this.radius = AppRadius.lg,
     this.borderColor,
     this.background = Colors.white,
     this.margin,
     this.elevated = false,
   });
 
-  /// Card with a subtle shadow — for floating elements, hero stats, or
-  /// when the card sits on a white page and needs separation.
+  /// Card with a softer, wider shadow for floating elements.
   const AppCard.elevated({
     super.key,
     required this.child,
     this.onTap,
     this.padding = const EdgeInsets.all(16),
-    this.radius = 16,
+    this.radius = AppRadius.lg,
     this.borderColor,
     this.background = Colors.white,
     this.margin,
@@ -45,25 +43,13 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shape = SquircleBorder(
-      radius: radius,
-      side: BorderSide(
-        color: borderColor ?? AppInk.rule,
-        width: 1,
-      ),
-    );
-
     final decoration = ShapeDecoration(
       color: background,
-      shape: shape,
-      shadows: [
-        BoxShadow(
-          color: const Color(0xFF0F172A)
-              .withValues(alpha: elevated ? 0.10 : 0.06),
-          blurRadius: elevated ? 20 : 14,
-          offset: Offset(0, elevated ? 6 : 3),
-        ),
-      ],
+      shape: SquircleBorder(
+        radius: radius,
+        side: BorderSide(color: borderColor ?? AppInk.rule),
+      ),
+      shadows: elevated ? AppShadow.lg : AppShadow.xs,
     );
 
     Widget card = DecoratedBox(
@@ -71,20 +57,17 @@ class AppCard extends StatelessWidget {
       child: Padding(padding: padding, child: child),
     );
 
+    if (onTap != null) {
+      card = _TapFeedback(onTap: onTap, child: card);
+    }
     if (margin != null) {
       card = Padding(padding: margin!, child: card);
     }
-
-    if (onTap != null) {
-      return _TapFeedback(onTap: onTap, child: card);
-    }
-
     return card;
   }
 }
 
 /// A group of cards stacked vertically with consistent spacing.
-/// Replaces manual `SizedBox(height: X)` between every card.
 class AppCardStack extends StatelessWidget {
   const AppCardStack({
     super.key,
@@ -113,7 +96,7 @@ class AppCardStack extends StatelessWidget {
   }
 }
 
-/// Tap feedback without ripple — opacity dip, iOS-style.
+/// Press feedback for tappable cards: a slight scale-down, no ripple.
 class _TapFeedback extends StatefulWidget {
   const _TapFeedback({required this.onTap, required this.child});
   final VoidCallback? onTap;
@@ -126,18 +109,27 @@ class _TapFeedback extends StatefulWidget {
 class _TapFeedbackState extends State<_TapFeedback> {
   bool _pressed = false;
 
+  void _set(bool v) {
+    if (_pressed != v) setState(() => _pressed = v);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: widget.onTap != null ? (_) => setState(() => _pressed = true) : null,
-      onTapUp: widget.onTap != null ? (_) => setState(() => _pressed = false) : null,
-      onTapCancel: widget.onTap != null ? () => setState(() => _pressed = false) : null,
+      onTapDown: (_) => _set(true),
+      onTapUp: (_) => _set(false),
+      onTapCancel: () => _set(false),
       onTap: widget.onTap,
       behavior: HitTestBehavior.opaque,
-      child: AnimatedOpacity(
-        opacity: _pressed ? 0.85 : 1.0,
-        duration: const Duration(milliseconds: 80),
-        child: widget.child,
+      child: AnimatedScale(
+        scale: _pressed ? 0.985 : 1,
+        duration: AppMotion.fast,
+        curve: AppMotion.ease,
+        child: AnimatedOpacity(
+          opacity: _pressed ? 0.92 : 1,
+          duration: AppMotion.fast,
+          child: widget.child,
+        ),
       ),
     );
   }

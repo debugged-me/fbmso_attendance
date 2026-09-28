@@ -7,6 +7,7 @@ import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/misc_api.dart';
 import '../domain/misc_models.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Announcements feed. Cache-first, read-only.
 class AnnouncementsScreen extends StatefulWidget {
@@ -65,7 +66,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                             SizedBox(
                                 height: MediaQuery.of(context).size.height * 0.5),
                             const AppEmptyState(
-                              icon: Icons.campaign_outlined,
+                              icon: AppIcons.campaign_outlined,
                               title: 'No active announcements',
                               subtitle: 'Check back later for updates.',
                             ),
@@ -79,7 +80,6 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                             if (i == 0) {
                               return AppPageHeader(
                                 title: 'Announcements',
-                                icon: Icons.campaign_outlined,
                                 subtitle:
                                     '${_items.length} posted',
                               );
@@ -118,12 +118,7 @@ class _AnnouncementCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   item.title,
-                  style: const TextStyle(
-                                        fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppInk.heading,
-                    height: 1.3,
-                  ),
+                  style: AppType.row,
                 ),
               ),
               if (item.audience.isNotEmpty) ...[
@@ -149,11 +144,7 @@ class _AnnouncementCard extends StatelessWidget {
                 if (item.author.isNotEmpty)
                   Text(
                     item.author,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppInk.muted,
-                    ),
+                    style: AppType.rowSub,
                   ),
                 if (item.author.isNotEmpty && item.datePosted.isNotEmpty)
                   const Text('  •  ',
@@ -161,10 +152,7 @@ class _AnnouncementCard extends StatelessWidget {
                 if (item.datePosted.isNotEmpty)
                   Text(
                     item.datePosted,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppInk.muted,
-                    ),
+                    style: AppType.rowSub,
                   ),
               ],
             ),

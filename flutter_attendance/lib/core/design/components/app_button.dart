@@ -2,35 +2,31 @@ import 'package:flutter/material.dart';
 
 import '../tokens/app_tokens.dart';
 import '../../theme/app_theme.dart';
-import 'app_squircle.dart';
 
-/// Button variants — each is a distinct visual role, not just a colour swap.
+/// Button variants: each is a distinct visual role, not just a colour swap.
 enum AppButtonStyle {
-  /// Solid brand fill. Primary action on the screen (one per view max).
+  /// Solid accent fill. The primary action on the screen (one per view).
   primary,
 
-  /// Subtle brand tint. Secondary action that doesn't need to shout.
+  /// Accent tint. A secondary action that doesn't need to shout.
   tonal,
 
-  /// White with border. Tertiary action, or when sitting on a coloured surface.
+  /// White with a border. Tertiary action, or on a coloured surface.
   outline,
 
-  /// No fill, no border. Inline actions inside cards/rows.
+  /// No fill, no border. Inline actions inside cards and rows.
   ghost,
 
   /// Solid red. Destructive actions (delete, withdraw, drop).
   destructive,
 }
 
-/// A squircle button with clean, minimal styling.
+enum AppButtonSize { sm, md, lg }
+
+/// The app's button: a pill with a short press-scale.
 ///
-/// Designed to be the only button in the app. Replaces Material's default
-/// ElevatedButton / FilledButton / OutlinedButton / TextButton with a single
-/// widget that has a consistent squircle shape and four clear roles.
-///
-/// Usage:
 /// ```dart
-/// AppButton(label: 'Login', onTap: _submit)
+/// AppButton(label: 'Sign in', onTap: _submit, fullWidth: true)
 /// AppButton(label: 'Cancel', style: AppButtonStyle.ghost, onTap: _close)
 /// AppButton(label: 'Delete', style: AppButtonStyle.destructive, onTap: _delete)
 /// ```
@@ -67,135 +63,165 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDisabled = disabled || loading;
-    final colors = _resolveColors();
-    final padding = _resolvePadding();
+    final inactive = disabled || loading || onTap == null;
+    final c = _colors(inactive: disabled || onTap == null, loading: loading);
+    final (height, hPad, fontSize, iconSize) = switch (size) {
+      AppButtonSize.sm => (36.0, 14.0, 13.5, 16.0),
+      AppButtonSize.md => (46.0, 20.0, 15.0, 18.0),
+      AppButtonSize.lg => (54.0, 24.0, 16.0, 20.0),
+    };
 
-    Widget content = Row(
+    final content = Row(
       mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (loading)
-          SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation(colors.foreground),
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: SizedBox(
+              width: iconSize - 2,
+              height: iconSize - 2,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(c.fg),
+              ),
             ),
           )
         else if (icon != null) ...[
-          Icon(icon, size: 18, color: colors.foreground),
+          Icon(icon, size: iconSize, color: c.fg),
           const SizedBox(width: 8),
         ],
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: AppTheme.fontFamily,
-            fontSize: size == AppButtonSize.sm ? 13 : 15,
-            fontWeight: FontWeight.w700,
-            color: colors.foreground,
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: AppTheme.fontFamily,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.1,
+              color: c.fg,
+            ),
           ),
         ),
         if (trailingIcon != null && !loading) ...[
           const SizedBox(width: 6),
-          Icon(trailingIcon, size: 16, color: colors.foreground),
+          Icon(trailingIcon, size: iconSize - 2, color: c.fg),
         ],
       ],
     );
 
-    final shape = SquircleBorder(
-      radius: size == AppButtonSize.sm ? 10 : 14,
-      side: colors.border,
-    );
-
-    return _FeedbackContainer(
-      onTap: isDisabled ? null : onTap,
-      shape: shape,
-      background: colors.background,
-      child: Padding(
-        padding: padding,
-        child: content,
+    return Semantics(
+      button: true,
+      enabled: !inactive,
+      child: _PressScale(
+        onTap: inactive ? null : onTap,
+        child: AnimatedContainer(
+          duration: AppMotion.base,
+          curve: AppMotion.ease,
+          height: height,
+          padding: EdgeInsets.symmetric(horizontal: hPad),
+          decoration: ShapeDecoration(
+            color: c.bg,
+            shape: StadiumBorder(side: c.border),
+            shadows: c.shadow,
+          ),
+          child: content,
+        ),
       ),
     );
   }
 
-  ({Color background, Color foreground, BorderSide border}) _resolveColors() {
-    final disabledBg = const Color(0xFFF1F5F9);
-    final disabledFg = const Color(0xFF94A3B8);
-
-    if (disabled || loading) {
-      return (background: disabledBg, foreground: disabledFg, border: BorderSide.none);
+  ({Color bg, Color fg, BorderSide border, List<BoxShadow> shadow}) _colors({
+    required bool inactive,
+    required bool loading,
+  }) {
+    if (inactive && !loading) {
+      return (
+        bg: style == AppButtonStyle.ghost ? Colors.transparent : AppInk.subtle,
+        fg: AppInk.faint,
+        border: BorderSide.none,
+        shadow: const [],
+      );
     }
-
     switch (style) {
       case AppButtonStyle.primary:
-        return (background: AppInk.accent, foreground: Colors.white, border: BorderSide.none);
+        return (
+          bg: loading ? AppInk.accent.withValues(alpha: 0.85) : AppInk.accent,
+          fg: Colors.white,
+          border: BorderSide.none,
+          shadow: const [
+            BoxShadow(
+                color: Color(0x292F5BEA), blurRadius: 12, offset: Offset(0, 4)),
+          ],
+        );
       case AppButtonStyle.tonal:
-        return (background: AppInk.accent.withValues(alpha: 0.10), foreground: AppInk.accent, border: BorderSide.none);
+        return (
+          bg: AppInk.accentSoft,
+          fg: AppInk.accentInk,
+          border: BorderSide.none,
+          shadow: const [],
+        );
       case AppButtonStyle.outline:
-        return (background: Colors.white, foreground: AppInk.heading, border: const BorderSide(color: AppInk.rule, width: 1.5));
+        return (
+          bg: Colors.white,
+          fg: AppTheme.ink700,
+          border: const BorderSide(color: AppInk.ruleStrong),
+          shadow: AppShadow.xs,
+        );
       case AppButtonStyle.ghost:
-        return (background: Colors.transparent, foreground: AppInk.muted, border: BorderSide.none);
+        return (
+          bg: Colors.transparent,
+          fg: AppInk.secondary,
+          border: BorderSide.none,
+          shadow: const [],
+        );
       case AppButtonStyle.destructive:
-        return (background: AppInk.critical, foreground: Colors.white, border: BorderSide.none);
-    }
-  }
-
-  EdgeInsets _resolvePadding() {
-    switch (size) {
-      case AppButtonSize.sm:
-        return const EdgeInsets.symmetric(horizontal: 14, vertical: 9);
-      case AppButtonSize.md:
-        return const EdgeInsets.symmetric(horizontal: 20, vertical: 13);
-      case AppButtonSize.lg:
-        return const EdgeInsets.symmetric(horizontal: 24, vertical: 16);
+        return (
+          bg: AppInk.critical,
+          fg: Colors.white,
+          border: BorderSide.none,
+          shadow: const [],
+        );
     }
   }
 }
 
-enum AppButtonSize { sm, md, lg }
-
-/// A container that provides tap feedback (slight opacity dip) without the
-/// ripple of InkWell — cleaner and more iOS-like.
-class _FeedbackContainer extends StatefulWidget {
-  const _FeedbackContainer({
-    required this.onTap,
-    required this.shape,
-    required this.background,
-    required this.child,
-  });
+/// Press feedback: a short scale-down and a slight fade, no ripple.
+class _PressScale extends StatefulWidget {
+  const _PressScale({required this.onTap, required this.child});
 
   final VoidCallback? onTap;
-  final ShapeBorder shape;
-  final Color background;
   final Widget child;
 
   @override
-  State<_FeedbackContainer> createState() => _FeedbackContainerState();
+  State<_PressScale> createState() => _PressScaleState();
 }
 
-class _FeedbackContainerState extends State<_FeedbackContainer> {
+class _PressScaleState extends State<_PressScale> {
   bool _pressed = false;
+
+  void _set(bool v) {
+    if (_pressed != v) setState(() => _pressed = v);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isInteractive = widget.onTap != null;
-
+    final interactive = widget.onTap != null;
     return GestureDetector(
-      onTapDown: isInteractive ? (_) => setState(() => _pressed = true) : null,
-      onTapUp: isInteractive ? (_) => setState(() => _pressed = false) : null,
-      onTapCancel: isInteractive ? () => setState(() => _pressed = false) : null,
+      onTapDown: interactive ? (_) => _set(true) : null,
+      onTapUp: interactive ? (_) => _set(false) : null,
+      onTapCancel: interactive ? () => _set(false) : null,
       onTap: widget.onTap,
       behavior: HitTestBehavior.opaque,
-      child: AnimatedOpacity(
-        opacity: _pressed ? 0.7 : 1.0,
-        duration: const Duration(milliseconds: 80),
-        child: DecoratedBox(
-          decoration: ShapeDecoration(
-            shape: widget.shape,
-            color: widget.background,
-          ),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1,
+        duration: AppMotion.fast,
+        curve: AppMotion.ease,
+        child: AnimatedOpacity(
+          opacity: _pressed ? 0.88 : 1,
+          duration: AppMotion.fast,
           child: widget.child,
         ),
       ),

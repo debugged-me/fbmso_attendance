@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/design/tokens/app_brand.dart';
+import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_icons.dart';
 
@@ -216,8 +217,9 @@ class LegalDialogs {
             vertical: 40,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
+            borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
+          clipBehavior: Clip.antiAlias,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
             child: Column(
@@ -266,36 +268,21 @@ class _LegalHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 20, 12, 20),
+      padding: const EdgeInsets.fromLTRB(20, 18, 10, 14),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1A2A6C), Color(0xFF2A4090)],
-        ),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(AppRadius.lg),
-          topRight: Radius.circular(AppRadius.lg),
-        ),
+        border: Border(bottom: BorderSide(color: AppInk.rule)),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 22, color: Colors.white),
-          const SizedBox(width: 10),
+          AppIconBox(icon: icon, size: 40),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+            child: Text(title, style: AppType.headline),
           ),
           IconButton(
             tooltip: 'Close',
             icon: const Icon(AppIcons.close_rounded,
-                size: 20, color: Colors.white),
+                size: 20, color: AppInk.muted),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -334,22 +321,14 @@ class _LegalSectionView extends StatelessWidget {
         if (section.heading != null) ...[
           Text(
             section.heading!,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: AppInk.heading,
-            ),
+            style: AppType.row.copyWith(fontSize: 14),
           ),
           const SizedBox(height: 6),
         ],
         if (section.body != null)
           Text(
             section.body!,
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.6,
-              color: AppInk.body,
-            ),
+            style: AppType.body.copyWith(fontSize: 14),
           ),
         if (section.bullets != null) ...[
           for (final b in section.bullets!)
@@ -364,16 +343,12 @@ class _LegalSectionView extends StatelessWidget {
                         style: TextStyle(
                             color: AppInk.accent,
                             fontSize: 13,
-                            fontWeight: FontWeight.w800)),
+                            fontWeight: FontWeight.w700)),
                   ),
                   Expanded(
                     child: Text(
                       b,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        height: 1.6,
-                        color: AppInk.body,
-                      ),
+                      style: AppType.body.copyWith(fontSize: 14),
                     ),
                   ),
                 ],
@@ -400,27 +375,12 @@ class _AboutBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: AppInk.subtle,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppInk.rule),
-          ),
-          alignment: Alignment.center,
-          child: const Icon(AppIcons.security_rounded,
-              size: 32, color: AppInk.accent),
-        ),
+        const AppBrandMark(size: 64),
         const SizedBox(height: 14),
         Text(
           title,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: AppInk.heading,
-          ),
+          style: AppType.row,
         ),
         const SizedBox(height: 4),
         Text(
@@ -497,17 +457,9 @@ class _LegalFooter extends StatelessWidget {
       ),
       child: Align(
         alignment: Alignment.centerRight,
-        child: FilledButton(
-          onPressed: () => Navigator.of(context).pop(),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppInk.accent,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-          ),
-          child: Text(actionLabel),
+        child: AppButton(
+          label: actionLabel,
+          onTap: () => Navigator.of(context).pop(),
         ),
       ),
     );

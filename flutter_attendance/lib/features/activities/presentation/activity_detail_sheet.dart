@@ -14,6 +14,7 @@ import '../../attendance/presentation/scan_screen.dart';
 import '../../auth/domain/staff_permissions.dart';
 import '../../student/presentation/my_qr_screen.dart';
 import '../../../core/widgets/skeleton_loader.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Shows the activity detail bottom sheet with role-based actions.
 /// - Students: "Scan Poster QR" + "Show My QR"
@@ -104,7 +105,7 @@ class ActivityDetailSheet extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppInk.rule,
+                    color: AppInk.ruleStrong,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -118,12 +119,7 @@ class ActivityDetailSheet extends StatelessWidget {
                   Expanded(
                     child: Text(
                       activity.title,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: AppInk.heading,
-                        height: 1.25,
-                      ),
+                      style: AppType.title.copyWith(fontSize: 22),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -142,55 +138,64 @@ class ActivityDetailSheet extends StatelessWidget {
               if (activity.description.isNotEmpty) ...[
                 Text(
                   activity.description,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppInk.muted,
-                    height: 1.5,
-                  ),
+                  style: AppType.body.copyWith(fontSize: 14.5),
                 ),
                 const SizedBox(height: 16),
               ],
 
-              // ── Detail chips ─────────────────────────────────────
-              Wrap(
-                spacing: 12,
-                runSpacing: 10,
-                children: [
-                  if (activity.activityDate.isNotEmpty)
-                    _DetailChip(
-                      icon: Icons.event_rounded,
-                      label: 'Date',
-                      value: activity.activityDate,
-                    ),
-                  if (activity.startTime.isNotEmpty)
-                    _DetailChip(
-                      icon: Icons.schedule_rounded,
-                      label: 'Time',
-                      value: _timeRange(activity),
-                    ),
-                  if (activity.location.isNotEmpty)
-                    _DetailChip(
-                      icon: Icons.place_rounded,
-                      label: 'Location',
-                      value: activity.location,
-                    ),
-                  if (activity.code.isNotEmpty)
-                    _DetailChip(
-                      icon: Icons.tag_rounded,
-                      label: 'Code',
-                      value: activity.code,
-                    ),
-                ],
+              // ── Details ──────────────────────────────────────────
+              Container(
+                decoration: BoxDecoration(
+                  color: AppInk.page,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Column(
+                  children: appRuled(
+                    [
+                      if (activity.activityDate.isNotEmpty)
+                        _DetailChip(
+                          icon: AppIcons.calendar_blank,
+                          label: 'Date',
+                          value: activity.activityDate,
+                        ),
+                      if (activity.startTime.isNotEmpty)
+                        _DetailChip(
+                          icon: AppIcons.clock,
+                          label: 'Time',
+                          value: _timeRange(activity),
+                        ),
+                      if (activity.location.isNotEmpty)
+                        _DetailChip(
+                          icon: AppIcons.map_pin,
+                          label: 'Location',
+                          value: activity.location,
+                        ),
+                      if (activity.program.isNotEmpty)
+                        _DetailChip(
+                          icon: AppIcons.school_outlined,
+                          label: 'For',
+                          value: activity.program,
+                        ),
+                      if (activity.code.isNotEmpty)
+                        _DetailChip(
+                          icon: AppIcons.tag_rounded,
+                          label: 'Code',
+                          value: activity.code,
+                        ),
+                    ],
+                    indent: 44,
+                  ),
+                ),
               ),
               const SizedBox(height: 28),
 
               // ── Actions ──────────────────────────────────────────
               if (isStudent) ...[
                 AppButton(
-                  label: isOpen ? 'Scan Poster QR' : 'Check-in Closed',
+                  label: isOpen ? 'Scan poster QR' : 'Check-in closed',
                   icon: isOpen
-                      ? Icons.qr_code_scanner_rounded
-                      : Icons.lock_outline_rounded,
+                      ? AppIcons.qr_code_scanner_rounded
+                      : AppIcons.lock_outline_rounded,
                   fullWidth: true,
                   size: AppButtonSize.lg,
                   disabled: !isOpen,
@@ -205,8 +210,8 @@ class ActivityDetailSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 AppButton(
-                  label: 'Show My QR',
-                  icon: Icons.qr_code_2_rounded,
+                  label: 'Show my QR',
+                  icon: AppIcons.qr_code_2_rounded,
                   fullWidth: true,
                   size: AppButtonSize.lg,
                   style: AppButtonStyle.outline,
@@ -221,10 +226,10 @@ class ActivityDetailSheet extends StatelessWidget {
                 ),
               ] else ...[
                 if (canScan) AppButton(
-                  label: isOpen ? 'Scan Students' : 'Check-in Closed',
+                  label: isOpen ? 'Scan students' : 'Check-in closed',
                   icon: isOpen
-                      ? Icons.qr_code_scanner_rounded
-                      : Icons.lock_outline_rounded,
+                      ? AppIcons.qr_code_scanner_rounded
+                      : AppIcons.lock_outline_rounded,
                   fullWidth: true,
                   size: AppButtonSize.lg,
                   disabled: !isOpen,
@@ -244,8 +249,8 @@ class ActivityDetailSheet extends StatelessWidget {
                 if (canScan && (canViewPoster || canViewLogs))
                   const SizedBox(height: 10),
                 if (canViewPoster) AppButton(
-                  label: 'View Activity QR Poster',
-                  icon: Icons.qr_code_2_rounded,
+                  label: 'Show QR poster',
+                  icon: AppIcons.qr_code_2_rounded,
                   fullWidth: true,
                   size: AppButtonSize.lg,
                   onTap: () {
@@ -263,8 +268,8 @@ class ActivityDetailSheet extends StatelessWidget {
                 ),
                 if (canViewPoster && canViewLogs) const SizedBox(height: 10),
                 if (canViewLogs) AppButton(
-                  label: 'View Attendance Logs',
-                  icon: Icons.history_rounded,
+                  label: 'Attendance logs',
+                  icon: AppIcons.history_rounded,
                   fullWidth: true,
                   size: AppButtonSize.lg,
                   style: AppButtonStyle.outline,
@@ -285,8 +290,8 @@ class ActivityDetailSheet extends StatelessWidget {
                 if (canManage) ...[
                   const SizedBox(height: 10),
                   AppButton(
-                    label: 'Edit Activity',
-                    icon: Icons.edit_outlined,
+                    label: 'Edit activity',
+                    icon: AppIcons.edit_outlined,
                     fullWidth: true,
                     size: AppButtonSize.lg,
                     style: AppButtonStyle.outline,
@@ -325,39 +330,22 @@ class _DetailChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppInk.page,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppInk.rule),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: AppInk.muted),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: AppInk.muted,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppInk.heading,
-                ),
-              ),
-            ],
+          Icon(icon, size: 18, color: AppInk.muted),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 72,
+            child: Text(label, style: AppType.caption.copyWith(fontSize: 13.5)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: AppType.row.copyWith(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
           ),
         ],
       ),
@@ -430,7 +418,7 @@ class _ActivityLogViewState extends State<ActivityLogView> {
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           AppEmptyState(
-                            icon: Icons.cloud_off_rounded,
+                            icon: AppIcons.cloud_off_rounded,
                             title: 'Failed to load',
                             subtitle: _error,
                             action: 'Retry',
@@ -441,7 +429,7 @@ class _ActivityLogViewState extends State<ActivityLogView> {
                           ? ListView(children: [
                               const SizedBox(height: 80),
                               const AppEmptyState(
-                                icon: Icons.history_rounded,
+                                icon: AppIcons.history_rounded,
                                 title: 'No attendance records',
                                 subtitle: 'No one has checked in yet.',
                               ),
@@ -466,23 +454,13 @@ class _ActivityLogViewState extends State<ActivityLogView> {
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: AppCard(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 14, vertical: 12),
+                                    padding: const EdgeInsets.fromLTRB(
+                                        14, 12, 14, 12),
                                     child: Row(
                                       children: [
-                                        Container(
-                                          width: 40,
-                                          height: 40,
-                                          decoration: BoxDecoration(
-                                            color: AppInk.accent
-                                                .withValues(alpha: 0.12),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          child: const Icon(
-                                              Icons.person_rounded,
-                                              color: AppInk.accent,
-                                              size: 20),
+                                        AppAvatar(
+                                          name: name.isEmpty ? studentNo : name,
+                                          size: 40,
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(
@@ -492,87 +470,35 @@ class _ActivityLogViewState extends State<ActivityLogView> {
                                             children: [
                                               Text(
                                                 name.isEmpty ? studentNo : name,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: AppInk.heading,
-                                                ),
+                                                style: AppType.row,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
-                                              const SizedBox(height: 4),
-                                              Wrap(
-                                                spacing: 12,
-                                                runSpacing: 4,
-                                                children: [
-                                                  Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      const Icon(
-                                                          Icons.login_rounded,
-                                                          size: 14,
-                                                          color:
-                                                              AppInk.positive),
-                                                      const SizedBox(width: 4),
-                                                      Text(checkedIn,
-                                                          style:
-                                                              const TextStyle(
-                                                                  fontSize: 12,
-                                                                  color: AppInk
-                                                                      .muted)),
-                                                    ],
-                                                  ),
-                                                  if (checkedOut.isNotEmpty)
-                                                    Row(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        const Icon(
-                                                            Icons
-                                                                .logout_rounded,
-                                                            size: 14,
-                                                            color: AppInk
-                                                                .critical),
-                                                        const SizedBox(
-                                                            width: 4),
-                                                        Text(checkedOut,
-                                                            style:
-                                                                const TextStyle(
-                                                                    fontSize:
-                                                                        12,
-                                                                    color: AppInk
-                                                                        .muted)),
-                                                      ],
-                                                    ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                [
+                                                  if (name.isNotEmpty) studentNo,
                                                   if (source.isNotEmpty)
-                                                    Container(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 6,
-                                                          vertical: 2),
-                                                      decoration: BoxDecoration(
-                                                        color: AppInk.accent
-                                                            .withValues(
-                                                                alpha: 0.08),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(6),
-                                                      ),
-                                                      child: Text(
-                                                        source.toUpperCase(),
-                                                        style: const TextStyle(
-                                                          fontSize: 10,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: AppInk.accent,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                ],
+                                                    source.toUpperCase(),
+                                                ].join(' · '),
+                                                style: AppType.rowSub,
                                               ),
                                             ],
                                           ),
+                                        ),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Text('In $checkedIn',
+                                                style: AppType.caption.copyWith(
+                                                    color: AppInk.body,
+                                                    fontWeight:
+                                                        FontWeight.w600)),
+                                            if (checkedOut.isNotEmpty)
+                                              Text('Out $checkedOut',
+                                                  style: AppType.caption),
+                                          ],
                                         ),
                                       ],
                                     ),

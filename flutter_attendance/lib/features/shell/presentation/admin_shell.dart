@@ -24,6 +24,7 @@ import '../../activities/presentation/dashboard_screen.dart';
 import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
 import '../../attendance/presentation/activity_poster_screen.dart';
+import '../../attendance/presentation/activity_state_style.dart';
 import '../../attendance/presentation/manage_activities_screen.dart';
 import '../../attendance/presentation/scan_screen.dart';
 import '../../auth/domain/app_session.dart';
@@ -66,12 +67,13 @@ class _AdminShellState extends State<AdminShell> {
   StaffPermissions get _perms => StaffPermissions.of(widget.session);
 
   Widget _menuButton(BuildContext context) {
-    return IconButton(
-      icon: const Icon(Icons.menu_rounded, size: 24),
-      onPressed: () => Scaffold.of(context).openDrawer(),
-      style: IconButton.styleFrom(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    return Padding(
+      padding: const EdgeInsets.only(left: 12),
+      child: Center(
+        child: AppCircleButton(
+          icon: AppIcons.menu_rounded,
+          tooltip: 'Menu',
+          onTap: () => Scaffold.of(context).openDrawer(),
         ),
       ),
     );
@@ -87,8 +89,9 @@ class _AdminShellState extends State<AdminShell> {
     return [
       if (p.canViewStaffLists)
         DrawerItem(
-          icon: Icons.school_outlined,
-          title: 'Registered Students',
+          group: 'Attendance',
+          icon: AppIcons.school_outlined,
+          title: 'Registered students',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -101,8 +104,9 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canViewAttendanceLogs)
         DrawerItem(
-          icon: Icons.history_rounded,
-          title: 'Attendance Logs',
+          group: 'Attendance',
+          icon: AppIcons.history_rounded,
+          title: 'Attendance logs',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -115,8 +119,9 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canManageActivities)
         DrawerItem(
-          icon: Icons.edit_calendar_rounded,
-          title: 'Manage Activities',
+          group: 'Attendance',
+          icon: AppIcons.edit_calendar_rounded,
+          title: 'Manage activities',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -129,7 +134,8 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canManageAnnouncements)
         DrawerItem(
-          icon: Icons.campaign_outlined,
+          group: 'Updates & reports',
+          icon: AppIcons.campaign_outlined,
           title: 'Announcements',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
@@ -143,8 +149,9 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canViewStaffLists)
         DrawerItem(
-          icon: Icons.assessment_outlined,
-          title: 'Activities Reports',
+          group: 'Updates & reports',
+          icon: AppIcons.assessment_outlined,
+          title: 'Activity reports',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -160,8 +167,9 @@ class _AdminShellState extends State<AdminShell> {
       // Auditor sees the same records with all mutations removed.
       if (p.canViewAccounting)
         DrawerItem(
-          icon: Icons.payments_outlined,
-          title: p.isAuditor ? 'Payment Records' : 'Payment Entry',
+          group: 'Accounting',
+          icon: AppIcons.payments_outlined,
+          title: p.isAuditor ? 'Payment records' : 'Payment entry',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -174,8 +182,9 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canViewAccounting)
         DrawerItem(
-          icon: Icons.receipt_long_outlined,
-          title: 'School Expenses',
+          group: 'Accounting',
+          icon: AppIcons.receipt_long_outlined,
+          title: 'School expenses',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -187,8 +196,9 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canViewAccounting)
         DrawerItem(
-          icon: Icons.summarize_outlined,
-          title: 'Expenses Reports',
+          group: 'Accounting',
+          icon: AppIcons.summarize_outlined,
+          title: 'Expense reports',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -201,8 +211,9 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canViewAccounting)
         DrawerItem(
-          icon: Icons.sell_outlined,
-          title: 'Fees Setup',
+          group: 'Accounting',
+          icon: AppIcons.sell_outlined,
+          title: 'Fees setup',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -215,8 +226,9 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canViewAccounting)
         DrawerItem(
-          icon: Icons.description_outlined,
-          title: 'Collection Reports',
+          group: 'Accounting',
+          icon: AppIcons.description_outlined,
+          title: 'Collection reports',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -229,8 +241,9 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canViewAccounting)
         DrawerItem(
-          icon: Icons.menu_book_outlined,
-          title: p.isAuditor ? 'Cash Inflow & Outflow' : 'Ledger',
+          group: 'Accounting',
+          icon: AppIcons.menu_book_outlined,
+          title: p.isAuditor ? 'Cash inflow & outflow' : 'Ledger',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -242,8 +255,9 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canViewAccounting)
         DrawerItem(
-          icon: Icons.hourglass_bottom_rounded,
-          title: 'Partial Payments',
+          group: 'Accounting',
+          icon: AppIcons.hourglass_bottom_rounded,
+          title: 'Partial payments',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -256,8 +270,9 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canViewAccounting)
         DrawerItem(
-          icon: Icons.manage_history_rounded,
-          title: 'Payment Activity Log',
+          group: 'Accounting',
+          icon: AppIcons.manage_history_rounded,
+          title: 'Payment activity log',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -270,8 +285,9 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canViewDepartments)
         DrawerItem(
-          icon: Icons.school_outlined,
-          title: 'Course',
+          group: 'Manage',
+          icon: AppIcons.school_outlined,
+          title: 'Courses',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -283,7 +299,8 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canViewStaffLists)
         DrawerItem(
-          icon: Icons.group_outlined,
+          group: 'Manage',
+          icon: AppIcons.group_outlined,
           title: 'Sections',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
@@ -296,8 +313,9 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canManageUsers)
         DrawerItem(
-          icon: Icons.manage_accounts_rounded,
-          title: 'Admin Accounts',
+          group: 'Manage',
+          icon: AppIcons.manage_accounts_rounded,
+          title: 'Admin accounts',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -310,8 +328,9 @@ class _AdminShellState extends State<AdminShell> {
         ),
       if (p.canManagePersonnel)
         DrawerItem(
-          icon: Icons.people_outline_rounded,
-          title: 'FBMSO Officials',
+          group: 'Manage',
+          icon: AppIcons.people_outline_rounded,
+          title: 'FBMSO officials',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -334,29 +353,29 @@ class _AdminShellState extends State<AdminShell> {
     //   Cashier → Dashboard + Expenses
     //   Auditor → Dashboard + Activities (no scanner)
     //   others  → Dashboard + Activities + Scan when permitted
-    final destinations = <NavigationDestination>[
-      const NavigationDestination(
-        icon: Icon(Icons.dashboard_outlined),
-        selectedIcon: Icon(Icons.dashboard),
-        label: 'Dashboard',
+    final destinations = <AppNavItem>[
+      const AppNavItem(
+        icon: AppIcons.house,
+        selectedIcon: AppIcons.house_fill,
+        label: 'Home',
       ),
       if (p.isCashier)
-        const NavigationDestination(
-          icon: Icon(Icons.receipt_long_outlined),
-          selectedIcon: Icon(Icons.receipt_long_rounded),
+        const AppNavItem(
+          icon: AppIcons.receipt_long_outlined,
+          selectedIcon: AppIcons.receipt_fill,
           label: 'Expenses',
         )
       else ...[
-        const NavigationDestination(
-          icon: Icon(AppIcons.home_outlined),
-          selectedIcon: Icon(AppIcons.home_rounded),
+        const AppNavItem(
+          icon: AppIcons.calendar_blank,
+          selectedIcon: AppIcons.calendar_fill,
           label: 'Activities',
         ),
         if (p.canScan)
-          const NavigationDestination(
-            icon: Icon(Icons.qr_code_scanner_outlined),
-            selectedIcon: Icon(Icons.qr_code_scanner),
+          const AppNavItem(
+            icon: AppIcons.scan,
             label: 'Scan',
+            prominent: true,
           ),
       ],
     ];
@@ -383,10 +402,10 @@ class _AdminShellState extends State<AdminShell> {
           return tabs[_index.clamp(0, tabs.length - 1)];
         },
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index.clamp(0, destinations.length - 1),
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: destinations,
+      bottomNavigationBar: AppBottomNav(
+        currentIndex: _index.clamp(0, destinations.length - 1),
+        onSelect: (i) => setState(() => _index = i),
+        items: destinations,
       ),
     );
   }
@@ -449,38 +468,21 @@ class _ScanPickerState extends State<_ScanPicker> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: _posterMode ? 'Poster Mode' : 'Scan',
+      title: _posterMode ? 'Poster mode' : 'Scan',
       showBackButton: false,
       leading: widget.menuButton,
       body: Column(
         children: [
           const SyncStatusBanner(),
           if (_posterMode && !_loading)
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppInk.accent.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: AppInk.accent.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.image_rounded,
-                      size: 22, color: AppInk.accent),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Poster Mode is ON — tap an activity to display its QR poster for students to scan.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppInk.accent.withValues(alpha: 0.9),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: AppNotice(
+                tone: AppInk.accent,
+                icon: AppIcons.image_rounded,
+                title: 'Poster mode is on',
+                message: 'Tap an activity to show its check-in QR poster for '
+                    'students to scan.',
               ),
             ),
           Expanded(
@@ -494,8 +496,8 @@ class _ScanPickerState extends State<_ScanPicker> {
                             const SizedBox(height: 80),
                             AppEmptyState(
                               icon: _posterMode
-                                  ? Icons.image_outlined
-                                  : Icons.qr_code_scanner_rounded,
+                                  ? AppIcons.image_outlined
+                                  : AppIcons.qr_code_scanner_rounded,
                               title: _posterMode
                                   ? 'No open activities'
                                   : 'No open activities',
@@ -513,121 +515,40 @@ class _ScanPickerState extends State<_ScanPicker> {
                             if (i == 0) {
                               return AppPageHeader(
                                 title: _posterMode
-                                    ? 'Poster Mode'
-                                    : 'Select Activity',
+                                    ? 'Poster mode'
+                                    : 'Start scanning',
                                 icon: _posterMode
-                                    ? Icons.qr_code_2_rounded
-                                    : Icons.qr_code_scanner_rounded,
+                                    ? AppIcons.qr_code_2_rounded
+                                    : AppIcons.qr_code_scanner_rounded,
                                 subtitle: _posterMode
-                                    ? 'Tap to show the check-in QR poster'
-                                    : 'Open activities you can scan for',
+                                    ? 'Pick an activity to show its QR poster.'
+                                    : 'Pick an open activity. Scans work offline.',
                               );
                             }
                             final a = _activities[i - 1];
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 10),
                               child: AppCard(
-                                radius: 16,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 14),
-                                onTap: () {
-                                  SharedPreferences.getInstance().then(
-                                      (p) => p.setInt(_kLastActivityKey,
-                                          a.activityId));
-                                  if (_posterMode) {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => ActivityPosterScreen(
-                                          session: widget.session,
-                                          activityId: a.activityId,
-                                          activityTitle: a.title,
-                                        ),
-                                      ),
-                                    );
-                                  } else {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => ScanScreen(
-                                          session: widget.session,
-                                          activityId: a.activityId,
-                                          activityTitle: a.title,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 42,
-                                      height: 42,
-                                      decoration: BoxDecoration(
-                                        color: AppInk.accent
-                                            .withValues(alpha: 0.12),
-                                        borderRadius:
-                                            BorderRadius.circular(12),
-                                      ),
-                                      child: Icon(
-                                          _posterMode
-                                              ? Icons.qr_code_2_rounded
-                                              : Icons.qr_code_scanner_rounded,
-                                          color: AppInk.accent,
-                                          size: 22),
+                                padding: EdgeInsets.zero,
+                                child: ClipRRect(
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.lg),
+                                  child: ActivityRow(
+                                    activity: a,
+                                    badge: a.activityId == _lastActivityId
+                                        ? 'Last used'
+                                        : null,
+                                    trailing: AppButton(
+                                      label: _posterMode ? 'Poster' : 'Scan',
+                                      icon: _posterMode
+                                          ? AppIcons.qr_code_2
+                                          : AppIcons.scan,
+                                      size: AppButtonSize.sm,
+                                      style: AppButtonStyle.tonal,
+                                      onTap: () => _open(a),
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            a.title,
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppInk.heading,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 3),
-                                          Text(
-                                            a.activityDate,
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              color: AppInk.muted,
-                                            ),
-                                          ),
-                                          if (a.activityId ==
-                                              _lastActivityId) ...[
-                                            const SizedBox(height: 4),
-                                            Container(
-                                              padding: const EdgeInsets
-                                                  .symmetric(
-                                                  horizontal: 7,
-                                                  vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: AppInk.accent
-                                                    .withValues(alpha: 0.10),
-                                                borderRadius:
-                                                    BorderRadius.circular(6),
-                                              ),
-                                              child: const Text(
-                                                'LAST USED',
-                                                style: TextStyle(
-                                                  fontSize: 9,
-                                                  fontWeight:
-                                                      FontWeight.w800,
-                                                  letterSpacing: 0.6,
-                                                  color: AppInk.accent,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                    const Icon(Icons.chevron_right_rounded,
-                                        color: AppInk.muted, size: 22),
-                                  ],
+                                    onTap: () => _open(a),
+                                  ),
                                 ),
                               ),
                             );
@@ -636,6 +557,26 @@ class _ScanPickerState extends State<_ScanPicker> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _open(Activity a) {
+    SharedPreferences.getInstance()
+        .then((p) => p.setInt(_kLastActivityKey, a.activityId));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _posterMode
+            ? ActivityPosterScreen(
+                session: widget.session,
+                activityId: a.activityId,
+                activityTitle: a.title,
+              )
+            : ScanScreen(
+                session: widget.session,
+                activityId: a.activityId,
+                activityTitle: a.title,
+              ),
       ),
     );
   }
@@ -678,7 +619,7 @@ class _ActivityLogPickerState extends State<_ActivityLogPicker> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Attendance Logs',
+      title: 'Attendance logs',
       showBackButton: true,
       body: Column(
         children: [
@@ -692,7 +633,7 @@ class _ActivityLogPickerState extends State<_ActivityLogPicker> {
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           const AppEmptyState(
-                            icon: Icons.history_rounded,
+                            icon: AppIcons.history_rounded,
                             title: 'No activities',
                           ),
                         ])
@@ -702,87 +643,31 @@ class _ActivityLogPickerState extends State<_ActivityLogPicker> {
                           itemBuilder: (context, i) {
                             if (i == 0) {
                               return const AppPageHeader(
-                                title: 'Attendance Logs',
-                                icon: Icons.fact_check_outlined,
+                                title: 'Attendance logs',
+                                subtitle: 'Choose an activity to see who checked in.',
                               );
                             }
                             final a = _activities[i - 1];
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.only(bottom: 10),
                               child: AppCard(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 14),
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => _ActivityLogView(
-                                        session: widget.session,
-                                        activity: a,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 42,
-                                      height: 42,
-                                      decoration: BoxDecoration(
-                                        color: AppInk.accent
-                                            .withValues(alpha: 0.12),
-                                        borderRadius:
-                                            BorderRadius.circular(12),
-                                      ),
-                                      child: const Icon(Icons.history_rounded,
-                                          color: AppInk.accent, size: 22),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            a.title,
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppInk.heading,
-                                            ),
+                                padding: EdgeInsets.zero,
+                                child: ClipRRect(
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.lg),
+                                  child: ActivityRow(
+                                    activity: a,
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => _ActivityLogView(
+                                            session: widget.session,
+                                            activity: a,
                                           ),
-                                          const SizedBox(height: 3),
-                                          Text(
-                                            a.activityDate,
-                                            style: const TextStyle(
-                                                fontSize: 13,
-                                                color: AppInk.muted),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: (a.isOpen
-                                                ? AppInk.positive
-                                                : AppInk.muted)
-                                            .withValues(alpha: 0.10),
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                      ),
-                                      child: Text(
-                                        a.isOpen ? 'Open' : 'Closed',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: a.isOpen
-                                              ? AppInk.positive
-                                              : AppInk.muted,
                                         ),
-                                      ),
-                                    ),
-                                  ],
+                                      );
+                                    },
+                                  ),
                                 ),
                               ),
                             );
@@ -949,7 +834,7 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
               ? const SizedBox(
                   width: 18, height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.download_rounded),
+              : const Icon(AppIcons.download_rounded),
         ),
       ],
       body: Column(
@@ -957,33 +842,10 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
           const SyncStatusBanner(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: TextField(
+            child: AppSearchField(
               controller: _searchController,
+              hint: 'Search name or student ID',
               onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Search name or student ID...',
-                prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppInk.muted),
-                suffixIcon: _search.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 20),
-                        onPressed: () {
-                          _searchController.clear();
-                          _onSearchChanged('');
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppInk.rule, width: 1.5),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppInk.accent, width: 2),
-                ),
-              ),
             ),
           ),
           if (!_loading && _error == null)
@@ -992,12 +854,8 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
               child: Row(
                 children: [
                   Text(
-                    '${_logs.length} of $_total records',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppInk.muted,
-                    ),
+                    'Showing ${_logs.length} of $_total',
+                    style: AppType.caption,
                   ),
                 ],
               ),
@@ -1011,7 +869,7 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
                       ? ListView(children: [
                           const SizedBox(height: 80),
                           AppEmptyState(
-                            icon: Icons.cloud_off_rounded,
+                            icon: AppIcons.cloud_off_rounded,
                             title: 'Failed to load',
                             subtitle: _error,
                             action: 'Retry',
@@ -1022,7 +880,7 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
                           ? ListView(children: [
                               const SizedBox(height: 80),
                               const AppEmptyState(
-                                icon: Icons.history_rounded,
+                                icon: AppIcons.history_rounded,
                                 title: 'No attendance records',
                               ),
                             ])
@@ -1060,23 +918,13 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: AppCard(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 14, vertical: 12),
+                                    padding: const EdgeInsets.fromLTRB(
+                                        14, 12, 14, 12),
                                     child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
                                       children: [
-                                        Container(
-                                          width: 40,
-                                          height: 40,
-                                          decoration: BoxDecoration(
-                                            color: AppInk.accent
-                                                .withValues(alpha: 0.12),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          child: const Icon(Icons.person_rounded,
-                                              color: AppInk.accent, size: 20),
+                                        AppAvatar(
+                                          name: name.isEmpty ? studentNo : name,
+                                          size: 40,
                                         ),
                                         const SizedBox(width: 12),
                                         Expanded(
@@ -1085,113 +933,46 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                name.isEmpty
-                                                    ? studentNo
-                                                    : name,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: AppInk.heading,
-                                                ),
+                                                name.isEmpty ? studentNo : name,
+                                                style: AppType.row,
                                                 maxLines: 1,
-                                                overflow:
-                                                    TextOverflow.ellipsis,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
-                                              const SizedBox(height: 4),
-                                              Wrap(
-                                                spacing: 8,
-                                                runSpacing: 4,
-                                                crossAxisAlignment:
-                                                    WrapCrossAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    studentNo,
-                                                    style: const TextStyle(
-                                                        fontSize: 12,
-                                                        color: AppInk.muted),
-                                                  ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                [
+                                                  studentNo,
                                                   if (sessionLabel != '—')
-                                                    Text(
-                                                      sessionLabel,
-                                                      style: const TextStyle(
-                                                          fontSize: 12,
-                                                          color: AppInk.muted),
-                                                    ),
+                                                    sessionLabel,
                                                   if (source.isNotEmpty)
-                                                    Container(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 6,
-                                                          vertical: 2),
-                                                      decoration: BoxDecoration(
-                                                        color: AppInk.accent
-                                                            .withValues(
-                                                                alpha: 0.08),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(6),
-                                                      ),
-                                                      child: Text(
-                                                        source.toUpperCase(),
-                                                        style: const TextStyle(
-                                                          fontSize: 10,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: AppInk.accent,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Wrap(
-                                                spacing: 12,
-                                                runSpacing: 4,
-                                                children: [
-                                                  Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      const Icon(
-                                                          Icons.login_rounded,
-                                                          size: 14,
-                                                          color: AppInk
-                                                              .positive),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        checkedIn,
-                                                        style: const TextStyle(
-                                                            fontSize: 12,
-                                                            color: AppInk
-                                                                .muted),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  if (checkedOut.isNotEmpty)
-                                                    Row(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        const Icon(
-                                                            Icons
-                                                                .logout_rounded,
-                                                            size: 14,
-                                                            color: AppInk
-                                                                .critical),
-                                                        const SizedBox(width: 4),
-                                                        Text(
-                                                          checkedOut,
-                                                          style: const TextStyle(
-                                                              fontSize: 12,
-                                                              color: AppInk
-                                                                  .muted),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                ],
+                                                    source.toUpperCase(),
+                                                ].join(' · '),
+                                                style: AppType.rowSub,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ],
                                           ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            _TimeMark(
+                                              icon: AppIcons.login_rounded,
+                                              tone: AppInk.positive,
+                                              time: checkedIn,
+                                            ),
+                                            if (checkedOut.isNotEmpty) ...[
+                                              const SizedBox(height: 4),
+                                              _TimeMark(
+                                                icon: AppIcons.logout_rounded,
+                                                tone: AppInk.muted,
+                                                time: checkedOut,
+                                              ),
+                                            ],
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -1203,6 +984,33 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A check-in/out time with its direction icon.
+class _TimeMark extends StatelessWidget {
+  const _TimeMark({required this.icon, required this.tone, required this.time});
+
+  final IconData icon;
+  final Color tone;
+  final String time;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: tone),
+        const SizedBox(width: 4),
+        Text(
+          time,
+          style: AppType.caption.copyWith(
+            color: AppInk.body,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

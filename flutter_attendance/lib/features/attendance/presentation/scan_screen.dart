@@ -15,6 +15,8 @@ import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
 import '../domain/attendance_models.dart';
 import '../domain/qr_payload_parser.dart';
+import 'scan_viewfinder.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Instructor/personnel scanner. Camera scans a student's QR; the scan is
 /// decided and saved on the phone at once and uploaded to
@@ -213,27 +215,36 @@ class _ScanScreenState extends State<ScanScreen> {
 
     return Container(
       width: double.infinity,
-      color: tint.withValues(alpha: 0.12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      color: tint.withValues(alpha: 0.08),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          Icon(
-            _rosterLoading
-                ? Icons.download_rounded
-                : tint == AppInk.positive
-                    ? Icons.offline_pin_rounded
-                    : Icons.warning_amber_rounded,
-            size: 16,
-            color: tint,
-          ),
+          if (_rosterLoading)
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                value: total > 0 ? done / total : null,
+                color: tint,
+              ),
+            )
+          else
+            Icon(
+              tint == AppInk.positive
+                  ? AppIcons.offline_pin_rounded
+                  : AppIcons.warning_amber_rounded,
+              size: 16,
+              color: tint,
+            ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: tint,
+                color: AppInk.onTint(tint),
               ),
             ),
           ),
@@ -355,18 +366,32 @@ class _ScanScreenState extends State<ScanScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Scan — ${widget.activityTitle}',
+      backgroundColor: Colors.white,
+      titleWidget: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            widget.activityTitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppType.row.copyWith(fontSize: 16),
+          ),
+          Text('Scanner · works offline', style: AppType.caption),
+        ],
+      ),
       showBackButton: true,
       actions: [
-        IconButton(
-          onPressed: _controller.toggleTorch,
+        AppCircleButton(
+          onTap: _controller.toggleTorch,
           tooltip: 'Flashlight',
-          icon: const Icon(Icons.flashlight_on_rounded),
+          icon: AppIcons.flashlight_on_rounded,
         ),
-        IconButton(
-          onPressed: _controller.switchCamera,
+        const SizedBox(width: 8),
+        AppCircleButton(
+          onTap: _controller.switchCamera,
           tooltip: 'Switch camera',
-          icon: const Icon(Icons.cameraswitch_rounded),
+          icon: AppIcons.cameraswitch_rounded,
         ),
       ],
       body: LayoutBuilder(
@@ -387,7 +412,13 @@ class _ScanScreenState extends State<ScanScreen> {
                     : Column(
                         children: [
                           Expanded(flex: 6, child: _cameraPanel()),
-                          Expanded(flex: 4, child: _historyPanel()),
+                          Expanded(
+                            flex: 4,
+                            child: Transform.translate(
+                              offset: const Offset(0, -18),
+                              child: _historyPanel(),
+                            ),
+                          ),
                         ],
                       ),
               ),
@@ -407,15 +438,13 @@ class _ScanScreenState extends State<ScanScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
+              const ColoredBox(color: Colors.black),
               MobileScanner(controller: _controller, onDetect: _onDetect),
               Center(
-                child: Container(
+                child: SizedBox(
                   width: frameSize,
                   height: frameSize,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white, width: 3),
-                    borderRadius: BorderRadius.circular(22),
-                  ),
+                  child: ScanViewfinder(scanning: !_processing),
                 ),
               ),
               // Result flash — covers the camera briefly on each scan.
@@ -430,9 +459,9 @@ class _ScanScreenState extends State<ScanScreen> {
               // visual verification against QR sharing. Tap to dismiss early.
               if (_verifyResult != null)
                 Positioned(
-                  left: 14,
-                  right: 14,
-                  top: 14,
+                  left: 12,
+                  right: 12,
+                  top: 12,
                   child: _VerifyCard(
                     result: _verifyResult!,
                     onDismiss: () => setState(() => _verifyResult = null),
@@ -448,14 +477,16 @@ class _ScanScreenState extends State<ScanScreen> {
               Positioned(
                 left: 12,
                 right: 12,
-                bottom: 14,
+                bottom: 32,
                 child: Center(
                   child: Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.64),
+                      color: Colors.black.withValues(alpha: 0.55),
                       borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.12)),
                     ),
                     child: Text(
                       _processing
@@ -465,7 +496,7 @@ class _ScanScreenState extends State<ScanScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 12.5,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -480,25 +511,54 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Widget _historyPanel() {
-    if (_recent.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Text(
-            'Recent check-ins will appear here.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppInk.muted, fontWeight: FontWeight.w600),
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 16, 6),
+            child: Row(
+              children: [
+                Text('Recent scans',
+                    style: AppType.headline.copyWith(fontSize: 16)),
+                const SizedBox(width: 8),
+                if (_recent.isNotEmpty)
+                  AppChip(label: '${_recent.length}', tone: AppInk.muted),
+              ],
+            ),
           ),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-      itemCount: _recent.length,
-      itemBuilder: (context, i) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: _ScanRecordTile(record: _recent[i], isFirst: i == 0),
+          Expanded(
+            child: _recent.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(AppIcons.scan,
+                              size: 28, color: AppInk.faint),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Check-ins will appear here as you scan.',
+                            textAlign: TextAlign.center,
+                            style: AppType.rowSub.copyWith(fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+                    itemCount: _recent.length,
+                    itemBuilder: (context, i) =>
+                        _ScanRecordTile(record: _recent[i], isFirst: i == 0),
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -520,21 +580,28 @@ class _ScanRecordTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = record.result;
     final (label, color, icon) = _style(r);
-    return AppCard(
-      radius: 16,
-      background: isFirst ? color.withValues(alpha: 0.06) : Colors.white,
-      borderColor: isFirst ? color.withValues(alpha: 0.25) : AppInk.rule,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    final who = [
+      if (r.student?['name'] != null) r.student!['name'].toString(),
+      if (r.studentNumber != null) r.studentNumber!,
+    ].join(' · ');
+    return AnimatedContainer(
+      duration: AppMotion.slow,
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: isFirst ? color.withValues(alpha: 0.07) : Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+              shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 22),
+            child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -542,49 +609,49 @@ class _ScanRecordTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppInk.heading,
-                  ),
+                  who.isEmpty ? label : who,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.row.copyWith(fontSize: 14.5),
                 ),
-                if (r.message != null && r.message!.trim().isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    r.message!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12, color: color),
-                  ),
-                ],
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   [
-                    if (r.studentNumber != null) r.studentNumber!,
-                    if (r.student?['name'] != null)
-                      r.student!['name'].toString(),
-                    _timeLabel(record.at),
-                  ].join(' • '),
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    color: AppInk.muted,
+                    label,
+                    if (r.message != null && r.message!.trim().isNotEmpty)
+                      r.message!.trim(),
+                  ].join(' · '),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.caption.copyWith(
+                    color: AppInk.onTint(color),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
-          // Not confirmed by the server yet: it can still refuse the scan.
-          if (r.provisional || r.mode == 'queued')
-            const Tooltip(
-              message: 'Saved on this phone, waiting for the server',
-              child: Icon(Icons.cloud_upload_rounded,
-                  color: AppInk.caution, size: 20),
-            )
-          else if (r.mode == 'checked_in')
-            const Icon(Icons.login_rounded, color: AppInk.positive, size: 20)
-          else if (r.mode == 'checked_out')
-            const Icon(Icons.logout_rounded, color: AppInk.accent, size: 20),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(_timeLabel(record.at), style: AppType.caption),
+              const SizedBox(height: 4),
+              // Not confirmed by the server yet: it can still refuse the scan.
+              if (r.provisional || r.mode == 'queued')
+                const Tooltip(
+                  message: 'Saved on this phone, waiting for the server',
+                  child: Icon(AppIcons.cloud_upload_rounded,
+                      color: AppInk.caution, size: 16),
+                )
+              else if (r.mode == 'checked_in')
+                const Icon(AppIcons.login_rounded,
+                    color: AppInk.positive, size: 16)
+              else if (r.mode == 'checked_out')
+                const Icon(AppIcons.logout_rounded,
+                    color: AppInk.accent, size: 16),
+            ],
+          ),
         ],
       ),
     );
@@ -599,46 +666,46 @@ class _ScanRecordTile extends StatelessWidget {
   (String, Color, IconData) _style(CheckResult r) {
     switch (r.mode) {
       case 'checked_in':
-        return ('Checked in', AppInk.positive, Icons.check_circle_rounded);
+        return ('Checked in', AppInk.positive, AppIcons.check_circle_rounded);
       case 'checked_out':
-        return ('Checked out', AppInk.accent, Icons.check_circle_rounded);
+        return ('Checked out', AppInk.accent, AppIcons.check_circle_rounded);
       case 'already_in':
-        return ('Already in', AppInk.caution, Icons.info_outline_rounded);
+        return ('Already in', AppInk.caution, AppIcons.info_outline_rounded);
       case 'duplicate':
-        return ('Duplicate', AppInk.caution, Icons.block_rounded);
+        return ('Duplicate', AppInk.caution, AppIcons.block_rounded);
       case 'queued':
-        return ('Saved offline', AppInk.caution, Icons.cloud_upload_rounded);
+        return ('Saved offline', AppInk.caution, AppIcons.cloud_upload_rounded);
       case 'unverified':
         return (
           'Saved — server will check',
           AppInk.caution,
-          Icons.help_outline_rounded
+          AppIcons.help_outline_rounded
         );
       case 'too_soon_after_in':
-        return ('Scanned moments ago', AppInk.caution, Icons.block_rounded);
+        return ('Scanned moments ago', AppInk.caution, AppIcons.block_rounded);
       case 'inactive_student':
-        return ('Inactive account', AppInk.critical, Icons.person_off_rounded);
+        return ('Inactive account', AppInk.critical, AppIcons.person_off_rounded);
       case 'unknown_qr':
-        return ('Not on this roster', AppInk.critical, Icons.person_off_rounded);
+        return ('Not on this roster', AppInk.critical, AppIcons.person_off_rounded);
       case 'invalid_qr':
-        return ('Wrong QR code', AppInk.critical, Icons.qr_code_2_rounded);
+        return ('Wrong QR code', AppInk.critical, AppIcons.qr_code_2_rounded);
       case 'stale_scan':
-        return ('Outside activity hours', AppInk.critical, Icons.history_rounded);
+        return ('Outside activity hours', AppInk.critical, AppIcons.history_rounded);
       case 'expired_qr':
-        return ('Expired QR', AppInk.critical, Icons.timer_off_rounded);
+        return ('Expired QR', AppInk.critical, AppIcons.timer_off_rounded);
       case 'activity_ended':
       case 'activity_scheduled':
       case 'activity_closed':
         return (
           'Check-in unavailable',
           AppInk.caution,
-          Icons.lock_clock_rounded
+          AppIcons.lock_clock_rounded
         );
       default:
         return (
           r.message ?? 'Error',
           AppInk.critical,
-          Icons.error_outline_rounded
+          AppIcons.error_outline_rounded
         );
     }
   }
@@ -655,22 +722,22 @@ class _VerifyCard extends StatelessWidget {
 
   (String, Color, IconData) _status() {
     final (label, color, icon) = switch (result.mode) {
-      'checked_in' => ('Checked in', AppInk.positive, Icons.login_rounded),
-      'checked_out' => ('Checked out', AppInk.accent, Icons.logout_rounded),
+      'checked_in' => ('Checked in', AppInk.positive, AppIcons.login_rounded),
+      'checked_out' => ('Checked out', AppInk.accent, AppIcons.logout_rounded),
       'already_in' =>
-        ('Already in', AppInk.caution, Icons.info_outline_rounded),
-      'duplicate' => ('Duplicate scan', AppInk.caution, Icons.block_rounded),
+        ('Already in', AppInk.caution, AppIcons.info_outline_rounded),
+      'duplicate' => ('Duplicate scan', AppInk.caution, AppIcons.block_rounded),
       'queued' =>
-        ('Saved offline', AppInk.caution, Icons.cloud_upload_rounded),
+        ('Saved offline', AppInk.caution, AppIcons.cloud_upload_rounded),
       'inactive_student' =>
-        ('Inactive account', AppInk.critical, Icons.person_off_rounded),
-      _ => ('Scanned', AppInk.accent, Icons.qr_code_rounded),
+        ('Inactive account', AppInk.critical, AppIcons.person_off_rounded),
+      _ => ('Scanned', AppInk.accent, AppIcons.qr_code_rounded),
     };
 
     // Saved on the phone; the server has not answered yet and can still
     // reject it, so never let the card imply the attendance is final.
     if (result.provisional) {
-      return ('$label · saved', color, Icons.cloud_upload_rounded);
+      return ('$label · saved', color, AppIcons.cloud_upload_rounded);
     }
     return (label, color, icon);
   }
@@ -694,12 +761,14 @@ class _VerifyCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: onDismiss,
-      child: Material(
-        elevation: 12,
-        borderRadius: BorderRadius.circular(18),
-        color: Colors.white,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          boxShadow: AppShadow.lg,
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           child: Row(
             children: [
               // Photo — falls back to initials when the account has no avatar.
@@ -727,11 +796,7 @@ class _VerifyCard extends StatelessWidget {
                       name.isEmpty ? 'Unknown student' : name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppInk.heading,
-                      ),
+                      style: AppType.row.copyWith(fontSize: 16.5),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -742,36 +807,10 @@ class _VerifyCard extends StatelessWidget {
                       ].join(' · '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppInk.muted,
-                      ),
+                      style: AppType.rowSub,
                     ),
                     const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(icon, size: 14, color: color),
-                          const SizedBox(width: 5),
-                          Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: color,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    AppChip(label: label, tone: color, icon: icon),
                   ],
                 ),
               ),
@@ -789,9 +828,9 @@ class _VerifyCard extends StatelessWidget {
       child: Text(
         initials.isEmpty ? '?' : initials,
         style: TextStyle(
-          fontSize: 26,
-          fontWeight: FontWeight.w800,
-          color: color,
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          color: AppInk.onTint(color),
         ),
       ),
     );

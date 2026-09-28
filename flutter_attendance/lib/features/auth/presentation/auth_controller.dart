@@ -128,19 +128,53 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    final problem = _api.checkPortalUrl(normalized);
+    if (problem != null) {
+      _error = problem;
+      _config = null;
+      notifyListeners();
+      return;
+    }
     try {
       _config = await _api.fetchConfig(normalized);
       _baseUrl = normalized;
       ConnectivityService.probeBaseUrl = normalized;
       await _store.saveBaseUrl(normalized);
     } on ApiException catch (e) {
-      _error = e.message;
+      _error = connectErrorMessage(normalized, e, isWeb: kIsWeb);
       _config = null;
     } catch (e) {
       _error = e.toString();
       _config = null;
     }
     notifyListeners();
+  }
+
+  /// Turns a failed `/config` call into advice the person typing the
+  /// address can act on.
+  @visibleForTesting
+  static String connectErrorMessage(String baseUrl, ApiException e,
+      {required bool isWeb}) {
+    if (e.statusCode == 0) {
+      final host = Uri.tryParse(baseUrl)?.host ?? '';
+      final onThisDevice =
+          host == 'localhost' || host == '127.0.0.1' || host == '::1';
+      if (onThisDevice && !isWeb) {
+        return "Can't reach $baseUrl. On a phone, “localhost” is the phone "
+            "itself. Use your computer's Wi-Fi IP address instead, e.g. "
+            'http://192.168.1.10/fbmso_attendance, with both on the same Wi-Fi.';
+      }
+      if (isWeb) {
+        return "Can't reach $baseUrl. Check that the server is running and "
+            'that the address starts with the right http:// or https://.';
+      }
+      return "Can't reach $baseUrl. Check the address and your connection.";
+    }
+    if (e.statusCode == 404 || e.message.contains('HTML page')) {
+      return 'No attendance portal answered at $baseUrl. Check the address. '
+          'It usually ends with the site folder, e.g. …/fbmso_attendance.';
+    }
+    return e.message;
   }
 
   Future<bool> login({

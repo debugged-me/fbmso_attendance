@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/services/notification_service.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
+import '../design/components/components.dart';
+import '../theme/app_icons.dart';
 
 /// Bell icon with an unread badge. Tapping opens the notifications screen.
 /// Uses a [StreamBuilder] so the badge updates in real time.
@@ -17,16 +19,12 @@ class NotificationBell extends StatelessWidget {
       initialData: NotificationService.instance.items,
       builder: (context, snapshot) {
         final unread = snapshot.data?.where((n) => !n.read).length ?? 0;
-        return IconButton(
-          icon: Badge(
-            isLabelVisible: unread > 0,
-            label: Text(
-              unread > 99 ? '99+' : unread.toString(),
-              style: const TextStyle(fontSize: 10, color: Colors.white),
-            ),
-            child: Icon(Icons.notifications_outlined, color: color),
-          ),
-          onPressed: () {
+        return AppCircleButton(
+          icon: AppIcons.notifications_outlined,
+          tooltip: unread > 0 ? '$unread unread notifications' : 'Notifications',
+          color: color,
+          badge: unread > 0,
+          onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => const NotificationsScreen(),

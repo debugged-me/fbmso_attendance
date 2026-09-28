@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../design/tokens/app_tokens.dart';
+
 class RefreshWrapper extends StatelessWidget {
   const RefreshWrapper({
     super.key,
@@ -17,7 +19,7 @@ class RefreshWrapper extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       backgroundColor: backgroundColor ?? Colors.white,
-      color: const Color(0xFF0F766E),
+      color: AppInk.accent,
       strokeWidth: 2.5,
       displacement: 40,
       child: child,

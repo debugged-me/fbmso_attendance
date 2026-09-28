@@ -8,6 +8,8 @@ import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
 import '../domain/attendance_models.dart';
+import 'activity_state_style.dart';
+import '../../../core/theme/app_icons.dart';
 
 /// Student's own attendance history. Cache-first so it renders offline.
 class MyLogsScreen extends StatefulWidget {
@@ -62,7 +64,7 @@ class _MyLogsScreenState extends State<MyLogsScreen> {
                           children: [
                             const SizedBox(height: 80),
                             AppEmptyState(
-                              icon: Icons.history_rounded,
+                              icon: AppIcons.history_rounded,
                               title: 'No attendance records yet',
                               subtitle:
                                   'Your check-ins will appear here once you attend an activity.',
@@ -76,8 +78,7 @@ class _MyLogsScreenState extends State<MyLogsScreen> {
                           itemBuilder: (context, i) {
                             if (i == 0) {
                               return AppPageHeader(
-                                title: 'My Attendance',
-                              icon: Icons.fact_check_outlined,
+                                title: 'My attendance',
                                 subtitle:
                                     '${_logs.length} record${_logs.length == 1 ? '' : 's'}',
                               );
@@ -100,74 +101,53 @@ class _LogTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 10),
       child: AppCard(
-        radius: 20,
-        padding: const EdgeInsets.all(16),
-        child: Column(
+        padding: const EdgeInsets.all(14),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
+            ActivityDateBadge(date: log.activityDate),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        log.title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppInk.heading,
-                        ),
+                      Expanded(child: Text(log.title, style: AppType.row)),
+                      if (log.sessionLabel.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        AppChip(label: log.sessionLabel, tone: AppInk.accent),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _TimeChip(
+                        label: 'In',
+                        value: _shortTime(log.checkedInAt),
+                        color: AppInk.positive,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        log.activityDate,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppInk.muted,
-                        ),
+                      const SizedBox(width: 8),
+                      _TimeChip(
+                        label: 'Out',
+                        value: log.isCheckedOut
+                            ? _shortTime(log.checkedOutAt)
+                            : '—',
+                        color: log.isCheckedOut ? AppInk.accent : AppInk.muted,
                       ),
                     ],
                   ),
-                ),
-                if (log.sessionLabel.isNotEmpty)
-                  AppChip(label: log.sessionLabel, tone: AppInk.accent),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                _TimeChip(
-                  label: 'In',
-                  value: _shortTime(log.checkedInAt),
-                  color: AppInk.positive,
-                ),
-                const SizedBox(width: 8),
-                _TimeChip(
-                  label: 'Out',
-                  value: log.isCheckedOut
-                      ? _shortTime(log.checkedOutAt)
-                      : '—',
-                  color: log.isCheckedOut ? AppInk.accent : AppInk.muted,
-                ),
-              ],
-            ),
-            if (log.remarks.isNotEmpty && log.remarks != '—') ...[
-              const SizedBox(height: 12),
-              const Divider(height: 1, color: AppInk.rule),
-              const SizedBox(height: 10),
-              Text(
-                log.remarks,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppInk.body,
-                  height: 1.4,
-                ),
+                  if (log.remarks.isNotEmpty && log.remarks != '—') ...[
+                    const SizedBox(height: 10),
+                    Text(log.remarks, style: AppType.rowSub),
+                  ],
+                ],
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -197,7 +177,7 @@ class _TimeChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -205,17 +185,17 @@ class _TimeChip extends StatelessWidget {
           Text(
             '$label ',
             style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: color,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: AppInk.onTint(color).withValues(alpha: 0.8),
             ),
           ),
           Text(
             value,
             style: TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: color,
+              fontWeight: FontWeight.w600,
+              color: AppInk.onTint(color),
             ),
           ),
         ],

@@ -4,14 +4,9 @@ import 'package:flutter/services.dart';
 import '../tokens/app_tokens.dart';
 import '../../theme/app_theme.dart';
 
-/// A clean, minimal text input with a squircle border.
-///
-/// Replaces Material's default TextField decoration with a consistent style:
-/// - Hairline border that thickens on focus
-/// - No floating label (label sits above the field)
-/// - Subtle fill colour when unfocused
-/// - Clean error state with red border
-class AppInput extends StatelessWidget {
+/// Text field with its label above, a white fill, a hairline border and a
+/// soft accent focus ring. The error text sits under the field.
+class AppInput extends StatefulWidget {
   const AppInput({
     super.key,
     this.controller,
@@ -33,6 +28,10 @@ class AppInput extends StatelessWidget {
     this.onTap,
     this.inputFormatters,
     this.maxLength,
+    this.helperText,
+    this.focusNode,
+    this.textCapitalization = TextCapitalization.none,
+    this.autocorrect = true,
   });
 
   final TextEditingController? controller;
@@ -55,90 +54,146 @@ class AppInput extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
   final int? maxLength;
 
+  /// Quiet guidance under the field, replaced by [errorText] when set.
+  final String? helperText;
+  final FocusNode? focusNode;
+  final TextCapitalization textCapitalization;
+  final bool autocorrect;
+
+  @override
+  State<AppInput> createState() => _AppInputState();
+}
+
+class _AppInputState extends State<AppInput> {
+  FocusNode? _ownFocus;
+  FocusNode get _focus => widget.focusNode ?? (_ownFocus ??= FocusNode());
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(_onFocus);
+  }
+
+  @override
+  void didUpdateWidget(covariant AppInput old) {
+    super.didUpdateWidget(old);
+    if (old.focusNode != widget.focusNode) {
+      (old.focusNode ?? _ownFocus)?.removeListener(_onFocus);
+      _focus.addListener(_onFocus);
+    }
+  }
+
+  @override
+  void dispose() {
+    _focus.removeListener(_onFocus);
+    _ownFocus?.dispose();
+    super.dispose();
+  }
+
+  void _onFocus() {
+    if (mounted && _focused != _focus.hasFocus) {
+      setState(() => _focused = _focus.hasFocus);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final hasError = errorText != null && errorText!.isNotEmpty;
-    final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: hasError ? AppInk.critical : AppInk.rule, width: 1.5),
-    );
-    final focusedBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: hasError ? AppInk.critical : AppInk.accent, width: 2),
+    final w = widget;
+    final hasError = w.errorText != null && w.errorText!.isNotEmpty;
+    final muted = !w.enabled || w.readOnly;
+    final ringColor = hasError ? AppInk.critical : AppInk.accent;
+
+    OutlineInputBorder border(Color c, [double width = 1]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(color: c, width: width),
+        );
+
+    final field = TextField(
+      controller: w.controller,
+      focusNode: _focus,
+      obscureText: w.obscureText,
+      keyboardType: w.keyboardType,
+      textInputAction: w.textInputAction,
+      enabled: w.enabled,
+      readOnly: w.readOnly,
+      onTap: w.onTap,
+      onChanged: w.onChanged,
+      onSubmitted: w.onSubmitted,
+      maxLines: w.obscureText ? 1 : w.maxLines,
+      autofillHints: w.autofillHints,
+      autofocus: w.autofocus,
+      inputFormatters: w.inputFormatters,
+      maxLength: w.maxLength,
+      textCapitalization: w.textCapitalization,
+      autocorrect: w.autocorrect,
+      cursorColor: AppInk.accent,
+      style: const TextStyle(
+        fontFamily: AppTheme.fontFamily,
+        fontSize: 15.5,
+        fontWeight: FontWeight.w500,
+        color: AppInk.heading,
+      ),
+      decoration: InputDecoration(
+        hintText: w.hint,
+        hintStyle: const TextStyle(
+          fontFamily: AppTheme.fontFamily,
+          fontSize: 15.5,
+          fontWeight: FontWeight.w400,
+          color: AppInk.faint,
+        ),
+        prefixIcon: w.prefixIcon != null
+            ? Icon(w.prefixIcon,
+                size: 20, color: _focused ? AppInk.accent : AppInk.muted)
+            : null,
+        suffixIcon: w.suffixIcon,
+        filled: true,
+        fillColor: muted ? AppInk.subtle : Colors.white,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        enabledBorder: border(hasError ? AppInk.critical : AppInk.ruleStrong),
+        disabledBorder: border(AppInk.rule),
+        focusedBorder: border(ringColor, 1.5),
+        errorBorder: border(AppInk.critical),
+        focusedErrorBorder: border(AppInk.critical, 1.5),
+        errorText: hasError ? w.errorText : null,
+        errorStyle: const TextStyle(height: 0, fontSize: 0),
+        counterText: '',
+      ),
     );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (label != null) ...[
-          Text(
-            label!,
-            style: TextStyle(
-              fontFamily: AppTheme.fontFamily,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppInk.muted,
-              letterSpacing: 0.3,
-            ),
-          ),
-          const SizedBox(height: 6),
+        if (w.label != null) ...[
+          Text(w.label!, style: AppType.label),
+          const SizedBox(height: 8),
         ],
-        TextField(
-          controller: controller,
-          obscureText: obscureText,
-          keyboardType: keyboardType,
-          textInputAction: textInputAction,
-          enabled: enabled,
-          readOnly: readOnly,
-          onTap: onTap,
-          onChanged: onChanged,
-          onSubmitted: onSubmitted,
-          maxLines: maxLines,
-          autofillHints: autofillHints,
-          autofocus: autofocus,
-          inputFormatters: inputFormatters,
-          maxLength: maxLength,
-          style: TextStyle(
-            fontFamily: AppTheme.fontFamily,
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-            color: AppInk.heading,
+        AnimatedContainer(
+          duration: AppMotion.base,
+          curve: AppMotion.ease,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            boxShadow: _focused && !muted
+                ? [
+                    BoxShadow(
+                      color: ringColor.withValues(alpha: 0.14),
+                      spreadRadius: 4,
+                    ),
+                  ]
+                : AppShadow.xs,
           ),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(
-              fontFamily: AppTheme.fontFamily,
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              color: const Color(0xFF94A3B8),
-            ),
-            prefixIcon: prefixIcon != null
-                ? Icon(prefixIcon, size: 20, color: AppInk.muted)
-                : null,
-            suffixIcon: suffixIcon,
-            filled: true,
-            fillColor: (!enabled || readOnly)
-                ? const Color(0xFFF1F5F9)
-                : const Color(0xFFF8FAFC),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            enabledBorder: border,
-            focusedBorder: focusedBorder,
-            errorBorder: border,
-            focusedErrorBorder: focusedBorder,
-            errorText: hasError ? errorText : null,
-            errorStyle: const TextStyle(height: 0),
-          ),
+          child: field,
         ),
-        if (hasError) ...[
+        if (hasError || (w.helperText?.isNotEmpty ?? false)) ...[
           const SizedBox(height: 6),
           Text(
-            errorText!,
-            style: TextStyle(
-              fontFamily: AppTheme.fontFamily,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppInk.critical,
+            hasError ? w.errorText! : w.helperText!,
+            style: AppType.caption.copyWith(
+              color: hasError ? AppInk.critical : AppInk.muted,
+              fontWeight: hasError ? FontWeight.w600 : FontWeight.w500,
             ),
           ),
         ],
