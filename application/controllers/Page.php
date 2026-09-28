@@ -8067,6 +8067,86 @@ class Page extends CI_Controller
 	}
 
 	/**
+	 * Read-only JSON summary for the side panel on Page/profileList.
+	 * Students that only have a login account (no signup row) still get a
+	 * summary from o_users; hasSignup tells the panel editSignup won't work.
+	 */
+	public function signupPreview()
+	{
+		$id = trim((string)$this->input->get('id', true));
+		$signup = $id === '' ? null : $this->db
+			->select('StudentNumber, FirstName, MiddleName, LastName, nameExtn, Sex, CivilStatus, birthDate, age, contactNo, email,
+			          Course1, Major1, yearLevel, section, province, city, brgy, sitio, guardian, guardianRelationship, guardianContact, Status')
+			->where('StudentNumber', $id)
+			->get('studentsignup')->row();
+		$account = $id === '' ? null : $this->db
+			->select('fName, mName, lName, email, avatar, acctStat, dateCreated')
+			->where('username', $id)
+			->get('o_users')->row();
+
+		$this->output->set_content_type('application/json');
+		if (!$signup && !$account) {
+			$this->output->set_status_header(404)->set_output(json_encode(['ok' => false, 'message' => 'Student not found.']));
+			return;
+		}
+
+		$pick = function (...$values) {
+			foreach ($values as $value) {
+				$value = trim((string)$value);
+				if ($value !== '') return $value;
+			}
+			return '';
+		};
+
+		$birth = $signup ? trim((string)$signup->birthDate) : '';
+		$birthTs = ($birth !== '' && $birth !== '0000-00-00') ? strtotime($birth) : false;
+		$age = $birthTs ? (string)date_diff(date_create(date('Y-m-d', $birthTs)), date_create('today'))->y : $pick($signup->age ?? '');
+
+		$avatar = $account ? basename((string)$account->avatar) : '';
+		$hasPhoto = $avatar !== ''
+			&& !in_array(strtolower($avatar), ['avatar.png', 'default.png', 'default_user.png'], true)
+			&& is_file(FCPATH . 'upload/profile/' . $avatar);
+
+		$created = $account ? strtotime((string)$account->dateCreated) : false;
+		// nameExtn is often "N/A", "NONE" or a whole name; keep only real suffixes.
+		$suffix = $pick($signup->nameExtn ?? '');
+		$name = trim(preg_replace('/\s+/', ' ', implode(' ', [
+			$pick($signup->FirstName ?? '', $account->fName ?? ''),
+			$pick($signup->MiddleName ?? '', $account->mName ?? ''),
+			$pick($signup->LastName ?? '', $account->lName ?? ''),
+			preg_match('/^(jr|sr|i{2,3}|iv|v|vi)\.?$/i', $suffix) ? $suffix : '',
+		])));
+
+		$this->output->set_output(json_encode([
+			'ok'                   => true,
+			'studno'               => $signup ? trim((string)$signup->StudentNumber) : $id,
+			'name'                 => $name,
+			'status'               => $account ? strtolower(trim((string)$account->acctStat)) : null,
+			'accountCreated'       => $created ? date('M j, Y', $created) : '',
+			'signupStatus'         => $pick($signup->Status ?? ''),
+			'course'               => $pick($signup->Course1 ?? ''),
+			'major'                => $pick($signup->Major1 ?? ''),
+			'yearLevel'            => $pick($signup->yearLevel ?? ''),
+			'section'              => $pick($signup->section ?? ''),
+			'sex'                  => $pick($signup->Sex ?? ''),
+			'civilStatus'          => $pick($signup->CivilStatus ?? ''),
+			'birthDate'            => $birthTs ? date('M j, Y', $birthTs) : '',
+			'age'                  => $age,
+			'email'                => $pick($signup->email ?? '', $account->email ?? ''),
+			'contactNo'            => $pick($signup->contactNo ?? ''),
+			'address'              => implode(', ', array_filter(array_map('trim', [
+				(string)($signup->sitio ?? ''), (string)($signup->brgy ?? ''),
+				(string)($signup->city ?? ''), (string)($signup->province ?? ''),
+			]), 'strlen')),
+			'guardian'             => $pick($signup->guardian ?? ''),
+			'guardianRelationship' => $pick($signup->guardianRelationship ?? ''),
+			'guardianContact'      => $pick($signup->guardianContact ?? ''),
+			'photoUrl'             => $hasPhoto ? base_url('upload/profile/' . rawurlencode($avatar)) : null,
+			'hasSignup'            => (bool)$signup,
+		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+	}
+
+	/**
 	 * AJAX availability checker for editSignup and updateStudeProfile.
 	 * Mirrors Registration::checkAvailability but supports an `exclude`
 	 * param so the student's own current StudentNumber / email is not
