@@ -5,6 +5,7 @@ import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
+import '../../auth/domain/staff_permissions.dart';
 import '../../misc/data/misc_api.dart';
 import '../../misc/domain/misc_models.dart';
 
@@ -147,6 +148,7 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canDelete = StaffPermissions.of(widget.session).canManageUsers;
     return AppScaffold(
       titleWidget: const SizedBox.shrink(),
       showBackButton: true,
@@ -237,8 +239,8 @@ class _RegisteredStudentsScreenState extends State<RegisteredStudentsScreen> {
                                 return AppSwipeActions(
                                   dismissKey:
                                       ValueKey('student-${r.studentNumber}'),
-                                  confirmDelete: () => _confirmDelete(r),
-                                  onDeleted: () => _delete(r),
+                                  confirmDelete: canDelete ? () => _confirmDelete(r) : null,
+                                  onDeleted: canDelete ? () => _delete(r) : null,
                                   child: _StudentCard(student: r),
                                 );
                               },

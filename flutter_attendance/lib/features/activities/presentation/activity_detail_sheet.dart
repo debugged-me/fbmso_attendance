@@ -7,6 +7,7 @@ import '../../auth/domain/app_session.dart';
 import '../../attendance/data/attendance_api.dart';
 import '../../attendance/domain/attendance_models.dart';
 import '../../attendance/presentation/activity_form_screen.dart';
+import '../../attendance/presentation/activity_poster_screen.dart';
 import '../../attendance/presentation/activity_state_style.dart';
 import '../../attendance/presentation/poster_scan_screen.dart';
 import '../../attendance/presentation/scan_screen.dart';
@@ -23,7 +24,8 @@ void showActivityDetailSheet(
   AppSession session,
 ) {
   final isStudent = session.role.isStudentLike;
-  final canManage = StaffPermissions.of(session).canManageActivities;
+  final permissions = StaffPermissions.of(session);
+  final canManage = permissions.canManageActivities;
 
   showModalBottomSheet(
     context: context,
@@ -33,6 +35,9 @@ void showActivityDetailSheet(
       activity: activity,
       isStudent: isStudent,
       canManage: canManage,
+      canScan: permissions.canScan,
+      canViewLogs: permissions.canViewAttendanceLogs,
+      canViewPoster: permissions.canViewActivityPoster,
       session: session,
     ),
   );
@@ -44,12 +49,18 @@ class ActivityDetailSheet extends StatelessWidget {
     required this.activity,
     required this.isStudent,
     required this.canManage,
+    required this.canScan,
+    required this.canViewLogs,
+    required this.canViewPoster,
     required this.session,
   });
 
   final Activity activity;
   final bool isStudent;
   final bool canManage;
+  final bool canScan;
+  final bool canViewLogs;
+  final bool canViewPoster;
   final AppSession session;
 
   String _timeRange(Activity a) {
@@ -209,7 +220,7 @@ class ActivityDetailSheet extends StatelessWidget {
                   },
                 ),
               ] else ...[
-                AppButton(
+                if (canScan) AppButton(
                   label: isOpen ? 'Scan Students' : 'Check-in Closed',
                   icon: isOpen
                       ? Icons.qr_code_scanner_rounded
@@ -230,8 +241,28 @@ class ActivityDetailSheet extends StatelessWidget {
                     );
                   },
                 ),
-                const SizedBox(height: 10),
-                AppButton(
+                if (canScan && (canViewPoster || canViewLogs))
+                  const SizedBox(height: 10),
+                if (canViewPoster) AppButton(
+                  label: 'View Activity QR Poster',
+                  icon: Icons.qr_code_2_rounded,
+                  fullWidth: true,
+                  size: AppButtonSize.lg,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ActivityPosterScreen(
+                          session: session,
+                          activityId: activity.activityId,
+                          activityTitle: activity.title,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                if (canViewPoster && canViewLogs) const SizedBox(height: 10),
+                if (canViewLogs) AppButton(
                   label: 'View Attendance Logs',
                   icon: Icons.history_rounded,
                   fullWidth: true,

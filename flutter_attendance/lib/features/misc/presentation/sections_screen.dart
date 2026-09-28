@@ -5,6 +5,7 @@ import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
+import '../../auth/domain/staff_permissions.dart';
 import '../data/misc_api.dart';
 import '../domain/misc_models.dart';
 
@@ -94,14 +95,17 @@ class _SectionsScreenState extends State<SectionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final permissions = StaffPermissions.of(widget.session);
     return AppScaffold(
       titleWidget: const SizedBox.shrink(),
       showBackButton: true,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showForm,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Section'),
-      ),
+      floatingActionButton: permissions.canCreateSections
+          ? FloatingActionButton.extended(
+              onPressed: _showForm,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add Section'),
+            )
+          : null,
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -166,8 +170,12 @@ class _SectionsScreenState extends State<SectionsScreen> {
                                 final s = _rows[i - 1];
                                 return AppSwipeActions(
                                   dismissKey: ValueKey('section-${s.id}'),
-                                  confirmDelete: () => _confirmDelete(s),
-                                  onDeleted: () => _delete(s),
+                                  confirmDelete: permissions.canDeleteSections
+                                      ? () => _confirmDelete(s)
+                                      : null,
+                                  onDeleted: permissions.canDeleteSections
+                                      ? () => _delete(s)
+                                      : null,
                                   child: Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: AppCard(

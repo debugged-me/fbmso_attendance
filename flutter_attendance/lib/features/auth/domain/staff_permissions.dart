@@ -7,9 +7,10 @@ import 'app_session.dart';
 /// Web references (server side):
 ///  - authguard_restricted_role_routes: Committee gets activities/index,
 ///    attendance/scan|consume|logs|profile, attendancelogs/*;
-///    Cashier gets accounting/* and the payment pages. Both roles are
+///    Cashier gets accounting/*; Auditor gets read-only accounting plus
+///    student, attendance, report, course, and section views. All are
 ///    deny-by-default for everything else.
-///  - Accounting::$allowedLevels = ['Admin', 'Cashier'].
+///  - Accounting allows Admin, Cashier, and read-only Auditor accounts.
 ///  - FbmsoPersonnels::require_manager = Super Admin, Admin, IT,
 ///    HR Admin, Human Resource.
 ///  - authguard_roles page/useraccounts + account mutations =
@@ -45,30 +46,40 @@ class StaffPermissions {
 
   bool get isCommittee => position == 'committee';
   bool get isCashier => position == 'cashier';
+  bool get isAuditor => position == 'auditor';
 
-  /// Committee and Cashier are allowlisted roles on the web: they may only
+  /// These are allowlisted roles on the web: they may only
   /// reach the routes listed for them, nothing else.
-  bool get _isRestricted => isCommittee || isCashier;
+  bool get _isRestricted => isCommittee || isCashier || isAuditor;
 
-  /// Any unrestricted staff position (not a student, not Committee/Cashier).
+  /// Any unrestricted staff position (not a student or restricted role).
   bool get _isStaff => !_isStudentLike && !_isRestricted && position.isNotEmpty;
 
   // ─── attendance ────────────────────────────────────────────────────
 
-  /// QR scanner — public routes on the web, so every non-student may scan.
-  bool get canScan => !_isStudentLike && position.isNotEmpty;
+  /// Auditor is observational only; it can inspect activities but not scan.
+  bool get canScan =>
+      !_isStudentLike && !isCashier && !isAuditor && position.isNotEmpty;
 
-  /// Attendance logs (list + CSV export) — staff and Committee, not Cashier.
-  bool get canViewAttendanceLogs => _isStaff || isCommittee;
+  /// Attendance logs (list + CSV export) — staff, Committee, and Auditor.
+  bool get canViewAttendanceLogs => _isStaff || isCommittee || isAuditor;
+
+  /// Activity list access. Cashier is the only staff shell without it.
+  bool get canViewActivities => !_isStudentLike && !isCashier;
+
+  /// Auditor may display the activity poster granted by its web allowlist.
+  bool get canViewActivityPoster => isAuditor;
 
   /// Create/edit/delete activities — unrestricted staff only.
   bool get canManageActivities => _isStaff;
 
   // ─── modules ───────────────────────────────────────────────────────
 
-  /// Expenses + categories — web Accounting allows Admin and Cashier only.
-  bool get canUseAccounting =>
-      position == 'admin' || position == 'cashier';
+  /// Accounting records are visible to Admin, Cashier, and Auditor.
+  bool get canViewAccounting => position == 'admin' || isCashier || isAuditor;
+
+  /// Auditor accounting access is deliberately read-only.
+  bool get canManageAccounting => position == 'admin' || isCashier;
 
   /// Personnel management — Super Admin, Admin, IT, HR Admin, Human Resource.
   bool get canManagePersonnel => const {
@@ -84,12 +95,23 @@ class StaffPermissions {
       const {'super admin', 'admin', 'it'}.contains(position);
 
   /// Departments/courses — web settings/* rule.
-  bool get canManageDepartments =>
+  bool get canViewDepartments =>
+      const {'super admin', 'admin', 'it', 'school admin', 'auditor'}
+          .contains(position);
+
+  /// Web parity: Auditor may add courses but cannot edit/delete them.
+  bool get canCreateDepartments => canViewDepartments;
+  bool get canModifyDepartments =>
       const {'super admin', 'admin', 'it', 'school admin'}.contains(position);
+
+  /// Sections are available to unrestricted staff and Auditor. Auditor may
+  /// add them but cannot delete existing records.
+  bool get canCreateSections => _isStaff || isAuditor;
+  bool get canDeleteSections => _isStaff;
 
   /// Read-only staff lists: registered students, masterlist, sections,
   /// reports — open to unrestricted staff, closed to Committee/Cashier.
-  bool get canViewStaffLists => _isStaff;
+  bool get canViewStaffLists => _isStaff || isAuditor;
 
   /// Announcement management — unrestricted staff on the web.
   bool get canManageAnnouncements => _isStaff;

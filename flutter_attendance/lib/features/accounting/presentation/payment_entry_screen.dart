@@ -6,6 +6,7 @@ import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
+import '../../auth/domain/staff_permissions.dart';
 import '../data/accounting_api.dart';
 import '../domain/accounting_models.dart';
 
@@ -130,16 +131,19 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canManage = StaffPermissions.of(widget.session).canManageAccounting;
     final dateTotal =
         _payments.fold<double>(0, (s, p) => s + p.amount);
 
     return AppScaffold(
       titleWidget: const SizedBox.shrink(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openForm,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('New Payment'),
-      ),
+      floatingActionButton: canManage
+          ? FloatingActionButton.extended(
+              onPressed: _openForm,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('New Payment'),
+            )
+          : null,
       body: _loading
           ? const ListSkeleton(itemCount: 5)
           : _error != null
@@ -161,7 +165,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
                     children: [
                       AppPageHeader(
-                        title: 'Payment Entry',
+                        title: canManage ? 'Payment Entry' : 'Payment Records',
                         icon: Icons.payments_outlined,
                         subtitle:
                             '₱${dateTotal.toStringAsFixed(2)} collected ${_dateFilter == 'all' ? 'overall' : 'on $_dateFilter'}',
@@ -202,15 +206,15 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
                           child: AppEmptyState(
                             icon: Icons.payments_outlined,
                             title: 'No payments on this date',
-                            subtitle:
-                                'Tap New Payment to record a collection.',
+                            subtitle: 'No payment records for this date.',
                           ),
                         )
                       else
                         ..._payments.map((p) => AppSwipeActions(
                               dismissKey: ValueKey('payment-${p.id}'),
-                              confirmDelete: () => _confirmDelete(p),
-                              onDeleted: () => _delete(p),
+                              confirmDelete:
+                                  canManage ? () => _confirmDelete(p) : null,
+                              onDeleted: canManage ? () => _delete(p) : null,
                               child: _PaymentTile(payment: p),
                             )),
                     ],

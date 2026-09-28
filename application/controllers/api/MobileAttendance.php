@@ -926,8 +926,8 @@ class MobileAttendance extends MobileApi
      * General staff check — mirrors the web's unrestricted staff roles.
      *
      * On the web every position is a staff account EXCEPT the student levels
-     * (Student, Stude Applicant) and the two allowlisted restricted roles
-     * (Committee, Cashier), which are gated per-feature below. The list is
+     * (Student, Stude Applicant) and the three allowlisted restricted roles
+     * (Committee, Cashier, Auditor), which are gated per-feature below. The list is
      * the union of the Login::auth() redirect map and legacy position names
      * still present in the database.
      */
@@ -996,7 +996,7 @@ class MobileAttendance extends MobileApi
     /**
      * Scanner capability. The web cashier sidebar offers only accounting
      * routes and its allowlist is deny-by-default, so Cashier is excluded
-     * here too — every other non-student role may operate the scanner
+     * here too. Auditor is also excluded because its access is observational.
      * (students use checkin() instead).
      */
     private function is_nonstudent(array $tokenRow): bool
@@ -1004,18 +1004,19 @@ class MobileAttendance extends MobileApi
         $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
         return $pos !== ''
             && $pos !== 'cashier'
+            && $pos !== 'auditor'
             && !in_array($pos, ['student', 'student applicant', 'stude', 'stude applicant'], true);
     }
 
     /**
      * Attendance-log viewing. The web allowlist grants Committee
-     * attendancelogs/* and attendance/logs on top of the unrestricted staff
-     * roles; Cashier is denied there, so it is denied here too.
+     * attendancelogs/* and attendance/logs to Committee and Auditor on top of
+     * unrestricted staff roles; Cashier remains denied.
      */
     private function can_view_attendance_logs(array $tokenRow): bool
     {
         $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
-        return $pos === 'committee' || $this->is_staff($tokenRow);
+        return in_array($pos, ['committee', 'auditor'], true) || $this->is_staff($tokenRow);
     }
 
     /** Web Activities::set_mode() allows only level === 'Admin'. */

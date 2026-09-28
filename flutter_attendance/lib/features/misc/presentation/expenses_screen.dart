@@ -6,6 +6,7 @@ import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
+import '../../auth/domain/staff_permissions.dart';
 import '../../misc/data/misc_api.dart';
 import '../../misc/domain/misc_models.dart';
 
@@ -190,6 +191,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canManage = StaffPermissions.of(widget.session).canManageAccounting;
     final visible = _visible;
     final selectedLabel = _selectedCategory == 0
         ? 'All categories'
@@ -199,11 +201,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       titleWidget: const SizedBox.shrink(),
       showBackButton: widget.menuButton == null,
       leading: widget.menuButton,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showForm(),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Expense'),
-      ),
+      floatingActionButton: canManage
+          ? FloatingActionButton.extended(
+              onPressed: () => _showForm(),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add Expense'),
+            )
+          : null,
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -292,8 +296,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    GestureDetector(
+                                    if (canManage) const SizedBox(width: 8),
+                                    if (canManage) GestureDetector(
                                       onTap: _showCategories,
                                       child: Container(
                                         padding: const EdgeInsets
@@ -341,9 +345,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             final e = visible[i - 2];
                             return AppSwipeActions(
                               dismissKey: ValueKey('expense-${e.id}'),
-                              onEdit: () => _showForm(e),
-                              confirmDelete: () => _confirmDelete(e),
-                              onDeleted: () => _delete(e),
+                              onEdit: canManage ? () => _showForm(e) : null,
+                              confirmDelete: canManage ? () => _confirmDelete(e) : null,
+                              onDeleted: canManage ? () => _delete(e) : null,
                               child: _ExpenseCard(expense: e),
                             );
                           },

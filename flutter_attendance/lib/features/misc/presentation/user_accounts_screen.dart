@@ -512,7 +512,7 @@ class _CreateUserFormState extends State<_CreateUserForm> {
                 filled: true, fillColor: Colors.white,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              items: ['Admin', 'Super Admin', 'IT', 'Encoder', 'School Admin']
+              items: ['Admin', 'Auditor', 'Super Admin', 'IT', 'Encoder', 'School Admin']
                   .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                   .toList(),
               onChanged: (v) => setState(() => _acctLevel = v ?? 'Admin'),

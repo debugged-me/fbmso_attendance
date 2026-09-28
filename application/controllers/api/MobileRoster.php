@@ -304,6 +304,7 @@ class MobileRoster extends MobileApi
 
         return $pos !== ''
             && $pos !== 'cashier'
+            && $pos !== 'auditor'
             && !in_array($pos, ['student', 'student applicant', 'stude', 'stude applicant'], true);
     }
 }

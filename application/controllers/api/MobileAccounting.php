@@ -20,7 +20,8 @@ require_once APPPATH . 'libraries/MobileApi.php';
  *   GET  api/mobile/accounting/fees                 — course_setUp() list
  *   POST api/mobile/accounting/fees/create|update|delete
  *
- * Gate: the web controller's $allowedLevels = ['Admin', 'Cashier'].
+ * Gate: the web controller's $allowedLevels includes Admin, Cashier, and
+ * read-only Auditor accounts.
  */
 class MobileAccounting extends MobileApi
 {
@@ -35,15 +36,29 @@ class MobileAccounting extends MobileApi
 
     // ─── Gate ──────────────────────────────────────────────────────────────
 
-    /** Admin or Cashier only — same as Accounting::$allowedLevels. */
+    /** Accounting readers: Admin, Cashier, and read-only Auditor. */
     private function require_accounting(): ?array
     {
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return null;
 
         $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
-        if (!in_array($pos, ['admin', 'cashier'], true)) {
+        if (!in_array($pos, ['admin', 'cashier', 'auditor'], true)) {
             $this->json(['ok' => false, 'message' => 'Accounting access only.'], 403);
+            return null;
+        }
+        return $tokenRow;
+    }
+
+    /** Accounting writers: Auditor is denied even when calling the API directly. */
+    private function require_accounting_write(): ?array
+    {
+        $tokenRow = $this->require_accounting();
+        if ($tokenRow === null) return null;
+
+        $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
+        if ($pos === 'auditor') {
+            $this->json(['ok' => false, 'message' => 'Auditor accounts have read-only access to accounting records.'], 403);
             return null;
         }
         return $tokenRow;
@@ -785,7 +800,7 @@ class MobileAccounting extends MobileApi
         if ($this->input->method(true) !== 'POST') {
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
-        $tokenRow = $this->require_accounting();
+        $tokenRow = $this->require_accounting_write();
         if ($tokenRow === null) return;
         if ($this->replay_if_duplicate()) return;
 
@@ -972,7 +987,7 @@ class MobileAccounting extends MobileApi
         if ($this->input->method(true) !== 'POST') {
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
-        $tokenRow = $this->require_accounting();
+        $tokenRow = $this->require_accounting_write();
         if ($tokenRow === null) return;
         if ($this->replay_if_duplicate()) return;
 
@@ -1029,7 +1044,7 @@ class MobileAccounting extends MobileApi
         if ($this->input->method(true) !== 'POST') {
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
-        $tokenRow = $this->require_accounting();
+        $tokenRow = $this->require_accounting_write();
         if ($tokenRow === null) return;
         if ($this->replay_if_duplicate()) return;
 
@@ -1386,7 +1401,7 @@ class MobileAccounting extends MobileApi
         if ($this->input->method(true) !== 'POST') {
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
-        if ($this->require_accounting() === null) return;
+        if ($this->require_accounting_write() === null) return;
         if ($this->replay_if_duplicate()) return;
 
         $p = $this->read_payload();
@@ -1420,7 +1435,7 @@ class MobileAccounting extends MobileApi
         if ($this->input->method(true) !== 'POST') {
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
-        if ($this->require_accounting() === null) return;
+        if ($this->require_accounting_write() === null) return;
         if ($this->replay_if_duplicate()) return;
 
         $p = $this->read_payload();
@@ -1455,7 +1470,7 @@ class MobileAccounting extends MobileApi
         if ($this->input->method(true) !== 'POST') {
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
-        if ($this->require_accounting() === null) return;
+        if ($this->require_accounting_write() === null) return;
         if ($this->replay_if_duplicate()) return;
 
         $p = $this->read_payload();

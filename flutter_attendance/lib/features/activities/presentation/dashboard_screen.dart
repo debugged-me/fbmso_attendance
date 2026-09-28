@@ -93,8 +93,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               token: widget.session.token,
             )
           : Future<FlagStatus?>.value(null);
-      // Cashier: the web Page::accounting collection stats.
-      final cashier = perms.isCashier
+      // Cashier and Auditor share the accounting dashboard. Auditor accounting
+      // actions remain read-only in its destination screens.
+      final cashier = (perms.isCashier || perms.isAuditor)
           ? _acctApi
               .dashboard(
                 baseUrl: widget.session.baseUrl,
@@ -203,7 +204,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         // ── Cashier: the web Page::accounting dashboard —
                         // collections today/month/year + recent payments.
                         if (_cashierStats != null) ...[
-                          _CashierOverviewCard(stats: _cashierStats!),
+                          _CashierOverviewCard(
+                            stats: _cashierStats!,
+                            isAuditor: perms.isAuditor,
+                          ),
                           const SizedBox(height: 24),
                         ],
 
@@ -1091,8 +1095,9 @@ class _BarBreakdown extends StatelessWidget {
 /// balance, and the most recent payments. Same numbers, disclosed
 /// progressively instead of a KPI grid.
 class _CashierOverviewCard extends StatelessWidget {
-  const _CashierOverviewCard({required this.stats});
+  const _CashierOverviewCard({required this.stats, this.isAuditor = false});
   final AccountingDashboard stats;
+  final bool isAuditor;
 
   @override
   Widget build(BuildContext context) {
@@ -1120,7 +1125,7 @@ class _CashierOverviewCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'COLLECTIONS TODAY',
+                  isAuditor ? 'AUDIT SNAPSHOT · COLLECTIONS TODAY' : 'COLLECTIONS TODAY',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,

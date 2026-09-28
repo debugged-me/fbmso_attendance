@@ -61,7 +61,7 @@ class _AdminShellState extends State<AdminShell> {
   int _index = 0;
 
   /// Mirrors the web authorization model (see StaffPermissions): narrow
-  /// roles like Committee and Cashier only see the modules their web
+  /// roles like Committee, Cashier, and Auditor only see the modules their web
   /// allowlist grants them, instead of a drawer full of 403s.
   StaffPermissions get _perms => StaffPermissions.of(widget.session);
 
@@ -157,11 +157,11 @@ class _AdminShellState extends State<AdminShell> {
       // Accounting block — mirrors the web Cashier sidebar in order:
       // Payment Entry, School Expenses (+reports), Payment Setup (fees),
       // Collection Reports, Ledger, Partial Payments, Payment Activity Log.
-      // Admin sees the same set (Accounting allows Admin + Cashier).
-      if (p.canUseAccounting)
+      // Auditor sees the same records with all mutations removed.
+      if (p.canViewAccounting)
         DrawerItem(
           icon: Icons.payments_outlined,
-          title: 'Payment Entry',
+          title: p.isAuditor ? 'Payment Records' : 'Payment Entry',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -172,7 +172,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canUseAccounting)
+      if (p.canViewAccounting)
         DrawerItem(
           icon: Icons.receipt_long_outlined,
           title: 'School Expenses',
@@ -185,7 +185,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canUseAccounting)
+      if (p.canViewAccounting)
         DrawerItem(
           icon: Icons.summarize_outlined,
           title: 'Expenses Reports',
@@ -199,7 +199,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canUseAccounting)
+      if (p.canViewAccounting)
         DrawerItem(
           icon: Icons.sell_outlined,
           title: 'Fees Setup',
@@ -213,7 +213,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canUseAccounting)
+      if (p.canViewAccounting)
         DrawerItem(
           icon: Icons.description_outlined,
           title: 'Collection Reports',
@@ -227,10 +227,10 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canUseAccounting)
+      if (p.canViewAccounting)
         DrawerItem(
           icon: Icons.menu_book_outlined,
-          title: 'Ledger',
+          title: p.isAuditor ? 'Cash Inflow & Outflow' : 'Ledger',
           onTap: (ctx) {
             Navigator.of(ctx).pop();
             Navigator.of(ctx).push(
@@ -240,7 +240,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canUseAccounting)
+      if (p.canViewAccounting)
         DrawerItem(
           icon: Icons.hourglass_bottom_rounded,
           title: 'Partial Payments',
@@ -254,7 +254,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canUseAccounting)
+      if (p.canViewAccounting)
         DrawerItem(
           icon: Icons.manage_history_rounded,
           title: 'Payment Activity Log',
@@ -268,7 +268,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canManageDepartments)
+      if (p.canViewDepartments)
         DrawerItem(
           icon: Icons.school_outlined,
           title: 'Course',
@@ -331,8 +331,9 @@ class _AdminShellState extends State<AdminShell> {
     final p = _perms;
 
     // Bottom nav mirrors each role's web landing pages:
-    //   Cashier   → Dashboard + Expenses (web lands on Accounting/Payment)
-    //   others    → Dashboard + Activities + Scan
+    //   Cashier → Dashboard + Expenses
+    //   Auditor → Dashboard + Activities (no scanner)
+    //   others  → Dashboard + Activities + Scan when permitted
     final destinations = <NavigationDestination>[
       const NavigationDestination(
         icon: Icon(Icons.dashboard_outlined),
@@ -351,11 +352,12 @@ class _AdminShellState extends State<AdminShell> {
           selectedIcon: Icon(AppIcons.home_rounded),
           label: 'Activities',
         ),
-        const NavigationDestination(
-          icon: Icon(Icons.qr_code_scanner_outlined),
-          selectedIcon: Icon(Icons.qr_code_scanner),
-          label: 'Scan',
-        ),
+        if (p.canScan)
+          const NavigationDestination(
+            icon: Icon(Icons.qr_code_scanner_outlined),
+            selectedIcon: Icon(Icons.qr_code_scanner),
+            label: 'Scan',
+          ),
       ],
     ];
 
@@ -374,7 +376,8 @@ class _AdminShellState extends State<AdminShell> {
               ExpensesScreen(session: session, menuButton: menu)
             else ...[
               ActivitiesScreen(session: session, menuButton: menu),
-              _ScanPicker(session: session, menuButton: menu),
+              if (p.canScan)
+                _ScanPicker(session: session, menuButton: menu),
             ],
           ];
           return tabs[_index.clamp(0, tabs.length - 1)];

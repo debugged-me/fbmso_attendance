@@ -127,8 +127,8 @@ class _AuthFlow extends StatelessWidget {
 }
 
 /// Picks the shell based on the user's role bucket.
-/// Only two roles exist in the system: Student and Admin (which includes
-/// Super Admin). Everything else falls back to Admin.
+/// Students use their dedicated shell. Auditor and the other staff roles use
+/// the staff shell, whose permission matrix removes disallowed actions.
 class _RoleShell extends StatefulWidget {
   const _RoleShell({required this.session, required this.controller});
   final AppSession session;
@@ -186,7 +186,7 @@ class _RoleShellState extends State<_RoleShell> {
     if (widget.session.role.isStudentLike) {
       return StudentShell(session: widget.session, controller: widget.controller);
     }
-    // Admin, Super Admin, and any other non-student role → AdminShell.
+    // Auditor and all other non-student roles use the permission-aware shell.
     return AdminShell(session: widget.session, controller: widget.controller);
   }
 }

@@ -5,6 +5,7 @@ import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
+import '../../auth/domain/staff_permissions.dart';
 import '../data/misc_api.dart';
 import '../domain/misc_models.dart';
 
@@ -125,14 +126,17 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final permissions = StaffPermissions.of(widget.session);
     return AppScaffold(
       titleWidget: const SizedBox.shrink(),
       showBackButton: true,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showForm,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Course'),
-      ),
+      floatingActionButton: permissions.canCreateDepartments
+          ? FloatingActionButton.extended(
+              onPressed: _showForm,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add Course'),
+            )
+          : null,
       body: Column(
         children: [
           const SyncStatusBanner(),
@@ -209,9 +213,15 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
                                 final d = _rows[i - 1];
                                 return AppSwipeActions(
                                   dismissKey: ValueKey('course-${d.id}'),
-                                  onEdit: () => _showForm(d),
-                                  confirmDelete: () => _confirmDelete(d),
-                                  onDeleted: () => _delete(d),
+                                  onEdit: permissions.canModifyDepartments
+                                      ? () => _showForm(d)
+                                      : null,
+                                  confirmDelete: permissions.canModifyDepartments
+                                      ? () => _confirmDelete(d)
+                                      : null,
+                                  onDeleted: permissions.canModifyDepartments
+                                      ? () => _delete(d)
+                                      : null,
                                   child: Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: AppCard(

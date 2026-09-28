@@ -4,6 +4,7 @@ import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
+import '../../auth/domain/staff_permissions.dart';
 import '../data/accounting_api.dart';
 import '../domain/accounting_models.dart';
 
@@ -201,13 +202,16 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canManage = StaffPermissions.of(widget.session).canManageAccounting;
     return AppScaffold(
       titleWidget: const SizedBox.shrink(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _edit(null),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Fee'),
-      ),
+      floatingActionButton: canManage
+          ? FloatingActionButton.extended(
+              onPressed: () => _edit(null),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add Fee'),
+            )
+          : null,
       body: _loading
           ? const ListSkeleton(itemCount: 6)
           : _error != null
@@ -233,8 +237,9 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
                         return AppPageHeader(
                           title: 'Fees Setup',
                           icon: Icons.sell_outlined,
-                          subtitle:
-                              '${_fees.length} fee template${_fees.length == 1 ? '' : 's'} · swipe to edit or delete',
+                          subtitle: canManage
+                              ? '${_fees.length} fee template${_fees.length == 1 ? '' : 's'} · swipe to edit or delete'
+                              : '${_fees.length} fee template${_fees.length == 1 ? '' : 's'} · read-only',
                         );
                       }
                       if (_fees.isEmpty) {
@@ -250,11 +255,11 @@ class _FeesSetupScreenState extends State<FeesSetupScreen> {
                       final f = _fees[i - 1];
                       return AppSwipeActions(
                         dismissKey: ValueKey('fee-${f.id}'),
-                        confirmDelete: () => _confirmDelete(f),
-                        onDeleted: () => _delete(f),
-                        onEdit: () => _edit(f),
+                        confirmDelete: canManage ? () => _confirmDelete(f) : null,
+                        onDeleted: canManage ? () => _delete(f) : null,
+                        onEdit: canManage ? () => _edit(f) : null,
                         child:
-                            _FeeTile(fee: f, onEdit: () => _edit(f)),
+                            _FeeTile(fee: f, onEdit: canManage ? () => _edit(f) : null),
                       );
                     },
                   ),
@@ -267,7 +272,7 @@ class _FeeTile extends StatelessWidget {
   const _FeeTile({required this.fee, required this.onEdit});
 
   final FeeTemplate fee;
-  final VoidCallback onEdit;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -308,8 +313,8 @@ class _FeeTile extends StatelessWidget {
                 color: AppInk.accent,
               ),
             ),
-            const SizedBox(width: 4),
-            IconButton(
+            if (onEdit != null) const SizedBox(width: 4),
+            if (onEdit != null) IconButton(
               icon: const Icon(Icons.edit_outlined,
                   size: 20, color: AppInk.muted),
               onPressed: onEdit,
