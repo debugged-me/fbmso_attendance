@@ -396,6 +396,19 @@ $config['security_report_recipients'] = implode(', ', array_map('base64_decode',
 
 /*
 |--------------------------------------------------------------------------
+| Security report send hour
+|--------------------------------------------------------------------------
+|
+| Hour of the day (0-23, Asia/Manila) the daily report goes out. It is sent
+| at most once a day: the first cron hit at or after this hour sends it and
+| every other hit until the same hour tomorrow is skipped, so even a cron
+| that runs every minute produces exactly one email a day.
+|
+*/
+$config['security_report_hour'] = 6;
+
+/*
+|--------------------------------------------------------------------------
 | Security report cron token
 |--------------------------------------------------------------------------
 |

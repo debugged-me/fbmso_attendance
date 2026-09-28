@@ -100,7 +100,7 @@ class Securitycheck extends CI_Controller
     {
         $this->gate(false);
 
-        $cron = '0 6 * * * curl -s "' . site_url('securitycheck/daily_report')
+        $cron = '0 ' . $this->report_hour() . ' * * * curl -s "' . site_url('securitycheck/daily_report')
               . '?key=' . self::token($this) . '" > /dev/null 2>&1';
 
         echo "Security report cron line:\n\n  {$cron}\n\n";
@@ -149,29 +149,46 @@ class Securitycheck extends CI_Controller
     {
         $this->gate(true);
 
-        // Refuse to run more often than MIN_REPORT_INTERVAL.
+        // At most one report per day, whatever the cron says.
         //
-        // A cron line with '*' in the minute field fires 1440 times a day, and
-        // this endpoint queues an email every time. That floods the mailbox,
-        // backs up the mail queue behind it so real messages (verification,
-        // password resets) stop going out, and buries the one report that
-        // actually said something. The schedule should be fixed, but the
-        // endpoint should not depend on the schedule being right.
+        // A cron line with '*' in the minute field fires 1440 times a day.
+        // The old guard only enforced a 6-hour gap, so an every-minute cron
+        // still mailed four reports a day. Now the first hit at or after
+        // security_report_hour (config.php) sends the day's report and every
+        // other hit until that hour tomorrow is skipped. '0 6 * * *' is still
+        // the right schedule; the endpoint just no longer depends on it.
         //
-        // Pass 'force' as the second segment to override:
+        // The lock covers overlapping hits: a chain verify that outlasts the
+        // one-minute cron interval would otherwise let the next hit pass the
+        // check before this one has written its checkpoint -- two emails.
+        //
+        // Pass 'force' as the second segment to override the daily limit:
         //   php index.php securitycheck daily_report 24 force
-        if (!$this->force_requested() && ($wait = $this->too_soon()) !== null) {
-            $mins = (int)ceil($wait / 60);
-            if (!is_cli() && !$this->input->is_cli_request()) {
-                $this->output->set_content_type('text/plain')->set_output("skipped\n");
-                return;
-            }
-            echo "Skipped: a report was generated less than " . (self::MIN_REPORT_INTERVAL / 3600)
-               . "h ago. Next due in about {$mins} minute(s).\n";
-            echo "If your cron has '*' in the minute field, change it to '0 6 * * *'.\n";
+        if (!$this->acquire_report_lock()) {
+            $this->report_skipped("Skipped: another run is still generating the report.\n");
             return;
         }
 
+        try {
+            if (!$this->force_requested() && ($wait = $this->too_soon()) !== null) {
+                $mins = (int)ceil($wait / 60);
+                $this->report_skipped(
+                    "Skipped: today's report was already generated. Next one is due "
+                    . date('Y-m-d H:i', time() + $wait) . " (in about {$mins} minute(s)).\n"
+                    . "If your cron has '*' in the minute field, change it to '0 " . $this->report_hour() . " * * *'.\n"
+                );
+                return;
+            }
+
+            $this->run_daily_report($hours);
+        } finally {
+            $this->release_report_lock();
+        }
+    }
+
+    /** Verify, checkpoint and queue the digest. The caller holds the report lock. */
+    private function run_daily_report($hours)
+    {
         $hours = max(1, (int)$hours);
         $since = date('Y-m-d H:i:s', time() - ($hours * 3600));
 
@@ -239,12 +256,40 @@ class Securitycheck extends CI_Controller
         echo "  checkpoint also written to: " . $this->anchor_path() . "\n";
     }
 
-    /** Minimum gap between reports, whatever the cron says. */
-    const MIN_REPORT_INTERVAL = 21600; // 6 hours
+    /** HTTP gets a bare word (see the class comment); CLI gets the reason. */
+    private function report_skipped($message)
+    {
+        if (!is_cli() && !$this->input->is_cli_request()) {
+            $this->output->set_content_type('text/plain')->set_output("skipped\n");
+            return;
+        }
+        echo $message;
+    }
+
+    /** Hour of day (0-23, Asia/Manila) the daily report falls due. */
+    private function report_hour()
+    {
+        $hour = $this->config->item('security_report_hour');
+
+        return is_numeric($hour) ? max(0, min(23, (int)$hour)) : 6;
+    }
 
     /**
-     * Seconds still to wait, or NULL when a report is due.
-     * Uses the anchor table, which is written on every real run.
+     * Start of the current report day: today at report_hour, or yesterday at
+     * report_hour while today's has not come round yet.
+     */
+    private function report_day_start()
+    {
+        $start = strtotime(date('Y-m-d') . sprintf(' %02d:00:00', $this->report_hour()));
+
+        return $start > time() ? strtotime('-1 day', $start) : $start;
+    }
+
+    /**
+     * Seconds until the next report is due, or NULL when one is due now.
+     *
+     * Due means nothing has been checkpointed since the current report day
+     * began. Uses the anchor table, which is written on every real run.
      */
     private function too_soon()
     {
@@ -252,16 +297,36 @@ class Securitycheck extends CI_Controller
             return null;
         }
 
-        $last = $this->db->select('checked_at')->order_by('id', 'DESC')
+        $dayStart = $this->report_day_start();
+
+        $done = $this->db->select('id')
+            ->where('checked_at >=', date('Y-m-d H:i:s', $dayStart))
             ->limit(1)->get('security_audit_anchors')->row();
 
-        if (!$last || empty($last->checked_at)) {
+        if (!$done) {
             return null;
         }
 
-        $elapsed = time() - strtotime($last->checked_at);
+        return max(60, strtotime('+1 day', $dayStart) - time());
+    }
 
-        return $elapsed < self::MIN_REPORT_INTERVAL ? (self::MIN_REPORT_INTERVAL - $elapsed) : null;
+    /** One report run at a time. Auto-released if PHP dies mid-run. */
+    private function report_lock_name()
+    {
+        return 'fbmsosecrpt_' . md5((string)$this->db->database);
+    }
+
+    private function acquire_report_lock()
+    {
+        $res = $this->db->query('SELECT GET_LOCK(' . $this->db->escape($this->report_lock_name()) . ', 0) AS l');
+        $row = $res ? $res->row() : null;
+
+        return $row && (int)$row->l === 1;
+    }
+
+    private function release_report_lock()
+    {
+        $this->db->query('SELECT RELEASE_LOCK(' . $this->db->escape($this->report_lock_name()) . ')');
     }
 
     private function force_requested()
