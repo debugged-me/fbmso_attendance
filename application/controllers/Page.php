@@ -485,6 +485,12 @@ class Page extends CI_Controller
 			$result['trend'] = $this->StudentModel->collectionTrend(14);
 			$result['recentPayments'] = $this->StudentModel->recentPayments(8);
 
+			if ($this->session->userdata('level') === 'Auditor') {
+				$result['expenseSummary'] = $this->SettingsModel->expenseSummary();
+				$result['expenseTrend'] = $this->SettingsModel->expenseTrend(14);
+				$result['recentExpenses'] = $this->SettingsModel->recentExpenses(8);
+			}
+
 			$this->load->view('dashboard_accounting', $result);
 		} else {
 			echo "Access Denied";

@@ -59,6 +59,50 @@ class SettingsModel extends CI_Model
         return $query->result();
     }
 
+    /**
+     * Read-only expense totals used by the Auditor financial dashboard.
+     */
+    public function expenseSummary()
+    {
+        return $this->db
+            ->select("COALESCE(SUM(CASE WHEN ExpenseDate = CURDATE() THEN Amount ELSE 0 END), 0) AS TodayAmount,
+                COALESCE(SUM(CASE WHEN YEAR(ExpenseDate) = YEAR(CURDATE()) AND MONTH(ExpenseDate) = MONTH(CURDATE()) THEN Amount ELSE 0 END), 0) AS MonthAmount,
+                COALESCE(SUM(CASE WHEN YEAR(ExpenseDate) = YEAR(CURDATE()) THEN Amount ELSE 0 END), 0) AS YearAmount", false)
+            ->get('expenses')
+            ->row();
+    }
+
+    /**
+     * Daily expense totals for the financial-flow chart.
+     */
+    public function expenseTrend($days = 14)
+    {
+        $days = max(1, (int)$days);
+        return $this->db->query(
+            "SELECT DATE(ExpenseDate) AS CDate, SUM(Amount) AS Amount
+             FROM expenses
+             WHERE ExpenseDate >= (CURDATE() - INTERVAL ? DAY)
+             GROUP BY DATE(ExpenseDate)
+             ORDER BY CDate ASC",
+            [$days - 1]
+        )->result();
+    }
+
+    /**
+     * Latest cash outflows for the Auditor's combined money activity feed.
+     */
+    public function recentExpenses($limit = 8)
+    {
+        return $this->db
+            ->select('expensesid, Description, Amount, Responsible, ExpenseDate, Category')
+            ->from('expenses')
+            ->order_by('ExpenseDate', 'DESC')
+            ->order_by('expensesid', 'DESC')
+            ->limit(max(1, (int)$limit))
+            ->get()
+            ->result();
+    }
+
     public function insertexpenses($data)
     {
         return $this->db->insert('expenses', $data);

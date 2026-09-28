@@ -1219,7 +1219,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     <li class="<?= $active('Accounting/ledger'); ?>">
                         <a href="<?= base_url('Accounting/ledger'); ?>" class="waves-effect">
                             <i class="mdi mdi-book-open-variant"></i>
-                            <span> Ledger </span>
+                            <span> <?= $isAuditor ? 'Cash Inflow &amp; Outflow' : 'Ledger'; ?> </span>
                         </a>
                     </li>
 

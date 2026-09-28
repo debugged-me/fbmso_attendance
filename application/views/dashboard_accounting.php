@@ -59,6 +59,11 @@
   }
   .recent-pay-table tbody td { padding:12px 16px; font-size:.86rem; color:var(--up-ink,#0d1b4b); vertical-align:middle; border-color:#eef1f5; }
   .recent-pay-table tbody tr:hover { background:#f8fbff; }
+  .cash-flow-badge { display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:4px 9px; font-size:.7rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; }
+  .cash-flow-badge.inflow { background:#dcfce7; color:#15803d; }
+  .cash-flow-badge.outflow { background:#ffedd5; color:#c2410c; }
+  .cash-amount.inflow { color:#15803d; font-weight:800; }
+  .cash-amount.outflow { color:#c2410c; font-weight:800; }
 
   .page-title-box .page-title { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; word-break:break-word; line-height:1.25; }
   @media (max-width:767.98px){
@@ -86,11 +91,50 @@
           $yearAmt  = (float)($data14[0]->Amount ?? 0);
           $studeCount = (int)($data7[0]->StudeCount ?? 0);
 		  $isAuditor = ((string)$this->session->userdata('level') === 'Auditor');
+		  $expenseMonth = (float)($expenseSummary->MonthAmount ?? 0);
+		  $expenseYear = (float)($expenseSummary->YearAmount ?? 0);
+		  $monthNet = $monthAmt - $expenseMonth;
+		  $yearNet = $yearAmt - $expenseYear;
 
           $trendRows = [];
           foreach ((array)($trend ?? []) as $row) {
             $trendRows[] = ['date' => (string)$row->CDate, 'amount' => (float)($row->Amount ?? 0)];
           }
+
+		  $expenseTrendRows = [];
+		  foreach ((array)($expenseTrend ?? []) as $row) {
+			$expenseTrendRows[] = ['date' => (string)$row->CDate, 'amount' => (float)($row->Amount ?? 0)];
+		  }
+
+		  $cashActivity = [];
+		  if ($isAuditor) {
+			foreach ((array)($recentPayments ?? []) as $row) {
+			  $name = trim(($row->LastName ?? '') . ', ' . ($row->FirstName ?? ''), ', ');
+			  if ($name === '') $name = (string)($row->StudentNumber ?? '');
+			  $cashActivity[] = [
+				'date' => (string)($row->PDate ?? ''),
+				'sort' => (string)($row->PDate ?? '') . ' 2 ' . str_pad((string)($row->ID ?? 0), 10, '0', STR_PAD_LEFT),
+				'type' => 'inflow',
+				'reference' => 'O.R. ' . (string)($row->ORNumber ?? ''),
+				'details' => $name,
+				'handled_by' => (string)($row->Cashier ?? ''),
+				'amount' => (float)($row->Amount ?? 0),
+			  ];
+			}
+			foreach ((array)($recentExpenses ?? []) as $row) {
+			  $cashActivity[] = [
+				'date' => (string)($row->ExpenseDate ?? ''),
+				'sort' => (string)($row->ExpenseDate ?? '') . ' 1 ' . str_pad((string)($row->expensesid ?? 0), 10, '0', STR_PAD_LEFT),
+				'type' => 'outflow',
+				'reference' => (string)($row->Category ?? 'Expense'),
+				'details' => (string)($row->Description ?? ''),
+				'handled_by' => (string)($row->Responsible ?? ''),
+				'amount' => (float)($row->Amount ?? 0),
+			  ];
+			}
+			usort($cashActivity, function ($a, $b) { return strcmp($b['sort'], $a['sort']); });
+			$cashActivity = array_slice($cashActivity, 0, 10);
+		  }
           ?>
 
           <div class="row">
@@ -115,6 +159,48 @@
 		  <?php include('includes/accounting_readonly_notice.php'); ?>
 
           <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
+			<?php if ($isAuditor): ?>
+			<a class="nx-stat green" href="<?= base_url('Accounting/collectionMonthly'); ?>">
+			  <div class="nx-stat-main">
+				<div>
+				  <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<span<?= $monthAmt > 0 ? ' data-plugin="counterup"' : ''; ?>><?= number_format($monthAmt, 2); ?></span></div>
+				  <div class="nx-stat-label">Cash Inflow · This Month</div>
+				</div>
+				<div class="nx-stat-icon"><i class="mdi mdi-arrow-down-bold-circle-outline"></i></div>
+			  </div>
+			  <div class="nx-stat-foot">View collection records <i class="mdi mdi-arrow-right"></i></div>
+			</a>
+			<a class="nx-stat orange" href="<?= base_url('Accounting/expensesReport'); ?>">
+			  <div class="nx-stat-main">
+				<div>
+				  <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<span<?= $expenseMonth > 0 ? ' data-plugin="counterup"' : ''; ?>><?= number_format($expenseMonth, 2); ?></span></div>
+				  <div class="nx-stat-label">Cash Outflow · This Month</div>
+				</div>
+				<div class="nx-stat-icon"><i class="mdi mdi-arrow-up-bold-circle-outline"></i></div>
+			  </div>
+			  <div class="nx-stat-foot">View expense records <i class="mdi mdi-arrow-right"></i></div>
+			</a>
+			<a class="nx-stat <?= $monthNet >= 0 ? 'blue' : 'orange'; ?>" href="<?= base_url('Accounting/ledger'); ?>">
+			  <div class="nx-stat-main">
+				<div>
+				  <div class="nx-stat-num" style="font-size:1.45rem;"><?= $monthNet < 0 ? '-' : ''; ?>&#8369;<span><?= number_format(abs($monthNet), 2); ?></span></div>
+				  <div class="nx-stat-label">Net Cash · This Month</div>
+				</div>
+				<div class="nx-stat-icon"><i class="mdi mdi-scale-balance"></i></div>
+			  </div>
+			  <div class="nx-stat-foot">Inflow minus outflow <i class="mdi mdi-arrow-right"></i></div>
+			</a>
+			<a class="nx-stat violet" href="<?= base_url('Accounting/ledger'); ?>">
+			  <div class="nx-stat-main">
+				<div>
+				  <div class="nx-stat-num" style="font-size:1.45rem;"><?= $yearNet < 0 ? '-' : ''; ?>&#8369;<span><?= number_format(abs($yearNet), 2); ?></span></div>
+				  <div class="nx-stat-label">Net Cash · This Year</div>
+				</div>
+				<div class="nx-stat-icon"><i class="mdi mdi-finance"></i></div>
+			  </div>
+			  <div class="nx-stat-foot">Year-to-date balance <i class="mdi mdi-arrow-right"></i></div>
+			</a>
+			<?php else: ?>
             <a class="nx-stat green" href="<?= base_url('Accounting/collectionDateRange'); ?>">
               <div class="nx-stat-main">
                 <div>
@@ -155,13 +241,14 @@
               </div>
               <div class="nx-stat-foot">Enrolled this term <i class="mdi mdi-arrow-right"></i></div>
             </div>
+			<?php endif; ?>
           </div>
 
           <div class="row mt-4">
             <div class="col-12">
               <div class="acct-card-wrap">
                 <div class="acct-card-head">
-                  <h5><i class="mdi mdi-chart-areaspline"></i> Collection Trend (Last 14 Days)</h5>
+                  <h5><i class="mdi mdi-chart-areaspline"></i> <?= $isAuditor ? 'Cash Inflow vs Outflow' : 'Collection Trend'; ?> (Last 14 Days)</h5>
                 </div>
                 <div class="acct-card-body">
                   <div class="trend-chart sum-chart skeleton"><canvas id="chartTrend"></canvas></div>
@@ -174,13 +261,50 @@
             <div class="col-12">
               <div class="acct-card-wrap">
                 <div class="acct-card-head">
-                  <h5><i class="mdi mdi-receipt"></i> Recent Payments</h5>
-                  <a href="<?= base_url('Accounting/Payment'); ?>" class="up-btn up-btn-ghost" style="padding:6px 14px;font-size:.8rem;">
-                    View All <i class="mdi mdi-arrow-right"></i>
-                  </a>
+                  <h5><i class="mdi <?= $isAuditor ? 'mdi-swap-vertical-bold' : 'mdi-receipt'; ?>"></i> <?= $isAuditor ? 'Recent Cash Activity' : 'Recent Payments'; ?></h5>
+				  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+					<?php if ($isAuditor): ?>
+					  <a href="<?= base_url('Accounting/paymentAuditLog'); ?>" class="up-btn up-btn-ghost" style="padding:6px 14px;font-size:.8rem;">
+						Payment Audit Log <i class="mdi mdi-history"></i>
+					  </a>
+					<?php endif; ?>
+					<a href="<?= base_url($isAuditor ? 'Accounting/ledger' : 'Accounting/Payment'); ?>" class="up-btn up-btn-ghost" style="padding:6px 14px;font-size:.8rem;">
+					  <?= $isAuditor ? 'View Ledger' : 'View All'; ?> <i class="mdi mdi-arrow-right"></i>
+					</a>
+				  </div>
                 </div>
                 <div class="table-responsive up-rt-host">
                   <table class="table table-bordered table-hover table-sm recent-pay-table up-rt ms-rt-keep mb-0">
+					<?php if ($isAuditor): ?>
+					<thead>
+					  <tr>
+						<th>Date</th>
+						<th>Flow</th>
+						<th>Reference / Category</th>
+						<th>Details</th>
+						<th>Handled By</th>
+						<th class="text-right">Amount</th>
+					  </tr>
+					</thead>
+					<tbody>
+					  <?php if (!empty($cashActivity)): ?>
+						<?php foreach ($cashActivity as $row): ?>
+						  <tr>
+							<td data-label="Date"><?= htmlspecialchars(date('M d, Y', strtotime($row['date'])), ENT_QUOTES, 'UTF-8'); ?></td>
+							<td data-label="Flow"><span class="cash-flow-badge <?= $row['type']; ?>"><i class="mdi <?= $row['type'] === 'inflow' ? 'mdi-arrow-down' : 'mdi-arrow-up'; ?>"></i><?= $row['type'] === 'inflow' ? 'Inflow' : 'Outflow'; ?></span></td>
+							<td data-label="Reference / Category"><strong><?= htmlspecialchars($row['reference'], ENT_QUOTES, 'UTF-8'); ?></strong></td>
+							<td data-label="Details"><?= htmlspecialchars($row['details'], ENT_QUOTES, 'UTF-8'); ?></td>
+							<td data-label="Handled By"><?= htmlspecialchars($row['handled_by'], ENT_QUOTES, 'UTF-8'); ?></td>
+							<td data-label="Amount" class="text-right cash-amount <?= $row['type']; ?>"><?= $row['type'] === 'inflow' ? '+' : '-'; ?>&#8369;<?= number_format($row['amount'], 2); ?></td>
+						  </tr>
+						<?php endforeach; ?>
+					  <?php else: ?>
+						<tr>
+						  <td colspan="6" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-file-search-outline"></i></span><span class="sum-empty-text">No cash activity recorded yet</span></td>
+						</tr>
+					  <?php endif; ?>
+					</tbody>
+					<?php else: ?>
                     <thead>
                       <tr>
                         <th>Date</th>
@@ -211,6 +335,7 @@
                         </tr>
                       <?php endif; ?>
                     </tbody>
+					<?php endif; ?>
                   </table>
                 </div>
               </div>
@@ -236,38 +361,63 @@
         return;
       }
 
-      // ---- Collection trend (line) ----
+      // ---- Cash flow / collection trend ----
       var trend = <?= json_encode($trendRows, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+	  var expenseTrend = <?= json_encode($expenseTrendRows, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+	  var isAuditor = <?= $isAuditor ? 'true' : 'false'; ?>;
       var trendCanvas = document.getElementById('chartTrend');
       if (trendCanvas) {
         var wrap = trendCanvas.closest('.sum-chart');
         if (wrap) wrap.classList.remove('skeleton');
-        if (trend.length) {
-          var labels = trend.map(function (r) {
-            var d = new Date(r.date + 'T00:00:00');
+		var hasFlowData = trend.length || (isAuditor && expenseTrend.length);
+        if (hasFlowData) {
+		  var dateKeys = {};
+		  trend.forEach(function (r) { dateKeys[r.date] = true; });
+		  if (isAuditor) expenseTrend.forEach(function (r) { dateKeys[r.date] = true; });
+		  var dates = Object.keys(dateKeys).sort();
+		  var labels = dates.map(function (date) {
+			var d = new Date(date + 'T00:00:00');
             return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
           });
-          var values = trend.map(function (r) { return r.amount; });
+		  var toDateMap = function (rows) {
+			return rows.reduce(function (map, row) { map[row.date] = Number(row.amount); return map; }, {});
+		  };
+		  var inflowByDate = toDateMap(trend);
+		  var outflowByDate = toDateMap(expenseTrend);
+		  var datasets = [{
+			label: isAuditor ? 'Cash Inflow' : 'Collections',
+			data: dates.map(function (date) { return inflowByDate[date] || 0; }),
+			borderColor: '#20a860',
+			backgroundColor: 'rgba(32,168,96,.10)',
+			borderWidth: 2,
+			pointRadius: 3,
+			pointBackgroundColor: '#20a860',
+			fill: !isAuditor,
+			tension: 0.3
+		  }];
+		  if (isAuditor) {
+			datasets.push({
+			  label: 'Cash Outflow',
+			  data: dates.map(function (date) { return outflowByDate[date] || 0; }),
+			  borderColor: '#e07a10',
+			  backgroundColor: 'rgba(224,122,16,.10)',
+			  borderWidth: 2,
+			  pointRadius: 3,
+			  pointBackgroundColor: '#e07a10',
+			  fill: false,
+			  tension: 0.3
+			});
+		  }
           new Chart(trendCanvas.getContext('2d'), {
             type: 'line',
             data: {
               labels: labels,
-              datasets: [{
-                label: 'Collections',
-                data: values,
-                borderColor: '#2a4090',
-                backgroundColor: 'rgba(66,102,212,.12)',
-                borderWidth: 2,
-                pointRadius: 3,
-                pointBackgroundColor: '#2a4090',
-                fill: true,
-                tension: 0.3
-              }]
+			  datasets: datasets
             },
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              legend: { display: false },
+			  legend: { display: isAuditor, position: 'bottom' },
               scales: {
                 yAxes: [{ ticks: { beginAtZero: true, callback: function (v) { return '₱' + v.toLocaleString(); } } }]
               },
@@ -280,7 +430,7 @@
           });
         } else {
           if (wrap) wrap.classList.add('is-empty');
-          trendCanvas.parentNode.innerHTML = '<div class="sum-empty text-muted">No collections in this period yet.</div>';
+		  trendCanvas.parentNode.innerHTML = '<div class="sum-empty text-muted">' + (isAuditor ? 'No cash activity in this period yet.' : 'No collections in this period yet.') + '</div>';
         }
       }
     });
