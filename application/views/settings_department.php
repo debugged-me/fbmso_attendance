@@ -2,6 +2,7 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
+<?php $isAuditor = ((string)$this->session->userdata('level') === 'Auditor'); ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 <link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
 
@@ -86,7 +87,7 @@
           <!-- Title + actions on one row -->
           <div class="page-title-box">
               <h4 class="up-page-title">Manage Courses</h4>
-              <div class="up-page-sub">Create, edit, and delete course offerings.</div>
+              <div class="up-page-sub"><?= $isAuditor ? 'View course offerings or add a new course.' : 'Create, edit, and delete course offerings.'; ?></div>
               <hr class="up-divider" />
             </div>
           <!-- start row -->
@@ -99,7 +100,7 @@
                   <span class="badge badge-purple" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;">SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></span>
 </div>
 <div class="pl-actions">
-              <a href="<?= base_url(); ?>Page/admin" class="up-btn up-btn-ghost d-md-none">
+              <a href="<?= base_url($isAuditor ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
               </a>
               <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#courseModal">
@@ -118,7 +119,9 @@
                           <th>Duration</th>
                           <th>Recognition No.</th>
                           <th>Series Year</th>
-                          <th style="text-align:center;">Action</th>
+						  <?php if (!$isAuditor): ?>
+						  <th style="text-align:center;">Action</th>
+						  <?php endif; ?>
                         </tr>
                       </thead>
                       <tbody>
@@ -130,7 +133,8 @@
                             <td data-label="Duration"><?= $row->Duration; ?></td>
                             <td data-label="Recognition No."><?= $row->recogNo; ?></td>
                             <td data-label="Series Year"><?= $row->SeriesYear; ?></td>
-                            <td data-label="Action" style="text-align:center;">
+							<?php if (!$isAuditor): ?>
+							<td data-label="Action" style="text-align:center;">
                               <a href="<?= base_url('Settings/updateCourse?courseid=' . $row->courseid); ?>" class="up-btn up-btn-ghost up-btn-sm"><i class="mdi mdi-pencil"></i> Edit</a>
                               <form action="<?= base_url(); ?>Settings/deleteCourse" method="post" style="display:inline">
                                 <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>" />
@@ -140,6 +144,7 @@
                                 </button>
                               </form>
                             </td>
+							<?php endif; ?>
                           <?php } ?>
                       </tbody>
                     </table>
@@ -168,7 +173,8 @@
           </div>
           <div class="modal-body">
             <!-- Form -->
-            <form class="form-horizontal" method="POST">
+            <form class="form-horizontal" method="POST" action="<?= base_url('Settings/Department'); ?>" data-ui-busy="Adding course…">
+			  <input type="hidden" name="<?= $this->security->get_csrf_token_name(); ?>" value="<?= $this->security->get_csrf_hash(); ?>">
               <div class="card-body">
                 <div class="form-group row">
                   <label for="CourseCode" class="col-md-4 col-form-label">Course Code</label>

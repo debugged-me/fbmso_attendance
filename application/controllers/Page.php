@@ -7886,11 +7886,34 @@ class Page extends CI_Controller
 		if ($this->input->post()) {
 			// Get data from the form
 			$sectionData = [
-				'courseid'   => $this->input->post('courseid'),
-				'year_level' => $this->input->post('year_level'),
-				'section'    => $this->input->post('section'),
+				'courseid'   => trim((string)$this->input->post('courseid')),
+				'year_level' => trim((string)$this->input->post('year_level')),
+				'section'    => trim((string)$this->input->post('section')),
 				'is_active'  => 1
 			];
+
+			if ($sectionData['courseid'] === '' || $sectionData['year_level'] === '' || $sectionData['section'] === '') {
+				$this->session->set_flashdata('error', 'Course, year level, and section are required.');
+				redirect('Page/manageSections');
+				return;
+			}
+
+			// A second fast submit from the same session is serialized by PHP's
+			// session lock. This database check also stops the duplicate once the
+			// first request has completed.
+			$duplicate = $this->db
+				->where('courseid', $sectionData['courseid'])
+				->where('year_level', $sectionData['year_level'])
+				->where('section', $sectionData['section'])
+				->limit(1)
+				->get('course_sections')
+				->num_rows() > 0;
+
+			if ($duplicate) {
+				$this->session->set_flashdata('warning', 'That section already exists.');
+				redirect('Page/manageSections');
+				return;
+			}
 
 			// Insert data into the database (your model)
 			$inserted = $this->CourseSectionModel->addSection($sectionData);
@@ -7931,6 +7954,10 @@ class Page extends CI_Controller
 	}
 	public function editSection($id)
 	{
+		if ((string)$this->session->userdata('level') === 'Auditor') {
+			show_error('Auditor accounts may add sections but cannot edit or delete them.', 403);
+			return;
+		}
 		if ($this->input->post()) {
 			// Snapshot old row BEFORE update
 			$oldRow = $this->CourseSectionModel->getSectionById($id);
@@ -7988,6 +8015,10 @@ class Page extends CI_Controller
 
 	public function deleteSection($id = null)
 	{
+		if ((string)$this->session->userdata('level') === 'Auditor') {
+			show_error('Auditor accounts may add sections but cannot edit or delete them.', 403);
+			return;
+		}
 		if (!$this->requirePost()) return;
 		// Accept ID from POST (CSRF-protected) or URL segment (backward compat).
 		if ($this->input->post('id')) {

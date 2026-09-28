@@ -525,7 +525,7 @@ if (!empty($activity_id) && !empty($activities)) {
                                             </div>
                                         <?php endif; ?>
                                         <div class="pl-actions">
-                                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+											<a href="<?= base_url($this->session->userdata('level') === 'Auditor' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                                             </a>
                                             <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#filterModal">

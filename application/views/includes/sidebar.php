@@ -1150,6 +1150,12 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                 'Accounting/course_setUp'
             ]);
 
+			list($manageExpanded, $manageShow) = $open([
+				'Settings/Department',
+				'Page/manageSections',
+				'Page/addSection'
+			]);
+
             $acctRptActive = ($is('Accounting/collectionMonthly') || $is('Accounting/collectionYear') || $is('Accounting/collectionDateRange') || $is('Accounting/collectionReport'))
                 ? 'mm-active active'
                 : '';
@@ -1167,12 +1173,58 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     </li>
 
 					<?php if ($isAuditor): ?>
+					<li class="<?= $active('Page/profileList'); ?>">
+						<a href="<?= base_url('Page/profileList'); ?>" class="waves-effect">
+							<i class="bi bi-person-fill"></i>
+							<span> Registered Students </span>
+						</a>
+					</li>
+
+					<li class="<?= $active('AttendanceLogs'); ?>">
+						<a href="<?= base_url('AttendanceLogs'); ?>" class="waves-effect">
+							<i class="bi bi-clipboard-check"></i>
+							<span> Attendance Logs </span>
+						</a>
+					</li>
+
+					<li class="<?= $active('activities'); ?>">
+						<a href="<?= base_url('activities'); ?>" class="waves-effect">
+							<i class="bi bi-qr-code-scan"></i>
+							<span> Activities </span>
+						</a>
+					</li>
+
+					<li class="<?= $active('reports'); ?>">
+						<a href="<?= base_url('reports'); ?>" class="waves-effect">
+							<i class="bi bi-bar-chart-line"></i>
+							<span> Activities Reports </span>
+						</a>
+					</li>
+
 					<li class="<?= $active('Accounting/paymentAuditLog'); ?>">
 						<a href="<?= base_url('Accounting/paymentAuditLog'); ?>" class="waves-effect">
 							<i class="mdi mdi-history"></i>
 							<span> Payment Activity Log </span>
 						</a>
 					</li>
+
+					<li class="<?= $manageShow ? 'mm-active' : ''; ?>">
+						<a href="javascript:void(0);" class="waves-effect has-arrow" aria-expanded="<?= $manageExpanded; ?>">
+							<i class="ion ion-md-contacts"></i>
+							<span> Manage </span>
+							<span class="menu-arrow"></span>
+						</a>
+						<ul class="nav-second-level nav <?= $manageShow; ?>" aria-expanded="<?= $manageExpanded; ?>">
+							<li class="<?= $active('Settings/Department'); ?>">
+								<a href="<?= base_url('Settings/Department'); ?>">Course</a>
+							</li>
+							<li class="<?= $active('Page/manageSections'); ?>">
+								<a href="<?= base_url('Page/manageSections'); ?>">Sections</a>
+							</li>
+						</ul>
+					</li>
+
+					<li class="menu-title">Accounting</li>
 					<?php endif; ?>
 
                     <li class="<?= $active('Accounting/Payment'); ?>">

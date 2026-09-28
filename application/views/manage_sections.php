@@ -2,6 +2,7 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
+<?php $isAuditor = ((string)$this->session->userdata('level') === 'Auditor'); ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 <link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
 
@@ -80,7 +81,7 @@
                     <!-- Title + actions on one row -->
                     <div class="page-title-box">
                             <h4 class="up-page-title">Manage Sections</h4>
-                            <div class="up-page-sub">Create, edit, and delete course sections.</div>
+                            <div class="up-page-sub"><?= $isAuditor ? 'View course sections or add a new section.' : 'Create, edit, and delete course sections.'; ?></div>
                             <hr class="up-divider" />
                         </div>
 
@@ -137,7 +138,7 @@
                                     <span class="badge badge-purple" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;">SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></span>
 </div>
 <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                            <a href="<?= base_url($isAuditor ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
                             <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#addSectionModal">
@@ -153,7 +154,9 @@
                                                     <th>Course</th>
                                                     <th>Year Level</th>
                                                     <th>Section</th>
-                                                    <th style="text-align:center;">Action</th>
+											<?php if (!$isAuditor): ?>
+											<th style="text-align:center;">Action</th>
+											<?php endif; ?>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -174,7 +177,8 @@
                                                         </td>
                                                         <td data-label="Year Level"><?= htmlspecialchars($section->year_level, ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Section"><?= htmlspecialchars($sectionName, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td data-label="Action" class="up-rt-actions" style="text-align:center;">
+												<?php if (!$isAuditor): ?>
+												<td data-label="Action" class="up-rt-actions" style="text-align:center;">
                                                             <a href="<?= base_url('Page/editSection/' . $section->id); ?>" class="up-btn up-btn-ghost up-btn-sm"><i class="mdi mdi-pencil"></i> Edit</a>
                                                             <form action="<?= base_url('Page/deleteSection'); ?>" method="post" style="display:inline">
                                                                 <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>" />
@@ -182,6 +186,7 @@
                                                                 <button type="submit" class="up-btn up-btn-danger up-btn-sm" onclick="return confirm('Delete section <?= htmlspecialchars($sectionName !== '' ? $sectionName : $courseLabel, ENT_QUOTES, 'UTF-8'); ?>? This cannot be undone.')"><i class="mdi mdi-delete"></i> Delete</button>
                                                             </form>
                                                         </td>
+												<?php endif; ?>
                                                     </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
@@ -205,7 +210,8 @@
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="font-size:1.2rem;line-height:1;"><i class="mdi mdi-close"></i></button>
                     </div>
                     <div class="modal-body">
-                        <form method="POST" action="<?= base_url('Page/addSection'); ?>">
+						<form method="POST" action="<?= base_url('Page/addSection'); ?>" data-ui-busy="Adding section…">
+							<input type="hidden" name="<?= $this->security->get_csrf_token_name(); ?>" value="<?= $this->security->get_csrf_hash(); ?>">
                             <div class="form-group">
                                 <label for="courseid">Course</label>
                                 <select name="courseid" class="form-control" required>

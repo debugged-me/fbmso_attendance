@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
+<?php $isAuditor = ((string)$this->session->userdata('level') === 'Auditor'); ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 <style>
   #datatable thead th {
@@ -356,9 +357,10 @@
                     </span>
                   </div>
                   <div class="pl-actions">
-                    <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                    <a href="<?= base_url($isAuditor ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                       <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                     </a>
+					<?php if (!$isAuditor): ?>
                     <a href="<?= site_url('Registration/index') . '?source=admin'; ?>" class="up-btn up-btn-primary">
                       <i class="mdi mdi-account-plus"></i> Add Student
                     </a>
@@ -385,6 +387,7 @@
                         </a>
                       </div>
                     </div>
+					<?php endif; ?>
                   </div>
                 </div>
                 <div class="up-card-body" style="padding:0 !important;">

@@ -120,7 +120,10 @@ $config['authguard_roles'] = array(
                          'Academic Officer', 'Encoder', 'Instructor', 'Teacher',
                          'Personnel', 'Guidance', 'Medical', 'Librarian', 'Cashier',
 						 'Auditor', 'Committee'),
-    'settings/*' => array('Super Admin', 'Admin', 'IT', 'School Admin'),
+	'settings/*' => array('Super Admin', 'Admin', 'IT', 'School Admin'),
+	// Auditors may view the course list and create courses. More-specific
+	// Settings routes (update/delete) remain covered by the restrictive rule.
+	'settings/department' => array('Super Admin', 'Admin', 'IT', 'School Admin', 'Auditor'),
 
     // --- Granular rules for the most sensitive operations -------------
     // These override the broad 'page/*' rule above. Only Super Admin,
@@ -200,6 +203,21 @@ $config['authguard_restricted_role_routes'] = array(
 	'Auditor' => array(
 		'accounting/*',
 		'page/accounting',
+		'page/profilelist',
+		'page/editsignup',
+		'page/checksignupavailability',
+		'page/get_provinces',
+		'page/get_cities',
+		'page/get_barangays',
+		'attendancelogs/*',
+		'activities/index',
+		'activities/poster',
+		'attendance/logs',
+		'attendance/profile',
+		'reports/*',
+		'settings/department',
+		'page/managesections',
+		'page/addsection',
 		'page/proof_payment_view',
 		'page/onlinepaymentsall',
 		'page/deniedpayments',

@@ -63,6 +63,7 @@ if (!is_object($profileData)) {
 $data = $profileData;
 
 $readOnly = !empty($readOnly);
+$isAuditorProfile = ((string)$this->session->userdata('level') === 'Auditor');
 $provinces = (isset($provinces) && is_array($provinces)) ? $provinces : [];
 $cities    = (isset($cities) && is_array($cities)) ? $cities : [];
 $barangays = (isset($barangays) && is_array($barangays)) ? $barangays : [];
@@ -152,7 +153,7 @@ $ageVal        = $pickField(['Age', 'age']);
                             <div class="banner-title"><?= $readOnly ? 'View Profile' : 'Update Profile'; ?></div>
                             <div class="banner-sub">
                                 <span class="banner-student"><?= htmlspecialchars($bannerName, ENT_QUOTES, 'UTF-8'); ?></span><br>
-                                <?= $readOnly ? 'Viewing student details (read-only).' : 'Update student personal and academic information.'; ?>
+								<?= $readOnly ? 'Viewing student details.' : 'Update student personal and academic information.'; ?>
                             </div>
                         </div>
 
@@ -173,7 +174,7 @@ $ageVal        = $pickField(['Age', 'age']);
                     </div>
 
                     <div class="card-body-inner">
-                        <?php if ($readOnly): ?>
+						<?php if ($readOnly && !$isAuditorProfile): ?>
                             <div class="profile-readonly-note">
                                 Viewing student details only. Editing is disabled for your account.
                             </div>

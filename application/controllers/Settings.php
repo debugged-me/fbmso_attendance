@@ -112,6 +112,10 @@ class Settings extends CI_Controller
 	//delete Section
 	public function deleteSection()
 	{
+		if ((string)$this->session->userdata('level') === 'Auditor') {
+			show_error('Auditor accounts may add sections but cannot edit or delete them.', 403);
+			return;
+		}
 		$id = $this->input->post('id');
 		$username = $this->session->userdata('username');
 		date_default_timezone_set('Asia/Manila'); # add your city to set local time zone
@@ -124,6 +128,10 @@ class Settings extends CI_Controller
 	}
 	public function deleteCourse()
 	{
+		if ((string)$this->session->userdata('level') === 'Auditor') {
+			show_error('Auditor accounts may add courses but cannot edit or delete them.', 403);
+			return;
+		}
 		// Get the course ID from POST parameters
 		$id = $this->input->post('id');
 		$username = $this->session->userdata('username');
@@ -225,13 +233,6 @@ class Settings extends CI_Controller
 
 	function Department()
 	{
-		$result['data'] = $this->SettingsModel->getDepartmentList();
-		$result['yearLevels'] = $this->SettingsModel->get_year_levels();
-		$result['course'] = $this->SettingsModel->course();
-		$result['staff'] = $this->StudentModel->getStaff();
-
-		$this->load->view('settings_department', $result);
-
 		if ($this->input->post('submit')) {
 			// Collect form data
 			$CourseCode        = trim((string)$this->input->post('CourseCode'));
@@ -332,7 +333,15 @@ class Settings extends CI_Controller
 					: '<div class="alert alert-danger text-center"><b>Failed to add record.</b></div>'
 			);
 			redirect('Settings/Department');
+			return;
 		}
+
+		$result['data'] = $this->SettingsModel->getDepartmentList();
+		$result['yearLevels'] = $this->SettingsModel->get_year_levels();
+		$result['course'] = $this->SettingsModel->course();
+		$result['staff'] = $this->StudentModel->getStaff();
+
+		$this->load->view('settings_department', $result);
 	}
 
 
@@ -591,6 +600,10 @@ class Settings extends CI_Controller
 
 	public function updateCourse()
 	{
+		if ((string)$this->session->userdata('level') === 'Auditor') {
+			show_error('Auditor accounts may add courses but cannot edit or delete them.', 403);
+			return;
+		}
 		// Get the course ID from GET parameters
 		$courseid = $this->input->get('courseid');
 
@@ -661,6 +674,10 @@ class Settings extends CI_Controller
 
 	public function updateSection()
 	{
+		if ((string)$this->session->userdata('level') === 'Auditor') {
+			show_error('Auditor accounts may add sections but cannot edit or delete them.', 403);
+			return;
+		}
 		// Get the section ID from GET parameters
 		$sectionID = $this->input->get('sectionID');
 

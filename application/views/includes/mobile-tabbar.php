@@ -63,10 +63,10 @@ switch ($msLevel) {
 
 	case 'Auditor':
 		$msAddTab($msTabs, 'Page/accounting', 'Home', 'mdi-home-variant-outline');
+		$msAddTab($msTabs, 'Page/profileList', 'Students', 'mdi-account-group-outline');
+		$msAddTab($msTabs, 'activities', 'Activities', 'mdi-calendar-star');
 		$msAddTab($msTabs, 'Accounting/ledger', 'Cash Flow', 'mdi-swap-vertical-bold');
 		$msAddTab($msTabs, 'Accounting/Payment', 'Payments', 'mdi-cash-multiple');
-		$msAddTab($msTabs, 'Accounting/expenses', 'Expenses', 'mdi-receipt');
-		$msAddTab($msTabs, 'Accounting/paymentAuditLog', 'Activity', 'mdi-history');
 		break;
 
     case 'Committee':

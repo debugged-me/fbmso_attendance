@@ -4,7 +4,10 @@
 <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
 <body>
-  <?php $isCommittee = $this->session->userdata('level') === 'Committee'; ?>
+	<?php
+	$isCommittee = $this->session->userdata('level') === 'Committee';
+	$isAuditor = $this->session->userdata('level') === 'Auditor';
+	?>
   <div id="wrapper">
     <?php include('includes/top-nav-bar.php'); ?>
     <?php include('includes/sidebar.php'); ?>
@@ -623,9 +626,11 @@
                   <h4 class="up-page-title d-flex align-items-center">
                     <i class="ion ion-ios-qr-scanner mr-2"></i> Activities
                   </h4>
-                  <div class="up-page-sub"><?= $isCommittee
-                    ? 'Open a scanner for an activity or review its attendance.'
-                    : 'Create activities, open the scanner, or print a poster QR for self check-in.'; ?></div>
+				  <div class="up-page-sub"><?= $isAuditor
+					? 'Review activities and their attendance.'
+					: ($isCommittee
+						? 'Open a scanner for an activity or review its attendance.'
+						: 'Create activities, open the scanner, or print a poster QR for self check-in.'); ?></div>
                   <hr class="up-divider" />
                 </div>
             </div>
@@ -693,10 +698,10 @@
               <span class="badge badge-light" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;color:#6b7a99;border:1px solid #e6ebf5;">QR Attendance</span>
 </div>
 <div class="pl-actions">
-                  <a href="<?= $isCommittee ? base_url('AttendanceLogs') : base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+				  <a href="<?= $isCommittee ? base_url('AttendanceLogs') : base_url($isAuditor ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                     <i class="mdi mdi-arrow-left"></i> <?= $isCommittee ? 'Attendance Logs' : 'Back to Dashboard'; ?>
                   </a>
-                  <?php if (!$isCommittee): ?>
+				  <?php if (!$isCommittee && !$isAuditor): ?>
                   <a href="<?= site_url('activities/create'); ?>" class="up-btn up-btn-primary">
                     <i class="ion ion-md-add-circle-outline"></i> Create Activity
                   </a>
@@ -871,7 +876,7 @@
                               </button>
                               <div class="act-menu dropdown-menu dropdown-menu-right">
 
-                                <?php if (!$posterMode || $isCommittee): ?>
+								<?php if ((!$posterMode || $isCommittee) && !$isAuditor): ?>
                                   <a class="act-item" href="<?= site_url('activities/' . $r->activity_id . '/scan') ?>">
                                     <i class="ion ion-md-qr-scanner act-ic act-ic-scan"></i> Scan
                                   </a>
@@ -887,7 +892,7 @@
                                   </a>
                                 <?php endif; ?>
 
-                                <?php if (!$isCommittee): ?>
+								<?php if (!$isCommittee && !$isAuditor): ?>
                                 <?php
                                 $nextStatus = $st['is_open'] ? 'closed' : 'open';
                                 $confirmMsg = $st['is_open']
