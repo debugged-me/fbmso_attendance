@@ -5,6 +5,7 @@ class Login extends CI_Controller
     {
         parent::__construct();
         $this->load->model('Login_model');
+        $this->load->helper('fbmso_auth');
         $this->load->model('SettingsModel');
         $this->load->model('StudentModel');
         $this->load->model('AuditLogModel');
@@ -309,75 +310,15 @@ class Login extends CI_Controller
                 }
 
 
-                // Fallback: your existing role-based redirects
-                switch ($level) {
-                    case 'Admin':
-                        redirect('page/admin');
-                        break;
-                    case 'School Admin':
-                        redirect('page/school_admin');
-                        break;
-                    case 'Registrar':
-                        redirect('page/registrar');
-                        break;
-                    case 'Head Registrar':
-                        redirect('page/registrar');
-                        break;
-                    case 'Super Admin':
-                        redirect('page/superAdmin');
-                        break;
-                    case 'Property Custodian':
-                        redirect('page/p_custodian');
-                        break;
-                    case 'HR Admin':
-                        redirect('page/hr');
-                        break;
-                    case 'Academic Officer':
-                        redirect('page/a_officer');
-                        break;
-                    case 'Student':
-                        redirect('page/student');
-                        break;
-                    case 'Stude Applicant':
-                        redirect('page/student');
-                        break;   // <— changed
-                    case 'Cashier':
-                        redirect('Page/accounting');
-                        break;
-                    case 'Auditor':
-                        redirect('Page/accounting');
-                        break;
-                    case 'Committee':
-                        redirect('Page/committee');
-                        break;
-                    case 'Instructor':
-                        redirect('page/Instructor');
-                        break;
-                    case 'Encoder':
-                        redirect('page/encoder');
-                        break;
-                    case 'Human Resource':
-                        redirect('page/hr');
-                        break;
-                    case 'Guidance':
-                        redirect('page/guidance');
-                        break;
-                    case 'School Nurse':
-                        redirect('page/medical');
-                        break;
-                    case 'IT':
-                        redirect('page/IT');
-                        break;
-                    case 'Librarian':
-                        redirect('page/library');
-                        break;
-                    case 'Principal':
-                        redirect('page/s_principal');
-                        break;
-                    default:
-                        $this->session->set_flashdata('auth_error', 'Unauthorized access.');
-                        redirect('login');
+                // Fallback: each level's own dashboard (same list the
+                // change-password page uses, see fbmso_auth_helper).
+                $dashboard = fbmso_dashboard_route($level);
+                if ($dashboard !== null) {
+                    redirect($dashboard);
+                    return;
                 }
+                $this->session->set_flashdata('auth_error', 'Unauthorized access.');
+                redirect('login');
                 return;
             } else {
                 // Inactive account

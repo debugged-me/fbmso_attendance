@@ -3613,6 +3613,17 @@ class Page extends CI_Controller
 				// of the page they are standing on.
 				$this->load->library('sessionregistry');
 				$this->sessionregistry->revokeAllForUser($username, 'password changed', true);
+
+				// Done: back to the user's own dashboard, where the footer
+				// shows a one-time "password changed" notice.
+				$this->load->helper('fbmso_auth');
+				$dashboard = fbmso_dashboard_route((string)$this->session->userdata('level'));
+				if ($dashboard !== null) {
+					$this->session->set_flashdata('password_changed', 'Your password was changed successfully.');
+					redirect($dashboard);
+					return;
+				}
+
 				$this->session->set_flashdata('msg', '<div class="alert alert-success text-center">Succesfully changed password</div>');
 				$this->load->view('change_pass');
 			} else {

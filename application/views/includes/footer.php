@@ -1,3 +1,36 @@
+<?php $fbmsoPwChanged = $this->session->flashdata('password_changed'); ?>
+<?php if ($fbmsoPwChanged): ?>
+    <!-- One-time notice after Page::update_password sends the user to their dashboard. -->
+    <div class="fbmso-toast" id="fbmsoToast" role="status" aria-live="polite">
+        <i class="mdi mdi-check-circle" aria-hidden="true"></i>
+        <span><?= htmlspecialchars((string)$fbmsoPwChanged, ENT_QUOTES, 'UTF-8'); ?></span>
+        <button type="button" class="fbmso-toast-close" aria-label="Dismiss" onclick="this.parentNode.remove()">&times;</button>
+    </div>
+    <style>
+        .fbmso-toast {
+            position: fixed; top: 84px; right: 20px; z-index: 30000;
+            display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px);
+            padding: 12px 12px 12px 16px; border-radius: 12px;
+            background: #ecfdf3; color: #166534; border: 1px solid #bbf7d0;
+            box-shadow: 0 12px 28px rgba(16, 24, 40, .12);
+            font-size: .88rem; font-weight: 600;
+            animation: fbmsoToastIn .25s ease-out;
+        }
+        .fbmso-toast i { font-size: 1.2rem; color: #16a34a; }
+        .fbmso-toast-close {
+            border: 0; background: transparent; color: inherit; cursor: pointer;
+            font-size: 1.25rem; line-height: 1; padding: 0 4px; opacity: .7;
+        }
+        .fbmso-toast-close:hover, .fbmso-toast-close:focus-visible { opacity: 1; }
+        @keyframes fbmsoToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+        @media (max-width: 767.98px) { .fbmso-toast { top: auto; bottom: 84px; left: 16px; right: 16px; } }
+        @media (prefers-reduced-motion: reduce) { .fbmso-toast { animation: none; } }
+    </style>
+    <script>
+        setTimeout(function () { var t = document.getElementById('fbmsoToast'); if (t) t.remove(); }, 6000);
+    </script>
+<?php endif; ?>
+
 <link rel="stylesheet" href="<?= base_url('assets/css/request-bell.css'); ?>">
 <script src="<?= base_url('assets/js/req-bell.js?v=2'); ?>"></script>
 <script src="<?= base_url('assets/js/masterlist-mobile.js'); ?>"></script>
