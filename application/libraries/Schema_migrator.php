@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v17.done';
+    const MARKER = 'schema_migrations_v18.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -45,6 +45,23 @@ class Schema_migrator
     protected function migrations()
     {
         return array(
+
+            // Payment entries are now logged alongside edits and deletions.
+            // The ENUM only allowed 'edit'/'delete', and with stricton off a
+            // 'create' row would silently land as ''. Widening an ENUM keeps
+            // existing values.
+            '2026_09_28_payment_audit_create_action' => array(
+                'check' => function () {
+                    $type = $this->columnType('payment_audit_log', 'action');
+                    return $type !== null && strpos($type, "'create'") === false;
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "ALTER TABLE `payment_audit_log`
+                         MODIFY `action` ENUM('create','edit','delete') NOT NULL"
+                    );
+                },
+            ),
 
             // Preserve the actor's role at the moment an event is written.
             // Joining o_users at read time is not enough: an account can be
@@ -537,7 +554,7 @@ class Schema_migrator
                         "CREATE TABLE `payment_audit_log` (
                           `id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
                           `payment_id` INT(10) UNSIGNED NOT NULL,
-                          `action` ENUM('edit','delete') NOT NULL,
+                          `action` ENUM('create','edit','delete') NOT NULL,
                           `or_number` VARCHAR(20) NOT NULL DEFAULT '',
                           `student_number` VARCHAR(45) NOT NULL DEFAULT '',
                           `description` VARCHAR(150) NOT NULL DEFAULT '',

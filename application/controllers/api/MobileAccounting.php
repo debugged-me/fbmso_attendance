@@ -104,13 +104,19 @@ class MobileAccounting extends MobileApi
 
     private function logPaymentAudit($action, $payment, $changedBy, $newValues = null)
     {
-        $oldValues = [
+        $snapshot = [
             'StudentNumber' => (string)($payment->StudentNumber ?? ''),
             'ORNumber'      => (string)($payment->ORNumber ?? ''),
             'PDate'         => (string)($payment->PDate ?? ''),
             'Amount'        => (string)($payment->Amount ?? ''),
             'description'   => (string)($payment->description ?? ''),
         ];
+
+        // A new payment has no "before": its snapshot is the "after".
+        $oldValues = $action === 'create' ? null : $snapshot;
+        if ($action === 'create' && $newValues === null) {
+            $newValues = $snapshot;
+        }
 
         $this->db->insert('payment_audit_log', [
             'payment_id'     => (int)($payment->ID ?? 0),
@@ -119,7 +125,7 @@ class MobileAccounting extends MobileApi
             'student_number' => (string)($payment->StudentNumber ?? ''),
             'description'    => (string)($payment->description ?? ''),
             'amount'         => (float)($payment->Amount ?? 0),
-            'old_values'     => json_encode($oldValues),
+            'old_values'     => $oldValues !== null ? json_encode($oldValues) : null,
             'new_values'     => $newValues !== null ? json_encode($newValues) : null,
             'changed_by'     => $changedBy,
             'actor_level'    => $this->position_of($changedBy) ?: null,
@@ -955,6 +961,18 @@ class MobileAccounting extends MobileApi
             $this->or_sequence->mark_consumed($deviceId, $orNumber);
         }
 
+        // Same trail as the web cashier: every payment entry is logged.
+        $this->logPaymentAudit('create', (object)$paymentData, $cashier, [
+            'StudentNumber' => $studentNumber,
+            'ORNumber'      => $orNumber,
+            'PDate'         => $pDateInput,
+            'Amount'        => $amount,
+            'description'   => $description,
+            'PaymentType'   => $paymentType,
+            'Sem'           => $sem,
+            'SY'            => $sy,
+        ]);
+
         // Queue the receipt email exactly like the web flow — non-fatal.
         $emailResult = ['attempted' => false, 'sent' => false];
         try {
@@ -1127,6 +1145,8 @@ class MobileAccounting extends MobileApi
         $this->db->from('payment_audit_log l');
         $this->db->join('studeprofile sp', 'sp.StudentNumber = l.student_number', 'left');
         $this->db->join('studentsignup su', 'su.StudentNumber = l.student_number', 'left');
+        // Edits and deletions only, as on the web screen.
+        $this->db->where_in('l.action', ['edit', 'delete']);
         $this->db->order_by('l.changed_at', 'DESC');
         $this->db->limit(300);
         $rows = $this->db->get()->result();

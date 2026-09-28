@@ -85,8 +85,8 @@ class Accounting extends CI_Controller
 		return $this->db->table_exists($table);
 	}
 
-	// Records who edited or deleted a payment, and what it looked like
-	// before/after — so a cashier's changes are visible to Admin, not silent.
+	// Records who created, edited or deleted a payment, and what it looked
+	// like before/after — so a cashier's changes are visible to Admin, not silent.
 	private function logPaymentAudit($action, $payment, $newValues = null)
 	{
 		$changedBy = trim((string)$this->session->userdata('username'));
@@ -94,13 +94,19 @@ class Accounting extends CI_Controller
 			$changedBy = trim((string)$this->session->userdata('IDNumber'));
 		}
 
-		$oldValues = [
+		$snapshot = [
 			'StudentNumber' => (string)($payment->StudentNumber ?? ''),
 			'ORNumber'      => (string)($payment->ORNumber ?? ''),
 			'PDate'         => (string)($payment->PDate ?? ''),
 			'Amount'        => (string)($payment->Amount ?? ''),
 			'description'   => (string)($payment->description ?? ''),
 		];
+
+		// A new payment has no "before": its snapshot is the "after".
+		$oldValues = $action === 'create' ? null : $snapshot;
+		if ($action === 'create' && $newValues === null) {
+			$newValues = $snapshot;
+		}
 
 		$this->db->insert('payment_audit_log', [
 			'payment_id'     => (int)($payment->ID ?? 0),
@@ -109,7 +115,7 @@ class Accounting extends CI_Controller
 			'student_number' => (string)($payment->StudentNumber ?? ''),
 			'description'    => (string)($payment->description ?? ''),
 			'amount'         => (float)($payment->Amount ?? 0),
-			'old_values'     => json_encode($oldValues),
+			'old_values'     => $oldValues !== null ? json_encode($oldValues) : null,
 			'new_values'     => $newValues !== null ? json_encode($newValues) : null,
 			'changed_by'     => $changedBy,
 			'actor_level'    => (string)$this->session->userdata('level') ?: null,
@@ -1381,6 +1387,19 @@ class Accounting extends CI_Controller
 				return;
 			}
 
+			// Payment entry is the cashier's main write, so it belongs in the
+			// same trail as edits and deletions (and in Super Admin's Audit Trail).
+			$this->logPaymentAudit('create', (object)$paymentData, [
+				'StudentNumber' => $studentNumber,
+				'ORNumber'      => $orNumber,
+				'PDate'         => $pDateInput,
+				'Amount'        => $amount,
+				'description'   => $description,
+				'PaymentType'   => $paymentType,
+				'Sem'           => $sem,
+				'SY'            => $sy,
+			]);
+
 				$receiptSettings = $this->getReceiptSettings();
 				$receiptPayment = $this->buildReceiptEmailPayment($paymentData, $student);
 				$emailResult = $this->sendReceiptEmailForPayment($receiptPayment, $receiptSettings);
@@ -2013,6 +2032,9 @@ class Accounting extends CI_Controller
 		$this->db->from('payment_audit_log l');
 		$this->db->join('studeprofile sp', 'sp.StudentNumber = l.student_number', 'left');
 		$this->db->join('studentsignup su', 'su.StudentNumber = l.student_number', 'left');
+		// This screen is for edits and deletions. New entries are logged too,
+		// but they show in Super Admin's Audit Trail, not here.
+		$this->db->where_in('l.action', ['edit', 'delete']);
 		$this->db->order_by('l.changed_at', 'DESC');
 		$this->db->limit(300);
 		$rows = $this->db->get()->result();
