@@ -3578,7 +3578,10 @@ class Page extends CI_Controller
 	{
 
 		$this->form_validation->set_rules('currentpassword', 'Current Password', 'required|trim|callback__validate_currentpassword');
-		$this->form_validation->set_rules('newpassword', 'New Password', 'required|trim|min_length[8]|alpha_numeric');
+		// Same rules the checklist on the page shows. Symbols are allowed (the
+		// mobile app already accepted them); alpha_numeric used to reject them
+		// even though the page told people to use them.
+		$this->form_validation->set_rules('newpassword', 'New Password', 'required|trim|min_length[8]|callback__validate_newpassword');
 		$this->form_validation->set_rules('cnewpassword', 'Confirm New Password', 'required|trim|matches[newpassword]');
 
 		$this->form_validation->set_message('required', "Please fill-up the form completely!");
@@ -3631,6 +3634,30 @@ class Page extends CI_Controller
 			$this->form_validation->set_message('_validate_currentpassword', 'Wrong Current Password');
 			return FALSE;
 		}
+	}
+
+	/** New-password rules; kept in step with the checklist on change_pass.php. */
+	function _validate_newpassword($password)
+	{
+		$password = (string)$password;
+		$rule = '';
+
+		if (!preg_match('/\pL/u', $password)) {
+			$rule = 'must include at least one letter';
+		} elseif (!preg_match('/\d/', $password)) {
+			$rule = 'must include at least one number';
+		} elseif (strlen($password) > FBMSO_PWD_MAX_BYTES) {
+			// bcrypt ignores anything past 72 bytes; refuse rather than truncate.
+			$rule = 'must be ' . FBMSO_PWD_MAX_BYTES . ' characters or fewer';
+		} elseif ($password === trim((string)$this->input->post('currentpassword'))) {
+			$rule = 'must be different from your current password';
+		}
+
+		if ($rule !== '') {
+			$this->form_validation->set_message('_validate_newpassword', 'The New Password ' . $rule . '.');
+			return FALSE;
+		}
+		return TRUE;
 	}
 
 	public function acceeptPayment()
