@@ -137,6 +137,7 @@ $config['authguard_roles'] = array(
     // fell through to 'page/*' and any staff role could deactivate any account.
     'page/changeuserstat'         => array('Super Admin', 'Admin', 'IT'),
     'page/setstudentstatus'       => array('Super Admin', 'Admin', 'IT'),
+    'page/bulkdeletestudents'     => array('Super Admin', 'Admin', 'IT'),
     'page/changestat'             => array('Super Admin', 'Admin', 'IT'),
     'page/resetpass'              => array('Super Admin', 'Admin', 'IT'),
     'page/copy_users_to_o_users'  => array('Super Admin', 'Admin', 'IT'),
@@ -207,6 +208,7 @@ $config['authguard_restricted_role_routes'] = array(
 		'accounting/*',
 		'page/accounting',
 		'page/profilelist',
+		'page/profilelistprint',
 		'page/editsignup',
 		'page/checksignupavailability',
 		'page/get_provinces',

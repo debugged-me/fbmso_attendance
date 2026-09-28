@@ -2976,6 +2976,63 @@ class Page extends CI_Controller
 	}
 
 	/**
+	 * Printable Registered Students report (opens in a new tab from
+	 * Page/profileList → Tools → Print), laid out like the attendance report.
+	 *
+	 * Mirrors what the list is showing: ?status= is the status chip, ?q= is
+	 * the table search (the year tiles also search, e.g. "1st"). Search works
+	 * like the table's: every word must appear somewhere in the row.
+	 */
+	public function profileListPrint()
+	{
+		$status = strtolower(trim((string)$this->input->get('status', true)));
+		$q      = trim((string)$this->input->get('q', true));
+
+		$labels = ['active' => 'Active', 'inactive' => 'Inactive', 'pending' => 'Pending', 'none' => 'No account'];
+		if (!isset($labels[$status])) $status = '';
+		$terms = $q === '' ? [] : preg_split('/\s+/', mb_strtolower($q));
+
+		$rows = [];
+		foreach ((array)$this->StudentModel->getsignProfile() as $r) {
+			$st = isset($r->acctStat) ? strtolower(trim((string)$r->acctStat)) : null;
+			if ($st === null) $label = 'No account';
+			elseif ($st === 'active') $label = 'Active';
+			elseif ($st === 'inactive') $label = 'Inactive';
+			elseif ($st === 'pending verification') $label = 'Pending';
+			else $label = ucfirst($st);
+
+			if ($status !== '' && $label !== $labels[$status]) continue;
+
+			$ln = trim((string)($r->LastName ?? ''));
+			$fn = trim((string)($r->FirstName ?? ''));
+			$mn = trim((string)($r->MiddleName ?? ''));
+			$name = trim($ln . (($ln !== '' || $fn !== '') ? ', ' : '') . $fn . ($mn !== '' ? ' ' . $mn : ''), ', ');
+			$row = (object)[
+				'name'    => $name !== '' ? $name : (string)($r->StudentNumber ?? ''),
+				'studno'  => (string)($r->StudentNumber ?? ''),
+				'section' => trim(($r->yearLevel ?? '') . ' ' . ($r->section ?? '')),
+				'email'   => trim((string)($r->email ?? '')),
+				'bdate'   => !empty($r->birthDate) ? $r->birthDate : '',
+				'status'  => $label,
+			];
+
+			if ($terms) {
+				$hay = mb_strtolower(implode(' ', (array)$row));
+				foreach ($terms as $t) {
+					if (mb_strpos($hay, $t) === false) continue 2;
+				}
+			}
+			$rows[] = $row;
+		}
+
+		$this->load->view('profile_list_report', [
+			'rows'        => $rows,
+			'statusLabel' => $status !== '' ? $labels[$status] : '',
+			'search'      => $q,
+		]);
+	}
+
+	/**
 	 * Activate or deactivate a student's login from Page/profileList.
 	 *
 	 * Login (web and mobile) already refuses any account whose acctStat is not
@@ -3030,6 +3087,157 @@ class Page extends CI_Controller
 		$this->session->set_flashdata('success', $activate
 			? $account->username . ' is active again and can sign in.'
 			: $account->username . ' is now inactive and can no longer sign in.');
+		redirect('Page/profileList');
+	}
+
+	/**
+	 * Permanently erase selected students from Page/profileList.
+	 *
+	 * Only students who never got going are eligible: a signup with no login
+	 * account, or an account still "Pending Verification". Eligibility is
+	 * recomputed here from the database — the checkbox list in the browser is
+	 * never trusted.
+	 *
+	 * Erases every row keyed to the student plus their uploaded photo.
+	 * Deliberately kept:
+	 *   - audit_logs / login_logs / login_forensic_captures / security logs:
+	 *     they are the record of who did what, including this deletion;
+	 *   - any student with payment records is skipped, not erased — receipts
+	 *     and balances must stay intact (see the fee/payment integrity rules).
+	 */
+	public function bulkDeleteStudents()
+	{
+		if (!$this->requirePost()) return;
+
+		$ids = $this->input->post('ids', true);
+		$ids = array_values(array_unique(array_filter(array_map(
+			static function ($v) { return trim((string)$v); },
+			is_array($ids) ? $ids : []
+		), 'strlen')));
+
+		if (!$ids) {
+			$this->session->set_flashdata('danger', 'No students were selected.');
+			return redirect('Page/profileList');
+		}
+		if (count($ids) > 500) {
+			$this->session->set_flashdata('danger', 'Select at most 500 students per delete.');
+			return redirect('Page/profileList');
+		}
+
+		// Everything keyed to a student. Tables/columns missing from this
+		// install are skipped rather than failing the whole delete.
+		$targets = [
+			['studentsignup', 'StudentNumber'],
+			['studeprofile', 'StudentNumber'],
+			['semesterstude', 'StudentNumber'],
+			['studeaccount', 'StudentNumber'],
+			['grades', 'StudentNumber'],
+			['registration', 'StudentNumber'],
+			['online_enrollment', 'StudentNumber'],
+			['online_enrollment_deny', 'StudentNumber'],
+			['attendance_daily', 'StudentNumber'],
+			['attendance_scans', 'StudentNumber'],
+			['activity_attendance', 'student_number'],
+			['student_qr', 'student_number'],
+			['student_requirements', 'StudentNumber'],
+			['stude_request', 'StudentNumber'],
+			['flagged_students', 'StudentNumber'],
+			['email_logs', 'StudentNumber'],
+			['profiles', 'studentNumber'],
+			['o_email_verifications', 'username'],
+			['o_mobile_tokens', 'username'],
+			['o_mobile_outbox', 'username'],
+			['user_devices', 'username'],
+			['user_security_sessions', 'username'],
+			['todos', 'username'],
+			['password_rotation_backup', 'username'],
+		];
+		$targets = array_values(array_filter($targets, function ($t) {
+			return $this->db->table_exists($t[0]) && $this->db->field_exists($t[1], $t[0]);
+		}));
+		$paymentTables = array_values(array_filter(
+			[['paymentsaccounts', 'StudentNumber'], ['online_payments', 'StudentNumber'], ['payment_audit_log', 'student_number']],
+			function ($t) { return $this->db->table_exists($t[0]) && $this->db->field_exists($t[1], $t[0]); }
+		));
+
+		$deleted = [];
+		$skipped = [];   // studno => reason
+		$photos  = [];
+
+		foreach ($ids as $sn) {
+			$account = $this->db->select('username, position, acctStat, avatar')
+				->where('username', $sn)->get('o_users')->row();
+			$signup = $this->db->select('StudentNumber, imagePath')
+				->where('StudentNumber', $sn)->get('studentsignup')->row();
+
+			$isStudentAccount = $account && in_array($account->position, ['Student', 'Stude Applicant'], true);
+			$eligible = ($signup && !$account)
+				|| ($isStudentAccount && strtolower(trim((string)$account->acctStat)) === 'pending verification');
+			if (!$eligible) {
+				$skipped[$sn] = 'not Pending or No account';
+				continue;
+			}
+
+			foreach ($paymentTables as $pt) {
+				if ($this->db->where($pt[1], $sn)->count_all_results($pt[0]) > 0) {
+					$skipped[$sn] = 'has payment records';
+					continue 2;
+				}
+			}
+
+			$counts = [];
+			$this->db->trans_start();
+			foreach ($targets as $t) {
+				$this->db->where($t[1], $sn)->delete($t[0]);
+				if ($n = $this->db->affected_rows()) $counts[$t[0]] = $n;
+			}
+			if ($isStudentAccount) {
+				$this->db->where('username', $sn)->where_in('position', ['Student', 'Stude Applicant'])->delete('o_users');
+				if ($n = $this->db->affected_rows()) $counts['o_users'] = $n;
+			}
+			$this->db->trans_complete();
+
+			if (!$this->db->trans_status()) {
+				$skipped[$sn] = 'database error, nothing was removed';
+				continue;
+			}
+
+			foreach ([$account->avatar ?? '', $signup->imagePath ?? ''] as $f) {
+				$f = basename(trim((string)$f));
+				if ($f !== '' && $f !== 'default.png') $photos[$f] = true;
+			}
+
+			$this->AuditLogModel->write(
+				'delete',
+				'Registered Students',
+				'studentsignup',
+				$sn,
+				['status' => $account ? $account->acctStat : 'no account'],
+				null,
+				1,
+				'Bulk deleted student and all related records',
+				['rows_deleted' => $counts]
+			);
+			$deleted[] = $sn;
+		}
+
+		// Remove photos only once no remaining record still points at them.
+		foreach (array_keys($photos) as $f) {
+			$stillUsed = $this->db->where('avatar', $f)->count_all_results('o_users') > 0
+				|| $this->db->where('imagePath', $f)->count_all_results('studentsignup') > 0;
+			$path = FCPATH . 'upload/profile/' . $f;
+			if (!$stillUsed && is_file($path)) @unlink($path);
+		}
+
+		if ($deleted) {
+			$this->session->set_flashdata('success', count($deleted) . ' student(s) and all their records were permanently deleted.');
+		}
+		if ($skipped) {
+			$lines = [];
+			foreach ($skipped as $sn => $why) $lines[] = $sn . ' (' . $why . ')';
+			$this->session->set_flashdata('danger', 'Not deleted: ' . implode(', ', array_slice($lines, 0, 10))
+				. (count($lines) > 10 ? ' and ' . (count($lines) - 10) . ' more.' : '.'));
+		}
 		redirect('Page/profileList');
 	}
 
