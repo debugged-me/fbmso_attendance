@@ -39,6 +39,126 @@ if (!function_exists('audit_pretty')) {
     }
 }
 
+if (!function_exists('audit_label')) {
+    function audit_label($key)
+    {
+        $labels = array(
+            'trusted'          => 'Trusted device',
+            'revoked'          => 'Access revoked',
+            'login_count'      => 'Login count',
+            'other_accounts'   => 'Other accounts on this device',
+            'sessions_ended'   => 'Sessions ended',
+            'allowed_levels'   => 'Allowed roles',
+            'level'            => 'Account role',
+            'route'            => 'Requested page',
+            'posted_sy'        => 'School year',
+            'posted_semester'  => 'Semester',
+        );
+        $key = (string)$key;
+        return $labels[$key] ?? ucwords(str_replace(array('_', '-'), ' ', $key));
+    }
+}
+
+if (!function_exists('audit_human_value')) {
+    function audit_human_value($value)
+    {
+        if (is_bool($value)) return $value ? 'Yes' : 'No';
+        if ($value === null || $value === '') return 'Not recorded';
+        if (is_array($value)) {
+            $simple = true;
+            foreach ($value as $item) {
+                if (is_array($item) || is_object($item)) {
+                    $simple = false;
+                    break;
+                }
+            }
+            if ($simple) return implode(', ', array_map('audit_human_value', $value));
+            return (string)json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+        return (string)$value;
+    }
+}
+
+if (!function_exists('audit_flatten_context')) {
+    function audit_flatten_context($value, $prefix = '')
+    {
+        $items = array();
+        if (!is_array($value)) {
+            $items[] = array($prefix !== '' ? $prefix : 'Details', audit_human_value($value));
+            return $items;
+        }
+
+        foreach ($value as $key => $item) {
+            $label = $prefix !== '' ? $prefix . ' · ' . audit_label($key) : audit_label($key);
+            if (is_array($item) && !empty($item) && array_keys($item) !== range(0, count($item) - 1)) {
+                $items = array_merge($items, audit_flatten_context($item, $label));
+            } else {
+                $items[] = array($label, audit_human_value($item));
+            }
+        }
+        return $items;
+    }
+}
+
+if (!function_exists('audit_context_items')) {
+    function audit_context_items($value)
+    {
+        if ($value === null || trim((string)$value) === '') return array();
+        $decoded = json_decode((string)$value, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return array(array('Details', (string)$value));
+        }
+        return audit_flatten_context(audit_redact($decoded));
+    }
+}
+
+if (!function_exists('audit_device_items')) {
+    function audit_device_items($userAgent)
+    {
+        $userAgent = trim((string)$userAgent);
+        if ($userAgent === '') return array();
+
+        $device = preg_match('/iPad|Tablet/i', $userAgent)
+            ? 'Tablet'
+            : (preg_match('/Mobile|Android|iPhone/i', $userAgent) ? 'Mobile' : 'Desktop');
+
+        $browser = 'Unknown browser';
+        if (preg_match('/Edg\/([\d.]+)/', $userAgent, $match)) {
+            $browser = 'Microsoft Edge ' . $match[1];
+        } elseif (preg_match('/OPR\/([\d.]+)/', $userAgent, $match)) {
+            $browser = 'Opera ' . $match[1];
+        } elseif (preg_match('/Chrome\/([\d.]+)/', $userAgent, $match)) {
+            $browser = 'Chrome ' . $match[1];
+        } elseif (preg_match('/Firefox\/([\d.]+)/', $userAgent, $match)) {
+            $browser = 'Firefox ' . $match[1];
+        } elseif (preg_match('/Version\/([\d.]+).*Safari\//', $userAgent, $match)) {
+            $browser = 'Safari ' . $match[1];
+        }
+
+        $operatingSystem = 'Unknown operating system';
+        if (preg_match('/Android\s+([\d.]+)/i', $userAgent, $match)) {
+            $operatingSystem = 'Android ' . $match[1];
+        } elseif (preg_match('/iPad.*OS\s+([\d_]+)/i', $userAgent, $match)) {
+            $operatingSystem = 'iPadOS ' . str_replace('_', '.', $match[1]);
+        } elseif (preg_match('/iPhone.*OS\s+([\d_]+)/i', $userAgent, $match)) {
+            $operatingSystem = 'iOS ' . str_replace('_', '.', $match[1]);
+        } elseif (preg_match('/Mac OS X\s+([\d_\.]+)/i', $userAgent, $match)) {
+            $operatingSystem = 'macOS ' . str_replace('_', '.', $match[1]);
+        } elseif (preg_match('/Windows NT\s+([\d.]+)/i', $userAgent, $match)) {
+            $windowsVersions = array('10.0' => '10 or 11', '6.3' => '8.1', '6.2' => '8', '6.1' => '7');
+            $operatingSystem = 'Windows ' . ($windowsVersions[$match[1]] ?? $match[1]);
+        } elseif (stripos($userAgent, 'Linux') !== false) {
+            $operatingSystem = 'Linux';
+        }
+
+        return array(
+            array('Device type', $device),
+            array('Operating system', $operatingSystem),
+            array('Browser', $browser),
+        );
+    }
+}
+
 $filters = isset($filters) && is_array($filters) ? $filters : array();
 $summary = isset($summary) && is_array($summary) ? $summary : array();
 $sourceLabels = array(
@@ -208,7 +328,8 @@ $sourceLabels = array(
                                     $detailsId = 'details-' . preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$event['event_key']);
                                     $old = audit_pretty($event['old_values']);
                                     $new = audit_pretty($event['new_values']);
-                                    $extra = audit_pretty($event['extra']);
+                                    $contextItems = audit_context_items($event['extra']);
+                                    $deviceItems = audit_device_items($event['user_agent']);
                                 ?>
                                 <tr class="<?= $isDelete ? 'audit-delete-row' : ($failed ? 'audit-failed-row' : ''); ?>">
                                     <td><span class="text-nowrap font-weight-medium"><?= audit_e(date('M d, Y', strtotime($event['event_time']))); ?></span><br><small class="text-muted"><?= audit_e(date('h:i:s A', strtotime($event['event_time']))); ?></small></td>
@@ -255,10 +376,38 @@ $sourceLabels = array(
                                                     <pre class="audit-json"><?= audit_e($new !== '' ? $new : 'No after snapshot was recorded for this event.'); ?></pre>
                                                 </div>
                                             </div>
-                                            <?php if ($extra !== '' || !empty($event['user_agent'])): ?>
+                                            <?php if (!empty($contextItems) || !empty($deviceItems)): ?>
                                             <div class="row">
-                                                <?php if ($extra !== ''): ?><div class="col-lg-6"><h6 class="text-muted text-uppercase small font-weight-bold">Context</h6><pre class="audit-json"><?= audit_e($extra); ?></pre></div><?php endif; ?>
-                                                <?php if (!empty($event['user_agent'])): ?><div class="col-lg-6"><h6 class="text-muted text-uppercase small font-weight-bold">Device / browser</h6><div class="small text-break"><?= audit_e($event['user_agent']); ?></div></div><?php endif; ?>
+                                                <?php if (!empty($contextItems)): ?>
+                                                <div class="col-lg-6 mb-3">
+                                                    <h6 class="text-muted text-uppercase small font-weight-bold">Event context</h6>
+                                                    <div class="audit-friendly-card">
+                                                        <?php foreach ($contextItems as $item): ?>
+                                                        <div class="audit-friendly-row">
+                                                            <span><?= audit_e($item[0]); ?></span>
+                                                            <strong><?= audit_e($item[1]); ?></strong>
+                                                        </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+                                                <?php endif; ?>
+                                                <?php if (!empty($deviceItems)): ?>
+                                                <div class="col-lg-6 mb-3">
+                                                    <h6 class="text-muted text-uppercase small font-weight-bold">Device details</h6>
+                                                    <div class="audit-friendly-card">
+                                                        <?php foreach ($deviceItems as $item): ?>
+                                                        <div class="audit-friendly-row">
+                                                            <span><?= audit_e($item[0]); ?></span>
+                                                            <strong><?= audit_e($item[1]); ?></strong>
+                                                        </div>
+                                                        <?php endforeach; ?>
+                                                        <details class="audit-raw-details">
+                                                            <summary>Show technical browser identifier</summary>
+                                                            <div class="audit-raw-value"><?= audit_e($event['user_agent']); ?></div>
+                                                        </details>
+                                                    </div>
+                                                </div>
+                                                <?php endif; ?>
                                             </div>
                                             <?php endif; ?>
                                         </div>
@@ -494,6 +643,51 @@ $sourceLabels = array(
     }
 
     .audit-json-danger { border-left: 4px solid #dc3545; }
+
+    .audit-friendly-card {
+        overflow: hidden;
+        border: 1px solid #e3e8ef;
+        border-radius: 8px;
+        background: #fff;
+    }
+
+    .audit-friendly-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: .7rem .85rem;
+        border-bottom: 1px solid #edf0f4;
+        font-size: .82rem;
+    }
+
+    .audit-friendly-row span { color: #748094; }
+    .audit-friendly-row strong {
+        color: #30394a;
+        font-weight: 700;
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    .audit-raw-details { padding: .65rem .85rem; }
+    .audit-raw-details summary {
+        color: #258e98;
+        cursor: pointer;
+        font-size: .76rem;
+        font-weight: 700;
+    }
+
+    .audit-raw-value {
+        margin-top: .6rem;
+        padding: .65rem;
+        border-radius: 6px;
+        background: #f5f7fa;
+        color: #596579;
+        font-family: SFMono-Regular, Consolas, monospace;
+        font-size: .69rem;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
 
     @media (max-width: 991.98px) {
         .audit-filter-actions { justify-content: flex-start; }
