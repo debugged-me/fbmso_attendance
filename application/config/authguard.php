@@ -210,6 +210,7 @@ $config['authguard_restricted_role_routes'] = array(
 		'page/profilelist',
 		'page/profilelistprint',
 		'page/editsignup',
+		'page/signuppreview',
 		'page/checksignupavailability',
 		'page/get_provinces',
 		'page/get_cities',
