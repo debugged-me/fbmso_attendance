@@ -32,6 +32,7 @@ class MobileAccounting extends MobileApi
         $this->load->library('term');
         $this->load->model('StudentModel');
         $this->load->model('SettingsModel');
+        $this->load->library('securityaudit');
     }
 
     // ─── Gate ──────────────────────────────────────────────────────────────
@@ -58,6 +59,15 @@ class MobileAccounting extends MobileApi
 
         $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
         if ($pos === 'auditor') {
+            $this->securityaudit->event('ACCESS_DENIED', [
+                'status'      => 'denied',
+                'module'      => 'Mobile Accounting',
+                'actor'       => (string)$tokenRow['username'],
+                'actor_level' => 'Auditor',
+                'target'      => (string)$tokenRow['username'],
+                'description' => 'Auditor attempted a write operation in the mobile accounting API',
+                'extra'       => ['route' => uri_string()],
+            ]);
             $this->json(['ok' => false, 'message' => 'Auditor accounts have read-only access to accounting records.'], 403);
             return null;
         }
@@ -112,6 +122,7 @@ class MobileAccounting extends MobileApi
             'old_values'     => json_encode($oldValues),
             'new_values'     => $newValues !== null ? json_encode($newValues) : null,
             'changed_by'     => $changedBy,
+            'actor_level'    => $this->position_of($changedBy) ?: null,
             'changed_at'     => (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s'),
         ]);
     }

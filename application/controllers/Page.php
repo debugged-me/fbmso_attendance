@@ -368,6 +368,9 @@ class Page extends CI_Controller
 	{
 		if ($this->session->userdata('level') === 'Super Admin') {
 			$result['data'] = $this->SettingsModel->getSchoolInformation();
+			$result['audit_summary'] = $this->AuditLogModel->auditSummary(30);
+			$result['recent_audit'] = $this->AuditLogModel->getUnified([], 8, 0);
+			$result['recent_deletions'] = $this->AuditLogModel->getUnified(['action' => 'delete'], 5, 0);
 			$this->load->view('dashboard_SuperAdmin', $result);
 		} else {
 			echo "Access Denied";
@@ -3402,6 +3405,24 @@ class Page extends CI_Controller
 			return;
 		}
 
+		// Preserve the deleted record's meaningful state before the transaction.
+		// Passwords, QR tokens and other credentials are intentionally excluded.
+		$oldSnapshot = [
+			'studentsignup' => $this->db->where('StudentNumber', $studno)
+				->limit(1)->get('studentsignup')->row_array(),
+			'studeprofile' => $this->db->where('StudentNumber', $studno)
+				->limit(1)->get('studeprofile')->row_array(),
+			'user_account' => $this->db
+				->select('username, position, fName, mName, lName, email, acctStat, dateCreated, IDNumber')
+				->where('username', $studno)->limit(1)->get('o_users')->row_array(),
+			'enrollments' => $this->db
+				->select('StudentNumber, SY, Semester, Course, Major, YearLevel, Section, Status')
+				->where('StudentNumber', $studno)->get('semesterstude')->result_array(),
+			'qr_records' => $this->db
+				->select('id, student_number, status, issued_at, expires_at, revoked_at')
+				->where('student_number', $studno)->get('student_qr')->result_array(),
+		];
+
 		// Start atomic delete across all related tables
 		$this->db->trans_start();
 
@@ -3451,7 +3472,7 @@ class Page extends CI_Controller
 				'Signup',
 				'studentsignup',
 				$studno,
-				null,
+				$oldSnapshot,
 				null,
 				0,
 				'Failed to delete signup record',
@@ -3474,7 +3495,7 @@ class Page extends CI_Controller
 				'Signup',
 				'studentsignup',
 				$studno,
-				null,
+				$oldSnapshot,
 				null,
 				1,
 				'Deleted signup record',

@@ -273,7 +273,12 @@ class MobileAttendance extends MobileApi
                 'source'      => 'mobile',
             ],
             !empty($op['ok']) ? 1 : 0,
-            !empty($op['ok']) ? 'Mobile QR consume success' : 'Mobile QR consume failed'
+            !empty($op['ok']) ? 'Mobile QR consume success' : 'Mobile QR consume failed',
+            [
+                '_actor_username' => (string)$tokenRow['username'],
+                '_actor_level'    => $this->position_of((string)$tokenRow['username']),
+                'source'          => 'mobile',
+            ]
         );
 
         $status = !empty($op['ok']) ? 200 : 200; // keep 200 even on "already_in" etc.
@@ -385,7 +390,12 @@ class MobileAttendance extends MobileApi
                 'source'         => 'mobile',
             ],
             !empty($res['ok']) ? 1 : 0,
-            !empty($res['ok']) ? 'Mobile self check event' : 'Mobile self check failed'
+            !empty($res['ok']) ? 'Mobile self check event' : 'Mobile self check failed',
+            [
+                '_actor_username' => $username,
+                '_actor_level'    => $this->position_of($username),
+                'source'          => 'mobile',
+            ]
         );
 
         $body = json_encode($res);

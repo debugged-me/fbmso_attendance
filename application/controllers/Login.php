@@ -471,6 +471,12 @@ class Login extends CI_Controller
             return;
         }
 
+        // Snapshot non-secret account fields before removal so the audit
+        // trail still identifies what was deleted. Never copy password data.
+        $oldAccount = $this->db
+            ->select('username, position, fName, mName, lName, email, avatar, acctStat, dateCreated, name, IDNumber')
+            ->where('username', $user)->limit(1)->get('o_users')->row_array();
+
         // Attempt to delete the user
         $deleteSuccess = $this->Login_model->deleteUser($user);
 
@@ -479,9 +485,9 @@ class Login extends CI_Controller
             $this->AuditLogModel->write(
                 'delete',
                 'User Accounts',
-                'users',            // adjust to your actual users table if different
+                'o_users',
                 $user,              // target username (record_pk)
-                null,
+                $oldAccount ?: null,
                 null,
                 1,
                 'Deleted user account',
@@ -494,9 +500,9 @@ class Login extends CI_Controller
             $this->AuditLogModel->write(
                 'delete',
                 'User Accounts',
-                'users',
+                'o_users',
                 $user,
-                null,
+                $oldAccount ?: null,
                 null,
                 0,
                 'Failed to delete user account',

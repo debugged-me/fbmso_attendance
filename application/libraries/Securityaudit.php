@@ -193,7 +193,8 @@ class Securityaudit
 
             'actor_username'  => $actor !== '' ? $actor : (isset($opts['actor']) ? (string)$opts['actor'] : null),
             'actor_full_name' => ($actorName !== '' && $actorName !== ',') ? $actorName : null,
-            'actor_level'     => (string)$session->userdata('level') ?: null,
+            'actor_level'     => (string)$session->userdata('level')
+                ?: (isset($opts['actor_level']) ? (string)$opts['actor_level'] : null),
             'target_username' => isset($opts['target']) ? (string)$opts['target'] : ($actor !== '' ? $actor : null),
 
             'table_name'    => isset($opts['table']) ? (string)$opts['table'] : null,

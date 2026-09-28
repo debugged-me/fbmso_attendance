@@ -300,8 +300,14 @@ class Login_model extends CI_Model
     $ip = $this->input->ip_address();
     $fp = hash('sha256', $ip . '|' . $ua);
 
+    // Snapshot the role now. A later role change or account deletion must not
+    // make this historic login anonymous or assign it the wrong privileges.
+    $actor = $this->db->select('position')->from('o_users')
+      ->where('username', $username)->limit(1)->get()->row();
+
     $data = [
       'username'           => $username,
+      'actor_level'        => $actor ? (string)$actor->position : null,
       'password_attempt'   => fbmso_password_fingerprint($password_attempt),
       'status'             => $status,
       'ip_address'         => $ip,

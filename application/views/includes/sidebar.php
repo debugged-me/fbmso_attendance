@@ -162,6 +162,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
         <?php if ($this->session->userdata('level') === 'Super Admin'): ?>
             <?php
             $currentUri = trim(uri_string(), '/');
+            $currentUriLower = strtolower($currentUri);
             $isActive = static function ($prefix) use ($currentUri) {
                 return stripos($currentUri, trim($prefix, '/')) === 0 ? 'mm-active active' : '';
             };
@@ -201,21 +202,21 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     <!-- Security. Super Admin only: these pages list which
                          accounts are on weak credentials and can end anyone's
                          session, so they stay with the security owner. -->
-                    <li class="<?= $isActive('Security'); ?>">
+                    <li class="<?= in_array($currentUriLower, ['security', 'security/index'], true) ? 'mm-active active' : ''; ?>">
                         <a href="<?= base_url('Security'); ?>" class="waves-effect">
                             <i class="mdi mdi-shield-lock-outline"></i>
                             <span> Security </span>
                         </a>
                     </li>
 
-                    <li class="<?= $isActive('Security/sessions'); ?>">
+                    <li class="<?= strpos($currentUriLower, 'security/sessions') === 0 ? 'mm-active active' : ''; ?>">
                         <a href="<?= base_url('Security/sessions'); ?>" class="waves-effect">
                             <i class="mdi mdi-account-clock-outline"></i>
                             <span> Active Sessions </span>
                         </a>
                     </li>
 
-                    <li class="<?= $isActive('Security/devices'); ?>">
+                    <li class="<?= strpos($currentUriLower, 'security/devices') === 0 ? 'mm-active active' : ''; ?>">
                         <a href="<?= base_url('Security/devices'); ?>" class="waves-effect">
                             <i class="mdi mdi-cellphone-link"></i>
                             <span> Devices </span>
@@ -223,10 +224,17 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     </li>
 
                     <!-- Security Dashboard — IP blacklist, login activity. -->
-                    <li class="<?= $isActive('Securityadmin'); ?>">
+                    <li class="<?= in_array($currentUriLower, ['securityadmin', 'securityadmin/index'], true) ? 'mm-active active' : ''; ?>">
                         <a href="<?= base_url('Securityadmin'); ?>" class="waves-effect">
                             <i class="mdi mdi-shield-account"></i>
                             <span> Security Dashboard </span>
+                        </a>
+                    </li>
+
+                    <li class="<?= strpos($currentUriLower, 'securityadmin/audit_trail') === 0 ? 'mm-active active' : ''; ?>">
+                        <a href="<?= base_url('Securityadmin/audit_trail'); ?>" class="waves-effect">
+                            <i class="mdi mdi-history"></i>
+                            <span> Audit Trail </span>
                         </a>
                     </li>
 

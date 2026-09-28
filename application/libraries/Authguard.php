@@ -452,6 +452,21 @@ class Authguard
     {
         $mine = $this->level() ?: 'Unknown';
 
+        // A signed-in user probing a route outside their role is itself an
+        // auditable security event. This feeds the Super Admin trail whether
+        // the request came from a normal page load or an AJAX call.
+        $this->CI->load->library('securityaudit');
+        $this->CI->securityaudit->event('ACCESS_DENIED', array(
+            'status'      => 'denied',
+            'module'      => 'Authorization',
+            'target'      => (string)$this->CI->session->userdata($this->key_user),
+            'description' => 'Role ' . $mine . ' attempted to access ' . $this->current_route(),
+            'extra'       => array(
+                'route'          => $this->current_route(),
+                'allowed_levels' => array_values($allowed),
+            ),
+        ));
+
         if ($this->wants_json()) {
             $this->json(403, array(
                 'ok'      => false,

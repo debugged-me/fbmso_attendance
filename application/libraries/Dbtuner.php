@@ -73,6 +73,14 @@ class Dbtuner
         // Login screen writes here on every attempt; the logs view reads it.
         array('login_logs',    'idx_ll_user',        'username'),
         array('login_logs',    'idx_ll_time',        'login_time'),
+        array('login_logs',    'idx_ll_role_time',   'actor_level, login_time'),
+
+        // Super Admin's unified audit trail filters by role/action and sorts
+        // every source newest-first.
+        array('audit_logs',         'idx_al_role_time', 'actor_level, event_time'),
+        array('audit_logs',         'idx_al_action_time', 'action, event_time'),
+        array('security_audit_logs','idx_sal_role_time', 'actor_level, event_time'),
+        array('payment_audit_log',  'idx_pal_role_time', 'actor_level, changed_at'),
 
         // Student document requests and ledger lookups.
         array('stude_request', 'idx_sr_studno',      'StudentNumber'),

@@ -25,6 +25,7 @@ class Securityadmin extends CI_Controller
         $this->load->database();
         $this->load->library('securityaudit');
         $this->load->library('pagination');
+        $this->load->model('AuditLogModel');
     }
 
     /** Build pagination config for a given URL + total count */
@@ -102,6 +103,47 @@ class Securityadmin extends CI_Controller
             ->result_array();
 
         $this->load->view('security_admin_dashboard', $data);
+    }
+
+    /**
+     * Unified, read-only activity trail for the five operational roles.
+     * This deliberately has no purge/delete action: evidence must not be
+     * removable from the same screen used to investigate it.
+     */
+    public function audit_trail()
+    {
+        if ((string)$this->session->userdata('level') !== 'Super Admin') {
+            show_error('Access Denied — Super Admin only.', 403);
+        }
+
+        $filters = array(
+            'role'   => trim((string)$this->input->get('role')),
+            'source' => trim((string)$this->input->get('source')),
+            'action' => trim((string)$this->input->get('action')),
+            'status' => trim((string)$this->input->get('status')),
+            'from'   => trim((string)$this->input->get('from')),
+            'to'     => trim((string)$this->input->get('to')),
+            'q'      => mb_substr(trim((string)$this->input->get('q')), 0, 100),
+        );
+
+        $page = max(1, (int)$this->input->get('page'));
+        $offset = ($page - 1) * self::PER_PAGE;
+        $total = $this->AuditLogModel->countUnified($filters);
+
+        $data = array(
+            'events'     => $this->AuditLogModel->getUnified($filters, self::PER_PAGE, $offset),
+            'filters'    => $filters,
+            'roles'      => $this->AuditLogModel->trackedRoles(),
+            'summary'    => $this->AuditLogModel->auditSummary(30),
+            'total'      => $total,
+            'page'       => $page,
+            'per_page'   => self::PER_PAGE,
+        );
+
+        $this->pagination->initialize($this->paginateConfig('Securityadmin/audit_trail', $total));
+        $data['pagination'] = $this->pagination->create_links();
+
+        $this->load->view('security_audit_trail', $data);
     }
 
     /**

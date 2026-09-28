@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v16.done';
+    const MARKER = 'schema_migrations_v17.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -45,6 +45,44 @@ class Schema_migrator
     protected function migrations()
     {
         return array(
+
+            // Preserve the actor's role at the moment an event is written.
+            // Joining o_users at read time is not enough: an account can be
+            // deleted or its role can change, which would erase or rewrite
+            // the historical context Super Admin needs during an inquiry.
+            '2026_09_28_add_audit_actor_levels' => array(
+                'check' => function () {
+                    return ($this->tableExists('audit_logs')
+                            && !$this->columnExists('audit_logs', 'actor_level'))
+                        || ($this->tableExists('login_logs')
+                            && !$this->columnExists('login_logs', 'actor_level'))
+                        || ($this->tableExists('payment_audit_log')
+                            && !$this->columnExists('payment_audit_log', 'actor_level'));
+                },
+                'run' => function () {
+                    if ($this->tableExists('audit_logs')
+                        && !$this->columnExists('audit_logs', 'actor_level')) {
+                        $this->CI->db->query(
+                            "ALTER TABLE `audit_logs`
+                             ADD COLUMN `actor_level` VARCHAR(60) DEFAULT NULL AFTER `user_id`"
+                        );
+                    }
+                    if ($this->tableExists('login_logs')
+                        && !$this->columnExists('login_logs', 'actor_level')) {
+                        $this->CI->db->query(
+                            "ALTER TABLE `login_logs`
+                             ADD COLUMN `actor_level` VARCHAR(60) DEFAULT NULL AFTER `username`"
+                        );
+                    }
+                    if ($this->tableExists('payment_audit_log')
+                        && !$this->columnExists('payment_audit_log', 'actor_level')) {
+                        $this->CI->db->query(
+                            "ALTER TABLE `payment_audit_log`
+                             ADD COLUMN `actor_level` VARCHAR(60) DEFAULT NULL AFTER `changed_by`"
+                        );
+                    }
+                },
+            ),
 
             // Temporary passwords issued for new accounts and password
             // resets must be replaced on first sign-in. Some installations
@@ -507,6 +545,7 @@ class Schema_migrator
                           `old_values` TEXT DEFAULT NULL,
                           `new_values` TEXT DEFAULT NULL,
                           `changed_by` VARCHAR(45) NOT NULL DEFAULT '',
+                          `actor_level` VARCHAR(60) DEFAULT NULL,
                           `changed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                           PRIMARY KEY (`id`),
                           KEY `payment_id` (`payment_id`)

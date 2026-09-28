@@ -12,6 +12,7 @@ class Accounting extends CI_Controller
 		$this->load->database();
 		$this->load->helper(['url', 'form']);
 		$this->load->library(['session', 'form_validation', 'term']);
+		$this->load->library('securityaudit');
 		$this->load->model('SettingsModel');
 		$this->config->load('mass_announcement_email', true);
 
@@ -42,6 +43,13 @@ class Accounting extends CI_Controller
 	{
 		$this->ensureAccess();
 		if ($this->isAuditor()) {
+			$this->securityaudit->event('ACCESS_DENIED', [
+				'status'      => 'denied',
+				'module'      => 'Accounting',
+				'target'      => (string)$this->session->userdata('username'),
+				'description' => 'Auditor attempted a write operation in Accounting',
+				'extra'       => ['route' => uri_string()],
+			]);
 			show_error('Auditor accounts have read-only access to accounting records.', 403);
 			exit;
 		}
@@ -104,6 +112,7 @@ class Accounting extends CI_Controller
 			'old_values'     => json_encode($oldValues),
 			'new_values'     => $newValues !== null ? json_encode($newValues) : null,
 			'changed_by'     => $changedBy,
+			'actor_level'    => (string)$this->session->userdata('level') ?: null,
 			'changed_at'     => (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s'),
 		]);
 	}
