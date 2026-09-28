@@ -201,6 +201,16 @@ if (!empty($activity_id) && !empty($activities)) {
         #logsTable th.al-open-col, #logsTable td.al-open-col { width:52px; }
         @media print { #logsTable th.al-open-col, #logsTable td.al-open-col { display:none !important; } }
         @media (max-width: 767.98px) { #logsTable td.al-open-col { display:none !important; } }
+        /* Account status badge in the student panel — same look as Page/profileList */
+        .acct-badge {
+            display:inline-flex; align-items:center; gap:5px; border-radius:999px;
+            padding:4px 11px; font-size:.72rem; font-weight:700; white-space:nowrap;
+        }
+        .acct-badge::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; }
+        .acct-active   { background:#dcfce7; color:#15803d; }
+        .acct-inactive { background:#fee2e2; color:#b91c1c; }
+        .acct-pending  { background:#fef3c7; color:#a16207; }
+        .acct-none     { background:#f1f5f9; color:#64748b; }
         .pl-actions { display:flex; flex-wrap:wrap; gap:10px; margin:0; }
         .pl-actions > .up-btn, .pl-actions > a.up-btn, .pl-actions > button.up-btn { margin-right:10px; margin-bottom:6px; }
         @supports (gap:10px) { .pl-actions > .up-btn { margin-right:0; } }
@@ -851,41 +861,119 @@ if (!empty($activity_id) && !empty($activities)) {
                 if (dt) {
                     var AL_LOG = <?= json_encode($alLog ?? [], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
                     var AL_ACTIVITY = <?= json_encode((string)$actTitle, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
+                    // The student half of the panel comes from the same summary
+                    // Page/profileList's panel uses, so both show one profile.
+                    // Null when this account may not open it (e.g. Committee): the
+                    // panel then keeps the log-only view instead of hitting a 403.
+                    var AL_URL_PREVIEW = <?= (!isset($this->authguard) || $this->authguard->may('page/signuppreview')) ? json_encode(site_url('Page/signupPreview')) : 'null'; ?>;
+                    var AL_URL_PROFILE = <?= (!isset($this->authguard) || $this->authguard->may('page/editsignup')) ? json_encode(site_url('Page/editSignup')) : 'null'; ?>;
+                    var AL_CAN_EDIT = <?= (string)$this->session->userdata('level') === 'Admin' ? 'true' : 'false'; ?>;
+                    var profiles = {}; // studno -> summary; one student can fill several rows
+
                     var duration = function(mins) {
                         if (mins === null || mins === undefined) return '';
                         var h = Math.floor(mins / 60), m = mins % 60;
                         return (h ? h + ' h ' : '') + m + ' min';
                     };
-                    SD.create({
-                        label: 'Attendance record',
-                        nav: true,
-                        rowSelector: '#logsTable tbody tr[data-sd-key]',
-                        dataTable: dt,
-                        render: function(key, panel) {
-                            var r = AL_LOG[key];
-                            if (!r) return;
-                            var done = !!r.out;
-                            var html = '<div class="sd-hero"><div class="sd-hero-media"><i class="mdi mdi-account-check-outline"></i></div><div class="sd-hero-text">'
-                                + '<h5 class="sd-title' + (r.name ? '' : ' sd-mono') + '">' + SD.esc(r.name || r.studno) + '</h5>'
-                                + (r.name ? '<div class="sd-sub">' + SD.esc(r.studno) + '</div>' : '<div class="sd-desc">No name on file</div>')
-                                + '<div class="sd-tags">' + (r.session ? SD.pill(r.session, 'info') : '')
-                                + SD.status(done, done ? 'Checked out' : 'No check-out yet') + '</div></div></div>';
 
-                            html += SD.section('Attendance', SD.grid([
+                    // acctStat -> badge, labelled exactly like Page/profileList.
+                    var statusMeta = function(s) {
+                        if (s === null || s === undefined) return { cls: 'acct-none', label: 'No account' };
+                        if (s === 'active') return { cls: 'acct-active', label: 'Active' };
+                        if (s === 'inactive') return { cls: 'acct-inactive', label: 'Inactive' };
+                        if (s === 'pending verification') return { cls: 'acct-pending', label: 'Pending' };
+                        return { cls: 'acct-none', label: s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Unknown' };
+                    };
+
+                    var hero = function(r, info) {
+                        var name = r.name || (info && info.name) || '';
+                        var photo = info && info.photoUrl
+                            ? '<img src="' + SD.esc(info.photoUrl) + '" alt="">'
+                            : '<i class="mdi mdi-account"></i>';
+                        var meta = info ? statusMeta(info.status) : null;
+                        var done = !!r.out;
+                        return '<div class="sd-hero"><div class="sd-hero-media">' + photo + '</div><div class="sd-hero-text">'
+                            + '<h5 class="sd-title' + (name ? '' : ' sd-mono') + '">' + SD.esc(name || r.studno) + '</h5>'
+                            + (name ? '<div class="sd-sub">' + SD.esc(r.studno) + '</div>' : '<div class="sd-desc">No name on file</div>')
+                            + '<div class="sd-tags">'
+                            + (meta ? '<span class="acct-badge ' + meta.cls + '">' + SD.esc(meta.label) + '</span>' : '')
+                            + (r.session ? SD.pill(r.session, 'info') : '')
+                            + SD.status(done, done ? 'Checked out' : 'No check-out yet') + '</div></div></div>';
+                    };
+
+                    var quickLinks = function(info) {
+                        var quick = '';
+                        if (info.email) quick += '<a href="mailto:' + SD.esc(info.email) + '" title="' + SD.esc(info.email) + '"><i class="mdi mdi-email-outline"></i> ' + SD.esc(info.email) + '</a>';
+                        if (info.contactNo) quick += '<a href="tel:' + SD.esc(info.contactNo.replace(/[^\d+]/g, '')) + '"><i class="mdi mdi-phone-outline"></i> ' + SD.esc(info.contactNo) + '</a>';
+                        return quick ? '<div class="sd-quick">' + quick + '</div>' : '';
+                    };
+
+                    var attendance = function(r) {
+                        return SD.section('Attendance', SD.grid([
                                 SD.field('Activity', AL_ACTIVITY, true),
                                 SD.field('Date', r.date, true),
                                 SD.field('Check-in', r.in),
                                 SD.field('Check-out', r.out || '—'),
                                 SD.field('Time inside', duration(r.minutes)),
                                 SD.field('Checked in by', r.by)
-                            ]));
-                            html += SD.section('Student', SD.grid([
-                                SD.field('Course', r.course || r.code, true),
-                                SD.field('Year level', r.year),
-                                SD.field('Section', r.section)
-                            ]));
-                            if (r.remarks) html += SD.section('Remarks', '<p class="sd-desc" style="margin:0">' + SD.esc(r.remarks) + '</p>');
-                            panel.body(html);
+                            ]))
+                            + (r.remarks ? SD.section('Remarks', '<p class="sd-desc" style="margin:0">' + SD.esc(r.remarks) + '</p>') : '');
+                    };
+
+                    // Course, year and section prefer this term's values, the same ones the table shows.
+                    var profile = function(r, info) {
+                        var F = SD.field;
+                        return SD.section('Academic', SD.grid([F('Course', r.course || r.code || info.course, true), F('Major', info.major, true), F('Year level', r.year || info.yearLevel), F('Section', r.section || info.section)]))
+                            + SD.section('Personal', SD.grid([F('Sex', info.sex), F('Civil status', info.civilStatus), F('Birth date', info.birthDate), F('Age', info.age)]))
+                            + SD.section('Contact', SD.grid([F('Email', info.email, true), F('Mobile', info.contactNo), F('Address', info.address, true)]))
+                            + SD.section('Guardian', SD.grid([F('Name', info.guardian, true), F('Relationship', info.guardianRelationship), F('Contact', info.guardianContact)]))
+                            + SD.section('Account', SD.grid([F('Login', statusMeta(info.status).label), F('Created', info.accountCreated), F('Signup status', info.signupStatus)]))
+                            + (info.hasSignup ? '' : '<p class="sd-note"><i class="mdi mdi-information-outline"></i> This student only has a login account — there is no registration record to open.</p>');
+                    };
+
+                    // What the log row alone knows, for when the profile cannot be loaded.
+                    var rowStudent = function(r) {
+                        return SD.section('Student', SD.grid([
+                            SD.field('Course', r.course || r.code, true),
+                            SD.field('Year level', r.year),
+                            SD.field('Section', r.section)
+                        ]));
+                    };
+
+                    var footer = function(studno) {
+                        return '<a class="sd-btn" href="' + SD.esc(AL_URL_PROFILE + '?id=' + encodeURIComponent(studno)) + '">'
+                            + (AL_CAN_EDIT ? '<i class="mdi mdi-pencil-outline"></i> Edit profile' : '<i class="mdi mdi-open-in-new"></i> Open full profile') + '</a>';
+                    };
+
+                    SD.create({
+                        label: 'Attendance record',
+                        nav: true,
+                        width: 440,
+                        rowSelector: '#logsTable tbody tr[data-sd-key]',
+                        dataTable: dt,
+                        render: function(key, panel) {
+                            var r = AL_LOG[key];
+                            if (!r) return;
+                            var show = function(info) {
+                                panel.body(hero(r, info) + quickLinks(info) + attendance(r) + profile(r, info));
+                                panel.footer(AL_URL_PROFILE && info.hasSignup ? footer(r.studno) : null);
+                            };
+                            if (profiles[r.studno]) { show(profiles[r.studno]); return; }
+
+                            panel.footer(null);
+                            if (!AL_URL_PREVIEW) {
+                                panel.body(hero(r, null) + attendance(r) + rowStudent(r));
+                                return;
+                            }
+                            panel.body(hero(r, null) + attendance(r) + SD.skeleton());
+                            SD.fetchJSON(AL_URL_PREVIEW + '?id=' + encodeURIComponent(r.studno)).then(function(info) {
+                                profiles[r.studno] = info;
+                                if (panel.current === key) show(info);
+                            }).catch(function(err) {
+                                if (panel.current !== key) return;
+                                panel.body(hero(r, null) + attendance(r) + rowStudent(r)
+                                    + '<p class="sd-note"><i class="mdi mdi-information-outline"></i> Profile unavailable: ' + SD.esc(err.message) + '</p>');
+                            });
                         }
                     });
                 }

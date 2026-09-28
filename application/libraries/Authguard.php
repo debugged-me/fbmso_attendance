@@ -304,6 +304,34 @@ class Authguard
         return true;
     }
 
+    /**
+     * Would enforce() let the signed-in user through to $route
+     * ('controller/method')? Answers only; never responds or audits, so a
+     * view can use it to decide whether to offer a link or an AJAX call.
+     */
+    public function may($route)
+    {
+        $route = strtolower(trim((string)$route, '/'));
+
+        if ($this->is_public($route)) {
+            return true;
+        }
+        if (!$this->is_logged_in()) {
+            return false;
+        }
+        if ($this->is_student()) {
+            return $this->student_may($route);
+        }
+
+        $restrictedRoutes = $this->restricted_routes_for_current_role();
+        if ($restrictedRoutes !== null && !$this->route_is_listed($route, $restrictedRoutes)) {
+            return false;
+        }
+
+        $allowed = $this->rule_for($route, $this->role_rules);
+        return $allowed === null || $this->has_level($allowed);
+    }
+
     // ------------------------------------------------------------------
     // Route matching
     // ------------------------------------------------------------------
