@@ -100,8 +100,8 @@ class Securitycheck extends CI_Controller
     {
         $this->gate(false);
 
-        $cron = '0 6 * * * curl -s "' . site_url('securitycheck/daily_report')
-              . '?key=' . self::token($this) . '" > /dev/null 2>&1';
+        $cron = '0 ' . $this->report_hour() . ' * * * curl -s "' . site_url('securitycheck/daily_report')
+            . '?key=' . self::token($this) . '" > /dev/null 2>&1';
 
         echo "Security report cron line:\n\n  {$cron}\n\n";
         echo "Keep it secret; the token authenticates the request.\n";
@@ -149,29 +149,46 @@ class Securitycheck extends CI_Controller
     {
         $this->gate(true);
 
-        // Refuse to run more often than MIN_REPORT_INTERVAL.
+        // At most one report per day, whatever the cron says.
         //
-        // A cron line with '*' in the minute field fires 1440 times a day, and
-        // this endpoint queues an email every time. That floods the mailbox,
-        // backs up the mail queue behind it so real messages (verification,
-        // password resets) stop going out, and buries the one report that
-        // actually said something. The schedule should be fixed, but the
-        // endpoint should not depend on the schedule being right.
+        // A cron line with '*' in the minute field fires 1440 times a day.
+        // The old guard only enforced a 6-hour gap, so an every-minute cron
+        // still mailed four reports a day. Now the first hit at or after
+        // security_report_hour (config.php) sends the day's report and every
+        // other hit until that hour tomorrow is skipped. '0 6 * * *' is still
+        // the right schedule; the endpoint just no longer depends on it.
         //
-        // Pass 'force' as the second segment to override:
+        // The lock covers overlapping hits: a chain verify that outlasts the
+        // one-minute cron interval would otherwise let the next hit pass the
+        // check before this one has written its checkpoint -- two emails.
+        //
+        // Pass 'force' as the second segment to override the daily limit:
         //   php index.php securitycheck daily_report 24 force
-        if (!$this->force_requested() && ($wait = $this->too_soon()) !== null) {
-            $mins = (int)ceil($wait / 60);
-            if (!is_cli() && !$this->input->is_cli_request()) {
-                $this->output->set_content_type('text/plain')->set_output("skipped\n");
-                return;
-            }
-            echo "Skipped: a report was generated less than " . (self::MIN_REPORT_INTERVAL / 3600)
-               . "h ago. Next due in about {$mins} minute(s).\n";
-            echo "If your cron has '*' in the minute field, change it to '0 6 * * *'.\n";
+        if (!$this->acquire_report_lock()) {
+            $this->report_skipped("Skipped: another run is still generating the report.\n");
             return;
         }
 
+        try {
+            if (!$this->force_requested() && ($wait = $this->too_soon()) !== null) {
+                $mins = (int)ceil($wait / 60);
+                $this->report_skipped(
+                    "Skipped: today's report was already generated. Next one is due "
+                        . date('Y-m-d H:i', time() + $wait) . " (in about {$mins} minute(s)).\n"
+                        . "If your cron has '*' in the minute field, change it to '0 " . $this->report_hour() . " * * *'.\n"
+                );
+                return;
+            }
+
+            $this->run_daily_report($hours);
+        } finally {
+            $this->release_report_lock();
+        }
+    }
+
+    /** Verify, checkpoint and queue the digest. The caller holds the report lock. */
+    private function run_daily_report($hours)
+    {
         $hours = max(1, (int)$hours);
         $since = date('Y-m-d H:i:s', time() - ($hours * 3600));
 
@@ -205,7 +222,7 @@ class Securitycheck extends CI_Controller
         $mail = $this->queue_health();
         $activity = $this->activity_summary($since);
         $subject  = ($ok ? '[FBMSO Security] Daily report - OK' : '[FBMSO Security] ALERT - audit trail integrity')
-                  . ' - ' . date('Y-m-d');
+            . ' - ' . date('Y-m-d');
 
         $body = $this->render_report($ok, $chain, $state, $prev, $alerts, $activity, $since, $hours, $mail);
 
@@ -239,18 +256,14 @@ class Securitycheck extends CI_Controller
         echo "  checkpoint also written to: " . $this->anchor_path() . "\n";
     }
 
-    /**
-     * Minimum gap between reports, whatever the cron says.
-     *
-     * The digest covers the preceding 24 hours and is advertised as a daily
-     * report, so the endpoint itself must never permit four runs per day when
-     * a hosting cron is configured too frequently.
-     */
-    const MIN_REPORT_INTERVAL = 86400; // 24 hours
+    /** Minimum gap between reports, whatever the cron says. */
+    const MIN_REPORT_INTERVAL = 21600; // 6 hours
 
     /**
-     * Seconds still to wait, or NULL when a report is due.
-     * Uses the anchor table, which is written on every real run.
+     * Seconds until the next report is due, or NULL when one is due now.
+     *
+     * Due means nothing has been checkpointed since the current report day
+     * began. Uses the anchor table, which is written on every real run.
      */
     private function too_soon()
     {
@@ -258,16 +271,36 @@ class Securitycheck extends CI_Controller
             return null;
         }
 
-        $last = $this->db->select('checked_at')->order_by('id', 'DESC')
+        $dayStart = $this->report_day_start();
+
+        $done = $this->db->select('id')
+            ->where('checked_at >=', date('Y-m-d H:i:s', $dayStart))
             ->limit(1)->get('security_audit_anchors')->row();
 
-        if (!$last || empty($last->checked_at)) {
+        if (!$done) {
             return null;
         }
 
-        $elapsed = time() - strtotime($last->checked_at);
+        return max(60, strtotime('+1 day', $dayStart) - time());
+    }
 
-        return $elapsed < self::MIN_REPORT_INTERVAL ? (self::MIN_REPORT_INTERVAL - $elapsed) : null;
+    /** One report run at a time. Auto-released if PHP dies mid-run. */
+    private function report_lock_name()
+    {
+        return 'fbmsosecrpt_' . md5((string)$this->db->database);
+    }
+
+    private function acquire_report_lock()
+    {
+        $res = $this->db->query('SELECT GET_LOCK(' . $this->db->escape($this->report_lock_name()) . ', 0) AS l');
+        $row = $res ? $res->row() : null;
+
+        return $row && (int)$row->l === 1;
+    }
+
+    private function release_report_lock()
+    {
+        $this->db->query('SELECT RELEASE_LOCK(' . $this->db->escape($this->report_lock_name()) . ')');
     }
 
     private function force_requested()
@@ -303,7 +336,7 @@ class Securitycheck extends CI_Controller
 
         if (!$chain['ok']) {
             $alerts[] = 'Record #' . $chain['broken_at']
-                      . ' no longer matches its security seal - it, or a record it was linked to, was changed or removed.';
+                . ' no longer matches its security seal - it, or a record it was linked to, was changed or removed.';
         }
 
         if (!$prev) {
@@ -312,13 +345,15 @@ class Securitycheck extends CI_Controller
 
         if ($state['total'] < (int)$prev['total_records']) {
             $alerts[] = 'The record count dropped from ' . (int)$prev['total_records']
-                      . ' to ' . $state['total'] . ' - records were deleted.';
+                . ' to ' . $state['total'] . ' - records were deleted.';
         }
 
-        if ($prev['last_record_id'] !== null && $state['last_id'] !== null
-            && $state['last_id'] < (int)$prev['last_record_id']) {
+        if (
+            $prev['last_record_id'] !== null && $state['last_id'] !== null
+            && $state['last_id'] < (int)$prev['last_record_id']
+        ) {
             $alerts[] = 'The last record number went backwards, from #' . (int)$prev['last_record_id']
-                      . ' to #' . $state['last_id'] . ' - the end of the log was cut.';
+                . ' to #' . $state['last_id'] . ' - the end of the log was cut.';
         }
 
         // The record the last checkpoint pointed at must still be there,
@@ -330,10 +365,10 @@ class Securitycheck extends CI_Controller
 
             if (!$row) {
                 $alerts[] = 'Record #' . (int)$prev['last_record_id']
-                          . ', verified at the last check, no longer exists.';
+                    . ', verified at the last check, no longer exists.';
             } elseif ((string)$row->record_hash !== (string)$prev['last_record_hash']) {
                 $alerts[] = 'Record #' . (int)$prev['last_record_id']
-                          . ', verified at the last check, has changed since.';
+                    . ', verified at the last check, has changed since.';
             }
         }
 
@@ -409,7 +444,7 @@ class Securitycheck extends CI_Controller
 
         if ($out['stuck_reports'] > 0) {
             $out['warnings'][] = $out['stuck_reports'] . ' earlier security report(s) never sent. '
-                               . 'The emailed checkpoint is not reaching you.';
+                . 'The emailed checkpoint is not reaching you.';
         }
         if ($out['failed'] > 0) {
             $out['warnings'][] = $out['failed'] . ' message(s) marked failed in the mail queue.';
@@ -472,7 +507,9 @@ class Securitycheck extends CI_Controller
 
     private function render_report($ok, array $chain, array $state, $prev, array $alerts, array $activity, $since, $hours, array $mail = array())
     {
-        $e = function ($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); };
+        $e = function ($v) {
+            return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
+        };
 
         // Format a DB datetime (Y-m-d H:i:s) as "Sept 3, 2026 · 11:54 PM".
         $fmtDate = function ($s) {
@@ -489,7 +526,7 @@ class Securitycheck extends CI_Controller
         $mono = 'font-family:ui-monospace,SFMono-Regular,Menlo,monospace';
         $flow = function (array $steps) use ($e, $mono) {
             $h = '<div style="' . $mono . ';font-size:12px;line-height:1.8;background:#f5f5f5;'
-               . 'border-left:4px solid #b42318;padding:14px 18px;margin:12px 0;border-radius:0 4px 4px 0">';
+                . 'border-left:4px solid #b42318;padding:14px 18px;margin:12px 0;border-radius:0 4px 4px 0">';
             $last = count($steps) - 1;
             foreach ($steps as $i => $step) {
                 $h .= '<div style="color:#333">' . $e($step) . '</div>';
@@ -600,7 +637,9 @@ class Securitycheck extends CI_Controller
 
             $h .= '<p style="font-size:13px;color:#444;margin:12px 0 6px"><strong>What we found:</strong></p>'
                 . '<ul style="margin:6px 0 14px 20px;padding:0;font-size:13px;color:#444">';
-            foreach ($alerts as $a) { $h .= '<li style="margin-bottom:4px">' . $e($a) . '</li>'; }
+            foreach ($alerts as $a) {
+                $h .= '<li style="margin-bottom:4px">' . $e($a) . '</li>';
+            }
             $h .= '</ul>';
 
             $h .= '<div style="background:#fffbeb;border-left:4px solid #d4a017;padding:14px 18px;margin:14px 0;border-radius:0 4px 4px 0;font-size:13px;color:#444">'
@@ -628,14 +667,20 @@ class Securitycheck extends CI_Controller
         if (!empty($mail['warnings'])) {
             $h .= '<div style="background:#fffbeb;border-left:4px solid #d4a017;padding:14px 18px;margin:0 0 20px 0;border-radius:0 4px 4px 0">';
             $h .= '<strong style="color:#92400e">Email is not getting through properly.</strong><ul style="margin:8px 0 0 18px;padding:0">';
-            foreach ($mail['warnings'] as $w) { $h .= '<li style="margin-bottom:4px">' . $e($w) . '</li>'; }
+            foreach ($mail['warnings'] as $w) {
+                $h .= '<li style="margin-bottom:4px">' . $e($w) . '</li>';
+            }
             $h .= '</ul></div>';
         }
 
         // ---- what happened, in words -------------------------------------
         $c = array();
-        foreach ($activity['byType'] as $r) { $c[$r['event_type']] = (int)$r['c']; }
-        $n = function ($k) use ($c) { return isset($c[$k]) ? $c[$k] : 0; };
+        foreach ($activity['byType'] as $r) {
+            $c[$r['event_type']] = (int)$r['c'];
+        }
+        $n = function ($k) use ($c) {
+            return isset($c[$k]) ? $c[$k] : 0;
+        };
 
         $h .= '<h3 style="font-size:16px;font-weight:bold;color:#1a1a1a;border-bottom:1px solid #ddd;'
             . 'padding-bottom:6px;margin:28px 0 12px;font-family:Georgia,serif">What happened</h3>';
@@ -646,15 +691,15 @@ class Securitycheck extends CI_Controller
             $parts = array();
             if ($n('LOGIN_SUCCESS')) {
                 $parts[] = '<strong>' . $n('LOGIN_SUCCESS') . '</strong> successful sign-in'
-                         . ($n('LOGIN_SUCCESS') === 1 ? '' : 's');
+                    . ($n('LOGIN_SUCCESS') === 1 ? '' : 's');
             }
             if ($n('LOGIN_FAILED')) {
                 $parts[] = '<strong>' . $n('LOGIN_FAILED') . '</strong> failed attempt'
-                         . ($n('LOGIN_FAILED') === 1 ? '' : 's');
+                    . ($n('LOGIN_FAILED') === 1 ? '' : 's');
             }
             if ($n('LOGIN_NEW_DEVICE')) {
                 $parts[] = '<strong>' . $n('LOGIN_NEW_DEVICE') . '</strong> sign-in'
-                         . ($n('LOGIN_NEW_DEVICE') === 1 ? '' : 's') . ' from a device not seen before';
+                    . ($n('LOGIN_NEW_DEVICE') === 1 ? '' : 's') . ' from a device not seen before';
             }
             // "a, b and c" rather than "a, b, c", and the verb agrees with
             // the FIRST item, not the number of items -- otherwise one
@@ -687,8 +732,14 @@ class Securitycheck extends CI_Controller
             // Everything else still deserves a mention -- an audit-log purge
             // is exactly what the reader is scanning for -- but it gets one
             // compact line, not prose.
-            $known = array('LOGIN_SUCCESS', 'LOGIN_FAILED', 'LOGIN_NEW_DEVICE',
-                           'PASSWORD_CHANGED', 'PASSWORD_RESET', 'RATE_LIMIT_TRIGGERED');
+            $known = array(
+                'LOGIN_SUCCESS',
+                'LOGIN_FAILED',
+                'LOGIN_NEW_DEVICE',
+                'PASSWORD_CHANGED',
+                'PASSWORD_RESET',
+                'RATE_LIMIT_TRIGGERED'
+            );
             $other = array();
             foreach ($c as $type => $count) {
                 if (in_array($type, $known, true)) continue;

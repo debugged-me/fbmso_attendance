@@ -4,7 +4,11 @@
 <?php include('includes/head.php'); ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
-<?php $isAuditor = ((string)$this->session->userdata('level') === 'Auditor'); ?>
+<?php
+$level = (string)$this->session->userdata('level');
+// Expenses are the Cashier's to manage; Admin and Auditor view them only.
+$canManage = ($level === 'Cashier');
+?>
 
 
 <body>
@@ -39,6 +43,10 @@
 
 					<?php include('includes/accounting_readonly_notice.php'); ?>
 
+					<?php if ($notice = $this->session->flashdata('expenses_notice')): ?>
+						<div class="up-flash up-flash-info"><i class="mdi mdi-information-outline"></i> <?= htmlspecialchars($notice, ENT_QUOTES, 'UTF-8'); ?></div>
+					<?php endif; ?>
+
                     <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
                         <div class="nx-stat blue">
                             <div class="nx-stat-main">
@@ -50,7 +58,7 @@
                             </div>
                             <div class="nx-stat-foot">Listed below <i class="mdi mdi-arrow-right"></i></div>
                         </div>
-						<?php if (!$isAuditor): ?>
+						<?php if ($canManage): ?>
 						<a class="nx-stat green" href="javascript:void(0)" data-toggle="modal" data-target=".bs-example-modal-lg">
                             <div class="nx-stat-main">
                                 <div>
@@ -74,10 +82,10 @@
                                     <span class="badge badge-purple"><?= count($data); ?> items</span>
 </div>
 <div class="pl-actions">
-							<a href="<?= base_url($isAuditor ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+							<a href="<?= base_url($level === 'Admin' ? 'Page/admin' : 'Page/accounting'); ?>" class="up-btn up-btn-ghost d-md-none">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
-							<?php if (!$isAuditor): ?>
+							<?php if ($canManage): ?>
 								<button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target=".bs-example-modal-lg">
 									<i class="mdi mdi-plus-circle"></i> Add New
 								</button>
@@ -90,19 +98,19 @@
                                             <thead>
                                                 <tr>
                                                     <th>Category</th>
-											<?php if (!$isAuditor): ?><th style="text-align:center">Manage</th><?php endif; ?>
+											<?php if ($canManage): ?><th style="text-align:center">Manage</th><?php endif; ?>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <?php foreach ($data as $row) { ?>
                                                     <tr>
                                                         <td data-label="Category" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars($row->Category, ENT_QUOTES, 'UTF-8'); ?></td>
-												<?php if (!$isAuditor): ?>
+												<?php if ($canManage): ?>
 												<td data-label="Manage" class="up-rt-actions" style="text-align: center;">
                                                             <a href="<?= base_url('Accounting/updateexpensescategory?categoryID=' . $row->categoryID); ?>" class="up-btn up-btn-ghost" style="padding:8px 12px;font-size:.78rem;">
                                                                 <i class="mdi mdi-pencil"></i> Edit
                                                             </a>
-                                                            <a href="#" onclick="setDeleteUrl('<?= base_url('Accounting/Deleteexpensescategory?categoryID=' . $row->categoryID); ?>')" data-toggle="modal" data-target="#confirmationModal" class="up-btn up-btn-danger" style="padding:8px 12px;font-size:.78rem;">
+                                                            <a href="#" onclick="setDeleteId(<?= (int)$row->categoryID; ?>)" data-toggle="modal" data-target="#confirmationModal" class="up-btn up-btn-danger" style="padding:8px 12px;font-size:.78rem;">
                                                                 <i class="mdi mdi-delete"></i> Delete
                                                             </a>
                                                         </td>
@@ -117,7 +125,7 @@
                         </div>
                     </div>
 
-					<?php if (!$isAuditor): ?>
+					<?php if ($canManage): ?>
                     <div class="modal fade bs-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" style="display: none;" aria-hidden="true">
                         <div class="modal-dialog modal-lg">
                             <div class="modal-content">
@@ -168,7 +176,7 @@
 
 
 
-	<?php if (!$isAuditor): ?>
+	<?php if ($canManage): ?>
     <!-- Confirmation Modal -->
     <div class="modal fade" id="confirmationModal" tabindex="-1" role="dialog" aria-labelledby="confirmationModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -189,7 +197,10 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
-                    <a href="#" id="deleteButton" class="up-btn up-btn-danger" onclick="deleteData()">Delete</a>
+                    <form method="post" action="<?= base_url('Accounting/Deleteexpensescategory'); ?>" class="d-inline">
+                        <input type="hidden" name="categoryID" id="deleteId" value="">
+                        <button type="submit" class="up-btn up-btn-danger">Delete</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -205,12 +216,9 @@
     </style>
 
     <script>
-        function setDeleteUrl(url) {
-            document.getElementById('deleteButton').href = url;
-        }
-
-        function deleteData() {
-            // This will now correctly delete the selected item
+        function setDeleteId(id) {
+            // Deleting is a POST (see the form in the modal), never a link.
+            document.getElementById('deleteId').value = id;
         }
     </script>
 	<?php endif; ?>

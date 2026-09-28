@@ -43,9 +43,22 @@ void main() {
     expect(permissions.canScan, isFalse);
     expect(permissions.canManageActivities, isFalse);
     expect(permissions.canManageAccounting, isFalse);
+    expect(permissions.canManageExpenses, isFalse);
     expect(permissions.canModifyDepartments, isFalse);
     expect(permissions.canDeleteSections, isFalse);
     expect(permissions.canManageUsers, isFalse);
     expect(permissions.canManageAnnouncements, isFalse);
+  });
+
+  test('Only the Cashier manages expenses; Admin views them', () {
+    final cashier = StaffPermissions.of(_session('Cashier'));
+    final admin = StaffPermissions.of(_session('Admin'));
+
+    expect(cashier.canManageExpenses, isTrue);
+    expect(cashier.canManageAccounting, isTrue);
+
+    expect(admin.canViewAccounting, isTrue);
+    expect(admin.canManageAccounting, isTrue);
+    expect(admin.canManageExpenses, isFalse);
   });
 }

@@ -111,11 +111,6 @@ class MobileAccounting extends MobileApi
             'Amount'        => (string)($payment->Amount ?? ''),
             'description'   => (string)($payment->description ?? ''),
         ];
-        $isCreate = strtolower((string)$action) === 'create';
-        $oldValues = $isCreate ? null : $snapshot;
-        if ($isCreate && $newValues === null) {
-            $newValues = $snapshot;
-        }
 
         $this->db->insert('payment_audit_log', [
             'payment_id'     => (int)($payment->ID ?? 0),
@@ -369,6 +364,30 @@ class MobileAccounting extends MobileApi
         $this->db->from('fees');
         $this->db->order_by('Description', 'ASC');
         return $this->db->get()->result();
+    }
+
+    // Valid payments already taken against a fee description in a term. A fee
+    // with collections behind it is price-locked for that term (same as
+    // Accounting::feePaymentCount on the web).
+    private function feePaymentCount($description, $sem, $sy)
+    {
+        $description = trim((string)$description);
+        if ($description === '') {
+            return 0;
+        }
+
+        $this->db->from('paymentsaccounts')
+            ->where('description', $description)
+            ->where('ORStatus', 'Valid')
+            ->where('CollectionSource', "Student's Account");
+        if ($sem !== '') {
+            $this->db->where('Sem', $sem);
+        }
+        if ($sy !== '') {
+            $this->db->where('SY', $sy);
+        }
+
+        return (int)$this->db->count_all_results();
     }
 
     private function getRecentPayments($date = null, $limit = 200)
@@ -960,8 +979,6 @@ class MobileAccounting extends MobileApi
             $this->or_sequence->mark_consumed($deviceId, $orNumber);
         }
 
-        $this->logPaymentAudit('create', (object)$paymentData, (string)$tokenRow['username'], $paymentData);
-
         // Queue the receipt email exactly like the web flow — non-fatal.
         $emailResult = ['attempted' => false, 'sent' => false];
         try {
@@ -1026,7 +1043,10 @@ class MobileAccounting extends MobileApi
         $this->load->library('or_sequence');
         try {
             $block = $this->or_sequence->reserve(
-                $date, $count, $deviceId, (string)$tokenRow['username']
+                $date,
+                $count,
+                $deviceId,
+                (string)$tokenRow['username']
             );
         } catch (Throwable $e) {
             log_message('error', 'O.R. block reserve failed: ' . $e->getMessage());
@@ -1134,6 +1154,8 @@ class MobileAccounting extends MobileApi
         $this->db->from('payment_audit_log l');
         $this->db->join('studeprofile sp', 'sp.StudentNumber = l.student_number', 'left');
         $this->db->join('studentsignup su', 'su.StudentNumber = l.student_number', 'left');
+        // Edits and deletions only, as on the web screen.
+        $this->db->where_in('l.action', ['edit', 'delete']);
         $this->db->order_by('l.changed_at', 'DESC');
         $this->db->limit(300);
         $rows = $this->db->get()->result();
@@ -1419,7 +1441,8 @@ class MobileAccounting extends MobileApi
         if ($this->input->method(true) !== 'POST') {
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
-        if ($this->require_accounting_write() === null) return;
+        $tokenRow = $this->require_accounting_write();
+        if ($tokenRow === null) return;
         if ($this->replay_if_duplicate()) return;
 
         $p = $this->read_payload();
@@ -1436,12 +1459,14 @@ class MobileAccounting extends MobileApi
             $feesType = 'School Fee';
         }
 
-        $this->db->insert('fees', [
+        $row = [
             'feesid'      => $this->nextTableId('fees', 'feesid'),
             'feesType'    => $feesType,
             'Description' => $description,
             'Amount'      => $amount,
-        ]);
+        ];
+        $ok = $this->db->insert('fees', $row);
+        $this->log_accounting_change($tokenRow, 'create', 'fees', $row['feesid'], null, $row, $ok, 'Added fee', $description);
 
         $body = json_encode(['ok' => true, 'message' => 'Fee added successfully.']);
         $this->record_idempotent_response(200, $body);
@@ -1453,7 +1478,8 @@ class MobileAccounting extends MobileApi
         if ($this->input->method(true) !== 'POST') {
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
-        if ($this->require_accounting_write() === null) return;
+        $tokenRow = $this->require_accounting_write();
+        if ($tokenRow === null) return;
         if ($this->replay_if_duplicate()) return;
 
         $p = $this->read_payload();
@@ -1474,7 +1500,34 @@ class MobileAccounting extends MobileApi
             $updateData['feesType'] = $feesType;
         }
 
+        $before = $this->db->select('feesid, feesType, Description, Amount')
+            ->from('fees')->where('feesid', $feeId)->limit(1)->get()->row();
+
+        // Same freeze as the web (Accounting::course_setUp): once money has
+        // been collected against a fee this term, its name and price stay put
+        // until next term, so recorded balances keep matching the fee.
+        if ($before) {
+            $renamed  = trim((string)$before->Description) !== $description;
+            $repriced = abs((float)$before->Amount - $amount) > 0.004;
+            if ($renamed || $repriced) {
+                [$sem, $sy] = $this->currentSemSy();
+                $paidCount = $this->feePaymentCount((string)$before->Description, $sem, $sy);
+                if ($paidCount > 0) {
+                    $body = json_encode([
+                        'ok'      => false,
+                        'message' => '"' . $before->Description . '" already has ' . $paidCount . ' payment' . ($paidCount === 1 ? '' : 's')
+                            . ' recorded this term, so its name and amount are locked until the next term. Add a new fee instead.',
+                    ]);
+                    $this->record_idempotent_response(409, $body);
+                    return $this->json(json_decode($body, true), 409);
+                }
+            }
+        }
+
         $ok = $this->db->where('feesid', $feeId)->update('fees', $updateData);
+        if ($before) {
+            $this->log_accounting_change($tokenRow, 'update', 'fees', $feeId, (array)$before, $updateData, $ok, 'Updated fee', $description);
+        }
         $result = $ok
             ? ['ok' => true, 'message' => 'Fee updated successfully.']
             : ['ok' => false, 'message' => 'Unable to update fee. Please try again.'];
@@ -1488,7 +1541,8 @@ class MobileAccounting extends MobileApi
         if ($this->input->method(true) !== 'POST') {
             return $this->json(['ok' => false, 'message' => 'Method not allowed.'], 405);
         }
-        if ($this->require_accounting_write() === null) return;
+        $tokenRow = $this->require_accounting_write();
+        if ($tokenRow === null) return;
         if ($this->replay_if_duplicate()) return;
 
         $p = $this->read_payload();
@@ -1499,7 +1553,12 @@ class MobileAccounting extends MobileApi
             return $this->json(json_decode($body, true), 422);
         }
 
-        $this->db->where('feesid', $feeId)->delete('fees');
+        $before = $this->db->select('feesid, feesType, Description, Amount')
+            ->from('fees')->where('feesid', $feeId)->limit(1)->get()->row();
+        $ok = $this->db->where('feesid', $feeId)->delete('fees');
+        if ($before) {
+            $this->log_accounting_change($tokenRow, 'delete', 'fees', $feeId, (array)$before, null, $ok, 'Deleted fee', $before->Description);
+        }
         $body = json_encode(['ok' => true, 'message' => 'Fee deleted successfully.']);
         $this->record_idempotent_response(200, $body);
         return $this->json(json_decode($body, true));

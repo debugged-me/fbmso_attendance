@@ -191,7 +191,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final canManage = StaffPermissions.of(widget.session).canManageAccounting;
+    final canManage = StaffPermissions.of(widget.session).canManageExpenses;
     final visible = _visible;
     final selectedLabel = _selectedCategory == 0
         ? 'All categories'

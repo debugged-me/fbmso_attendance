@@ -705,8 +705,8 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_accounting_writer($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        if (!$this->is_expense_writer($tokenRow)) {
+            return $this->deny_expense_write($tokenRow);
         }
 
         $p = $this->read_payload();
@@ -720,13 +720,17 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Description, amount, and date are required.'], 422);
         }
 
-        $ok = $this->db->insert('expenses', [
+        $row = [
             'Description' => $desc,
             'Amount' => $amount,
             'Responsible' => $responsible,
             'ExpenseDate' => $date,
             'Category' => $category,
-        ]);
+        ];
+        $ok = $this->db->insert('expenses', $row);
+        $id = $ok ? (int)$this->db->insert_id() : 0;
+        $this->log_accounting_change($tokenRow, 'create', 'expenses', $id ?: null, null,
+            ($id ? ['expensesid' => $id] : []) + $row, $ok, 'Added expense', $desc);
         if (!$ok) {
             return $this->json(['ok' => false, 'message' => 'Failed to save.'], 500);
         }
@@ -741,8 +745,8 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_accounting_writer($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        if (!$this->is_expense_writer($tokenRow)) {
+            return $this->deny_expense_write($tokenRow);
         }
 
         $p = $this->read_payload();
@@ -762,7 +766,12 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Nothing to update.'], 422);
         }
 
-        $this->db->where('expensesid', $id)->update('expenses', $data);
+        $before = $this->db->where('expensesid', $id)->limit(1)->get('expenses')->row();
+        $ok = $this->db->where('expensesid', $id)->update('expenses', $data);
+        if ($before) {
+            $this->log_accounting_change($tokenRow, 'update', 'expenses', $id, (array)$before, $data,
+                $ok, 'Updated expense', $data['Description'] ?? $before->Description);
+        }
         return $this->json(['ok' => true, 'message' => 'Expense updated.']);
     }
 
@@ -774,8 +783,8 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_accounting_writer($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        if (!$this->is_expense_writer($tokenRow)) {
+            return $this->deny_expense_write($tokenRow);
         }
 
         $p = $this->read_payload();
@@ -784,7 +793,12 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Invalid expense ID.'], 422);
         }
 
-        $this->db->where('expensesid', $id)->delete('expenses');
+        $before = $this->db->where('expensesid', $id)->limit(1)->get('expenses')->row();
+        $ok = $this->db->where('expensesid', $id)->delete('expenses');
+        if ($before) {
+            $this->log_accounting_change($tokenRow, 'delete', 'expenses', $id, (array)$before, null,
+                $ok, 'Deleted expense', $before->Description);
+        }
         return $this->json(['ok' => true, 'message' => 'Expense deleted.']);
     }
 
@@ -819,8 +833,8 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_accounting_writer($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        if (!$this->is_expense_writer($tokenRow)) {
+            return $this->deny_expense_write($tokenRow);
         }
 
         $p = $this->read_payload();
@@ -829,7 +843,10 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Category name is required.'], 422);
         }
 
-        $this->db->insert('expensescategory', ['Category' => $category]);
+        $ok = $this->db->insert('expensescategory', ['Category' => $category]);
+        $id = $ok ? (int)$this->db->insert_id() : 0;
+        $this->log_accounting_change($tokenRow, 'create', 'expensescategory', $id ?: null, null,
+            ($id ? ['categoryID' => $id] : []) + ['Category' => $category], $ok, 'Added expense category', $category);
         return $this->json(['ok' => true, 'message' => 'Category saved.']);
     }
 
@@ -841,8 +858,8 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_accounting_writer($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        if (!$this->is_expense_writer($tokenRow)) {
+            return $this->deny_expense_write($tokenRow);
         }
 
         $p = $this->read_payload();
@@ -851,7 +868,12 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Invalid category ID.'], 422);
         }
 
-        $this->db->where('categoryID', $id)->delete('expensescategory');
+        $before = $this->db->where('categoryID', $id)->limit(1)->get('expensescategory')->row();
+        $ok = $this->db->where('categoryID', $id)->delete('expensescategory');
+        if ($before) {
+            $this->log_accounting_change($tokenRow, 'delete', 'expensescategory', $id, (array)$before, null,
+                $ok, 'Deleted expense category', $before->Category);
+        }
         return $this->json(['ok' => true, 'message' => 'Category deleted.']);
     }
 
@@ -1342,11 +1364,36 @@ class MobileMisc extends MobileApi
         return in_array($pos, ['admin', 'cashier', 'auditor'], true);
     }
 
-    /** Accounting mutations remain Admin/Cashier only. */
-    private function is_accounting_writer(array $tokenRow): bool
+    /**
+     * Expenses and expense categories are the Cashier's to manage; Admin and
+     * Auditor may view them only. Same rule as Accounting::canManageExpenses.
+     */
+    private function is_expense_writer(array $tokenRow): bool
     {
-        $pos = strtolower(trim($this->position_of((string)$tokenRow['username'])));
-        return in_array($pos, ['admin', 'cashier'], true);
+        return strtolower(trim($this->position_of((string)$tokenRow['username']))) === 'cashier';
+    }
+
+    /** Log the refused change, as the web does, and answer 403. */
+    private function deny_expense_write(array $tokenRow)
+    {
+        $username = (string)$tokenRow['username'];
+        $level    = $this->position_of($username);
+
+        $this->load->library('securityaudit');
+        $this->securityaudit->event('ACCESS_DENIED', [
+            'status'      => 'denied',
+            'module'      => 'Mobile Accounting',
+            'actor'       => $username,
+            'actor_level' => $level,
+            'target'      => $username,
+            'description' => $level . ' attempted to change expenses (view-only access)',
+            'extra'       => ['route' => uri_string()],
+        ]);
+
+        return $this->json([
+            'ok'      => false,
+            'message' => 'Expenses are managed by the Cashier. Your account can view them only.',
+        ], 403);
     }
 
     private function is_auditor(array $tokenRow): bool

@@ -11,6 +11,8 @@ import 'app_session.dart';
 ///    student, attendance, report, course, and section views. All are
 ///    deny-by-default for everything else.
 ///  - Accounting allows Admin, Cashier, and read-only Auditor accounts.
+///    Expenses and expense categories are Cashier-only to change; Admin
+///    and Auditor may view them (Accounting::canManageExpenses).
 ///  - FbmsoPersonnels::require_manager = Super Admin, Admin, IT,
 ///    HR Admin, Human Resource.
 ///  - authguard_roles page/useraccounts + account mutations =
@@ -80,6 +82,9 @@ class StaffPermissions {
 
   /// Auditor accounting access is deliberately read-only.
   bool get canManageAccounting => position == 'admin' || isCashier;
+
+  /// Expenses are the Cashier's to manage; Admin and Auditor view only.
+  bool get canManageExpenses => isCashier;
 
   /// Personnel management — Super Admin, Admin, IT, HR Admin, Human Resource.
   bool get canManagePersonnel => const {
