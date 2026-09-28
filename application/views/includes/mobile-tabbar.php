@@ -55,6 +55,7 @@ switch ($msLevel) {
         break;
 
     case 'Cashier':
+	case 'Auditor':
         $msAddTab($msTabs, 'Page/accounting', 'Home', 'mdi-home-variant-outline');
         $msAddTab($msTabs, 'Accounting/Payment', 'Payments', 'mdi-cash-multiple');
         $msAddTab($msTabs, 'Accounting/expenses', 'Expenses', 'mdi-receipt');

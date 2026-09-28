@@ -4,6 +4,8 @@
 <?php include('includes/head.php'); ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
+<?php $isAuditor = ((string)$this->session->userdata('level') === 'Auditor'); ?>
+
 
 <body>
 
@@ -35,6 +37,8 @@
                             <hr class="up-divider" />
                         </div>
 
+					<?php include('includes/accounting_readonly_notice.php'); ?>
+
                     <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
                         <div class="nx-stat blue">
                             <div class="nx-stat-main">
@@ -46,7 +50,8 @@
                             </div>
                             <div class="nx-stat-foot">Listed below <i class="mdi mdi-arrow-right"></i></div>
                         </div>
-                        <a class="nx-stat green" href="javascript:void(0)" data-toggle="modal" data-target=".bs-example-modal-lg">
+						<?php if (!$isAuditor): ?>
+						<a class="nx-stat green" href="javascript:void(0)" data-toggle="modal" data-target=".bs-example-modal-lg">
                             <div class="nx-stat-main">
                                 <div>
                                     <div class="nx-stat-num"><i class="mdi mdi-plus-circle-outline" style="font-size:1.6rem;"></i></div>
@@ -56,6 +61,7 @@
                             </div>
                             <div class="nx-stat-foot">Create a new category <i class="mdi mdi-arrow-right"></i></div>
                         </a>
+						<?php endif; ?>
                     </div>
 
                     <!-- start row -->
@@ -68,12 +74,14 @@
                                     <span class="badge badge-purple"><?= count($data); ?> items</span>
 </div>
 <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+							<a href="<?= base_url($isAuditor ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
-                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target=".bs-example-modal-lg">
-                                <i class="mdi mdi-plus-circle"></i> Add New
-                            </button>
+							<?php if (!$isAuditor): ?>
+								<button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target=".bs-example-modal-lg">
+									<i class="mdi mdi-plus-circle"></i> Add New
+								</button>
+							<?php endif; ?>
                         </div>
 </div>
                                 <div class="up-card-body" style="padding:0 !important;">
@@ -82,14 +90,15 @@
                                             <thead>
                                                 <tr>
                                                     <th>Category</th>
-                                                    <th style="text-align:center">Manage</th>
+											<?php if (!$isAuditor): ?><th style="text-align:center">Manage</th><?php endif; ?>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <?php foreach ($data as $row) { ?>
                                                     <tr>
                                                         <td data-label="Category" style="font-weight:600;color:var(--up-ink);"><?= htmlspecialchars($row->Category, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td data-label="Manage" class="up-rt-actions" style="text-align: center;">
+												<?php if (!$isAuditor): ?>
+												<td data-label="Manage" class="up-rt-actions" style="text-align: center;">
                                                             <a href="<?= base_url('Accounting/updateexpensescategory?categoryID=' . $row->categoryID); ?>" class="up-btn up-btn-ghost" style="padding:8px 12px;font-size:.78rem;">
                                                                 <i class="mdi mdi-pencil"></i> Edit
                                                             </a>
@@ -97,6 +106,7 @@
                                                                 <i class="mdi mdi-delete"></i> Delete
                                                             </a>
                                                         </td>
+												<?php endif; ?>
                                                     </tr>
                                                 <?php } ?>
                                             </tbody>
@@ -107,6 +117,7 @@
                         </div>
                     </div>
 
+					<?php if (!$isAuditor): ?>
                     <div class="modal fade bs-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" style="display: none;" aria-hidden="true">
                         <div class="modal-dialog modal-lg">
                             <div class="modal-content">
@@ -143,6 +154,7 @@
                             <!-- /.modal-dialog -->
                         </div>
                     </div>
+					<?php endif; ?>
                 </div>
 
 
@@ -156,6 +168,7 @@
 
 
 
+	<?php if (!$isAuditor): ?>
     <!-- Confirmation Modal -->
     <div class="modal fade" id="confirmationModal" tabindex="-1" role="dialog" aria-labelledby="confirmationModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -200,6 +213,7 @@
             // This will now correctly delete the selected item
         }
     </script>
+	<?php endif; ?>
 
 
     </div>

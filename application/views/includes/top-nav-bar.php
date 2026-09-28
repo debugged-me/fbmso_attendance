@@ -8,7 +8,7 @@
 
            <div class="navbar-custom ms-appbar" id="ms-appbar">
                <ul class="list-unstyled topnav-menu float-right mb-0" id="ms-top-actions">
-                   <?php if ($this->session->userdata('level') !== 'Student'): ?>
+				   <?php if (!in_array($this->session->userdata('level'), ['Student', 'Auditor'], true)): ?>
                        <?php include(APPPATH . 'views/includes/req_bell.php'); ?>
                    <?php endif; ?>
                    <li class="dropdown notification-list ms-profile-action">

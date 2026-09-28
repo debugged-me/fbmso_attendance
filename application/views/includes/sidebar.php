@@ -23,25 +23,49 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
         flex-direction: column;
     }
 
+    /* The menu takes whatever height is left between the brand header and
+       the logout footer. min-height: 0 lets a flex child shrink below its
+       content so it scrolls instead of being clipped. */
+    .left-side-menu>.slimscroll-menu,
+    .left-side-menu>.slimScrollDiv {
+        flex: 1 1 0;
+        min-height: 0;
+    }
+
     .left-side-menu>.slimscroll-menu {
-        flex: 1 1 auto;
         overflow-y: auto !important;
+        overscroll-behavior: contain;
         -webkit-overflow-scrolling: touch;
     }
 
-    /* Override slimScroll when it breaks — allow native scroll */
-    .left-side-menu>.slimscroll-menu .slimScrollDiv {
-        overflow-y: auto !important;
+    /* slimScroll wraps .slimscroll-menu in .slimScrollDiv and gives both an
+       inline height equal to the WHOLE sidebar, ignoring the header and the
+       logout footer in the same column, so the last ~140px of the menu could
+       never scroll into view. Let the flex slot size them instead; the
+       !important beats the plugin's inline heights. */
+    .left-side-menu>.slimScrollDiv {
         height: auto !important;
+        overflow: hidden !important;
     }
 
-    .left-side-menu>.slimscroll-menu .slimScrollBar {
+    .left-side-menu>.slimScrollDiv>.slimscroll-menu {
+        height: 100% !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .left-side-menu .slimScrollBar,
+    .left-side-menu .slimScrollRail {
         display: none !important;
     }
 
-    /* When collapsed (enlarged), don't force scroll — let it auto-size */
+    /* When collapsed (enlarged), don't force scroll: the hover fly-out
+       submenus must be able to escape the column. */
     body.enlarged .left-side-menu>.slimscroll-menu,
-    body.enlarged .left-side-menu>.slimscroll-menu .slimScrollDiv {
+    body.enlarged .left-side-menu>.slimScrollDiv,
+    body.enlarged .left-side-menu>.slimScrollDiv>.slimscroll-menu {
+        flex: 0 0 auto;
         overflow: visible !important;
         height: auto !important;
     }
@@ -1097,8 +1121,9 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                 </ul>
             </div>
 
-        <?php elseif ($this->session->userdata('level') === 'Cashier'): ?>
+        <?php elseif (in_array($this->session->userdata('level'), ['Cashier', 'Auditor'], true)): ?>
             <?php
+			$isAuditor = ($this->session->userdata('level') === 'Auditor');
             // Active/open helpers
             $uri = trim(uri_string(), '/');
             $is = function ($prefix) use ($uri) {
@@ -1132,7 +1157,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
             <div id="sidebar-menu">
                 <ul class="metismenu" id="side-menu">
 
-                    <li class="menu-title">Navigation</li>
+                    <li class="menu-title"><?= $isAuditor ? 'AUDITOR · READ ONLY' : 'Navigation'; ?></li>
 
                     <li class="<?= $active('Page/accounting'); ?>">
                         <a href="<?= base_url('Page/accounting'); ?>" class="waves-effect">
@@ -1144,7 +1169,7 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     <li class="<?= $active('Accounting/Payment'); ?>">
                         <a href="<?= base_url('Accounting/Payment'); ?>" class="waves-effect">
                             <i class="ion ion-ios-cash"></i>
-                            <span> Payment Entry </span>
+                            <span> <?= $isAuditor ? 'Payment Records' : 'Payment Entry'; ?> </span>
                         </a>
                     </li>
 
@@ -1172,12 +1197,12 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     <li class="<?= $configsShow ? 'mm-active' : '' ?>">
                         <a href="javascript:void(0);" class="waves-effect" aria-expanded="<?= $configsExpanded; ?>">
                             <i class="ion ion-md-settings"></i>
-                            <span> Payment Setup </span>
+							<span> <?= $isAuditor ? 'Fee Schedule' : 'Payment Setup'; ?> </span>
                             <span class="menu-arrow"></span>
                         </a>
                         <ul class="nav-second-level nav <?= $configsShow; ?>" aria-expanded="<?= $configsExpanded; ?>">
                             <li class="<?= $active('Accounting/course_setUp'); ?>">
-                                <a href="<?= base_url('Accounting/course_setUp'); ?>">Fees Setup</a>
+                                <a href="<?= base_url('Accounting/course_setUp'); ?>"><?= $isAuditor ? 'Fee Schedule' : 'Fees Setup'; ?></a>
                             </li>
                         </ul>
                     </li>

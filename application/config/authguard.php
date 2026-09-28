@@ -119,7 +119,7 @@ $config['authguard_roles'] = array(
                          'Head Registrar', 'HR Admin', 'Human Resource',
                          'Academic Officer', 'Encoder', 'Instructor', 'Teacher',
                          'Personnel', 'Guidance', 'Medical', 'Librarian', 'Cashier',
-                         'Committee'),
+						 'Auditor', 'Committee'),
     'settings/*' => array('Super Admin', 'Admin', 'IT', 'School Admin'),
 
     // --- Granular rules for the most sensitive operations -------------
@@ -170,7 +170,7 @@ $config['authguard_roles'] = array(
 | -------------------------------------------------------------------------
 | These roles are deny-by-default. Even if a controller has no explicit role
 | rule above, the account can only reach the routes listed for its role here.
-| This prevents a Committee or Cashier account from opening an unrelated
+| This prevents a Committee, Cashier, or Auditor account from opening an unrelated
 | staff URL by typing it directly into the address bar.
 */
 $config['authguard_restricted_role_routes'] = array(
@@ -197,6 +197,20 @@ $config['authguard_restricted_role_routes'] = array(
         'page/update_password',
         'login/logout',
     ),
+	'Auditor' => array(
+		'accounting/*',
+		'page/accounting',
+		'page/proof_payment_view',
+		'page/onlinepaymentsall',
+		'page/deniedpayments',
+		'page/voidors',
+		'page/changepassword',
+		'page/update_password',
+		'page/staffprofile',
+		'page/uploadprofpic',
+		'page/lockscreen',
+		'login/logout',
+	),
 );
 
 /*

@@ -3,6 +3,7 @@
 <?php include('includes/head.php'); ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 <link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
+<?php $isAuditor = ((string)$this->session->userdata('level') === 'Auditor'); ?>
 
 <style>
     .kpi {
@@ -52,6 +53,8 @@
                             <hr class="up-divider" />
                         </div>
 
+					<?php include('includes/accounting_readonly_notice.php'); ?>
+
                     <?php if (!empty($flashSuccess)): ?>
                         <div class="up-flash up-flash-success">
                             <?= htmlspecialchars($flashSuccess, ENT_QUOTES, 'UTF-8'); ?>
@@ -92,7 +95,8 @@
                             </div>
                             <div class="nx-stat-foot">If all fees are paid once <i class="mdi mdi-arrow-right"></i></div>
                         </div>
-                        <a class="nx-stat violet" href="javascript:void(0)" data-toggle="modal" data-target="#addFeeModal">
+						<?php if (!$isAuditor): ?>
+						<a class="nx-stat violet" href="javascript:void(0)" data-toggle="modal" data-target="#addFeeModal">
                             <div class="nx-stat-main">
                                 <div>
                                     <div class="nx-stat-num"><i class="mdi mdi-plus-circle-outline" style="font-size:1.6rem;"></i></div>
@@ -102,6 +106,7 @@
                             </div>
                             <div class="nx-stat-foot">Configure a new fee <i class="mdi mdi-arrow-right"></i></div>
                         </a>
+						<?php endif; ?>
                     </div>
 
                     <!-- Configured Fees -->
@@ -114,12 +119,14 @@
                                     <span class="badge badge-purple"><?= count($fees); ?> items</span>
 </div>
 <div class="pl-actions">
-                            <a href="<?= base_url($this->session->userdata('level') === 'Cashier' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+							<a href="<?= base_url(in_array($this->session->userdata('level'), ['Cashier', 'Auditor'], true) ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
-                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#addFeeModal">
-                                <i class="mdi mdi-plus-circle"></i> Add Fee
-                            </button>
+							<?php if (!$isAuditor): ?>
+								<button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#addFeeModal">
+									<i class="mdi mdi-plus-circle"></i> Add Fee
+								</button>
+							<?php endif; ?>
                         </div>
 </div>
                                 <div class="up-card-body" style="padding:0 !important;">
@@ -129,7 +136,7 @@
                                                 <tr>
                                                     <th>Description</th>
                                                     <th class="text-right" style="width:180px;">Amount</th>
-                                                    <th style="width:220px;">Action</th>
+											<?php if (!$isAuditor): ?><th style="width:220px;">Action</th><?php endif; ?>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -146,7 +153,8 @@
                                                             <?php endif; ?>
                                                         </td>
                                                         <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-blue);">₱ <?= number_format((float)$fee->Amount, 2); ?></td>
-                                                        <td data-label="Action" class="up-rt-actions">
+												<?php if (!$isAuditor): ?>
+												<td data-label="Action" class="up-rt-actions">
                                                             <div class="action-wrap">
                                                                 <button type="button"
                                                                     class="up-btn up-btn-ghost edit-fee-btn"
@@ -171,6 +179,7 @@
                                                                 </form>
                                                             </div>
                                                         </td>
+												<?php endif; ?>
                                                     </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
@@ -190,6 +199,7 @@
 
     <?php include('includes/footer_plugins.php'); ?>
 
+	<?php if (!$isAuditor): ?>
     <!-- ADD FEE MODAL -->
     <div class="modal fade" id="addFeeModal" tabindex="-1" role="dialog" aria-labelledby="addFeeModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
@@ -266,6 +276,7 @@
             </div>
         </div>
     </div>
+	<?php endif; ?>
 
     <script>
         (function() {

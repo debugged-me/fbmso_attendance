@@ -473,7 +473,7 @@ class Page extends CI_Controller
 
 	function accounting()
 	{
-		if ($this->session->userdata('level') === 'Cashier') {
+		if (in_array($this->session->userdata('level'), ['Cashier', 'Auditor'], true)) {
 			$sy = $this->session->userdata('sy');
 			$sem = $this->session->userdata('semester');
 
@@ -4974,7 +4974,7 @@ class Page extends CI_Controller
 	}
 	private function userAccountLevels()
 	{
-		return ['Admin', 'Cashier', 'Committee', 'Student'];
+		return ['Admin', 'Auditor', 'Cashier', 'Committee', 'Student'];
 	}
 
 	private function queueNewAccountEmail(array $account, $temporaryPassword)

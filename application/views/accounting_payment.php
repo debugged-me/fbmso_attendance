@@ -18,12 +18,15 @@
                     $flashDanger  = $this->session->flashdata('danger');
                     $paymentFormOld = isset($payment_form_old) && is_array($payment_form_old) ? $payment_form_old : [];
                     $openPaymentModal = !empty($open_payment_modal);
+					$isAuditor = ((string)$this->session->userdata('level') === 'Auditor');
                     ?>
 
                     <!-- Title + actions -->
                     <div class="page-title-box">
-                        <h4 class="up-page-title">Payment Entry</h4>
+						<h4 class="up-page-title"><?= $isAuditor ? 'Payment Records' : 'Payment Entry'; ?></h4>
                     </div>
+
+					<?php include('includes/accounting_readonly_notice.php'); ?>
 
                     <?php
                     $apRows = (array)($recent_payments ?? []);
@@ -126,15 +129,17 @@
                                         </select>
                                         <span class="badge badge-purple"><?= count($recent_payments); ?> entries</span>
                                         <div class="pl-actions" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
-                                            <a href="<?= base_url($this->session->userdata('level') === 'Cashier' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+											<a href="<?= base_url(in_array($this->session->userdata('level'), ['Cashier', 'Auditor'], true) ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                                             </a>
                                             <a href="<?= base_url('Accounting/partialPayments'); ?>" class="up-btn up-btn-ghost">
                                                 <i class="mdi mdi-account-clock-outline"></i> View Partial Payments
                                             </a>
-                                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#paymentModal">
-                                                <i class="mdi mdi-plus-circle"></i> Add Payment
-                                            </button>
+											<?php if (!$isAuditor): ?>
+												<button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#paymentModal">
+													<i class="mdi mdi-plus-circle"></i> Add Payment
+												</button>
+											<?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
@@ -200,6 +205,7 @@
                                                                     <a class="dropdown-item print-receipt-btn" href="javascript:void(0);" data-id="<?= $rowId; ?>">
                                                                         <i class="mdi mdi-printer"></i> Print Receipt
                                                                     </a>
+													<?php if (!$isAuditor): ?>
                                                                     <a class="dropdown-item edit-payment-btn" href="javascript:void(0);"
                                                                         data-id="<?= $rowId; ?>"
                                                                         data-studentno="<?= htmlspecialchars((string)($row->StudentNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
@@ -219,6 +225,7 @@
                                                                             <i class="mdi mdi-delete"></i> Delete Payment
                                                                         </button>
                                                                     </form>
+													<?php endif; ?>
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -242,6 +249,7 @@
     <?php include('includes/footer_plugins.php'); ?>
     <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
+	<?php if (!$isAuditor): ?>
     <!-- ADD PAYMENT MODAL -->
     <div class="modal fade" id="paymentModal" tabindex="-1" role="dialog" aria-labelledby="paymentModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
@@ -444,6 +452,7 @@
             </div>
         </div>
     </div>
+	<?php endif; ?>
 
     <script>
         (function() {

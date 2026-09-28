@@ -85,6 +85,7 @@
           $monthAmt = (float)($data13[0]->Amount ?? 0);
           $yearAmt  = (float)($data14[0]->Amount ?? 0);
           $studeCount = (int)($data7[0]->StudeCount ?? 0);
+		  $isAuditor = ((string)$this->session->userdata('level') === 'Auditor');
 
           $trendRows = [];
           foreach ((array)($trend ?? []) as $row) {
@@ -97,17 +98,21 @@
               <div class="pl-header">
                 <div class="page-title-box">
                   <h4 class="up-page-title"><?= htmlspecialchars($schoolName, ENT_QUOTES, 'UTF-8'); ?></h4>
-                  <div class="up-page-sub">Cashier Dashboard &mdash; collections at a glance for <?= htmlspecialchars($schoolAddress, ENT_QUOTES, 'UTF-8'); ?></div>
+				  <div class="up-page-sub"><?= $isAuditor ? 'Auditor Dashboard — read-only cash inflow and outflow' : 'Cashier Dashboard — collections at a glance'; ?> for <?= htmlspecialchars($schoolAddress, ENT_QUOTES, 'UTF-8'); ?></div>
                   <hr class="up-divider" />
                 </div>
-                <div class="pl-actions">
-                  <a href="<?= base_url('Accounting/Payment'); ?>" class="up-btn up-btn-primary">
-                    <i class="mdi mdi-plus-circle"></i> New Payment
-                  </a>
-                </div>
+				<?php if (!$isAuditor): ?>
+				  <div class="pl-actions">
+					<a href="<?= base_url('Accounting/Payment'); ?>" class="up-btn up-btn-primary">
+					  <i class="mdi mdi-plus-circle"></i> New Payment
+					</a>
+				  </div>
+				<?php endif; ?>
               </div>
             </div>
           </div>
+
+		  <?php include('includes/accounting_readonly_notice.php'); ?>
 
           <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
             <a class="nx-stat green" href="<?= base_url('Accounting/collectionDateRange'); ?>">

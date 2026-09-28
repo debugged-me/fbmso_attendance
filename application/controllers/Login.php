@@ -344,6 +344,9 @@ class Login extends CI_Controller
                     case 'Cashier':
                         redirect('Page/accounting');
                         break;
+                    case 'Auditor':
+                        redirect('Page/accounting');
+                        break;
                     case 'Committee':
                         redirect('Page/committee');
                         break;

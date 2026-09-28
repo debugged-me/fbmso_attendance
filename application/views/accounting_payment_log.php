@@ -80,7 +80,7 @@
                                     <span class="badge badge-purple"><?= count($rows); ?> entries</span>
 </div>
 <div class="pl-actions">
-                            <a href="<?= base_url($this->session->userdata('level') === 'Cashier' ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+							<a href="<?= base_url(in_array($this->session->userdata('level'), ['Cashier', 'Auditor'], true) ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
                             <button type="button" class="up-btn up-btn-primary" onclick="window.open('<?= base_url('Accounting/paymentAuditLog'); ?>?print=1', '_blank')">

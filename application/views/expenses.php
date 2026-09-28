@@ -4,6 +4,8 @@
 <?php include('includes/head.php'); ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
+<?php $isAuditor = ((string)$this->session->userdata('level') === 'Auditor'); ?>
+
 
 <body>
 
@@ -35,6 +37,8 @@
                             <hr class="up-divider" />
                         </div>
 
+					<?php include('includes/accounting_readonly_notice.php'); ?>
+
                     <!-- start row -->
                     <div class="row">
                         <div class="col-md-12">
@@ -45,12 +49,14 @@
                                     <span class="badge badge-purple">SY <?= htmlspecialchars($this->session->userdata('sy') ?? '', ENT_QUOTES, 'UTF-8'); ?> <?= htmlspecialchars($this->session->userdata('semester') ?? '', ENT_QUOTES, 'UTF-8'); ?></span>
 </div>
 <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+							<a href="<?= base_url($isAuditor ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
-                            <button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target=".bs-example-modal-lg">
-                                <i class="mdi mdi-plus-circle"></i> Add New
-                            </button>
+							<?php if (!$isAuditor): ?>
+								<button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target=".bs-example-modal-lg">
+									<i class="mdi mdi-plus-circle"></i> Add New
+								</button>
+							<?php endif; ?>
                         </div>
 </div>
                                 <div class="up-card-body" style="padding:0 !important;">
@@ -63,7 +69,7 @@
                                                     <th>Responsible</th>
                                                     <th style="text-align:center">Expense Date</th>
                                                     <th style="text-align:center">Category</th>
-                                                    <th style="text-align:center">Manage</th>
+											<?php if (!$isAuditor): ?><th style="text-align:center">Manage</th><?php endif; ?>
                                                 </tr>
                                             </thead>
                                                 <tbody>
@@ -74,7 +80,8 @@
                                                             <td data-label="Responsible"><?= $row->Responsible; ?></td>
                                                             <td data-label="Expense Date" style="text-align:center"><?= $row->ExpenseDate; ?></td>
                                                             <td data-label="Category" style="text-align:center"><?= $row->Category; ?></td>
-                                                            <td data-label="Manage" class="up-rt-actions" style="text-align:center">
+												<?php if (!$isAuditor): ?>
+												<td data-label="Manage" class="up-rt-actions" style="text-align:center">
                                                                 <a href="<?= base_url('Accounting/updateexpenses?expensesid=' . $row->expensesid); ?>" class="up-btn up-btn-ghost" style="padding:8px 12px;font-size:.78rem;">
                                                                     <i class="mdi mdi-pencil"></i> Edit
                                                                 </a>
@@ -84,6 +91,7 @@
                                                                 </a>
 
                                                             </td>
+												<?php endif; ?>
                                                         </tr>
                                                     <?php } ?>
                                                 </tbody>
@@ -100,6 +108,7 @@
 
 
 
+					<?php if (!$isAuditor): ?>
                     <!-- Confirmation Modal -->
                     <div class="modal fade" id="confirmationModal" tabindex="-1" role="dialog" aria-labelledby="confirmationModalLabel" aria-hidden="true">
                         <div class="modal-dialog" role="document">
@@ -197,6 +206,7 @@
                     </div>
 
                     <!-- /.modal-content -->
+					<?php endif; ?>
                 </div>
                 <!-- /.modal-dialog -->
             </div>

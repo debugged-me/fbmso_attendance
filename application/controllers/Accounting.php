@@ -3,7 +3,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 class Accounting extends CI_Controller
 {
-	private $allowedLevels = ['Admin', 'Cashier'];
+	private $allowedLevels = ['Admin', 'Cashier', 'Auditor'];
 	private $receiptSettingsCache = null;
 
 	public function __construct()
@@ -29,10 +29,28 @@ class Accounting extends CI_Controller
 		}
 	}
 
+	private function isAuditor()
+	{
+		return (string)$this->session->userdata('level') === 'Auditor';
+	}
+
+	/**
+	 * Auditor can inspect accounting data but can never change it. This is a
+	 * server-side check so direct requests and loading-time UI races are denied.
+	 */
+	private function ensureWriteAccess()
+	{
+		$this->ensureAccess();
+		if ($this->isAuditor()) {
+			show_error('Auditor accounts have read-only access to accounting records.', 403);
+			exit;
+		}
+	}
+
 	public function index()
 	{
 		$this->ensureAccess();
-		if ((string)$this->session->userdata('level') === 'Cashier') {
+		if (in_array((string)$this->session->userdata('level'), ['Cashier', 'Auditor'], true)) {
 			redirect('Page/accounting');
 			return;
 		}
@@ -215,6 +233,9 @@ class Accounting extends CI_Controller
 	public function expenses()
 	{
 		$this->ensureAccess();
+		if (strtoupper((string)$this->input->method()) === 'POST') {
+			$this->ensureWriteAccess();
+		}
 
 		$data['data'] = $this->SettingsModel->expenses();
 		$data['data1'] = $this->SettingsModel->get_expensesCategory();
@@ -239,7 +260,7 @@ class Accounting extends CI_Controller
 
 	public function updateexpenses()
 	{
-		$this->ensureAccess();
+		$this->ensureWriteAccess();
 		$expensesid = $this->input->get('expensesid');
 		$result['data'] = $this->SettingsModel->getexpensesbyId($expensesid);
 		$data['data1'] = $this->SettingsModel->get_expensesCategory();
@@ -265,7 +286,7 @@ class Accounting extends CI_Controller
 
 	public function Deleteexpenses()
 	{
-		$this->ensureAccess();
+		$this->ensureWriteAccess();
 		$expensesid = $this->input->get('expensesid');
 		if ($expensesid) {
 			$this->SettingsModel->Delete_expenses($expensesid);
@@ -281,6 +302,9 @@ class Accounting extends CI_Controller
 	public function expensescategory()
 	{
 		$this->ensureAccess();
+		if (strtoupper((string)$this->input->method()) === 'POST') {
+			$this->ensureWriteAccess();
+		}
 		$data['data'] = $this->SettingsModel->get_expensesCategory();
 		$this->load->view('expensescategory', $data);
 
@@ -297,7 +321,7 @@ class Accounting extends CI_Controller
 
 	public function updateexpensescategory()
 	{
-		$this->ensureAccess();
+		$this->ensureWriteAccess();
 		$categoryID = $this->input->get('categoryID');
 		$result['data'] = $this->SettingsModel->getexpensescategorybyId($categoryID);
 		$this->load->view('updateexpensescategory', $result);
@@ -316,7 +340,7 @@ class Accounting extends CI_Controller
 
 	public function Deleteexpensescategory()
 	{
-		$this->ensureAccess();
+		$this->ensureWriteAccess();
 		$categoryID = $this->input->get('categoryID');
 		if ($categoryID) {
 			$this->SettingsModel->Delete_expensescategory($categoryID);
@@ -416,56 +440,56 @@ class Accounting extends CI_Controller
 	}
 
 
-	public function get_expenses()
+	private function get_expenses()
 	{
 		$query = $this->db->get('expenses');
 		return $query->result();
 	}
 
-	public function insertexpenses($data)
+	private function insertexpenses($data)
 	{
 		return $this->db->insert('expenses', $data);
 	}
 
-	public function getexpensesbyId($expensesid)
+	private function getexpensesbyId($expensesid)
 	{
 		$query = $this->db->query("SELECT * FROM expenses WHERE expensesid = '" . $expensesid . "'");
 		return $query->result();
 	}
 
-	public function Delete_expenses($expensesid)
+	private function Delete_expenses($expensesid)
 	{
 		$this->db->where('expensesid', $expensesid);
 		$this->db->delete('expenses');
 	}
 
 
-	public function get_expensesCategory()
+	private function get_expensesCategory()
 	{
 		$query = $this->db->get('expensescategory');
 		return $query->result();
 	}
 
-	public function insertexpensesCategory($data)
+	private function insertexpensesCategory($data)
 	{
 		return $this->db->insert('expensescategory', $data);
 	}
 
-	public function getexpensescategorybyId($categoryID)
+	private function getexpensescategorybyId($categoryID)
 	{
 		$query = $this->db->query("SELECT * FROM expensescategory WHERE categoryID = '" . $categoryID . "'");
 		return $query->result();
 	}
 
 
-	public function Delete_expensescategory($categoryID)
+	private function Delete_expensescategory($categoryID)
 	{
 		$this->db->where('categoryID', $categoryID);
 		$this->db->delete('expensescategory');
 	}
 
 
-	public function get_categories()
+	private function get_categories()
 	{
 		$this->db->distinct();
 		$this->db->select('Category');
@@ -1195,6 +1219,7 @@ class Accounting extends CI_Controller
 		[$sem, $sy] = $this->currentSemSy();
 
 		if (strtoupper((string)$this->input->method()) === 'POST') {
+			$this->ensureWriteAccess();
 			$submitToken = trim((string)$this->input->post('payment_submit_token', true));
 			if (!$this->consumePaymentSubmitToken($submitToken)) {
 				$this->session->set_flashdata('danger', 'This payment form was already submitted or expired. Please try again.');
@@ -1400,7 +1425,7 @@ class Accounting extends CI_Controller
 
 	public function updatePayment()
 	{
-		$this->ensureAccess();
+		$this->ensureWriteAccess();
 
 		if (strtoupper((string)$this->input->method()) !== 'POST') {
 			show_error('Invalid request method', 405);
@@ -1548,7 +1573,7 @@ class Accounting extends CI_Controller
 
 	public function emailReceipt()
 	{
-		$this->ensureAccess();
+		$this->ensureWriteAccess();
 
 		if (strtoupper((string)$this->input->method()) !== 'POST') {
 			show_error('Invalid request method', 405);
@@ -1636,6 +1661,7 @@ class Accounting extends CI_Controller
 		[$sem, $sy] = $this->currentSemSy();
 
 		if (strtoupper((string)$this->input->method()) === 'POST') {
+			$this->ensureWriteAccess();
 			$action = trim((string)$this->input->post('action', true));
 
 			if ($action === 'add') {
@@ -1900,7 +1926,7 @@ class Accounting extends CI_Controller
 	}
 	public function deletePayment()
 	{
-		$this->ensureAccess();
+		$this->ensureWriteAccess();
 
 		if (strtoupper((string)$this->input->method()) !== 'POST') {
 			show_error('Invalid request method', 405);
@@ -1967,8 +1993,7 @@ class Accounting extends CI_Controller
 		redirect('Accounting/Payment');
 	}
 
-	// Visible to both Cashier (their own activity) and Admin (everyone's) —
-	// ensureAccess() already allows both roles into this controller.
+	// Visible to Cashier, Admin, and read-only Auditor accounts.
 	public function paymentAuditLog()
 	{
 		$this->ensureAccess();
@@ -2022,7 +2047,7 @@ class Accounting extends CI_Controller
 		$this->load->view('accounting_payment_log', ['rows' => $rows]);
 	}
 
-	// Cashier ledger: collections vs. expenses with a running balance, so
+	// Accounting ledger: collections vs. expenses with a running balance, so
 	// "what's the gross, what did we spend, what's left" is one screen.
 	public function ledger()
 	{

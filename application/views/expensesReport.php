@@ -101,7 +101,7 @@
 <h4><i class="mdi mdi-file-document-box-multiple-outline"></i> Expenses Report</h4>
 </div>
 <div class="pl-actions">
-                            <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+							<a href="<?= base_url(in_array($this->session->userdata('level'), ['Cashier', 'Auditor'], true) ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
                                 <i class="mdi mdi-arrow-left"></i> Back to Dashboard
                             </a>
                         </div>

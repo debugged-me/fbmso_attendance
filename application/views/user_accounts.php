@@ -366,6 +366,7 @@
                   <select class="form-control" name="acctLevel" required>
                     <option value="">-- Select Level --</option>
                     <option value="Admin">Admin</option>
+					<option value="Auditor">Auditor</option>
                     <option value="Committee">Committee</option>
                     <option value="Cashier">Cashier</option>
                     <!-- <option value="HR Admin">HR Admin</option>
@@ -479,6 +480,7 @@
               <select class="form-control" name="acctLevel" id="modalAcctLevel" required>
                 <option value="">-- Select Level --</option>
                 <option value="Admin"> Admin </option>
+				<option value="Auditor"> Auditor </option>
                 <option value="Committee"> Committee </option>
                 <option value="Cashier"> Cashier </option>
                 <!-- <option value="HR Admin">HR Admin</option>
