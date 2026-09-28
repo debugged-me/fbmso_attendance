@@ -13,14 +13,14 @@
   <link rel="stylesheet" href="<?= base_url(); ?>assets/fonts/font-awesome-4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/css/home.css?v=30260836">
-  <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=8'); ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=10'); ?>">
   <meta name="theme-color" content="#1a2942">
   <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
   <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="<?= base_url('assets/images/icons/attendance-192.png'); ?>">
-  <script src="<?= base_url('assets/js/mobile-shell-early.js?v=5'); ?>"></script>
+  <script src="<?= base_url('assets/js/mobile-shell-early.js?v=6'); ?>"></script>
   <?php include(APPPATH . 'views/includes/ui_kit.php'); ?>
     <script src="<?= base_url('assets/js/anti-inspect.js?v=1'); ?>"></script>
 </head>
@@ -362,7 +362,7 @@
     window.SITE_URL = <?= json_encode(base_url()); ?>;
   </script>
   <script src="<?= base_url(); ?>assets/js/home.js?v=30260831"></script>
-  <script src="<?= base_url('assets/js/mobile-shell.js?v=7'); ?>"></script>
+  <script src="<?= base_url('assets/js/mobile-shell.js?v=12'); ?>"></script>
 
 </body>
 

@@ -2,7 +2,7 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
 
 <body>
@@ -42,7 +42,7 @@
                                     <div class="nx-stat-num"><?= number_format(count((array)$data)); ?></div>
                                     <div class="nx-stat-label">Categories</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-tag-multiple-outline"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-tag-multiple"></i></div>
                             </div>
                             <div class="nx-stat-foot">Listed below <i class="mdi mdi-arrow-right"></i></div>
                         </div>
@@ -52,7 +52,7 @@
                                     <div class="nx-stat-num"><i class="mdi mdi-plus-circle-outline" style="font-size:1.6rem;"></i></div>
                                     <div class="nx-stat-label">Add Category</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-tag-plus-outline"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-tag-plus"></i></div>
                             </div>
                             <div class="nx-stat-foot">Create a new category <i class="mdi mdi-arrow-right"></i></div>
                         </a>

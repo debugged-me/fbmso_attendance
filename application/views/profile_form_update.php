@@ -16,15 +16,15 @@
     <link href="<?= base_url(); ?>assets/css/bootstrap.min.css" rel="stylesheet" type="text/css" id="bootstrap-stylesheet" />
     <link href="<?= base_url(); ?>assets/css/icons.min.css" rel="stylesheet" type="text/css" />
   <link href="<?= base_url(); ?>assets/css/app.css?v=20260922" rel="stylesheet" type="text/css" id="app-stylesheet" />
-    <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=30260827'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/update_profile.css?v=2'); ?>">
 
     <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
     <link rel="stylesheet" href="<?= base_url('assets/fonts/bootstrap-icons/bootstrap-icons.css'); ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/custom-sidebar-icons.css?v=3'); ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/masterlist-responsive.css'); ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=8'); ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/nx-shell.css?v=13'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=10'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/nx-shell.css?v=14'); ?>">
 
     <?php include(APPPATH . 'views/includes/ui_kit.php'); ?>
     <meta name="theme-color" content="#1a2942">
@@ -33,7 +33,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="<?= base_url('assets/images/icons/attendance-192.png'); ?>">
-    <script src="<?= base_url('assets/js/mobile-shell-early.js?v=5'); ?>"></script>
+    <script src="<?= base_url('assets/js/mobile-shell-early.js?v=6'); ?>"></script>
 
     <script>
         function calculateAge(dateInputId, resultInputId) {

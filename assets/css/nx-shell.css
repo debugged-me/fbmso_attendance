@@ -604,8 +604,31 @@ body {
 }
 
 @media (max-width: 575.98px) {
-  .nx-stats { grid-template-columns: 1fr; }
-  .nx-stat.span2 { grid-column: auto; }
+  /* Two compact tiles per row: four full-width 158px tiles pushed the page's
+     real content a full screen down. Icon sits above the number so long
+     peso amounts get the tile's whole width. */
+  .nx-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .nx-stat.span2,
+  .nx-stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .nx-stat { min-height: 0; border-radius: 16px; }
+  .nx-stat::before { top: -44px; right: -44px; width: 112px; height: 112px; }
+  .nx-stat::after { display: none; }
+  .nx-stat-main {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 14px 12px;
+  }
+  .nx-stat-main > div:not(.nx-stat-icon) { min-width: 0; max-width: 100%; }
+  /* !important: several views set an inline font-size on money tiles. */
+  .nx-stat-num {
+    font-size: clamp(1.05rem, 5.4vw, 1.45rem) !important;
+    overflow-wrap: anywhere;
+  }
+  .nx-stat-label { margin-top: 4px; font-size: .64rem; letter-spacing: .08em; }
+  .nx-stat-icon { width: 32px; height: 32px; border-radius: 10px; font-size: 17px; }
+  .nx-stat-foot { padding: 7px 14px; font-size: .7rem; }
   .nx-hello { font-size: 1.4rem; }
 }
 

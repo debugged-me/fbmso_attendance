@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 <link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
 
 <style>
@@ -98,7 +98,7 @@
                                     <div class="nx-stat-num"><i class="mdi mdi-plus-circle-outline" style="font-size:1.6rem;"></i></div>
                                     <div class="nx-stat-label">Add Fee</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-cash-plus"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-plus-box"></i></div>
                             </div>
                             <div class="nx-stat-foot">Configure a new fee <i class="mdi mdi-arrow-right"></i></div>
                         </a>

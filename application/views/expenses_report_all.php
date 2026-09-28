@@ -2,7 +2,7 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
 <body>
 
@@ -42,7 +42,7 @@
                             <div class="up-card">
                                 <div class="up-card-head">
 <div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
-<h4><i class="mdi mdi-file-document-multiple-outline"></i> All Expenses</h4>
+<h4><i class="mdi mdi-file-document-box-multiple-outline"></i> All Expenses</h4>
                                     <span class="badge badge-purple"><?= count($data); ?> entries</span>
 </div>
 <div class="pl-actions">

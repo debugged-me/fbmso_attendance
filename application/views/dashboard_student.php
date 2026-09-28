@@ -515,7 +515,7 @@ $flashDanger  = $this->session->flashdata('danger');
                           <div class="modal-body">
                             <div class="ann-modal-meta">
                               <i class="mdi mdi-calendar-outline"></i> Posted on <?= $posted; ?>
-                              <?php if ($expires): ?> · <span class="<?= $isExpired ? 'ann-expires-expired' : ''; ?>"><i class="mdi mdi-timer-outline"></i> <?= $isExpired ? 'Expired' : 'Expires'; ?> <?= $expires; ?></span><?php endif; ?>
+                              <?php if ($expires): ?> · <span class="<?= $isExpired ? 'ann-expires-expired' : ''; ?>"><i class="mdi mdi-timer"></i> <?= $isExpired ? 'Expired' : 'Expires'; ?> <?= $expires; ?></span><?php endif; ?>
                             </div>
                             <div class="ann-flex">
                               <div class="ann-text"><?= nl2br(htmlspecialchars((string)$message, ENT_QUOTES, 'UTF-8')); ?></div>

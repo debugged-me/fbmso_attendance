@@ -84,7 +84,7 @@ require_once APPPATH . 'views/security_partials.php';
     </div>
 
     <div class="card">
-      <div class="card-header"><i class="mdi mdi-list"></i> Login Records</div>
+      <div class="card-header"><i class="mdi mdi-format-list-bulleted"></i> Login Records</div>
       <div class="table-responsive">
         <table class="table table-sm table-hover mb-0">
           <thead><tr><th>Time</th><th>Username</th><th>Status</th><th>IP Address</th><th>User Agent</th><th>Session</th></tr></thead>

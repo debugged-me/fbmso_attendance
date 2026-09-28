@@ -281,6 +281,14 @@
 
 @media (max-width: 767.98px) {
   .pl-actions .up-btn { font-size: .8rem; padding: 8px 14px; }
+  /* Page-level actions span the width on a phone, like an app's primary
+     button, instead of floating alone at one edge. */
+  .pl-header .pl-actions { align-self: stretch; width: 100%; }
+  .pl-header .pl-actions .up-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 44px;
+  }
 }
 
 /* ============================================================
@@ -376,6 +384,18 @@
   }
   /* Show d-none cells in card mode (e.g. hidden name column) */
   table.up-rt tbody td.d-none { display: flex !important; }
+  /* Empty-state cells ("No data available", colspan placeholders): one
+     centred block instead of a label column pushing the text right. */
+  table.up-rt tbody td.dataTables_empty,
+  table.up-rt tbody td[colspan] {
+    display: block;
+    padding: 22px 8px !important;
+    text-align: center;
+    color: var(--up-muted);
+    border-bottom: 0 !important;
+  }
+  table.up-rt tbody td.dataTables_empty::before,
+  table.up-rt tbody td[colspan]::before { display: none; }
 
   /* DataTables filter/length/pagination stacking */
   .dataTables_wrapper .dataTables_filter,
@@ -398,6 +418,38 @@
 
   /* Card head: stack record count + export buttons */
   .up-card-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+
+  /* A nested control group (title + filter + badge) must stack and fill the
+     card width instead of running off the right edge. */
+  .up-card-head > .d-flex {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 8px;
+  }
+  /* Small pills/badges keep their natural size, left-aligned. */
+  .up-card-head > .d-flex > .badge { align-self: flex-start; }
+  /* Selects and search inputs go full width. */
+  .up-card-head .form-control,
+  .up-card-head .custom-select,
+  .up-card-head select {
+    width: 100% !important;
+    max-width: none !important;
+  }
+  /* Action buttons form a wrapping row that fills the card width, each button
+     growing to share the space. */
+  .up-card-head .pl-actions {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+  .up-card-head .pl-actions .up-btn,
+  .up-card-head .pl-actions .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    white-space: nowrap;
+  }
 }
 
 /* ============================================================

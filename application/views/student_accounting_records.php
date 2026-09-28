@@ -197,7 +197,7 @@
                                     <div class="nx-stat-num" style="font-size:1.45rem;">₱ <?= number_format((float)($totalValid ?? 0), 2); ?></div>
                                     <div class="nx-stat-label">Valid Payments</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-cash-check"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-cash"></i></div>
                             </div>
                             <div class="nx-stat-foot">Total of OR-status = Valid <i class="mdi mdi-arrow-right"></i></div>
                         </div>
@@ -207,7 +207,7 @@
                                     <div class="nx-stat-num"><?= number_format(count((array)($payments ?? []))); ?></div>
                                     <div class="nx-stat-label">Transactions</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-receipt-text-outline"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-receipt"></i></div>
                             </div>
                             <div class="nx-stat-foot">All recorded payments <i class="mdi mdi-arrow-right"></i></div>
                         </div>
@@ -238,7 +238,7 @@
                         <div class="col-12">
                             <div class="ar-records-card">
                                 <div class="ar-records-head">
-                                    <h4><i class="mdi mdi-receipt-text-outline mr-1"></i> Payment Records</h4>
+                                    <h4><i class="mdi mdi-receipt mr-1"></i> Payment Records</h4>
                                     <?php
                                     $filterParts = [];
                                     if (trim((string)($filterSy ?? '')) !== '') {

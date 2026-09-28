@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
 <style>
     .kpi {
@@ -88,7 +88,7 @@
                                     <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<?= number_format((int)$studentCount ? (float)$totalOutstanding / (int)$studentCount : 0, 2); ?></div>
                                     <div class="nx-stat-label">Avg Balance</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-calculator-variant-outline"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-calculator-variant"></i></div>
                             </div>
                             <div class="nx-stat-foot">Per student <i class="mdi mdi-arrow-right"></i></div>
                         </div>

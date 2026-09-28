@@ -598,7 +598,10 @@
         labelRows(table);
         return;
       }
-      if (table.classList.contains('ms-rt-keep') || table.getAttribute('data-ms-cards') === 'off') return;
+      /* up-rt tables are carded by uniform-page.css; a second pass here would
+         add a "swipe" hint to a table that no longer scrolls sideways. */
+      if (table.classList.contains('ms-rt-keep') || table.classList.contains('up-rt') ||
+          table.getAttribute('data-ms-cards') === 'off') return;
       if (table.parentElement && table.parentElement.closest('table')) return;
       var headers = headersFor(table);
       if (headers.length < 2) return;
@@ -644,6 +647,15 @@
       $(document).on('draw.dt.msShell', function (_event, settings) {
         if (!isPhone() || !settings || !settings.nTable || !settings.nTable.__msTablePrepared) return;
         window.requestAnimationFrame(function () { labelRows(settings.nTable); });
+      });
+      /* Hide the Prev/Next bar when everything fits on one page. Runs for
+         every table, including ms-rt-keep ones the card pass skips. */
+      $(document).on('draw.dt.msPager', function (_event, settings) {
+        if (!settings || !settings.nTableWrapper) return;
+        var single = new $.fn.dataTable.Api(settings).page.info().pages <= 1;
+        each(settings.nTableWrapper.querySelectorAll('.ms-dt-bottom, .dataTables_paginate'), function (el) {
+          el.classList.toggle('ms-dt-single', single);
+        });
       });
     }
 

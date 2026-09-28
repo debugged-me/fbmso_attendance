@@ -2,7 +2,7 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
 <style>
   a.text-decoration-none:hover { text-decoration: none; }
@@ -324,7 +324,7 @@
                                 <?php endforeach; ?>
                               <?php else: ?>
                                 <tr>
-                                  <td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-off-outline"></i></span><span class="sum-empty-text">No data available</span></td>
+                                  <td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-remove"></i></span><span class="sum-empty-text">No data available</span></td>
                                 </tr>
                               <?php endif; ?>
                             </tbody>
@@ -356,7 +356,7 @@
                                 <?php endforeach; ?>
                               <?php else: ?>
                                 <tr>
-                                  <td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-off-outline"></i></span><span class="sum-empty-text">No data available</span></td>
+                                  <td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-remove"></i></span><span class="sum-empty-text">No data available</span></td>
                                 </tr>
                               <?php endif; ?>
                             </tbody>
@@ -395,7 +395,7 @@
                                 <?php endforeach; ?>
                               <?php else: ?>
                                 <tr>
-                                  <td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-off-outline"></i></span><span class="sum-empty-text">No data available</span></td>
+                                  <td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-remove"></i></span><span class="sum-empty-text">No data available</span></td>
                                 </tr>
                               <?php endif; ?>
                             </tbody>
@@ -446,7 +446,7 @@
                                 <?php endforeach; ?>
                               <?php else: ?>
                                 <tr>
-                                  <td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-off-outline"></i></span><span class="sum-empty-text">No data available</span></td>
+                                  <td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-remove"></i></span><span class="sum-empty-text">No data available</span></td>
                                 </tr>
                               <?php endif; ?>
                             </tbody>
@@ -479,7 +479,7 @@
                         </tr>
                       <?php endforeach; ?>
                     <?php else: ?>
-                      <tr><td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-off-outline"></i></span><span class="sum-empty-text">No data available</span></td></tr>
+                      <tr><td colspan="2" class="sum-empty-row"><span class="sum-empty-icon"><i class="mdi mdi-database-remove"></i></span><span class="sum-empty-text">No data available</span></td></tr>
                     <?php endif; ?>
                   </tbody>
                 </table>
@@ -510,7 +510,7 @@
                       <div class="ann-card-body">
                         <?php if (empty($announcements)): ?>
                           <div style="text-align:center;padding:40px 20px;color:var(--up-muted,#6b7a99);">
-                            <i class="mdi mdi-bullhorn-off-outline" style="font-size:42px;display:block;margin-bottom:10px;"></i>
+                            <i class="mdi mdi-volume-off" style="font-size:42px;display:block;margin-bottom:10px;"></i>
                             No announcements.
                           </div>
                         <?php else: ?>
@@ -554,7 +554,7 @@
                                   <div class="modal-body">
                                     <div class="ann-modal-meta">
                                       <i class="mdi mdi-calendar-outline"></i> Posted on <?= $posted; ?>
-                                      <?php if ($expires): ?> · <span class="<?= $isExpired ? 'ann-expires-expired' : ''; ?>"><i class="mdi mdi-timer-outline"></i> <?= $isExpired ? 'Expired' : 'Expires'; ?> <?= $expires; ?></span><?php endif; ?>
+                                      <?php if ($expires): ?> · <span class="<?= $isExpired ? 'ann-expires-expired' : ''; ?>"><i class="mdi mdi-timer"></i> <?= $isExpired ? 'Expired' : 'Expires'; ?> <?= $expires; ?></span><?php endif; ?>
                                     </div>
                                     <div class="ann-flex">
                                       <div class="ann-text"><?= nl2br(htmlspecialchars((string)$message, ENT_QUOTES, 'UTF-8')); ?></div>

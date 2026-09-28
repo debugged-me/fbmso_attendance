@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 <link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
 
 <body>
@@ -55,7 +55,7 @@
                                     <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<?= number_format($apCollected, 2); ?></div>
                                     <div class="nx-stat-label">Collected</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-cash-check"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-cash"></i></div>
                             </div>
                             <div class="nx-stat-foot">Sum of payments shown <i class="mdi mdi-arrow-right"></i></div>
                         </div>
@@ -65,7 +65,7 @@
                                     <div class="nx-stat-num"><?= number_format($apFull); ?></div>
                                     <div class="nx-stat-label">Fully Paid</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-check-decagram-outline"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-check-decagram"></i></div>
                             </div>
                             <div class="nx-stat-foot">Fees settled in full <i class="mdi mdi-arrow-right"></i></div>
                         </div>

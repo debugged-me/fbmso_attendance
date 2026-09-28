@@ -2,7 +2,7 @@
 <html lang="en">
 <?php include('includes/head.php'); ?>
 <link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 <?php
 // ---------------- Helpers ----------------
 if (!function_exists('h')) {

@@ -21,7 +21,15 @@
     $.extend(true, $.fn.dataTable.defaults, {
       pageLength: 10,
       lengthChange: false,
-      dom: '<"ms-dt-top"f>rt<"ms-dt-bottom"p>'
+      dom: '<"ms-dt-top"f>rt<"ms-dt-bottom"p>',
+      pagingType: 'simple',
+      /* No "Search:" text beside the box: on a phone the label and a
+         full-width input cannot share one line. The placeholder carries it. */
+      language: {
+        search: '',
+        searchPlaceholder: 'Search…',
+        paginate: { previous: '‹ Prev', next: 'Next ›' }
+      }
     });
     applied = true;
     return true;

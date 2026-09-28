@@ -2,7 +2,7 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
 
 <body>
@@ -72,7 +72,7 @@
                                     <div class="nx-stat-num"><?= number_format(count($exCats)); ?></div>
                                     <div class="nx-stat-label">Categories</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-tag-multiple-outline"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-tag-multiple"></i></div>
                             </div>
                             <div class="nx-stat-foot">Distinct categories <i class="mdi mdi-arrow-right"></i></div>
                         </div>
@@ -98,7 +98,7 @@
                             <div class="up-card">
                                 <div class="up-card-head">
 <div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
-<h4><i class="mdi mdi-file-document-multiple-outline"></i> Expenses Report</h4>
+<h4><i class="mdi mdi-file-document-box-multiple-outline"></i> Expenses Report</h4>
 </div>
 <div class="pl-actions">
                             <a href="<?= base_url('Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">

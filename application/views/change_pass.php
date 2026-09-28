@@ -7,7 +7,7 @@
     <?php include('includes/top-nav-bar.php'); ?>
     <?php include('includes/sidebar.php'); ?>
 
-    <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
     <div class="content-page">
       <div class="content">
@@ -47,7 +47,7 @@
             <div class="col-12">
               <div class="up-card">
                 <div class="up-card-head">
-                  <h4><i class="mdi mdi-form-textbox-password"></i> Update Password</h4>
+                  <h4><i class="mdi mdi-textbox-password"></i> Update Password</h4>
                 </div>
                 <div class="up-card-body">
                   <form method="POST" action="<?= base_url(); ?>page/update_password" enctype="multipart/form-data">

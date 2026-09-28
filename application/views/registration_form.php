@@ -14,14 +14,14 @@
 
   <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
   <link href="<?= base_url(); ?>assets/css/registration_form.css?v=30260922" rel="stylesheet" type="text/css" />
-  <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=7'); ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=10'); ?>">
   <meta name="theme-color" content="#1a2942">
   <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="<?= base_url('assets/images/icons/attendance-192.png'); ?>">
-  <script src="<?= base_url('assets/js/mobile-shell-early.js?v=5'); ?>"></script>
+  <script src="<?= base_url('assets/js/mobile-shell-early.js?v=6'); ?>"></script>
 
   <?php include(APPPATH . 'views/includes/ui_kit.php'); ?>
   <script src="<?= base_url('assets/js/anti-inspect.js?v=1'); ?>"></script>
@@ -335,7 +335,7 @@
   <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
   <script src="<?= base_url(); ?>assets/js/registration_form.js?v=30260922-3"></script>
-  <script src="<?= base_url('assets/js/mobile-shell.js?v=6'); ?>"></script>
+  <script src="<?= base_url('assets/js/mobile-shell.js?v=12'); ?>"></script>
   <?php if (empty($isAdmin)): ?>
   <script>
     // Lazy-load reCAPTCHA only when the user interacts with the form,

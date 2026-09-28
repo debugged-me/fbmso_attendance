@@ -680,36 +680,134 @@ body.ms-drawer-locked {
     background: #f4f5f7;
   }
 
-  .ms-dt-top .dataTables_filter {
+  /* Search box and pager for EVERY DataTable on a phone, including views
+     that pass their own `dom` (export buttons etc.) and so never get the
+     ms-dt-top wrapper. The div.dataTables_wrapper prefix matches the
+     specificity of dataTables.bootstrap4.css so these win on load order. */
+  div.dataTables_wrapper div.dataTables_filter {
     display: block;
     float: none;
     width: 100%;
-    margin: 0;
+    margin: 0 0 12px;
+    padding: 0;
     text-align: left;
   }
 
-  .ms-dt-top .dataTables_filter label {
+  /* bootstrap.min.css ships `label { font-size: 13px !important }`, so hiding
+     the "Search:" text needs !important too. The early script already blanks
+     it; this covers views that pass their own `language`. */
+  div.dataTables_wrapper div.dataTables_filter label {
     display: block;
     width: 100%;
     margin: 0;
-    font-size: 0;
+    font-size: 0 !important;
+    white-space: normal;
   }
 
-  .ms-dt-top .dataTables_filter input {
+  div.dataTables_wrapper div.dataTables_filter input {
+    display: block;
     width: 100%;
     min-height: var(--ms-touch);
     margin: 0;
-    padding: 8px 16px;
+    padding: 8px 16px 8px 42px;
     border: 1px solid #d8e0eb;
     border-radius: 999px;
-    background: #fff;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 16px center / 18px;
     font-size: 16px;
     box-shadow: 0 5px 18px rgba(15, 23, 42, .06);
   }
 
-  .ms-dt-bottom .pagination {
+  .ms-dt-top div.dataTables_filter {
+    margin: 0;
+  }
+
+  /* Inside a white card the grey page-colour band reads as a stray box. */
+  .card .ms-dt-top,
+  .up-card .ms-dt-top,
+  .acct-card-wrap .ms-dt-top {
+    position: static;
+    margin: 0 0 12px;
+    padding: 0;
+    background: transparent;
+  }
+
+  .ms-dt-bottom {
+    padding-top: 14px;
+  }
+
+  .ms-dt-bottom.ms-dt-single,
+  div.dataTables_wrapper div.dataTables_paginate.ms-dt-single {
+    /* One page of results: Prev/Next would both be disabled. */
+    display: none;
+  }
+
+  div.dataTables_wrapper div.dataTables_info {
+    padding: 10px 0 0;
+    color: #64748b;
+    font-size: .8rem;
+    text-align: center;
+    white-space: normal;
+  }
+
+  div.dataTables_wrapper div.dataTables_paginate {
+    float: none;
+    margin: 0;
+    padding: 12px 0 0;
+    text-align: center;
+  }
+
+  div.dataTables_wrapper div.dataTables_paginate ul.pagination {
+    display: flex;
     flex-wrap: wrap;
     justify-content: center;
+    gap: 8px;
+    margin: 0;
+  }
+
+  div.dataTables_wrapper div.dataTables_paginate .page-item .page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--ms-touch);
+    min-height: var(--ms-touch);
+    margin: 0;
+    padding: 0 12px;
+    border: 1px solid #d8e0eb;
+    border-radius: 999px !important;
+    background: #fff;
+    color: #1a2942;
+    font-weight: 700;
+    font-size: .88rem;
+  }
+
+  div.dataTables_wrapper div.dataTables_paginate .page-item.previous .page-link,
+  div.dataTables_wrapper div.dataTables_paginate .page-item.next .page-link {
+    min-width: 104px;
+  }
+
+  div.dataTables_wrapper div.dataTables_paginate .page-item.active .page-link {
+    border-color: #2a4090;
+    background: #2a4090;
+    color: #fff;
+  }
+
+  div.dataTables_wrapper div.dataTables_paginate .page-item.disabled .page-link {
+    opacity: .45;
+  }
+
+  /* DataTables' "No data" cell and any colspan empty-state cell in card
+     mode: one centred block, no label column pushing the text right. */
+  .ms-rt tbody td.dataTables_empty,
+  .ms-rt tbody td[colspan] {
+    display: block;
+    padding: 1.25rem .5rem;
+    color: #64748b;
+    text-align: center;
+  }
+
+  .ms-rt tbody td.dataTables_empty::before,
+  .ms-rt tbody td[colspan]::before {
+    display: none;
   }
 
   /* ------------------------------------------------------------------------

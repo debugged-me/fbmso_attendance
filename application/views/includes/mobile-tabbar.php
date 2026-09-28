@@ -41,12 +41,12 @@ switch ($msLevel) {
     case 'School Admin':
         $msAddTab($msTabs, 'Page/school_admin', 'Home', 'mdi-home-variant-outline');
         $msAddTab($msTabs, 'Masterlist/bySY', 'Masterlist', 'mdi-account-multiple-outline');
-        $msAddTab($msTabs, 'Page/er', 'Reports', 'mdi-chart-box-outline');
+        $msAddTab($msTabs, 'Page/er', 'Reports', 'mdi-chart-bar');
         break;
 
     case 'IT':
         $msAddTab($msTabs, 'Page/IT', 'Home', 'mdi-home-variant-outline');
-        $msAddTab($msTabs, 'Page/userAccounts', 'Users', 'mdi-account-cog-outline');
+        $msAddTab($msTabs, 'Page/userAccounts', 'Users', 'mdi-account-settings');
         break;
 
     case 'Super Admin':
@@ -55,9 +55,10 @@ switch ($msLevel) {
         break;
 
     case 'Cashier':
+        $msAddTab($msTabs, 'Page/accounting', 'Home', 'mdi-home-variant-outline');
         $msAddTab($msTabs, 'Accounting/Payment', 'Payments', 'mdi-cash-multiple');
-        $msAddTab($msTabs, 'Accounting/expenses', 'Expenses', 'mdi-receipt-text-outline');
-        $msAddTab($msTabs, 'Accounting/collectionMonthly', 'Reports', 'mdi-chart-box-outline');
+        $msAddTab($msTabs, 'Accounting/expenses', 'Expenses', 'mdi-receipt');
+        $msAddTab($msTabs, 'Accounting/collectionMonthly', 'Reports', 'mdi-chart-bar');
         break;
 
     case 'Committee':

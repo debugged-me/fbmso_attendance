@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
 <body>
     <div id="wrapper">
@@ -36,7 +36,7 @@
                                     <div class="nx-stat-num"><?= number_format((int)$total_count); ?></div>
                                     <div class="nx-stat-label">Transactions</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-receipt-text-outline"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-receipt"></i></div>
                             </div>
                             <div class="nx-stat-foot">In this report <i class="mdi mdi-arrow-right"></i></div>
                         </div>
@@ -56,7 +56,7 @@
                                     <div class="nx-stat-num" style="font-size:1.45rem;">₱<?= number_format($total_count ? (float)$total_amount / (int)$total_count : 0, 2); ?></div>
                                     <div class="nx-stat-label">Avg / Transaction</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-calculator-variant-outline"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-calculator-variant"></i></div>
                             </div>
                             <div class="nx-stat-foot">Mean payment size <i class="mdi mdi-arrow-right"></i></div>
                         </div>

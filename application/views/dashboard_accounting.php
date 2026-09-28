@@ -2,7 +2,7 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
 <style>
   a.text-decoration-none:hover { text-decoration: none; }
@@ -40,6 +40,8 @@
   .acct-card-body { padding:22px; }
 
   .trend-chart { position:relative; height:280px; }
+  .trend-chart.is-empty { height:auto; padding:28px 0; }
+  @media (max-width:575.98px){ .trend-chart { height:220px; } }
   .sum-chart.skeleton { background:linear-gradient(90deg, #f0f3f8 25%, #e6ebf5 50%, #f0f3f8 75%); background-size:200% 100%; animation:shimmer 1.4s ease-in-out infinite; border-radius:12px; }
   @keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
   .sum-empty { display:grid; place-items:center; height:100%; font-size:.85rem; color:var(--up-muted,#6b7a99); }
@@ -111,7 +113,7 @@
             <a class="nx-stat green" href="<?= base_url('Accounting/collectionDateRange'); ?>">
               <div class="nx-stat-main">
                 <div>
-                  <div class="nx-stat-num" style="font-size:1.45rem;"><span data-plugin="counterup">&#8369;<?= number_format($todayAmt, 2); ?></span></div>
+                  <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<span<?= $todayAmt > 0 ? ' data-plugin="counterup"' : ''; ?>><?= number_format($todayAmt, 2); ?></span></div>
                   <div class="nx-stat-label">Today's Collection</div>
                 </div>
                 <div class="nx-stat-icon"><i class="mdi mdi-trending-up"></i></div>
@@ -121,7 +123,7 @@
             <a class="nx-stat blue" href="<?= base_url('Accounting/collectionMonthly'); ?>">
               <div class="nx-stat-main">
                 <div>
-                  <div class="nx-stat-num" style="font-size:1.45rem;"><span data-plugin="counterup">&#8369;<?= number_format($monthAmt, 2); ?></span></div>
+                  <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<span<?= $monthAmt > 0 ? ' data-plugin="counterup"' : ''; ?>><?= number_format($monthAmt, 2); ?></span></div>
                   <div class="nx-stat-label">This Month</div>
                 </div>
                 <div class="nx-stat-icon"><i class="mdi mdi-calendar-month-outline"></i></div>
@@ -131,7 +133,7 @@
             <a class="nx-stat violet" href="<?= base_url('Accounting/collectionYear'); ?>">
               <div class="nx-stat-main">
                 <div>
-                  <div class="nx-stat-num" style="font-size:1.45rem;"><span data-plugin="counterup">&#8369;<?= number_format($yearAmt, 2); ?></span></div>
+                  <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<span<?= $yearAmt > 0 ? ' data-plugin="counterup"' : ''; ?>><?= number_format($yearAmt, 2); ?></span></div>
                   <div class="nx-stat-label">This Year</div>
                 </div>
                 <div class="nx-stat-icon"><i class="mdi mdi-chart-line"></i></div>
@@ -172,8 +174,8 @@
                     View All <i class="mdi mdi-arrow-right"></i>
                   </a>
                 </div>
-                <div class="table-responsive">
-                  <table class="table table-bordered table-hover table-sm recent-pay-table mb-0">
+                <div class="table-responsive up-rt-host">
+                  <table class="table table-bordered table-hover table-sm recent-pay-table up-rt ms-rt-keep mb-0">
                     <thead>
                       <tr>
                         <th>Date</th>
@@ -191,11 +193,11 @@
                           if ($name === '') $name = $row->StudentNumber ?? '';
                           ?>
                           <tr>
-                            <td><?= htmlspecialchars(date('M d, Y', strtotime($row->PDate)), ENT_QUOTES, 'UTF-8'); ?></td>
-                            <td><strong><?= htmlspecialchars($row->ORNumber, ENT_QUOTES, 'UTF-8'); ?></strong></td>
-                            <td><?= htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?></td>
-                            <td><?= htmlspecialchars($row->Cashier ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
-                            <td class="text-right">&#8369;<?= number_format((float)$row->Amount, 2); ?></td>
+                            <td data-label="Date"><?= htmlspecialchars(date('M d, Y', strtotime($row->PDate)), ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td data-label="O.R."><strong><?= htmlspecialchars($row->ORNumber, ENT_QUOTES, 'UTF-8'); ?></strong></td>
+                            <td data-label="Student"><?= htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td data-label="Cashier"><?= htmlspecialchars($row->Cashier ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td data-label="Amount" class="text-right">&#8369;<?= number_format((float)$row->Amount, 2); ?></td>
                           </tr>
                         <?php endforeach; ?>
                       <?php else: ?>
@@ -272,6 +274,7 @@
             }
           });
         } else {
+          if (wrap) wrap.classList.add('is-empty');
           trendCanvas.parentNode.innerHTML = '<div class="sum-empty text-muted">No collections in this period yet.</div>';
         }
       }

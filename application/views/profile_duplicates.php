@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 <style>
   #duplicateTable thead th {
     background:#f5f7fc; color:#6b7a99; font-size:.72rem; font-weight:800;
@@ -151,7 +151,7 @@
               <div class="up-card">
                 <div class="up-card-head">
 <div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap;">
-<h4><i class="mdi mdi-account-multiple-alert"></i> Duplicate Records</h4>
+<h4><i class="mdi mdi-account-alert"></i> Duplicate Records</h4>
                   <span class="badge badge-light" style="border-radius:999px;padding:5px 14px;font-size:.76rem;font-weight:700;color:#6b7a99;border:1px solid #e6ebf5;">
                     <?= number_format(count($data)); ?> found
                   </span>

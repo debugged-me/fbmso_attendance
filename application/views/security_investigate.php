@@ -99,7 +99,7 @@ usort($timeline, function($a, $b) { return strcmp($a['time'], $b['time']); });
 
     <div class="row"><div class="col-12">
       <div class="page-title-box d-flex justify-content-between align-items-center">
-        <h4 class="page-title mb-0"><i class="mdi mdi-magnify-scan"></i> Investigate: <?= sec_e($ip) ?></h4>
+        <h4 class="page-title mb-0"><i class="mdi mdi-magnify"></i> Investigate: <?= sec_e($ip) ?></h4>
         <div class="no-print">
           <a href="<?= base_url('Securityadmin'); ?>" class="btn btn-sm btn-outline-primary"><i class="mdi mdi-shield-account"></i> Dashboard</a>
         </div>
@@ -169,7 +169,7 @@ usort($timeline, function($a, $b) { return strcmp($a['time'], $b['time']); });
 
     <!-- Timeline -->
     <div class="card">
-      <div class="card-header"><i class="mdi mdi-timeline-clock"></i> Activity Timeline</div>
+      <div class="card-header"><i class="mdi mdi-timeline"></i> Activity Timeline</div>
       <div class="card-body">
         <?php if (empty($timeline)): ?>
           <p class="text-muted">No activity recorded for this IP.</p>

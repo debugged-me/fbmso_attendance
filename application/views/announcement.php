@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <?php include('includes/head.php'); // ensure head.php has <meta charset="utf-8"> ?>
-<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=20260831'); ?>">
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
 <style>
   #vamContent{ display:flex; gap:16px; align-items:flex-start; flex-wrap:nowrap; }
@@ -139,7 +139,7 @@
                   </div>
 
                   <div class="form-group">
-                    <label for="ann_message"><i class="mdi mdi-text-long"></i> Message</label>
+                    <label for="ann_message"><i class="mdi mdi-text-subject"></i> Message</label>
                     <textarea name="message" id="ann_message" class="form-control" rows="4" placeholder="Write the announcement details here…" required></textarea>
                   </div>
 
@@ -186,7 +186,7 @@
                 </div>
 
                 <div class="form-group">
-                  <label for="edit_message"><i class="mdi mdi-text-long"></i> Message</label>
+                  <label for="edit_message"><i class="mdi mdi-text-subject"></i> Message</label>
                   <textarea name="message" id="edit_message" class="form-control" rows="5" required></textarea>
                 </div>
 
@@ -305,7 +305,7 @@
                   <?php endforeach; ?>
                 <?php else: ?>
                   <div class="ann-empty">
-                    <div class="ann-empty-icon"><i class="mdi mdi-bullhorn-off-outline"></i></div>
+                    <div class="ann-empty-icon"><i class="mdi mdi-volume-off"></i></div>
                     <div>No announcements to display at this time.</div>
                   </div>
                 <?php endif; ?>

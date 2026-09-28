@@ -19,7 +19,7 @@ require_once APPPATH . 'views/security_partials.php';
         <h4 class="page-title mb-0"><i class="mdi mdi-shield-account"></i> Security Dashboard</h4>
         <div>
           <a href="<?= base_url('Securityadmin/login_activity'); ?>" class="btn btn-sm btn-outline-primary"><i class="mdi mdi-login-variant"></i> Login Activity</a>
-          <a href="<?= base_url('Securityadmin/investigate?ip=138.84.127.148'); ?>" class="btn btn-sm btn-outline-danger"><i class="mdi mdi-magnify-scan"></i> Investigate Attacker</a>
+          <a href="<?= base_url('Securityadmin/investigate?ip=138.84.127.148'); ?>" class="btn btn-sm btn-outline-danger"><i class="mdi mdi-magnify"></i> Investigate Attacker</a>
         </div>
       </div>
     </div></div>
