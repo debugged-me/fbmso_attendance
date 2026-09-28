@@ -372,6 +372,30 @@ class MobileAccounting extends MobileApi
         return $this->db->get()->result();
     }
 
+    // Valid payments already taken against a fee description in a term. A fee
+    // with collections behind it is price-locked for that term (same as
+    // Accounting::feePaymentCount on the web).
+    private function feePaymentCount($description, $sem, $sy)
+    {
+        $description = trim((string)$description);
+        if ($description === '') {
+            return 0;
+        }
+
+        $this->db->from('paymentsaccounts')
+            ->where('description', $description)
+            ->where('ORStatus', 'Valid')
+            ->where('CollectionSource', "Student's Account");
+        if ($sem !== '') {
+            $this->db->where('Sem', $sem);
+        }
+        if ($sy !== '') {
+            $this->db->where('SY', $sy);
+        }
+
+        return (int)$this->db->count_all_results();
+    }
+
     private function getRecentPayments($date = null, $limit = 200)
     {
         $this->db->select("p.ID, p.PDate, p.pTime, p.ORNumber, p.StudentNumber, p.Amount, p.description, p.PaymentType, p.Cashier, p.Sem, p.SY,
@@ -1493,6 +1517,28 @@ class MobileAccounting extends MobileApi
 
         $before = $this->db->select('feesid, feesType, Description, Amount')
             ->from('fees')->where('feesid', $feeId)->limit(1)->get()->row();
+
+        // Same freeze as the web (Accounting::course_setUp): once money has
+        // been collected against a fee this term, its name and price stay put
+        // until next term, so recorded balances keep matching the fee.
+        if ($before) {
+            $renamed  = trim((string)$before->Description) !== $description;
+            $repriced = abs((float)$before->Amount - $amount) > 0.004;
+            if ($renamed || $repriced) {
+                [$sem, $sy] = $this->currentSemSy();
+                $paidCount = $this->feePaymentCount((string)$before->Description, $sem, $sy);
+                if ($paidCount > 0) {
+                    $body = json_encode([
+                        'ok'      => false,
+                        'message' => '"' . $before->Description . '" already has ' . $paidCount . ' payment' . ($paidCount === 1 ? '' : 's')
+                            . ' recorded this term, so its name and amount are locked until the next term. Add a new fee instead.',
+                    ]);
+                    $this->record_idempotent_response(409, $body);
+                    return $this->json(json_decode($body, true), 409);
+                }
+            }
+        }
+
         $ok = $this->db->where('feesid', $feeId)->update('fees', $updateData);
         if ($before) {
             $this->log_accounting_change($tokenRow, 'update', 'fees', $feeId, (array)$before, $updateData, $ok, 'Updated fee', $description);
