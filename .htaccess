@@ -2,6 +2,8 @@ RewriteEngine On
 
 <IfModule mod_mime.c>
   AddType application/manifest+json .webmanifest
+  # Android app download: phones only offer to install with this type.
+  AddType application/vnd.android.package-archive .apk
 </IfModule>
 
 # ---------------------------------------------------------------------------
@@ -92,7 +94,7 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
   AddOutputFilterByType DEFLATE application/json application/xml
   AddOutputFilterByType DEFLATE image/svg+xml application/vnd.ms-fontobject
   # Fonts and images are already compressed; re-deflating them just burns CPU.
-  SetEnvIfNoCase Request_URI \.(?:woff2?|ttf|otf|eot|png|jpe?g|gif|webp|ico|zip|gz|pdf)$ no-gzip dont-vary
+  SetEnvIfNoCase Request_URI \.(?:woff2?|ttf|otf|eot|png|jpe?g|gif|webp|ico|zip|gz|pdf|apk)$ no-gzip dont-vary
 </IfModule>
 
 <IfModule mod_headers.c>

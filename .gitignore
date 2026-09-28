@@ -35,3 +35,6 @@ application/config/*ssl_log*
 *-ssl_log-*
 upload/forensic/fc_20260904_204545_abee776b.jpg
 upload/forensic/fc_20260904_110826_3ef426ac.jpg
+
+# Built Android app offered on the login page (copied from flutter_attendance builds)
+downloads/*.apk

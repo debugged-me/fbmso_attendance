@@ -562,6 +562,117 @@
       border-color: #3b5fd4;
     }
 
+    /* ===== Android app download (below the sign-in form) ===== */
+    .app-download {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 18px;
+      padding: 10px 14px;
+      border: 1.5px solid #c0d0ff;
+      border-radius: 12px;
+      color: #3b5fd4;
+      text-decoration: none;
+      transition: background .15s ease, border-color .15s ease;
+    }
+    .app-download:hover { background: #f2f5ff; border-color: #3b5fd4; color: #3b5fd4; text-decoration: none; }
+    .app-download .fa { font-size: 1.5rem; line-height: 1; color: #3ddc84; }
+    .app-download span { display: flex; flex-direction: column; text-align: left; line-height: 1.25; }
+    .app-download strong { font-size: .8rem; font-weight: 700; }
+    .app-download small { font-size: .7rem; color: #8fa0c8; }
+
+    .install-guide-link {
+      display: block;
+      margin: 8px auto 0;
+      padding: 4px 8px;
+      background: none;
+      border: none;
+      font: inherit;
+      font-size: .74rem;
+      font-weight: 600;
+      color: #8fa0c8;
+      cursor: pointer;
+    }
+    .install-guide-link:hover { color: #3b5fd4; }
+
+    /* Install guide modal */
+    .install-steps { list-style: none; counter-reset: step; padding: 0; margin: 0 0 18px; }
+    .install-steps li {
+      counter-increment: step;
+      position: relative;
+      padding: 0 0 16px 44px;
+    }
+    .install-steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: -2px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #eef2ff;
+      color: #3b5fd4;
+      font-weight: 800;
+      font-size: .82rem;
+      display: grid;
+      place-items: center;
+    }
+    /* Connector line between step numbers */
+    .install-steps li:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      left: 14px;
+      top: 32px;
+      bottom: 2px;
+      width: 2px;
+      background: #e6ebf5;
+    }
+    .install-steps h6 { font-weight: 800; font-size: .88rem; margin: 3px 0 4px; }
+    .install-steps h6 .fa { color: #3b5fd4; width: 16px; text-align: center; margin-right: 2px; }
+    .install-steps p { font-size: .8rem; line-height: 1.6; margin: 0 0 6px; }
+    .install-server {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0 8px;
+      padding: 8px 8px 8px 12px;
+      border: 1px solid #dfe6f5;
+      border-radius: 10px;
+      background: #f6f8fd;
+    }
+    .install-server code {
+      flex: 1;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-size: .78rem;
+      color: #0d1b4b;
+      background: none;
+      user-select: all;
+    }
+    .install-copy {
+      flex: none;
+      padding: 5px 12px;
+      border: 1.5px solid #c0d0ff;
+      border-radius: 8px;
+      background: #fff;
+      color: #3b5fd4;
+      font: inherit;
+      font-size: .74rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .install-copy.is-copied { border-color: #3ddc84; color: #1f9d57; }
+    .install-note {
+      font-size: .78rem;
+      line-height: 1.55;
+      color: #4a5a7a;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #f6f8fd;
+      margin-top: 8px;
+    }
+
     /* ===== Legal / Privacy footer (inside the form card) ===== */
     .legal-footer {
       text-align: center;
@@ -873,6 +984,18 @@
 
       .signup-note { color: #8fa0c8; }
       .signup-note a { color: #6b8fff; border-color: #2a3a5c; }
+
+      .app-download { color: #6b8fff; border-color: #2a3a5c; }
+      .app-download:hover { background: #16213a; border-color: #6b8fff; color: #6b8fff; }
+      .install-guide-link:hover { color: #6b8fff; }
+      .install-steps li::before { background: #1e2c4d; color: #8fb0ff; }
+      .install-steps li:not(:last-child)::after { background: #2a3a5c; }
+      .install-steps h6 .fa { color: #6b8fff; }
+      .install-server { background: #121c33; border-color: #2a3a5c; }
+      .install-server code { color: #e0e8ff; }
+      .install-copy { background: #16213a; border-color: #2a3a5c; color: #8fb0ff; }
+      .install-copy.is-copied { border-color: #3ddc84; color: #3ddc84; }
+      .install-note { background: #121c33; color: #b0c0e0; }
 
       .toggle-pass { color: #5a6a8e; }
       .toggle-pass:hover { color: #6b8fff; }

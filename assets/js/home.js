@@ -125,3 +125,53 @@
     if (infoFb) infoFb.style.display = 'none';
   }
 })();
+
+// "Copy" beside the server address in the install guide. navigator.clipboard
+// only exists on https and localhost, and students often open this page by the
+// PC's Wi-Fi address over plain http, so fall back to a hidden textarea.
+(function () {
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest ? e.target.closest('.install-copy') : null;
+    if (!btn) return;
+    var src = document.getElementById(btn.getAttribute('data-copy-target'));
+    if (!src) return;
+    var text = src.textContent.trim();
+
+    function done(ok) {
+      // If the browser refuses, select the address so a long-press copies it.
+      if (!ok && window.getSelection) {
+        var range = document.createRange();
+        range.selectNodeContents(src);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      btn.textContent = ok ? 'Copied' : 'Selected';
+      btn.classList.toggle('is-copied', ok);
+      setTimeout(function () {
+        btn.textContent = 'Copy';
+        btn.classList.remove('is-copied');
+      }, 2000);
+    }
+
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+      document.body.removeChild(ta);
+      done(ok);
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+    } else {
+      fallback();
+    }
+  });
+})();

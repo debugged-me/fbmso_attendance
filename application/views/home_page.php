@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="<?= base_url(); ?>assets/vendor/bootstrap/css/bootstrap.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/fonts/font-awesome-4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.css">
-  <link rel="stylesheet" href="<?= base_url(); ?>assets/css/home.css?v=30260836">
+  <link rel="stylesheet" href="<?= base_url(); ?>assets/css/home.css?v=30260838">
   <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=12'); ?>">
   <meta name="theme-color" content="#1a2942">
   <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
@@ -167,6 +167,26 @@
         <?php endif; ?>
       </form>
 
+      <?php
+        // Android app download. Shown only when the APK has been copied into
+        // downloads/, so a server without it never shows a dead link. The
+        // mtime query string makes phones fetch a rebuilt APK, not a cached one.
+        $apkPath = FCPATH . 'downloads/fbmso-attendance.apk';
+        if (is_file($apkPath)):
+          $apkSizeMb = round(filesize($apkPath) / 1048576);
+      ?>
+        <a class="app-download" href="<?= base_url('downloads/fbmso-attendance.apk?v=' . filemtime($apkPath)); ?>" download>
+          <i class="fa fa-android" aria-hidden="true"></i>
+          <span>
+            <strong>Download the Android app</strong>
+            <small>APK &middot; <?= $apkSizeMb; ?> MB</small>
+          </span>
+        </a>
+        <button type="button" class="install-guide-link" data-toggle="modal" data-target="#installGuideModal">
+          <i class="fa fa-question-circle-o" aria-hidden="true"></i> How to install on your phone
+        </button>
+      <?php endif; ?>
+
       <!-- Privacy / Terms footer (inside the form card) -->
       <div class="legal-footer">
         <div class="legal-links">
@@ -187,10 +207,10 @@
       <div class="modal-content" style="font-family:'DM Sans',sans-serif;border-radius:20px;">
         <div class="modal-header" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;border-radius:20px 20px 0 0;">
           <h5 class="modal-title" id="privacyLabel" style="font-weight:800;display:flex;align-items:center;gap:8px;">
-            <i class="mdi mdi-shield-lock-outline"></i> Data Privacy Notice
+            <i class="fa fa-shield" aria-hidden="true"></i> Data Privacy Notice
           </h5>
           <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="font-size:1.2rem;line-height:1;">
-            <i class="mdi mdi-close"></i>
+            <i class="fa fa-times" aria-hidden="true"></i>
           </button>
         </div>
         <div class="modal-body" style="padding:28px 32px;max-height:65vh;overflow-y:auto;">
@@ -241,10 +261,10 @@
       <div class="modal-content" style="font-family:'DM Sans',sans-serif;border-radius:20px;">
         <div class="modal-header" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;border-radius:20px 20px 0 0;">
           <h5 class="modal-title" id="termsLabel" style="font-weight:800;display:flex;align-items:center;gap:8px;">
-            <i class="mdi mdi-file-document-outline"></i> Terms of Use
+            <i class="fa fa-file-text-o" aria-hidden="true"></i> Terms of Use
           </h5>
           <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="font-size:1.2rem;line-height:1;">
-            <i class="mdi mdi-close"></i>
+            <i class="fa fa-times" aria-hidden="true"></i>
           </button>
         </div>
         <div class="modal-body" style="padding:28px 32px;max-height:65vh;overflow-y:auto;">
@@ -292,10 +312,10 @@
       <div class="modal-content" style="font-family:'DM Sans',sans-serif;border-radius:20px;">
         <div class="modal-header" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;border-radius:20px 20px 0 0;">
           <h5 class="modal-title" id="aboutLabel" style="font-weight:800;display:flex;align-items:center;gap:8px;">
-            <i class="mdi mdi-information-outline"></i> About
+            <i class="fa fa-info-circle" aria-hidden="true"></i> About
           </h5>
           <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="font-size:1.2rem;line-height:1;">
-            <i class="mdi mdi-close"></i>
+            <i class="fa fa-times" aria-hidden="true"></i>
           </button>
         </div>
         <div class="modal-body" style="padding:28px 32px;text-align:center;">
@@ -320,6 +340,74 @@
       </div>
     </div>
   </div>
+
+  <?php if (is_file($apkPath)): ?>
+  <!-- Android app install guide. Android words these screens differently per
+       phone brand and version, so each step names the usual wording and what
+       to look for when it differs. -->
+  <div class="modal fade" id="installGuideModal" tabindex="-1" role="dialog" aria-labelledby="installGuideLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+      <div class="modal-content" style="font-family:'DM Sans',sans-serif;border-radius:20px;">
+        <div class="modal-header" style="background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border:none;border-radius:20px 20px 0 0;">
+          <h5 class="modal-title" id="installGuideLabel" style="font-weight:800;display:flex;align-items:center;gap:8px;">
+            <i class="fa fa-android" aria-hidden="true"></i> Install the Android app
+          </h5>
+          <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="font-size:1.2rem;line-height:1;">
+            <i class="fa fa-times" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="modal-body" style="padding:24px 28px;">
+          <p style="font-size:.84rem;line-height:1.6;margin-bottom:18px;">
+            The app isn't on the Play Store, so Android asks a few extra questions the first time. This takes about two minutes.
+          </p>
+
+          <ol class="install-steps">
+            <li>
+              <h6><i class="fa fa-download" aria-hidden="true"></i> Download the app</h6>
+              <p>Tap <strong>Download the Android app</strong> on this page. If your browser warns <em>&ldquo;File might be harmful&rdquo;</em>, tap <strong>Download anyway</strong>. It's about <?= $apkSizeMb; ?> MB, so Wi-Fi is best.</p>
+            </li>
+            <li>
+              <h6><i class="fa fa-folder-open-o" aria-hidden="true"></i> Open the downloaded file</h6>
+              <p>When it finishes, tap <strong>Open</strong> at the bottom of the screen. Missed it? Swipe down to your notifications and tap the download, or open the <strong>Files</strong> app &rarr; <strong>Downloads</strong> &rarr; <strong>fbmso-attendance.apk</strong>.</p>
+            </li>
+            <li>
+              <h6><i class="fa fa-unlock-alt" aria-hidden="true"></i> Allow your browser to install apps</h6>
+              <p>The first time, Android says your phone <em>&ldquo;isn't allowed to install unknown apps from this source&rdquo;</em>. Tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong>, then press <strong>Back</strong>. This only allows the browser you downloaded with, such as Chrome.</p>
+            </li>
+            <li>
+              <h6><i class="fa fa-check-circle-o" aria-hidden="true"></i> Install</h6>
+              <p>Tap <strong>Install</strong>. If Google Play Protect shows a warning, tap <strong>More details</strong> &rarr; <strong>Install anyway</strong>. If it offers to scan the app, you can tap <strong>Scan app</strong> and wait, or install without scanning.</p>
+            </li>
+            <li>
+              <h6><i class="fa fa-sign-in" aria-hidden="true"></i> Open it and sign in</h6>
+              <p>Tap <strong>Open</strong>. When the app asks for the server address, enter:</p>
+              <div class="install-server">
+                <code id="installServerUrl"><?= html_escape(rtrim(base_url(), '/')); ?></code>
+                <button type="button" class="install-copy" data-copy-target="installServerUrl">Copy</button>
+              </div>
+              <p>Then sign in with the same username and password you use on this website.</p>
+            </li>
+          </ol>
+
+          <div class="install-note">
+            <strong>Can't find the setting?</strong> On Samsung, go to <strong>Settings</strong> &rarr; <strong>Apps</strong> &rarr; <strong>&vellip;</strong> &rarr; <strong>Special access</strong> &rarr; <strong>Install unknown apps</strong>, then turn it on for your browser. On other phones, search Settings for <strong>&ldquo;unknown apps&rdquo;</strong>.
+          </div>
+          <div class="install-note">
+            <strong>Updating?</strong> Download and install the new version over the old one. Don't uninstall first: scans that haven't synced yet would be lost.
+          </div>
+          <div class="install-note">
+            <strong>iPhone?</strong> The app is Android only. Use this website in Safari instead.
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top:1px solid #e6ebf5;padding:14px 28px;">
+          <button type="button" class="btn btn-link" style="font-weight:700;color:#8fa0c8;" data-dismiss="modal">Close</button>
+          <a class="btn-main" style="width:auto;padding:10px 22px;text-decoration:none;" href="<?= base_url('downloads/fbmso-attendance.apk?v=' . filemtime($apkPath)); ?>" download><span><i class="fa fa-download" aria-hidden="true"></i> Download</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <?php endif; ?>
+
   <div class="modal fade" id="forgotModal" tabindex="-1" role="dialog" aria-labelledby="forgotLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content" style="font-family:'DM Sans',sans-serif;">
@@ -361,7 +449,7 @@
     };
     window.SITE_URL = <?= json_encode(base_url()); ?>;
   </script>
-  <script src="<?= base_url(); ?>assets/js/home.js?v=30260831"></script>
+  <script src="<?= base_url(); ?>assets/js/home.js?v=30260833"></script>
   <script src="<?= base_url('assets/js/mobile-shell.js?v=12'); ?>"></script>
 
 </body>
