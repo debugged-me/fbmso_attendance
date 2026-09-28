@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 
 import 'connectivity_service.dart';
 import 'local_db.dart';
@@ -79,6 +80,10 @@ class OutboxService {
 
   /// Queue a write. Returns the row id. If online, [flush] is triggered
   /// immediately so the request still goes out in near-real-time.
+  ///
+  /// With [txn] the row is written inside the caller's transaction — so it
+  /// lands together with the caller's own rows or not at all — and nothing is
+  /// sent until the caller commits and calls [flushIfConnected].
   static Future<int> enqueue({
     required String operation,
     required String url,
@@ -88,6 +93,7 @@ class OutboxService {
     Map<String, dynamic>? payload,
     String contentType = 'application/json',
     String? refId,
+    DatabaseExecutor? txn,
   }) async {
     // Web preview: no SQLite — send directly, drop on failure.
     if (kIsWeb) {
@@ -102,7 +108,7 @@ class OutboxService {
       return 0;
     }
 
-    final db = await _database();
+    final db = txn ?? await _database();
     final now = DateTime.now().millisecondsSinceEpoch;
     final id = await db.insert(_table, {
       'operation': operation,
@@ -123,25 +129,42 @@ class OutboxService {
     });
 
     // If we happen to be online, try to send it right away.
-    if (await ConnectivityService.isConnected()) {
-      flush();
-    }
+    if (txn == null) await flushIfConnected();
     return id;
   }
 
   // ─── Flush ──────────────────────────────────────────────────────────────
 
+  /// Start a drain in the background when a network is up. Never waits on the
+  /// network itself, so it is safe to call from the scan path.
+  static Future<void> flushIfConnected() async {
+    if (kIsWeb) return;
+    try {
+      if (await ConnectivityService.isConnected()) flush();
+    } catch (_) {
+      // Connectivity unknown: the sync poll will try again.
+    }
+  }
+
   /// Drain all queued rows in FIFO order. Safe to call repeatedly; concurrent
   /// calls are coalesced via [_flushing].
-  static Future<void> flush() async {
+  ///
+  /// [force] is the user asking for it ("Sync now"): rows waiting out a
+  /// backoff are sent now instead of when their retry comes due.
+  static Future<void> flush({bool force = false}) async {
     if (kIsWeb) return;
     if (_flushing) return;
     _flushing = true;
-    onFlushStart?.call();
     try {
       final db = await _database();
       final token = tokenProvider?.call();
 
+      if (force) {
+        await db.update(_table, {'next_attempt_at': 0},
+            where: "status = 'queued'");
+      }
+
+      var announced = false;
       while (true) {
         final rows = await db.query(
           _table,
@@ -157,6 +180,12 @@ class OutboxService {
         // behind it, so a check-out can never overtake its own check-in.
         if (dueAt > DateTime.now().millisecondsSinceEpoch) break;
 
+        // Only once something is really being sent: the sync poll calls
+        // flush() every few seconds, mostly while the head is backing off.
+        if (!announced) {
+          onFlushStart?.call();
+          announced = true;
+        }
         if (!await _sendOne(db, row, token)) break;
       }
     } finally {
@@ -209,67 +238,115 @@ class OutboxService {
         contentType: contentType,
       );
     } catch (e) {
-      result = _SendResult(
-          success: false, conflict: false, authFailed: false,
-          statusCode: 0, body: e.toString());
+      result = _SendResult.failed(e.toString());
     }
 
-    if (result.success || result.conflict) {
+    if (result.outcome == SendOutcome.done ||
+        result.outcome == SendOutcome.rejected) {
       await _notifyResult(row, result);
     }
 
-    if (result.success) {
-      await db.delete(_table, where: 'id = ?', whereArgs: [id]);
-      return true;
-    }
+    switch (result.outcome) {
+      case SendOutcome.done:
+        await db.delete(_table, where: 'id = ?', whereArgs: [id]);
+        return true;
 
-    if (result.authFailed) {
-      // Retrying a 401 forever never re-auths. Park the row until the user
-      // signs in again, then resumeAfterAuth() puts it back in the queue.
-      await db.update(
-        _table,
-        {
-          'status': 'auth_blocked',
-          'last_error': result.body,
-          'last_attempt_at': now,
-          'retry_count': retryCount + 1,
-        },
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-      return false;
-    }
+      case SendOutcome.authFailed:
+        // Retrying a 401 forever never re-auths. Park the row until the user
+        // signs in again, then resumeAfterAuth() puts it back in the queue.
+        await db.update(
+          _table,
+          {
+            'status': 'auth_blocked',
+            'last_error': readableError(result.statusCode, result.body),
+            'last_attempt_at': now,
+            'retry_count': retryCount + 1,
+          },
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+        return false;
 
-    if (result.conflict) {
-      // 409/410 — the server rejected this permanently. Stop retrying and
-      // surface it for manual action rather than dropping it.
-      await db.update(
-        _table,
-        {
-          'status': 'conflict',
-          'last_error': result.body,
-          'last_attempt_at': now,
-          'retry_count': retryCount + 1,
-        },
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-      return true;
-    }
+      case SendOutcome.rejected:
+        // The server refused this for good. Stop retrying and keep it for
+        // the user to see, retry or discard, rather than dropping it.
+        await db.update(
+          _table,
+          {
+            'status': 'conflict',
+            'last_error': readableError(result.statusCode, result.body),
+            'last_attempt_at': now,
+            'retry_count': retryCount + 1,
+          },
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+        return true;
 
-    // Transient (network/5xx): stay queued, but behind a backoff.
-    await db.update(
-      _table,
-      {
-        'last_error': result.body,
-        'last_attempt_at': now,
-        'next_attempt_at': now + _backoffMillis(retryCount),
-        'retry_count': retryCount + 1,
-      },
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-    return false;
+      case SendOutcome.retry:
+        // Transient (network/5xx/not the API answering): stay queued, but
+        // behind a backoff.
+        await db.update(
+          _table,
+          {
+            'last_error': readableError(result.statusCode, result.body),
+            'last_attempt_at': now,
+            'next_attempt_at': now + _backoffMillis(retryCount),
+            'retry_count': retryCount + 1,
+          },
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+        return false;
+    }
+  }
+
+  /// What a response means for the queued row it answers.
+  ///
+  /// A 2xx is only done when the API itself answered: it always replies in
+  /// JSON, so an HTML page with a 200 is a captive portal or proxy in the way
+  /// and the row is sent again. A JSON reply with "ok": false is the server
+  /// refusing the write (a scan outside the activity's dates, a closed
+  /// activity), as is any 4xx but a timeout or rate limit: set aside for the
+  /// user instead of retried forever at the head of the queue.
+  @visibleForTesting
+  static SendOutcome classify(int statusCode, String body) {
+    if (statusCode == 401 || statusCode == 403) return SendOutcome.authFailed;
+    if (statusCode >= 200 && statusCode < 300) {
+      if (body.trim().isEmpty) return SendOutcome.done;
+      final Object? decoded;
+      try {
+        decoded = jsonDecode(body);
+      } catch (_) {
+        return SendOutcome.retry;
+      }
+      if (decoded is! Map) return SendOutcome.retry;
+      return decoded['ok'] == false ? SendOutcome.rejected : SendOutcome.done;
+    }
+    if (statusCode == 408 || statusCode == 429) return SendOutcome.retry;
+    if (statusCode >= 400 && statusCode < 500) return SendOutcome.rejected;
+    return SendOutcome.retry;
+  }
+
+  /// The server's own message when it sent one, else a short status line.
+  static String readableError(int statusCode, String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map && (decoded['message'] ?? '').toString().isNotEmpty) {
+        return decoded['message'].toString();
+      }
+    } catch (_) {
+      // Not JSON: fall through.
+    }
+    final flat = body.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (statusCode == 0) return flat.isEmpty ? 'No connection' : flat;
+    final looksLikePage = flat.startsWith('<');
+    final detail = looksLikePage || flat.isEmpty
+        ? ''
+        : ': ${flat.length > 120 ? '${flat.substring(0, 120)}…' : flat}';
+    return looksLikePage
+        ? 'HTTP $statusCode — a web page answered instead of the server'
+        : 'HTTP $statusCode$detail';
   }
 
   static Future<void> _notifyResult(
@@ -327,12 +404,9 @@ class OutboxService {
       return _SendResult.failed('Request timed out');
     }
 
-    final code = response.statusCode;
     return _SendResult(
-      success: code >= 200 && code < 300,
-      conflict: code == 409 || code == 410,
-      authFailed: code == 401 || code == 403,
-      statusCode: code,
+      outcome: classify(response.statusCode, response.body),
+      statusCode: response.statusCode,
       body: response.body,
     );
   }
@@ -345,6 +419,25 @@ class OutboxService {
     final rows = await db.rawQuery(
         "SELECT COUNT(*) AS c FROM $_table WHERE status = 'queued'");
     return Sqflite.firstIntValue(rows) ?? 0;
+  }
+
+  /// Queued rows, when the oldest was queued, and the most retries any has
+  /// needed — enough to tell a scan that is simply mid-upload from a queue
+  /// that is stuck.
+  static Future<({int count, int oldestQueuedAt, int maxRetries})>
+      queuedSummary() async {
+    if (kIsWeb) return (count: 0, oldestQueuedAt: 0, maxRetries: 0);
+    final db = await _database();
+    final row = (await db.rawQuery(
+      'SELECT COUNT(*) AS c, MIN(queued_at) AS oldest, '
+      "MAX(retry_count) AS retries FROM $_table WHERE status = 'queued'",
+    ))
+        .first;
+    return (
+      count: (row['c'] as int?) ?? 0,
+      oldestQueuedAt: (row['oldest'] as int?) ?? 0,
+      maxRetries: (row['retries'] as int?) ?? 0,
+    );
   }
 
   static Future<int> conflictCount() async {
@@ -386,13 +479,49 @@ class OutboxService {
     await db.delete(_table, where: 'id = ?', whereArgs: [id]);
   }
 
+  /// Send a refused row again, e.g. once an admin has reopened the activity.
+  ///
+  /// It goes out under a new idempotency key: the server keeps its first
+  /// answer per key for a day and would otherwise just replay the refusal.
+  /// That is safe because a refused write was never carried out, and scans
+  /// cannot double-count either way — the server also dedups them on their
+  /// client_scan_id.
   static Future<void> retryConflict(int id) async {
     final db = await _database();
     await db.update(
         _table,
-        {'status': 'queued', 'last_error': null, 'next_attempt_at': 0},
+        {
+          'status': 'queued',
+          'last_error': null,
+          'next_attempt_at': 0,
+          'idem_key': const Uuid().v4(),
+        },
         where: 'id = ?',
         whereArgs: [id]);
+    flush();
+  }
+
+  /// [retryConflict] for every refused row, e.g. after the admin fixed what
+  /// the server objected to for a whole batch of scans.
+  static Future<void> retryAllConflicts() async {
+    final db = await _database();
+    final rows = await db.query(_table,
+        columns: ['id'], where: "status = 'conflict'", orderBy: 'id ASC');
+    final batch = db.batch();
+    for (final r in rows) {
+      batch.update(
+        _table,
+        {
+          'status': 'queued',
+          'last_error': null,
+          'next_attempt_at': 0,
+          'idem_key': const Uuid().v4(),
+        },
+        where: 'id = ?',
+        whereArgs: [r['id']],
+      );
+    }
+    await batch.commit(noResult: true);
     flush();
   }
 
@@ -402,27 +531,36 @@ class OutboxService {
   }
 }
 
+/// What became of one attempt to send a queued row.
+enum SendOutcome {
+  /// The server accepted it: drop the row.
+  done,
+
+  /// The server refused it for good: set it aside for the user.
+  rejected,
+
+  /// The session is no longer valid: park it until the next sign-in.
+  authFailed,
+
+  /// No answer, or not the API answering: try again after a backoff.
+  retry,
+}
+
 class _SendResult {
   _SendResult({
-    required this.success,
-    required this.conflict,
-    required this.authFailed,
+    required this.outcome,
     required this.statusCode,
     required this.body,
   });
 
   /// Network-level failure: no status code, always retryable.
   factory _SendResult.failed(String body) => _SendResult(
-        success: false,
-        conflict: false,
-        authFailed: false,
+        outcome: SendOutcome.retry,
         statusCode: 0,
         body: body,
       );
 
-  final bool success;
-  final bool conflict;
-  final bool authFailed;
+  final SendOutcome outcome;
   final int statusCode;
   final String body;
 }

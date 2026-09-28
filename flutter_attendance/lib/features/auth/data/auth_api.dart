@@ -32,12 +32,13 @@ class AuthApi {
     return normalized.replaceFirst(RegExp(r'/+$'), '');
   }
 
-  Future<MobileConfig> fetchConfig(String baseUrl) async {
+  Future<MobileConfig> fetchConfig(String baseUrl, {Duration? timeout}) async {
     final response = await _safeRequest(
       () => _client.get(
         _uri(baseUrl, '/api/mobile/config'),
         headers: _jsonHeaders,
       ),
+      timeout: timeout,
     );
     return MobileConfig.fromJson(_decode(response));
   }
@@ -80,6 +81,7 @@ class AuthApi {
   Future<AppSession> fetchCurrentSession({
     required String baseUrl,
     required String token,
+    Duration? timeout,
   }) async {
     final response = await _safeRequest(
       () => _client.get(
@@ -89,6 +91,7 @@ class AuthApi {
           HttpHeaders.authorizationHeader: 'Bearer $token',
         },
       ),
+      timeout: timeout,
     );
 
     final data = _decode(response);
@@ -395,10 +398,12 @@ class AuthApi {
   }
 
   Future<http.Response> _safeRequest(
-    Future<http.Response> Function() request,
-  ) async {
+    Future<http.Response> Function() request, {
+    Duration? timeout,
+  }) async {
     try {
-      final response = await request().timeout(const Duration(seconds: 30));
+      final response =
+          await request().timeout(timeout ?? const Duration(seconds: 30));
       return response;
     } on http.ClientException catch (e) {
       throw ApiException(e.message, statusCode: 0);

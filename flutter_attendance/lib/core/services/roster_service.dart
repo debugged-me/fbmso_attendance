@@ -66,6 +66,12 @@ class RosterService {
   /// Fetch the roster for [activityId] and store it locally. Returns the
   /// number of students cached. Photos are fetched afterwards in the
   /// background so the roster is usable as soon as the text lands.
+  ///
+  /// The roster already on the phone is only replaced once the new one has
+  /// fully arrived, in one transaction: a signal that drops mid-download (a
+  /// phone at a venue briefly catching one bar) leaves the old roster intact
+  /// instead of half of one. When the phone already holds this exact roster
+  /// version nothing is downloaded at all.
   static Future<int> download({
     required String baseUrl,
     required String token,
@@ -96,29 +102,33 @@ class RosterService {
       final sessions = manifest['sessions'] is Map ? manifest['sessions'] : {};
 
       expectedCount = total;
-
       final db = await LocalDb.instance();
-      await db.delete('roster_student',
-          where: 'activity_id = ?', whereArgs: [activityId]);
 
-      // Write the new salt before any student rows land. If the download dies
-      // partway, the rows that did arrive still resolve — leaving the previous
-      // salt in place would silently mismatch every one of them.
-      await db.insert(
-        'roster_meta',
-        {
-          'activity_id': activityId,
-          'roster_version': version,
-          'salt': salt,
-          'sessions': jsonEncode(sessions),
-          'total': total,
-          'fetched_at': DateTime.now().millisecondsSinceEpoch,
-          'complete': 0,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      // Same roster as the one on the phone: keep it, refresh only the
+      // session windows (an admin may have edited those).
+      final current = await metaFor(activityId);
+      if (current != null &&
+          current.complete &&
+          current.version == version &&
+          current.salt == salt) {
+        await db.update(
+          'roster_meta',
+          {
+            'sessions': jsonEncode(sessions),
+            'fetched_at': DateTime.now().millisecondsSinceEpoch,
+          },
+          where: 'activity_id = ?',
+          whereArgs: [activityId],
+        );
+        downloadedCount = current.total;
+        onProgress?.call(current.total, current.total);
+        if (withPhotos) cachePhotos(activityId);
+        return current.total;
+      }
 
-      var stored = 0;
+      // The whole roster lands in memory first (a few hundred KB for
+      // thousands of students).
+      final students = <Map<String, dynamic>>[];
       for (var seq = 0; seq < chunkCount; seq++) {
         final chunk = await _getJson(
           '$base/api/mobile/roster/chunk?activity_id=$activityId'
@@ -126,15 +136,38 @@ class RosterService {
           token,
         );
         if (chunk['ok'] != true) {
-          // The roster changed mid-download; start over against the new one.
+          // The roster changed mid-download; the next attempt starts over
+          // against the new one.
           throw Exception(
               (chunk['message'] ?? 'Roster changed during download').toString());
         }
+        for (final raw in (chunk['students'] as List?) ?? const []) {
+          students.add(raw as Map<String, dynamic>);
+        }
+        downloadedCount = students.length;
+        onProgress?.call(students.length, total);
+      }
 
-        final students = (chunk['students'] as List?) ?? [];
-        final batch = db.batch();
-        for (final raw in students) {
-          final s = raw as Map<String, dynamic>;
+      // Photos already on the phone carry over for students whose photo did
+      // not change, instead of being fetched again under the new hashes.
+      final keptPhotos = {
+        for (final r in await db.query(
+          'roster_student',
+          columns: ['student_number', 'photo_url', 'photo_path'],
+          where: 'activity_id = ? AND photo_path IS NOT NULL',
+          whereArgs: [activityId],
+        ))
+          '${r['student_number']}|${r['photo_url']}': r['photo_path'] as String,
+      };
+
+      final uniqueStudents = await db.transaction((txn) async {
+        await txn.delete('roster_student',
+            where: 'activity_id = ?', whereArgs: [activityId]);
+
+        final batch = txn.batch();
+        for (final s in students) {
+          final number = (s['student_number'] ?? '').toString();
+          final photoUrl = s['photo_url']?.toString();
           // Replace, not insert: a student matched twice by the server's
           // o_users join arrives twice under one qr_hash.
           batch.insert(
@@ -142,40 +175,41 @@ class RosterService {
             {
               'activity_id': activityId,
               'qr_hash': (s['qr_hash'] ?? '').toString(),
-              'student_number': (s['student_number'] ?? '').toString(),
+              'student_number': number,
               'name': (s['name'] ?? '').toString(),
               'program': (s['program'] ?? '').toString(),
               'section': (s['section'] ?? '').toString(),
-              'photo_url': s['photo_url']?.toString(),
+              'photo_url': photoUrl,
+              'photo_path': keptPhotos['$number|$photoUrl'],
             },
             conflictAlgorithm: ConflictAlgorithm.replace,
           );
         }
         await batch.commit(noResult: true);
 
-        stored += students.length;
-        downloadedCount = stored;
-        onProgress?.call(stored, total);
-      }
+        // The server's joins can emit a student more than once, so the honest
+        // count is what actually landed after the primary key deduped them.
+        final unique = Sqflite.firstIntValue(await txn.rawQuery(
+              'SELECT COUNT(*) FROM roster_student WHERE activity_id = ?',
+              [activityId],
+            )) ??
+            students.length;
 
-      // The server's joins can emit a student more than once, so the honest
-      // count is what actually landed after the primary key deduped them.
-      final uniqueStudents = Sqflite.firstIntValue(await db.rawQuery(
-            'SELECT COUNT(*) FROM roster_student WHERE activity_id = ?',
-            [activityId],
-          )) ??
-          stored;
-
-      await db.update(
-        'roster_meta',
-        {
-          'complete': 1,
-          'total': uniqueStudents,
-          'fetched_at': DateTime.now().millisecondsSinceEpoch,
-        },
-        where: 'activity_id = ?',
-        whereArgs: [activityId],
-      );
+        await txn.insert(
+          'roster_meta',
+          {
+            'activity_id': activityId,
+            'roster_version': version,
+            'salt': salt,
+            'sessions': jsonEncode(sessions),
+            'total': unique,
+            'fetched_at': DateTime.now().millisecondsSinceEpoch,
+            'complete': 1,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        return unique;
+      });
 
       if (withPhotos) {
         // Deliberately not awaited: the roster is already usable, and photos

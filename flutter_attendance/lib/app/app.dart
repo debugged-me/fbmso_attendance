@@ -27,6 +27,9 @@ class _FlutterAttendanceAppState extends State<FlutterAttendanceApp> {
   late final Future<({AuthController controller, bool biometricOk})>
       _initFuture = _init();
 
+  /// Set once the user gets past the lock screen (unlocked or signed out).
+  bool _unlocked = false;
+
   Future<({AuthController controller, bool biometricOk})> _init() async {
     final preferences = await SharedPreferences.getInstance();
     final controller = AuthController(
@@ -39,16 +42,13 @@ class _FlutterAttendanceAppState extends State<FlutterAttendanceApp> {
     await NotificationService.instance.init();
 
     // If the user has a saved session and biometric is enabled, gate
-    // the app behind biometrics before showing any data.
+    // the app behind biometrics before showing any data. A cancelled prompt
+    // leaves the app locked rather than signing out: signing back in needs
+    // the server, which a phone at a venue with no signal cannot reach.
     bool biometricOk = true;
     if (controller.isAuthenticated) {
       final schoolName = (controller.config?.schoolName ?? '').trim();
       biometricOk = await BiometricService.gate(schoolName: schoolName);
-      if (!biometricOk) {
-        // User cancelled — sign them out so they see the login screen.
-        await controller.logout();
-        biometricOk = true; // proceed to login, not a hard block
-      }
     }
 
     return (controller: controller, biometricOk: biometricOk);
@@ -78,6 +78,21 @@ class _FlutterAttendanceAppState extends State<FlutterAttendanceApp> {
           // Use the connected school's name once /config resolves; before
           // that the generic [AppBrand.name] fallback is shown.
           final schoolName = (controller.config?.schoolName ?? '').trim();
+          if (!snapshot.data!.biometricOk && !_unlocked) {
+            return _LockedScreen(
+              schoolName: schoolName,
+              onUnlock: () async {
+                if (await BiometricService.gate(schoolName: schoolName) &&
+                    mounted) {
+                  setState(() => _unlocked = true);
+                }
+              },
+              onSignOut: () async {
+                await controller.logout();
+                if (mounted) setState(() => _unlocked = true);
+              },
+            );
+          }
           return _AuthFlow(
             controller: controller,
             schoolName: schoolName,
@@ -226,6 +241,69 @@ class _SplashScreen extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2.5),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown when the biometric prompt at start-up was cancelled or failed. The
+/// session and any queued scans stay on the device until the user unlocks.
+class _LockedScreen extends StatelessWidget {
+  const _LockedScreen({
+    required this.schoolName,
+    required this.onUnlock,
+    required this.onSignOut,
+  });
+  final String schoolName;
+  final Future<void> Function() onUnlock;
+  final Future<void> Function() onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = schoolName.trim().isEmpty ? AppBrand.name : schoolName;
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/img/icon-logo.png',
+                width: 96,
+                height: 96,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                name,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Locked. Unlock to continue.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: AppTheme.textMuted),
+              ),
+              const SizedBox(height: 28),
+              FilledButton.icon(
+                onPressed: onUnlock,
+                icon: const Icon(Icons.fingerprint_rounded),
+                label: const Text('Unlock'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: onSignOut,
+                child: const Text('Sign out'),
+              ),
+            ],
+          ),
         ),
       ),
     );

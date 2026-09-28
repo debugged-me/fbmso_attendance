@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../design/components/components.dart';
 import '../design/tokens/app_tokens.dart';
 import '../services/biometric_service.dart';
+import '../services/connectivity_service.dart';
+import '../services/outbox_service.dart';
 import '../../features/auth/domain/app_session.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/change_avatar_screen.dart';
@@ -181,6 +183,23 @@ class AppAppDrawer extends StatelessWidget {
 
   void _confirmLogout(BuildContext context) async {
     Navigator.of(context).pop();
+
+    // Signing out is easy to undo online and a dead end offline: signing back
+    // in needs the server. Say so, and say what is still waiting to upload.
+    final pending = await OutboxService.queuedCount() +
+        await OutboxService.authBlockedCount() +
+        await OutboxService.conflictCount();
+    final online = await ConnectivityService.isReachable();
+    if (!context.mounted) return;
+    final warnings = [
+      if (!online)
+        'This phone is offline. You will not be able to sign in again '
+            'until it has a connection.',
+      if (pending > 0)
+        '$pending item(s) have not reached the server yet. They stay on this '
+            'phone and upload after the next sign-in — under that account.',
+    ];
+
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -199,6 +218,29 @@ class AppAppDrawer extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('You will need to sign in again to continue.'),
+            for (final w in warnings) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppInk.caution.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        color: AppInk.caution, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(w,
+                          style: const TextStyle(
+                              fontSize: 12.5, color: AppInk.heading)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             Row(
               children: [
@@ -214,7 +256,7 @@ class AppAppDrawer extends StatelessWidget {
                     style: FilledButton.styleFrom(
                         backgroundColor: AppInk.critical),
                     onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('Sign out'),
+                    child: Text(warnings.isEmpty ? 'Sign out' : 'Sign out anyway'),
                   ),
                 ),
               ],

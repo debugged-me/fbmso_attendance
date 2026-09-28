@@ -15,9 +15,13 @@ import '../domain/mobile_config.dart';
 /// Owns the auth state machine. The app widget holds one instance and
 /// rebuilds the tree when [session] / [config] change.
 class AuthController extends ChangeNotifier {
-  AuthController({required AuthApi api, required SessionStore store})
-      : _api = api,
-        _store = store {
+  AuthController({
+    required AuthApi api,
+    required SessionStore store,
+    Future<bool> Function()? isOnline,
+  })  : _api = api,
+        _store = store,
+        _isOnline = isOnline ?? _interfaceUp {
     // Queued writes authenticate with the live token, not the one captured
     // when they were enqueued.
     OutboxService.tokenProvider = () => _session?.token;
@@ -26,6 +30,19 @@ class AuthController extends ChangeNotifier {
 
   final AuthApi _api;
   final SessionStore _store;
+  final Future<bool> Function() _isOnline;
+
+  /// How long a cold start waits on the server before carrying on with the
+  /// saved session. A dead one-bar signal must not hold the splash screen.
+  static const _bootTimeout = Duration(seconds: 8);
+
+  static Future<bool> _interfaceUp() async {
+    try {
+      return await ConnectivityService.isConnected();
+    } catch (_) {
+      return true; // unknown: let the request itself find out
+    }
+  }
 
   AppSession? _session;
   MobileConfig? _config;
@@ -41,7 +58,13 @@ class AuthController extends ChangeNotifier {
   String? get error => _error;
 
   /// On cold start: restore the saved base URL + session, then verify the
-  /// token is still valid via `/auth/me`. Falls back to login on any failure.
+  /// token is still valid via `/auth/me`.
+  ///
+  /// Only the server refusing the token signs the user out. With no signal the
+  /// saved session is used as-is: signing in again needs the server, so
+  /// dropping it would leave a phone restarted at a venue unable to scan. The
+  /// token is checked again by the first request that reaches the server, and
+  /// writes queued meanwhile wait for a sign-in if it was refused.
   Future<void> bootstrap() async {
     _baseUrl = _store.readBaseUrl();
     final saved = _store.readSession();
@@ -52,8 +75,15 @@ class AuthController extends ChangeNotifier {
       return;
     }
 
+    if (!await _isOnline()) {
+      _session = saved;
+      _bootstrapping = false;
+      notifyListeners();
+      return;
+    }
+
     try {
-      _config = await _api.fetchConfig(_baseUrl);
+      _config = await _api.fetchConfig(_baseUrl, timeout: _bootTimeout);
     } catch (_) {
       // Config fetch failure is non-fatal during bootstrap; the user can
       // still attempt to log in.
@@ -63,17 +93,30 @@ class AuthController extends ChangeNotifier {
       _session = await _api.fetchCurrentSession(
         baseUrl: _baseUrl,
         token: saved.token,
+        timeout: _bootTimeout,
       );
       await _store.saveSession(_session!);
+    } on ApiException catch (e) {
+      if (_refusedByServer(e)) {
+        await _store.clearSession();
+        _session = null;
+      } else {
+        _session = saved;
+      }
     } catch (_) {
-      // Token expired or unreachable — clear and require a fresh login.
-      await _store.clearSession();
-      _session = null;
+      _session = saved;
     }
 
     _bootstrapping = false;
     notifyListeners();
   }
+
+  /// `/auth/me` answered about this token or account: invalid, expired or
+  /// revoked (401), inactive or forced to change its password (403), deleted
+  /// (404). No network, a timeout, a 5xx or a captive portal's HTML page are
+  /// not answers.
+  static bool _refusedByServer(ApiException e) =>
+      e.statusCode == 401 || e.statusCode == 403 || e.statusCode == 404;
 
   /// Load `/config` for a freshly typed base URL (used by the welcome screen
   /// to show the school name/logo before login).

@@ -96,7 +96,7 @@ class SyncStatusBanner extends StatelessWidget {
         );
       case SyncStatus.synced:
         return (
-          '${s.conflictCount} conflict(s) need attention',
+          '${s.conflictCount} item(s) refused by the server — tap to review',
           AppTheme.error,
           Icons.error_outline
         );

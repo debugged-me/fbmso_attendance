@@ -4,6 +4,7 @@ import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/services/connectivity_service.dart';
 import '../../../core/services/outbox_service.dart';
+import '../../../core/services/scan_ledger_service.dart';
 import '../../../core/services/sync_orchestrator.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 
@@ -21,6 +22,10 @@ class SyncReportScreen extends StatefulWidget {
 
 class _SyncReportScreenState extends State<SyncReportScreen> {
   List<Map<String, dynamic>> _rows = [];
+
+  /// Who and when for each attendance scan, by its client scan id.
+  Map<String, ({String studentNumber, String name, DateTime scannedAt})>
+      _scans = const {};
   bool _loading = true;
   bool _syncing = false;
 
@@ -32,17 +37,22 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
 
   Future<void> _load() async {
     final rows = await OutboxService.allRows();
+    final scans = await ScanLedgerService.describe(rows
+        .where((r) => r['operation'] == 'scanner_consume')
+        .map((r) => (r['ref_id'] ?? '').toString()));
     if (!mounted) return;
     setState(() {
       _rows = rows;
+      _scans = scans;
       _loading = false;
     });
   }
 
+  /// The user asked for it now, so rows waiting out a retry backoff go too.
   Future<void> _syncNow() async {
     setState(() => _syncing = true);
     ConnectivityService.invalidateProbe();
-    await OutboxService.flush();
+    await OutboxService.flush(force: true);
     await SyncOrchestrator.instance.refresh();
     if (!mounted) return;
     setState(() => _syncing = false);
@@ -92,11 +102,23 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
                           ),
                         if (conflicts.isNotEmpty)
                           _section(
-                            'Rejected by the server',
-                            'These were sent but refused. They will not retry '
-                                'on their own.',
+                            'Refused by the server',
+                            'These were sent but refused, for the reason shown. '
+                                'They will not retry on their own: fix the '
+                                'cause (e.g. reopen the activity), then Retry.',
                             AppInk.critical,
                             conflicts,
+                            action: conflicts.length > 1
+                                ? TextButton.icon(
+                                    onPressed: () async {
+                                      await OutboxService.retryAllConflicts();
+                                      await _load();
+                                    },
+                                    icon: const Icon(Icons.replay_rounded,
+                                        size: 18),
+                                    label: const Text('Retry all'),
+                                  )
+                                : null,
                           ),
                         if (queued.isNotEmpty)
                           _section(
@@ -139,7 +161,8 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
       );
 
   Widget _section(String title, String blurb, Color tint,
-      List<Map<String, dynamic>> rows) {
+      List<Map<String, dynamic>> rows,
+      {Widget? action}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -166,6 +189,10 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
                     fontSize: 12, fontWeight: FontWeight.w700, color: tint),
               ),
             ),
+            if (action != null) ...[
+              const Spacer(),
+              action,
+            ],
           ],
         ),
         const SizedBox(height: 4),
@@ -181,8 +208,12 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
     final id = row['id'] as int;
     final status = (row['status'] ?? '').toString();
     final retries = (row['retry_count'] as int?) ?? 0;
-    final error = (row['last_error'] ?? '').toString();
+    final rawError = (row['last_error'] ?? '').toString();
+    // Rows queued by older builds stored the raw reply; show its message.
+    final error =
+        rawError.isEmpty ? '' : OutboxService.readableError(0, rawError);
     final queuedAt = row['queued_at'] as int?;
+    final scan = _scans[(row['ref_id'] ?? '').toString()];
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -209,6 +240,22 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
                       style: TextStyle(fontSize: 11, color: AppInk.muted)),
               ],
             ),
+            if (scan != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                [
+                  if (scan.name.isNotEmpty) scan.name,
+                  scan.studentNumber.isNotEmpty
+                      ? scan.studentNumber
+                      : 'QR not on this phone\'s roster',
+                  'scanned ${_clock(scan.scannedAt)}',
+                ].join(' · '),
+                style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppInk.heading),
+              ),
+            ],
             if (retries > 0 || error.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(
@@ -274,6 +321,13 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     return '${diff.inDays}d ago';
+  }
+
+  static String _clock(DateTime t) {
+    final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
+    final m = t.minute.toString().padLeft(2, '0');
+    final day = '${t.month}/${t.day}';
+    return '$day $h:$m ${t.hour < 12 ? 'AM' : 'PM'}';
   }
 
   static String _shorten(String value) {

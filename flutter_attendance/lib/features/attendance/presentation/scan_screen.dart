@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,15 +9,17 @@ import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/services/connectivity_service.dart';
 import '../../../core/services/roster_service.dart';
+import '../../../core/services/scan_ledger_service.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../auth/domain/app_session.dart';
 import '../data/attendance_api.dart';
 import '../domain/attendance_models.dart';
 import '../domain/qr_payload_parser.dart';
 
-/// Instructor/personnel scanner. Camera scans a student's QR, the token is
-/// POSTed to `/attendance/consume`. When offline the scan queues to the
-/// outbox and the UI confirms "Saved offline".
+/// Instructor/personnel scanner. Camera scans a student's QR; the scan is
+/// decided and saved on the phone at once and uploaded to
+/// `/attendance/consume` in the background, so the line never waits on the
+/// network. Each tile updates when the server's verdict for it arrives.
 class ScanScreen extends StatefulWidget {
   const ScanScreen({
     super.key,
@@ -38,8 +42,15 @@ class _ScanScreenState extends State<ScanScreen> {
   final AudioPlayer _player = AudioPlayer();
   bool _processing = false;
   final List<_ScanRecord> _recent = [];
+  StreamSubscription<ScanVerdict>? _verdictSub;
+
+  /// The code last acted on and when the camera last saw it. It is ignored
+  /// while it stays in view (a student holding their phone up must not check
+  /// out ten seconds later) and counts again once it has been out of view
+  /// for [_sameCodeGap] — e.g. the same student coming back to check out.
   String? _lastPayload;
-  DateTime? _lastDetectedAt;
+  DateTime? _lastSeenAt;
+  static const _sameCodeGap = Duration(seconds: 3);
 
   // Result flash overlay — brief green/red tint over the camera so the
   // operator gets confirmation without looking at the history list.
@@ -51,9 +62,11 @@ class _ScanScreenState extends State<ScanScreen> {
   CheckResult? _verifyResult;
   int _verifyToken = 0; // bumps per scan so stale timers can't hide a new card
 
-  // Offline roster download state, surfaced so the operator knows whether the
-  // scanner can name students before they walk out of signal.
+  // Offline roster state, surfaced so the operator knows whether the scanner
+  // can name students — shown from what is on the phone, signal or not.
   bool _rosterLoading = false;
+  bool _rosterKnown = false;
+  bool _rosterComplete = false;
   int _rosterCount = 0;
   (int, int)? _rosterProgress;
 
@@ -63,6 +76,7 @@ class _ScanScreenState extends State<ScanScreen> {
     'already_in',
     'duplicate',
     'queued',
+    'unverified',
     'inactive_student',
   };
 
@@ -87,21 +101,25 @@ class _ScanScreenState extends State<ScanScreen> {
   void _playResult(CheckResult r) {
     final src = switch (r.mode) {
       'checked_in' || 'checked_out' => 'sounds/scan_success.wav',
-      'already_in' || 'duplicate' || 'queued' => 'sounds/scan_duplicate.wav',
+      'already_in' ||
+      'duplicate' ||
+      'queued' ||
+      'unverified' =>
+        'sounds/scan_duplicate.wav',
       _ => 'sounds/scan_error.wav',
     };
     _player.stop();
     _player.play(AssetSource(src));
   }
 
-  void _flash(bool ok) {
-    if (ok) {
-      HapticFeedback.mediumImpact();
-    } else {
+  void _flash(Color color) {
+    if (color == AppInk.critical) {
       HapticFeedback.heavyImpact();
+    } else {
+      HapticFeedback.mediumImpact();
     }
     setState(() {
-      _flashColor = ok ? AppInk.positive : AppInk.critical;
+      _flashColor = color;
       _flashOpacity = 0.28;
     });
     Future.delayed(const Duration(milliseconds: 350), () {
@@ -114,7 +132,11 @@ class _ScanScreenState extends State<ScanScreen> {
     super.initState();
     _api = AttendanceApi();
     _controller = MobileScannerController(
-      detectionSpeed: DetectionSpeed.noDuplicates,
+      // Every sighting is reported; _onDetect decides what counts. With
+      // noDuplicates a code could not be read again until a different one
+      // was — a student checking out on the phone that checked them in, with
+      // nobody scanned in between, was silently ignored.
+      detectionSpeed: DetectionSpeed.normal,
       facing: CameraFacing.back,
       // QR only — skipping other symbologies reduces false work per frame.
       formats: const [BarcodeFormat.qrCode],
@@ -122,19 +144,23 @@ class _ScanScreenState extends State<ScanScreen> {
       // default resolution requires holding the QR close to the lens.
       cameraResolution: const Size(1920, 1080),
     );
+    _verdictSub = ScanLedgerService.verdicts.listen(_onVerdict);
     _prepareOfflineRoster();
   }
 
-  /// Pull the roster while there is still signal, so the scanner can name
-  /// students and catch repeats once the connection drops. Best effort —
-  /// scanning still works without it, just without local identity.
+  /// Show what is on the phone, then refresh it while there is signal, so the
+  /// scanner can name students and catch repeats once the connection drops.
+  /// Best effort — scanning still works without it, just without local
+  /// identity. A download that fails part-way leaves the saved roster as it
+  /// was, and an unchanged roster is not downloaded again.
   Future<void> _prepareOfflineRoster() async {
+    await _loadRosterState();
     if (!await ConnectivityService.isReachable()) return;
     if (!mounted) return;
 
     setState(() => _rosterLoading = true);
     try {
-      final count = await RosterService.download(
+      await RosterService.download(
         baseUrl: widget.session.baseUrl,
         token: widget.session.token,
         activityId: widget.activityId,
@@ -142,26 +168,48 @@ class _ScanScreenState extends State<ScanScreen> {
           if (mounted) setState(() => _rosterProgress = (done, total));
         },
       );
-      if (mounted) setState(() => _rosterCount = count);
     } catch (_) {
       // Leave whatever snapshot is already on the device in place.
     } finally {
       if (mounted) setState(() => _rosterLoading = false);
+      await _loadRosterState();
     }
+  }
+
+  Future<void> _loadRosterState() async {
+    final meta = await RosterService.metaFor(widget.activityId);
+    if (!mounted) return;
+    setState(() {
+      _rosterKnown = true;
+      _rosterCount = meta?.total ?? 0;
+      _rosterComplete = meta?.complete ?? false;
+    });
   }
 
   /// Tells the operator whether this phone can still name students once the
   /// signal goes — the difference between a useful offline scan and a blind one.
   Widget _rosterBanner() {
-    if (!_rosterLoading && _rosterCount == 0) return const SizedBox.shrink();
+    if (!_rosterLoading && !_rosterKnown) return const SizedBox.shrink();
 
     final (done, total) = _rosterProgress ?? (0, 0);
-    final label = _rosterLoading
-        ? (total > 0
-            ? 'Preparing offline roster… $done of $total'
-            : 'Preparing offline roster…')
-        : 'Offline roster ready — $_rosterCount student(s)';
-    final tint = _rosterLoading ? AppInk.accent : AppInk.positive;
+    final String label;
+    final Color tint;
+    if (_rosterLoading) {
+      label = total > 0
+          ? 'Preparing offline roster… $done of $total'
+          : 'Preparing offline roster…';
+      tint = AppInk.accent;
+    } else if (_rosterCount > 0 && _rosterComplete) {
+      label = 'Offline roster ready — $_rosterCount student(s)';
+      tint = AppInk.positive;
+    } else if (_rosterCount > 0) {
+      label = 'Offline roster incomplete — connect once to finish it';
+      tint = AppInk.caution;
+    } else {
+      label = 'No offline roster on this phone — names will not show until '
+          'it downloads (scans are still saved)';
+      tint = AppInk.caution;
+    }
 
     return Container(
       width: double.infinity,
@@ -172,7 +220,9 @@ class _ScanScreenState extends State<ScanScreen> {
           Icon(
             _rosterLoading
                 ? Icons.download_rounded
-                : Icons.offline_pin_rounded,
+                : tint == AppInk.positive
+                    ? Icons.offline_pin_rounded
+                    : Icons.warning_amber_rounded,
             size: 16,
             color: tint,
           ),
@@ -194,26 +244,30 @@ class _ScanScreenState extends State<ScanScreen> {
 
   @override
   void dispose() {
+    _verdictSub?.cancel();
     _controller.dispose();
     _player.dispose();
     super.dispose();
   }
 
   Future<void> _onDetect(BarcodeCapture capture) async {
-    if (_processing) return;
     final barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
     final raw = barcodes.first.rawValue ?? '';
     if (raw.isEmpty) return;
 
     final now = DateTime.now();
-    if (_lastPayload == raw &&
-        _lastDetectedAt != null &&
-        now.difference(_lastDetectedAt!) < const Duration(seconds: 3)) {
+    if (raw == _lastPayload &&
+        _lastSeenAt != null &&
+        now.difference(_lastSeenAt!) < _sameCodeGap) {
+      _lastSeenAt = now; // still in view
       return;
     }
+    // Busy with the previous code (a few milliseconds of local work): this
+    // one is still in front of the camera and is read on the next frame.
+    if (_processing) return;
     _lastPayload = raw;
-    _lastDetectedAt = now;
+    _lastSeenAt = now;
 
     final qrToken = QrPayloadParser.studentToken(raw);
     if (qrToken.isEmpty) {
@@ -222,7 +276,7 @@ class _ScanScreenState extends State<ScanScreen> {
         mode: 'invalid_qr',
         message: 'Not a student attendance QR. Open My QR and try again.',
       );
-      _flash(false);
+      _flash(AppInk.critical);
       _playResult(badQr);
       setState(() {
         _recent.insert(
@@ -251,13 +305,16 @@ class _ScanScreenState extends State<ScanScreen> {
       result = const CheckResult(
         ok: false,
         mode: 'err',
-        message:
-            'Could not submit this scan. Check your connection and try again.',
+        message: 'Could not save this scan on the phone. Scan it again.',
       );
     }
 
     if (!mounted) return;
-    _flash(result.ok || result.mode == 'queued' || result.mode == 'already_in');
+    _flash(switch (result.mode) {
+      'checked_in' || 'checked_out' => AppInk.positive,
+      _ when result.ok => AppInk.caution,
+      _ => AppInk.critical,
+    });
     _playResult(result);
     _showVerify(result);
     setState(() {
@@ -265,6 +322,34 @@ class _ScanScreenState extends State<ScanScreen> {
           0, _ScanRecord(raw: raw, result: result, at: DateTime.now()));
       _processing = false;
     });
+  }
+
+  /// The server answered for a scan made on this screen: replace the phone's
+  /// provisional answer on its tile. A refusal that arrives while the student
+  /// is likely still at the table also buzzes, so they can be called back.
+  void _onVerdict(ScanVerdict v) {
+    if (!mounted) return;
+    final i = _recent.indexWhere((r) => r.result.clientScanId == v.clientScanId);
+    if (i < 0) return;
+    final before = _recent[i];
+    final after = CheckResult(
+      ok: v.ok,
+      mode: v.mode,
+      clientScanId: v.clientScanId,
+      studentNumber: v.studentNumber ?? before.result.studentNumber,
+      session: v.session ?? before.result.session,
+      student: v.student ?? before.result.student,
+      message: v.ok ? null : v.message,
+    );
+    setState(() {
+      _recent[i] = _ScanRecord(raw: before.raw, result: after, at: before.at);
+      // The identity card for this scan may still be up: show the verdict.
+      if (_verifyResult?.clientScanId == v.clientScanId) _verifyResult = after;
+    });
+    if (!v.ok && DateTime.now().difference(before.at) < const Duration(seconds: 8)) {
+      _flash(AppInk.critical);
+      _playResult(after);
+    }
   }
 
   @override
@@ -489,13 +574,17 @@ class _ScanRecordTile extends StatelessWidget {
               ],
             ),
           ),
-          if (r.mode == 'checked_in')
+          // Not confirmed by the server yet: it can still refuse the scan.
+          if (r.provisional || r.mode == 'queued')
+            const Tooltip(
+              message: 'Saved on this phone, waiting for the server',
+              child: Icon(Icons.cloud_upload_rounded,
+                  color: AppInk.caution, size: 20),
+            )
+          else if (r.mode == 'checked_in')
             const Icon(Icons.login_rounded, color: AppInk.positive, size: 20)
           else if (r.mode == 'checked_out')
-            const Icon(Icons.logout_rounded, color: AppInk.accent, size: 20)
-          else if (r.mode == 'queued')
-            const Icon(Icons.cloud_upload_rounded,
-                color: AppInk.caution, size: 20),
+            const Icon(Icons.logout_rounded, color: AppInk.accent, size: 20),
         ],
       ),
     );
@@ -519,6 +608,16 @@ class _ScanRecordTile extends StatelessWidget {
         return ('Duplicate', AppInk.caution, Icons.block_rounded);
       case 'queued':
         return ('Saved offline', AppInk.caution, Icons.cloud_upload_rounded);
+      case 'unverified':
+        return (
+          'Saved — server will check',
+          AppInk.caution,
+          Icons.help_outline_rounded
+        );
+      case 'too_soon_after_in':
+        return ('Scanned moments ago', AppInk.caution, Icons.block_rounded);
+      case 'inactive_student':
+        return ('Inactive account', AppInk.critical, Icons.person_off_rounded);
       case 'unknown_qr':
         return ('Not on this roster', AppInk.critical, Icons.person_off_rounded);
       case 'invalid_qr':
@@ -568,10 +667,10 @@ class _VerifyCard extends StatelessWidget {
       _ => ('Scanned', AppInk.accent, Icons.qr_code_rounded),
     };
 
-    // The server has not seen this yet and can still reject it, so never let
-    // the card imply the attendance is final.
+    // Saved on the phone; the server has not answered yet and can still
+    // reject it, so never let the card imply the attendance is final.
     if (result.provisional) {
-      return ('$label · offline', color, Icons.cloud_upload_rounded);
+      return ('$label · saved', color, Icons.cloud_upload_rounded);
     }
     return (label, color, icon);
   }

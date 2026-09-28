@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../core/services/connectivity_service.dart';
+import '../../../core/services/local_db.dart';
 import '../../../core/services/offline_storage_service.dart';
 import '../../../core/services/outbox_service.dart';
 import '../../../core/services/roster_service.dart';
@@ -51,9 +54,12 @@ class AttendanceApi {
       }
       throw ApiException((data['message'] ?? 'Failed to load activities').toString());
     } catch (e) {
-      // Fall back to cache.
+      // Fall back to cache. Open/closed is re-judged on this device's clock:
+      // the cached answer is from whenever the list was last fetched, and an
+      // activity that opened since must not stay unscannable all day offline.
       final cached = await OfflineStorageService.getList(_cacheActivities);
-      return cached.map((m) => Activity.fromJson(m)).toList();
+      final now = DateTime.now();
+      return cached.map((m) => Activity.fromJson(m).recheckedAt(now)).toList();
     }
   }
 
@@ -197,17 +203,20 @@ class AttendanceApi {
     // accepted if the outbox only syncs after the window has closed.
     final occurredAt = DateTime.now().toUtc().toIso8601String();
 
-    // Try online first for immediate feedback.
+    // Try online first for immediate feedback. Bounded: mobile data that is
+    // on with no working signal would otherwise hang here indefinitely.
     if (await _isOnline()) {
       try {
-        final response = await _client.post(
-          Uri.parse(url),
-          headers: {..._headers(token), 'X-Idempotency-Key': idemKey},
-          body: jsonEncode({
-            'direction': direction,
-            'client_submitted_at': occurredAt,
-          }),
-        );
+        final response = await _client
+            .post(
+              Uri.parse(url),
+              headers: {..._headers(token), 'X-Idempotency-Key': idemKey},
+              body: jsonEncode({
+                'direction': direction,
+                'client_submitted_at': occurredAt,
+              }),
+            )
+            .timeout(_liveTimeout);
         final data = _decode(response);
         return CheckResult.fromJson(data);
       } catch (_) {
@@ -235,104 +244,128 @@ class AttendanceApi {
 
   /// Scanner consumes a student QR token.
   ///
-  /// The QR is resolved against the on-device roster first, so with no signal
-  /// the operator still sees who was scanned and whether it is a repeat. The
-  /// server stays authoritative: a local answer is provisional until it syncs.
+  /// Local-first: the scan is decided against the on-device roster and this
+  /// phone's own history, then saved and queued in one SQLite transaction,
+  /// and the operator gets that answer at once. Nothing here waits on the
+  /// network — the upload runs in the background (OutboxService), so a phone
+  /// with mobile data switched on but no working signal keeps scanning at
+  /// full speed. The server stays authoritative: its verdict arrives through
+  /// [ScanLedgerService.verdicts] once the upload gets one.
   Future<CheckResult> consume({
     required String baseUrl,
     required String token,
     required int activityId,
     required String qrToken,
-    String direction = 'auto',
     String remarks = '',
   }) async {
     final url = '${_normalize(baseUrl)}/api/mobile/attendance/consume';
-    final idemKey = _uuid.v4();
+    final clientScanId = _uuid.v4();
     final scannedAt = DateTime.now();
-    final occurredAt = scannedAt.toUtc().toIso8601String();
-
-    final match = await RosterService.resolve(activityId, qrToken);
-    final meta = await RosterService.metaFor(activityId);
-    final online = await _isOnline();
-
-    // Only a COMPLETE snapshot can prove a code is not a student QR. With a
-    // partial one, an unmatched code may simply not have downloaded yet, so
-    // the scan is queued instead of the student being turned away.
-    if (match == null && meta != null && meta.complete) {
-      return const CheckResult(
-        ok: false,
-        mode: 'unknown_qr',
-        message: 'Not a student QR for this activity.',
-      );
-    }
-
-    LocalScanDecision? decision;
-    if (match != null) {
-      decision = await ScanLedgerService.record(
-        activityId: activityId,
-        studentNumber: match.studentNumber,
-        clientScanId: idemKey,
-        sessions: meta?.sessions ?? const {},
-        at: scannedAt,
-      );
-
-      if (decision.isDuplicate) {
-        return CheckResult(
-          ok: true,
-          mode: 'duplicate',
-          studentNumber: match.studentNumber,
-          session: decision.session,
-          student: match.toStudentPayload(),
-          message: decision.previousAt == null
-              ? 'Already scanned.'
-              : 'Already scanned at ${_clock(decision.previousAt!)}.',
-        );
-      }
-    }
-
-    // Resolved locally so a queued in/out pair replays in the right order.
-    final effectiveDirection = decision?.direction ?? direction;
     final payload = {
       'activity_id': activityId,
       'token': qrToken,
-      'direction': effectiveDirection,
-      'client_submitted_at': occurredAt,
-      'client_scan_id': idemKey,
+      // The server's toggle decides in or out: this phone knows only its own
+      // scans, and a student may check in and out at different phones.
+      'direction': 'auto',
+      'client_submitted_at': scannedAt.toUtc().toIso8601String(),
+      'client_scan_id': clientScanId,
       if (remarks.isNotEmpty) 'remarks': remarks,
     };
 
-    if (online) {
+    // Web preview has no local database to save into: ask the server.
+    if (kIsWeb) {
       try {
-        final response = await _client.post(
-          Uri.parse(url),
-          headers: {..._headers(token), 'X-Idempotency-Key': idemKey},
-          body: jsonEncode(payload),
-        );
-        final data = _decode(response);
-        await ScanLedgerService.markSynced(idemKey, data);
-        return CheckResult.fromJson(data);
+        final response = await _client
+            .post(
+              Uri.parse(url),
+              headers: {..._headers(token), 'X-Idempotency-Key': clientScanId},
+              body: jsonEncode(payload),
+            )
+            .timeout(_liveTimeout);
+        return CheckResult.fromJson(_decode(response));
       } catch (_) {
-        // Fall through to queue.
+        return const CheckResult(
+          ok: false,
+          mode: 'err',
+          message:
+              'Could not submit this scan. Check your connection and try again.',
+        );
       }
     }
 
-    await OutboxService.enqueue(
-      operation: 'scanner_consume',
-      url: url,
-      idemKey: idemKey,
-      token: token,
-      payload: payload,
-      refId: idemKey,
-    );
+    final match = await RosterService.resolve(activityId, qrToken);
+    final meta = await RosterService.metaFor(activityId);
 
+    // A code this phone's roster cannot name is still saved and sent: the
+    // roster may predate the student's QR, and the server can tell. Turning
+    // them away here would leave no record at all.
+    final db = await LocalDb.instance();
+    final decision = await db.transaction((txn) async {
+      final d = await ScanLedgerService.record(
+        txn: txn,
+        activityId: activityId,
+        studentNumber: match?.studentNumber ?? '',
+        qrHash: match == null ? ScanLedgerService.localHash(qrToken) : '',
+        clientScanId: clientScanId,
+        sessions: meta?.sessions ?? const {},
+        at: scannedAt,
+      );
+      if (!d.isDuplicate) {
+        await OutboxService.enqueue(
+          txn: txn,
+          operation: 'scanner_consume',
+          url: url,
+          idemKey: clientScanId,
+          token: token,
+          payload: payload,
+          refId: clientScanId,
+        );
+      }
+      return d;
+    });
+
+    final student = match?.toStudentPayload();
+    if (decision.isDuplicate) {
+      return CheckResult(
+        ok: true,
+        mode: 'duplicate',
+        clientScanId: clientScanId,
+        studentNumber: match?.studentNumber,
+        session: decision.session,
+        student: student,
+        message: decision.previousAt == null
+            ? 'Already scanned.'
+            : 'Already scanned at ${_clock(decision.previousAt!)}.',
+      );
+    }
+
+    unawaited(OutboxService.flushIfConnected());
+    final online = await _isOnline().catchError((_) => false);
+
+    if (match == null) {
+      return CheckResult(
+        ok: true,
+        mode: 'unverified',
+        provisional: true,
+        clientScanId: clientScanId,
+        session: decision.session,
+        message: meta == null
+            ? 'Saved. This phone has no offline roster, so the server checks '
+                'this QR when it uploads.'
+            : "Not on this phone's roster. Saved for the server to check.",
+      );
+    }
     return CheckResult(
       ok: true,
-      mode: decision?.mode ?? 'queued',
+      mode: decision.mode,
       provisional: true,
-      studentNumber: match?.studentNumber,
-      session: decision?.session,
-      student: match?.toStudentPayload(),
-      message: 'Saved offline — will sync when you reconnect.',
+      clientScanId: clientScanId,
+      studentNumber: match.studentNumber,
+      session: decision.session,
+      student: student,
+      message: online
+          ? 'Saved — uploading now.'
+          : 'Saved offline — uploads when you reconnect.',
     );
   }
 
@@ -628,6 +661,9 @@ class AttendanceApi {
   }
 
   // ─── internals ──────────────────────────────────────────────────────────
+
+  /// Longest a live write waits before it is queued instead.
+  static const _liveTimeout = Duration(seconds: 8);
 
   Map<String, String> _headers(String token) => {
         HttpHeaders.acceptHeader: 'application/json',

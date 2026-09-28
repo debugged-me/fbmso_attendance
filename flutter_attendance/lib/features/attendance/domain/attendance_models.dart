@@ -162,6 +162,78 @@ class Activity {
   /// True when it has not started yet.
   bool get notYetOpen => state == 'scheduled';
 
+  /// This activity with open/closed re-judged for [now] on this device.
+  ///
+  /// [isOpen] is the server's answer at the moment the list was fetched. A
+  /// list served from cache can be hours old — fetched the night before, the
+  /// activity still "Scheduled" — and would keep the scanner locked all day
+  /// with no signal to refresh it. The time layer is recomputed from the
+  /// cached window with the same rule as the server's activity_state(); a
+  /// manual close (closed/draft/archived) stands, since only the server can
+  /// lift it.
+  Activity recheckedAt(DateTime now) {
+    const manuallyClosed = {'closed', 'draft', 'archived'};
+    if (manuallyClosed.contains(state)) return this;
+    if (!autoClose) return _withState(true, 'open', 'Open', null);
+
+    final start = _serverTime(windowStart);
+    final end = _serverTime(windowEnd);
+    if (start != null && now.isBefore(start)) {
+      return _withState(false, 'scheduled', 'Scheduled',
+          'Check-in for this activity opens on ${_stamp(start)}.');
+    }
+    if (end != null && now.isAfter(end)) {
+      return _withState(false, 'ended', 'Ended',
+          'Check-in for this activity closed on ${_stamp(end)}.');
+    }
+    return _withState(true, 'open', 'Open', null);
+  }
+
+  Activity _withState(bool open, String newState, String label, String? reason) {
+    if (open == isOpen && newState == state) return this;
+    return Activity(
+      activityId: activityId,
+      title: title,
+      code: code,
+      activityDate: activityDate,
+      startAt: startAt,
+      endAt: endAt,
+      startTime: startTime,
+      endTime: endTime,
+      location: location,
+      description: description,
+      program: program,
+      sy: sy,
+      semester: semester,
+      status: status,
+      isOpen: open,
+      state: newState,
+      stateLabel: label,
+      closedReason: reason,
+      autoClose: autoClose,
+      graceMinutes: graceMinutes,
+      windowStart: windowStart,
+      windowEnd: windowEnd,
+      sessions: sessions,
+    );
+  }
+
+  /// "Y-m-d H:i:s" in the server's (and the school's) local time.
+  static DateTime? _serverTime(String? value) {
+    final v = (value ?? '').trim();
+    if (v.isEmpty) return null;
+    return DateTime.tryParse(v.replaceFirst(' ', 'T'));
+  }
+
+  static String _stamp(DateTime t) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+        'Sep', 'Oct', 'Nov', 'Dec'];
+    final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
+    final m = t.minute.toString().padLeft(2, '0');
+    return '${months[t.month - 1]} ${t.day}, ${t.year} at '
+        '$h:$m ${t.hour < 12 ? 'AM' : 'PM'}';
+  }
+
   factory Activity.fromJson(Map<String, dynamic> j) {
     final open = j['is_open'] == true;
     // Older servers send only is_open/status; synthesise the richer fields.
@@ -289,17 +361,22 @@ class CheckResult {
     this.message,
     this.student,
     this.provisional = false,
+    this.clientScanId,
   });
 
   final bool ok;
 
-  /// checked_in | checked_out | already_in | duplicate | queued |
+  /// checked_in | checked_out | already_in | duplicate | queued | unverified |
   /// invalid_qr | unknown_qr | expired_qr | activity_* | stale_scan | err
   final String mode;
 
-  /// Decided on the device while offline and not yet confirmed by the server.
-  /// The UI must say so — the server can still reject it at sync.
+  /// Decided on the device and not yet confirmed by the server. The UI must
+  /// say so — the server can still reject it when it uploads.
   final bool provisional;
+
+  /// The device's id for a scanner scan; its server verdict carries the same
+  /// id (see ScanLedgerService.verdicts).
+  final String? clientScanId;
   final int? id;
   final String? studentNumber;
   final String? session;
