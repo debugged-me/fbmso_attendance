@@ -348,10 +348,17 @@
                                                     <?php else: ?>
                                                         <tr class="fs-empty"><td colspan="3">No collections recorded in this period.</td></tr>
                                                     <?php endif; ?>
+                                                    <?php if (abs((float)$otherTermCollections) > 0.004): ?>
+                                                        <tr class="fs-indent">
+                                                            <td data-label="Line Item">Collections credited to other terms</td>
+                                                            <td data-label="Entries" class="text-center"></td>
+                                                            <td data-label="Amount" class="fs-amt">&#8369; <?= number_format((float)$otherTermCollections, 2); ?></td>
+                                                        </tr>
+                                                    <?php endif; ?>
                                                     <tr class="fs-total-row">
                                                         <td>Total cash inflows</td>
                                                         <td class="text-center"></td>
-                                                        <td class="fs-amt">&#8369; <?= number_format((float)$totalRevenue, 2); ?></td>
+                                                        <td class="fs-amt">&#8369; <?= number_format((float)$periodCollectionsAll, 2); ?></td>
                                                     </tr>
                                                     <tr class="fs-subhead"><td colspan="3">Cash outflows — expenses</td></tr>
                                                     <?php if (!empty($expenseRows)): ?>
@@ -373,7 +380,7 @@
                                                     <tr class="fs-total-row">
                                                         <td>Net cash flow for the period</td>
                                                         <td class="text-center"></td>
-                                                        <td class="fs-amt <?= (float)$netIncome < 0 ? 'fs-neg' : ''; ?>">&#8369; <?= number_format((float)$netIncome, 2); ?></td>
+                                                        <td class="fs-amt <?= (float)$netCashFlow < 0 ? 'fs-neg' : ''; ?>">&#8369; <?= number_format((float)$netCashFlow, 2); ?></td>
                                                     </tr>
                                                     <tr>
                                                         <td data-label="Line Item" style="padding-left:16px;">Cash at beginning of period</td>
@@ -511,7 +518,7 @@
                         <div class="g-icon"><i class="mdi mdi-swap-vertical-bold"></i></div>
                         <div>
                             <div class="g-title">Cash Flow Statement</div>
-                            <div class="g-text">Money that came in and went out during the period: collections as inflows, expenses as outflows. It starts from the <b>cash at beginning of period</b> and lands on <b>cash at end of period</b> — the same cash on hand the Balance Sheet reports.</div>
+                            <div class="g-text">Money that came in and went out during the period: collections as inflows, expenses as outflows. It starts from the <b>cash at beginning of period</b> and lands on <b>cash at end of period</b> — the same cash on hand the Balance Sheet reports. Cash is fund-wide: money collected for other terms still counts toward it.</div>
                         </div>
                     </div>
                     <div class="fs-guide-item">

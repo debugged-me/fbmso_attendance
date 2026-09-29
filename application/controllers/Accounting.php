@@ -2845,11 +2845,18 @@ class Accounting extends CI_Controller
 		}
 		$netIncome = $totalRevenue - $totalExpenses;
 
-		// Cash position under the same scope: everything before the period is
-		// the opening balance; the period's net movement lands on top of it.
-		$dayBefore   = date('Y-m-d', strtotime($from . ' -1 day'));
-		$beginCash   = $this->sumCollections($sem, $sy, null, $dayBefore) - $this->sumExpenses(null, $dayBefore);
-		$endCash     = $beginCash + $netIncome;
+		// Cash positions are always FUND-WIDE. The cash box doesn't know what
+		// term a payment was for, and expenses carry no term tag — so scoping
+		// collections to a term while counting every expense would understate
+		// the fund's real position. The term filter only scopes which
+		// collections show as this term's revenue lines; the cash flow adds a
+		// reconciliation line for collections stamped to other terms.
+		$periodCollectionsAll  = $this->sumCollections('', '', $from, $to);
+		$otherTermCollections  = $periodCollectionsAll - $totalRevenue;
+		$netCashFlow           = $periodCollectionsAll - $totalExpenses;
+		$dayBefore             = date('Y-m-d', strtotime($from . ' -1 day'));
+		$beginCash             = $this->sumCollections('', '', null, $dayBefore) - $this->sumExpenses(null, $dayBefore);
+		$endCash               = $beginCash + $netCashFlow;
 
 		[$receivableRows, $receivableStudents, $totalReceivables] = $this->statementReceivableRows($sem, $sy);
 		[$semOptions, $syOptions] = $this->statementTermOptions($activeSem, $activeSy);
@@ -2889,13 +2896,16 @@ class Accounting extends CI_Controller
 			foreach ($revenueRows as $row) {
 				$cfRows[] = $fmtLine($row->Item, $row->TxnCount, $row->Total);
 			}
-			$cfRows[] = $fmtLine('Total cash inflows', $revenueCount, $totalRevenue, false);
+			if (abs($otherTermCollections) > 0.004) {
+				$cfRows[] = $fmtLine('Collections credited to other terms', null, $otherTermCollections);
+			}
+			$cfRows[] = $fmtLine('Total cash inflows', null, $periodCollectionsAll, false);
 			$cfRows[] = $fmtLine('Cash outflows — expenses', null, null, false);
 			foreach ($expenseRows as $row) {
 				$cfRows[] = $fmtLine($row->Item, $row->TxnCount, $row->Total);
 			}
 			$cfRows[] = $fmtLine('Total cash outflows', $expenseCount, $totalExpenses, false);
-			$cfRows[] = $fmtLine('Net cash flow for the period', null, $netIncome, false);
+			$cfRows[] = $fmtLine('Net cash flow for the period', null, $netCashFlow, false);
 			$cfRows[] = $fmtLine('Cash at beginning of period', null, $beginCash, false);
 			$cfRows[] = $fmtLine('CASH AT END OF PERIOD', null, $endCash, false);
 
@@ -2987,6 +2997,9 @@ class Accounting extends CI_Controller
 			'totalRevenue'        => $totalRevenue,
 			'totalExpenses'       => $totalExpenses,
 			'netIncome'           => $netIncome,
+			'periodCollectionsAll' => $periodCollectionsAll,
+			'otherTermCollections' => $otherTermCollections,
+			'netCashFlow'         => $netCashFlow,
 			'beginCash'           => $beginCash,
 			'endCash'             => $endCash,
 			'receivableRows'      => $receivableRows,
