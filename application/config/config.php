@@ -64,7 +64,19 @@ if (($base_url = getenv('BASE_URL')) !== FALSE && $base_url !== '') {
 unset($base_url);
 
 $config['enable_hooks'] = TRUE;
-$config['maintenance_mode'] = False;
+
+/*
+|--------------------------------------------------------------------------
+| Maintenance mode
+|--------------------------------------------------------------------------
+|
+| TRUE = every request through index.php gets a 503 maintenance page and
+| no CodeIgniter code runs (checked in index.php before the bootstrap, so
+| auto-migrations and DB writes cannot fire mid-deploy). Not bypassable
+| from the web. FALSE = normal operation.
+|
+*/
+$config['maintenance_mode'] = TRUE;
 
 date_default_timezone_set('Asia/Manila');
 

@@ -313,6 +313,26 @@ switch (ENVIRONMENT)
 
 /*
  * --------------------------------------------------------------------
+ *  MAINTENANCE MODE
+ * --------------------------------------------------------------------
+ *
+ * Every HTTP request reaches this file (the .htaccess routes anything that
+ * is not a real static file through here, and application/ + system/ are
+ * denied over HTTP), so checking the flag here — before a single CI file
+ * is loaded — cannot be bypassed from the web. It also means the schema
+ * migration and DbTuner hooks can never run mid-deploy while the flag is
+ * on. Toggle via $config['maintenance_mode'] in application/config/config.php.
+ */
+	include APPPATH.'config/config.php';
+	if ( ! empty($config['maintenance_mode']))
+	{
+		include APPPATH.'views/maintenance.php';
+		exit;
+	}
+	unset($config);
+
+/*
+ * --------------------------------------------------------------------
  * LOAD THE BOOTSTRAP FILE
  * --------------------------------------------------------------------
  *

@@ -23,6 +23,10 @@ RewriteEngine On
   # resources/ directory — CSVs, captcha keys, internal docs
   RewriteRule ^resources(?:/|$) - [F,L]
 
+  # Composer vendor/ — server-side PHP only, never a valid URL target.
+  # Front-end libraries live under assets/vendor/, not this directory.
+  RewriteRule ^vendor(?:/|$) - [F,L]
+
   # Text files in the web root that contain secrets or internal documentation
   RewriteRule ^Capcha\.txt$ - [F,L]
   RewriteRule "^MOODLE SRMS Token\.txt$" - [F,L]
