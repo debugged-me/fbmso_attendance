@@ -403,6 +403,13 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                             <span> Payment Activity Log </span>
                         </a>
                     </li>
+
+                    <li class="<?= $active('Accounting/financialStatements'); ?>">
+                        <a href="<?= base_url('Accounting/financialStatements'); ?>" class="waves-effect">
+                            <i class="mdi mdi-file-chart-outline"></i>
+                            <span> Financial Statements </span>
+                        </a>
+                    </li>
                     <!-- To Do (keep visible) -->
                     <!-- <li>
                 <a href="javascript: void(0);" class="waves-effect">
@@ -1289,6 +1296,13 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         <a href="<?= base_url('Accounting/ledger'); ?>" class="waves-effect">
                             <i class="mdi mdi-book-open-variant"></i>
                             <span> <?= $isAuditor ? 'Cash Inflow &amp; Outflow' : 'Ledger'; ?> </span>
+                        </a>
+                    </li>
+
+                    <li class="<?= $active('Accounting/financialStatements'); ?>">
+                        <a href="<?= base_url('Accounting/financialStatements'); ?>" class="waves-effect">
+                            <i class="mdi mdi-file-chart-outline"></i>
+                            <span> Financial Statements </span>
                         </a>
                     </li>
 

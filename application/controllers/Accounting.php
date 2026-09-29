@@ -1183,7 +1183,7 @@ class Accounting extends CI_Controller
 	// Shared letterhead-style print document (logo, title, meta line, table)
 	// used by every accounting report's "Print" button — same look as the
 	// Attendance Logs report so printed paperwork is consistent app-wide.
-	private function renderReportPrint($title, array $meta, array $columns, array $rows, array $aligns = [], $totals = null, $backUrl = '', $orientation = 'landscape', $emptyMessage = 'No records matched.')
+	private function renderReportPrint($title, array $meta, array $columns, array $rows, array $aligns = [], $totals = null, $backUrl = '', $orientation = 'landscape', $emptyMessage = 'No records matched.', array $sections = [])
 	{
 		$settings = $this->getReceiptSettings();
 
@@ -1198,6 +1198,7 @@ class Accounting extends CI_Controller
 			'back_url'      => $backUrl,
 			'orientation'   => $orientation,
 			'empty_message' => $emptyMessage,
+			'sections'      => $sections,
 		]);
 	}
 
@@ -2605,5 +2606,393 @@ class Accounting extends CI_Controller
 			'paymentCount'    => (int)($allTime->n ?? 0),
 			'allTimePaid'     => (float)($allTime->total ?? 0),
 		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+	}
+
+	// ------------------------------------------------------------------
+	// Financial statements (Income Statement, Cash Flow, Balance Sheet)
+	// ------------------------------------------------------------------
+	// This module is cash-basis: collections and expenses are the only cash
+	// movements recorded, so all three statements are derived from the same
+	// two tables and always reconcile with each other.
+	//
+	// The term (Sem/SY) scopes collections and receivables, since both are
+	// term-stamped. Expenses carry no term field and are matched to the
+	// period purely by date.
+
+	// Distinct Sem / SY values seen on payment and account records, merged
+	// with the configured semester list and the active term, so the filter
+	// offers every term that could have data plus the current one.
+	private function statementTermOptions($activeSem, $activeSy)
+	{
+		$sems = array_fill_keys(Term::SEMESTERS, true);
+		$sys  = [];
+		foreach (['paymentsaccounts', 'studeaccount'] as $table) {
+			foreach ($this->db->distinct()->select('Sem, SY')->from($table)->get()->result() as $row) {
+				if (trim((string)$row->Sem) !== '') {
+					$sems[(string)$row->Sem] = true;
+				}
+				if (trim((string)$row->SY) !== '') {
+					$sys[(string)$row->SY] = true;
+				}
+			}
+		}
+		if ($activeSem !== '') {
+			$sems[$activeSem] = true;
+		}
+		if ($activeSy !== '') {
+			$sys[$activeSy] = true;
+		}
+
+		$semList = array_keys($sems);
+		sort($semList, SORT_STRING);
+		$syList = array_keys($sys);
+		rsort($syList, SORT_STRING);
+
+		return [$semList, $syList];
+	}
+
+	// Default reporting window: from the first collection in scope to today,
+	// so an end-of-semester report covers the whole term without the user
+	// having to type dates. Falls back to month-to-date when the term has
+	// no collections yet.
+	private function statementDefaultRange($sem, $sy)
+	{
+		$q = $this->db->select('MIN(PDate) AS FirstDate', false)
+			->from('paymentsaccounts')
+			->where('ORStatus', 'Valid');
+		if ($sem !== '') {
+			$q->where('Sem', $sem);
+		}
+		if ($sy !== '') {
+			$q->where('SY', $sy);
+		}
+		$first = trim((string)($q->get()->row()->FirstDate ?? ''));
+
+		return [$this->isValidDate($first) ? $first : date('Y-m-01'), date('Y-m-d')];
+	}
+
+	// Collections grouped by fee description — the revenue / inflow lines.
+	private function statementCollectionRows($from, $to, $sem, $sy)
+	{
+		$q = $this->db->select("COALESCE(NULLIF(TRIM(description),''),'(No description)') AS Item,
+				COUNT(*) AS TxnCount, COALESCE(SUM(Amount),0) AS Total", false)
+			->from('paymentsaccounts')
+			->where('ORStatus', 'Valid')
+			->where('CollectionSource', "Student's Account")
+			->where('PDate >=', $from)
+			->where('PDate <=', $to);
+		if ($sem !== '') {
+			$q->where('Sem', $sem);
+		}
+		if ($sy !== '') {
+			$q->where('SY', $sy);
+		}
+
+		return $q->group_by('Item')->order_by('Item', 'ASC')->get()->result();
+	}
+
+	// Expenses grouped by category — the expense / outflow lines.
+	private function statementExpenseRows($from, $to)
+	{
+		return $this->db->select("COALESCE(NULLIF(TRIM(Category),''),'Uncategorized') AS Item,
+				COUNT(*) AS TxnCount, COALESCE(SUM(Amount),0) AS Total", false)
+			->from('expenses')
+			->where('ExpenseDate >=', $from)
+			->where('ExpenseDate <=', $to)
+			->group_by('Item')
+			->order_by('Item', 'ASC')
+			->get()
+			->result();
+	}
+
+	// Single sum over the scoped collections; null bounds mean "unbounded"
+	// in that direction, which is how beginning/as-of cash is computed.
+	private function sumCollections($sem, $sy, $from = null, $to = null)
+	{
+		$q = $this->db->select('COALESCE(SUM(Amount),0) AS Total', false)
+			->from('paymentsaccounts')
+			->where('ORStatus', 'Valid')
+			->where('CollectionSource', "Student's Account");
+		if ($from !== null) {
+			$q->where('PDate >=', $from);
+		}
+		if ($to !== null) {
+			$q->where('PDate <=', $to);
+		}
+		if ($sem !== '') {
+			$q->where('Sem', $sem);
+		}
+		if ($sy !== '') {
+			$q->where('SY', $sy);
+		}
+
+		return (float)($q->get()->row()->Total ?? 0);
+	}
+
+	private function sumExpenses($from = null, $to = null)
+	{
+		$q = $this->db->select('COALESCE(SUM(Amount),0) AS Total', false)->from('expenses');
+		if ($from !== null) {
+			$q->where('ExpenseDate >=', $from);
+		}
+		if ($to !== null) {
+			$q->where('ExpenseDate <=', $to);
+		}
+
+		return (float)($q->get()->row()->Total ?? 0);
+	}
+
+	// Receivables for the balance sheet: unpaid fee balances aggregated per
+	// fee description, using the same rule as the Partial Payments report
+	// (frozen FeeFullAmount minus what each student has actually paid).
+	// Name joins are skipped — only counts and amounts are needed here, so
+	// this stays fast even with thousands of students on partial terms.
+	private function statementReceivableRows($sem, $sy)
+	{
+		$q = $this->db->select('p.description AS Description, MAX(p.FeeFullAmount) AS FullAmount,
+				SUM(p.Amount) AS PaidAmount, p.StudentNumber', false)
+			->from('paymentsaccounts p')
+			->where('p.ORStatus', 'Valid')
+			->where('p.CollectionSource', "Student's Account")
+			->where('p.FeeFullAmount >', 0);
+		if ($sem !== '') {
+			$q->where('p.Sem', $sem);
+		}
+		if ($sy !== '') {
+			$q->where('p.SY', $sy);
+		}
+		$rows = $q->group_by('p.StudentNumber, p.description')
+			->having('SUM(p.Amount) < MAX(p.FeeFullAmount)', null, false)
+			->get()
+			->result();
+
+		$lines = [];
+		$students = [];
+		$total = 0.0;
+		foreach ($rows as $row) {
+			$outstanding = (float)$row->FullAmount - (float)$row->PaidAmount;
+			if ($outstanding <= 0.004) {
+				continue;
+			}
+			$item = trim((string)$row->Description);
+			if ($item === '') {
+				$item = '(No description)';
+			}
+			if (!isset($lines[$item])) {
+				$lines[$item] = ['item' => $item, 'balances' => 0, 'amount' => 0.0];
+			}
+			$lines[$item]['balances']++;
+			$lines[$item]['amount'] += $outstanding;
+			$students[(string)$row->StudentNumber] = true;
+			$total += $outstanding;
+		}
+		ksort($lines, SORT_STRING);
+
+		return [array_values($lines), count($students), $total];
+	}
+
+	public function financialStatements()
+	{
+		$this->ensureAccess();
+
+		[$activeSem, $activeSy] = $this->currentSemSy();
+
+		// Missing term params default to the active term; an explicitly blank
+		// choice means "all terms".
+		$semParam = $this->input->get('sem', true);
+		$syParam  = $this->input->get('sy', true);
+		$sem = $semParam === null ? $activeSem : trim((string)$semParam);
+		$sy  = $syParam === null ? $activeSy : trim((string)$syParam);
+
+		$from = trim((string)$this->input->get('from', true));
+		$to   = trim((string)$this->input->get('to', true));
+		if (!$this->isValidDate($from) || !$this->isValidDate($to)) {
+			[$defFrom, $defTo] = $this->statementDefaultRange($sem, $sy);
+			if (!$this->isValidDate($from)) {
+				$from = $defFrom;
+			}
+			if (!$this->isValidDate($to)) {
+				$to = $defTo;
+			}
+		}
+		if ($from > $to) {
+			[$from, $to] = [$to, $from];
+		}
+
+		// Which statement to print — 'all' prints the full set. On screen the
+		// same value just decides which tab opens first.
+		$stmt = strtolower(trim((string)$this->input->get('stmt', true)));
+		if (!in_array($stmt, ['income', 'cashflow', 'balance', 'all'], true)) {
+			$stmt = 'all';
+		}
+
+		$revenueRows = $this->statementCollectionRows($from, $to, $sem, $sy);
+		$expenseRows = $this->statementExpenseRows($from, $to);
+
+		$totalRevenue  = 0.0;
+		$revenueCount  = 0;
+		foreach ($revenueRows as $row) {
+			$row->Total = (float)$row->Total;
+			$totalRevenue += $row->Total;
+			$revenueCount += (int)$row->TxnCount;
+		}
+		$totalExpenses = 0.0;
+		$expenseCount  = 0;
+		foreach ($expenseRows as $row) {
+			$row->Total = (float)$row->Total;
+			$totalExpenses += $row->Total;
+			$expenseCount += (int)$row->TxnCount;
+		}
+		$netIncome = $totalRevenue - $totalExpenses;
+
+		// Cash position under the same scope: everything before the period is
+		// the opening balance; the period's net movement lands on top of it.
+		$dayBefore   = date('Y-m-d', strtotime($from . ' -1 day'));
+		$beginCash   = $this->sumCollections($sem, $sy, null, $dayBefore) - $this->sumExpenses(null, $dayBefore);
+		$endCash     = $beginCash + $netIncome;
+
+		[$receivableRows, $receivableStudents, $totalReceivables] = $this->statementReceivableRows($sem, $sy);
+		[$semOptions, $syOptions] = $this->statementTermOptions($activeSem, $activeSy);
+
+		$termLabel = ($sem === '' && $sy === '') ? 'All terms' : trim($sem . ' ' . $sy);
+		$periodLabel = date('M d, Y', strtotime($from)) . ' to ' . date('M d, Y', strtotime($to));
+
+		if ($this->input->get('print', true) === '1') {
+			$fmtLine = function ($label, $count, $amount, $indent = true) {
+				return [
+					($indent ? '      ' : '') . $label,
+					$count === null ? '' : number_format((int)$count),
+					$amount === null ? '' : '₱ ' . number_format((float)$amount, 2),
+				];
+			};
+
+			$incomeRows = [$fmtLine('REVENUES', null, null, false)];
+			foreach ($revenueRows as $row) {
+				$incomeRows[] = $fmtLine($row->Item, $row->TxnCount, $row->Total);
+			}
+			$incomeRows[] = $fmtLine('Total Revenues', $revenueCount, $totalRevenue, false);
+			$incomeRows[] = $fmtLine('', null, null, false);
+			$incomeRows[] = $fmtLine('EXPENSES', null, null, false);
+			foreach ($expenseRows as $row) {
+				$incomeRows[] = $fmtLine($row->Item, $row->TxnCount, $row->Total);
+			}
+			$incomeRows[] = $fmtLine('Total Expenses', $expenseCount, $totalExpenses, false);
+			$netLabel = $netIncome < 0 ? 'NET LOSS' : 'NET INCOME';
+			$netDisplay = $netIncome < 0
+				? '(₱ ' . number_format(abs($netIncome), 2) . ')'
+				: '₱ ' . number_format($netIncome, 2);
+
+			$cfRows = [
+				$fmtLine('CASH FLOWS FROM OPERATING ACTIVITIES', null, null, false),
+				$fmtLine('Cash inflows — collections', null, null, false),
+			];
+			foreach ($revenueRows as $row) {
+				$cfRows[] = $fmtLine($row->Item, $row->TxnCount, $row->Total);
+			}
+			$cfRows[] = $fmtLine('Total cash inflows', $revenueCount, $totalRevenue, false);
+			$cfRows[] = $fmtLine('Cash outflows — expenses', null, null, false);
+			foreach ($expenseRows as $row) {
+				$cfRows[] = $fmtLine($row->Item, $row->TxnCount, $row->Total);
+			}
+			$cfRows[] = $fmtLine('Total cash outflows', $expenseCount, $totalExpenses, false);
+			$cfRows[] = $fmtLine('Net cash flow for the period', null, $netIncome, false);
+			$cfRows[] = $fmtLine('Cash at beginning of period', null, $beginCash, false);
+			$cfRows[] = $fmtLine('CASH AT END OF PERIOD', null, $endCash, false);
+
+			$bsRows = [
+				$fmtLine('ASSETS', null, null, false),
+				$fmtLine('Cash on hand', null, $endCash),
+			];
+			foreach ($receivableRows as $row) {
+				$bsRows[] = $fmtLine('Accounts receivable — ' . $row['item'], $row['balances'], $row['amount']);
+			}
+			if (empty($receivableRows)) {
+				$bsRows[] = $fmtLine("Accounts receivable — students' unpaid fee balances", 0, 0.0);
+			}
+			$bsRows[] = $fmtLine('TOTAL ASSETS', null, $endCash + $totalReceivables, false);
+			$bsRows[] = $fmtLine('', null, null, false);
+			$bsRows[] = $fmtLine('LIABILITIES', null, null, false);
+			$bsRows[] = $fmtLine('None recorded', null, 0.0);
+			$bsRows[] = $fmtLine('TOTAL LIABILITIES', null, 0.0, false);
+			$bsRows[] = $fmtLine('', null, null, false);
+			$bsRows[] = $fmtLine('FUND BALANCE', null, null, false);
+			$bsRows[] = $fmtLine('Fund balance, end of period', null, $endCash + $totalReceivables);
+			$bsRows[] = $fmtLine('TOTAL LIABILITIES AND FUND BALANCE', null, $endCash + $totalReceivables, false);
+
+			$allSections = [
+				'income'   => [
+					'title'   => 'Income Statement — ' . $periodLabel,
+					'columns' => ['Line Item', 'Entries', 'Amount'],
+					'rows'    => $incomeRows,
+					'aligns'  => ['left', 'center', 'right'],
+					'totals'  => [$netLabel, '', $netDisplay],
+				],
+				'cashflow' => [
+					'title'   => 'Cash Flow Statement — ' . $periodLabel,
+					'columns' => ['Line Item', 'Entries', 'Amount'],
+					'rows'    => $cfRows,
+					'aligns'  => ['left', 'center', 'right'],
+					'totals'  => null,
+				],
+				'balance'  => [
+					'title'   => 'Balance Sheet — as of ' . date('M d, Y', strtotime($to)) . ' (receivables: ' . $termLabel . ')',
+					'columns' => ['Line Item', 'Balances', 'Amount'],
+					'rows'    => $bsRows,
+					'aligns'  => ['left', 'center', 'right'],
+					'totals'  => null,
+				],
+			];
+
+			$stmtTitles = [
+				'all'      => 'Financial Statements',
+				'income'   => 'Income Statement',
+				'cashflow' => 'Cash Flow Statement',
+				'balance'  => 'Balance Sheet',
+			];
+			$sections = $stmt === 'all'
+				? array_values($allSections)
+				: [$allSections[$stmt]];
+
+			$this->renderReportPrint(
+				$stmtTitles[$stmt],
+				[
+					['label' => 'Period', 'value' => $periodLabel],
+					['label' => 'Term', 'value' => $termLabel],
+					['label' => 'Printed', 'value' => date('F d, Y \a\t g:i A')],
+					['label' => $netIncome < 0 ? 'Net Loss' : 'Net Income', 'value' => $netDisplay],
+				],
+				[],
+				[],
+				['left', 'center', 'right'],
+				null,
+				base_url('Accounting/financialStatements?from=' . urlencode($from) . '&to=' . urlencode($to) . '&sem=' . urlencode($sem) . '&sy=' . urlencode($sy) . '&stmt=' . urlencode($stmt)),
+				'portrait',
+				'No data for this period.',
+				$sections
+			);
+			return;
+		}
+
+		$this->load->view('accounting_financial_statements', [
+			'from'                => $from,
+			'to'                  => $to,
+			'sem'                 => $sem,
+			'sy'                  => $sy,
+			'termLabel'           => $termLabel,
+			'periodLabel'         => $periodLabel,
+			'semOptions'          => $semOptions,
+			'syOptions'           => $syOptions,
+			'revenueRows'         => $revenueRows,
+			'expenseRows'         => $expenseRows,
+			'totalRevenue'        => $totalRevenue,
+			'totalExpenses'       => $totalExpenses,
+			'netIncome'           => $netIncome,
+			'beginCash'           => $beginCash,
+			'endCash'             => $endCash,
+			'receivableRows'      => $receivableRows,
+			'receivableStudents'  => $receivableStudents,
+			'totalReceivables'    => $totalReceivables,
+			'activeStmt'          => $stmt,
+		]);
 	}
 }
