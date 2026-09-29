@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v18.done';
+    const MARKER = 'schema_migrations_v19.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -45,6 +45,48 @@ class Schema_migrator
     protected function migrations()
     {
         return array(
+
+            // Payment IDs were handed out as MAX(ID)+1 on a column with no
+            // key, so two cashiers saving at the same moment could both write
+            // the same ID -- silently -- and Edit/Delete/Print Receipt would
+            // then act on several payments at once. The database assigns them
+            // now. Any duplicates (and legacy ID 0 rows) already present are
+            // split first: one copy keeps the ID, each extra copy gets a fresh
+            // one, so the key can be added.
+            '2026_09_29_payment_id_auto_increment' => array(
+                'check' => function () {
+                    return $this->tableExists('paymentsaccounts')
+                        && stripos((string)$this->columnExtra('paymentsaccounts', 'ID'), 'auto_increment') === false;
+                },
+                'run' => function () {
+                    $db = $this->CI->db;
+
+                    $dups = $db->query(
+                        "SELECT ID, COUNT(*) AS n FROM `paymentsaccounts`
+                          GROUP BY ID HAVING COUNT(*) > 1 OR ID = 0"
+                    )->result();
+                    foreach ($dups as $d) {
+                        $extra = (int)$d->ID === 0 ? (int)$d->n : (int)$d->n - 1;
+                        for ($i = 0; $i < $extra; $i++) {
+                            $next = (int)$db->query("SELECT MAX(ID) AS m FROM `paymentsaccounts`")->row()->m + 1;
+                            $db->query("UPDATE `paymentsaccounts` SET ID = ? WHERE ID = ? LIMIT 1", array($next, (int)$d->ID));
+                            log_message('error', 'Schema_migrator: duplicate payment ID ' . $d->ID . ' split off as ' . $next);
+                        }
+                    }
+
+                    $hasPrimary = (bool)$db->query(
+                        "SELECT 1 AS ok FROM information_schema.STATISTICS
+                          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'paymentsaccounts'
+                            AND INDEX_NAME = 'PRIMARY' LIMIT 1"
+                    )->row();
+
+                    $db->query(
+                        "ALTER TABLE `paymentsaccounts`
+                         MODIFY `ID` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT, "
+                        . ($hasPrimary ? "ADD UNIQUE KEY `uq_payment_id` (`ID`)" : "ADD PRIMARY KEY (`ID`)")
+                    );
+                },
+            ),
 
             // Payment entries are now logged alongside edits and deletions.
             // The ENUM only allowed 'edit'/'delete', and with stricton off a
@@ -671,6 +713,21 @@ class Schema_migrator
         )->row();
 
         return $row ? (string)$row->t : null;
+    }
+
+    /** EXTRA for a column (e.g. 'auto_increment'), or NULL if it does not exist. */
+    protected function columnExtra($table, $column)
+    {
+        $row = $this->CI->db->query(
+            "SELECT EXTRA AS e
+               FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = ?
+                AND COLUMN_NAME = ?",
+            array($table, $column)
+        )->row();
+
+        return $row ? (string)$row->e : null;
     }
 
     protected function tableExists($table)

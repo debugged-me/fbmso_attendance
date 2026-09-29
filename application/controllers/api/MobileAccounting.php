@@ -179,13 +179,6 @@ class MobileAccounting extends MobileApi
             : (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d');
     }
 
-    private function isDuplicateDbError($dbError)
-    {
-        $code = (int)($dbError['code'] ?? 0);
-        $message = (string)($dbError['message'] ?? '');
-        return $code === 1062 || stripos($message, 'Duplicate entry') !== false;
-    }
-
     private function getStudentsForPayment($sem, $sy)
     {
         $this->db->select("
@@ -860,82 +853,90 @@ class MobileAccounting extends MobileApi
         $deviceId      = trim((string)($p['device_id'] ?? ''));
         $claimedOr     = trim((string)($p['or_number'] ?? ''));
 
-        // Natural-key replay. The idempotency-key log expires; a payment that
-        // was recorded but whose response never reached the device must not be
-        // charged to the student twice on a later retry.
-        if ($clientId !== '') {
-            $prior = $this->db->from('paymentsaccounts')
-                ->where('client_payment_id', $clientId)->limit(1)->get();
-            if ($prior !== false && ($priorRow = $prior->row())) {
-                $result = [
-                    'ok'         => true,
-                    'message'    => 'Payment already recorded.',
-                    'or_number'  => (string)$priorRow->ORNumber,
-                    'payment_id' => (int)$priorRow->ID,
-                    'duplicate'  => true,
-                ];
-                $this->record_idempotent_response(200, json_encode($result));
-                return $this->json($result);
+        // Same per-student lock as the web cashier: the replay check, the
+        // insert and the ledger recompute must not interleave with another
+        // payment for this student (see Payment_lock). Not recorded as an
+        // idempotent response, so the device simply retries.
+        $this->load->library('payment_lock');
+        if ($studentNumber !== '' && !$this->payment_lock->acquire($studentNumber)) {
+            return $this->json(['ok' => false, 'message' => 'Another payment for this student is being saved. Please retry.'], 503);
+        }
+
+        try {
+            // Natural-key replay. The idempotency-key log expires; a payment that
+            // was recorded but whose response never reached the device must not be
+            // charged to the student twice on a later retry.
+            if ($clientId !== '') {
+                $prior = $this->db->from('paymentsaccounts')
+                    ->where('client_payment_id', $clientId)->limit(1)->get();
+                if ($prior !== false && ($priorRow = $prior->row())) {
+                    $result = [
+                        'ok'         => true,
+                        'message'    => 'Payment already recorded.',
+                        'or_number'  => (string)$priorRow->ORNumber,
+                        'payment_id' => (int)$priorRow->ID,
+                        'duplicate'  => true,
+                    ];
+                    $this->record_idempotent_response(200, json_encode($result));
+                    return $this->json($result);
+                }
             }
-        }
 
-        $errors = [];
-        if ($studentNumber === '') $errors[] = 'Student is required.';
-        if ($description === '') $errors[] = 'Description is required.';
-        if (!is_numeric($p['Amount'] ?? $p['amount'] ?? null) || $amount <= 0) $errors[] = 'Amount must be greater than 0.';
-        if (!$this->isValidDate($pDateInput)) $errors[] = 'Invalid payment date.';
-        if ($errors) {
-            $body = json_encode(['ok' => false, 'message' => implode(' ', $errors)]);
-            $this->record_idempotent_response(422, $body);
-            return $this->json(json_decode($body, true), 422);
-        }
+            $errors = [];
+            if ($studentNumber === '') $errors[] = 'Student is required.';
+            if ($description === '') $errors[] = 'Description is required.';
+            if (!is_numeric($p['Amount'] ?? $p['amount'] ?? null) || $amount <= 0) $errors[] = 'Amount must be greater than 0.';
+            if (!$this->isValidDate($pDateInput)) $errors[] = 'Invalid payment date.';
+            if ($errors) {
+                $body = json_encode(['ok' => false, 'message' => implode(' ', $errors)]);
+                $this->record_idempotent_response(422, $body);
+                return $this->json(json_decode($body, true), 422);
+            }
 
-        if ($paymentType === '') {
-            $paymentType = 'Cash';
-        }
-        if (strcasecmp($paymentType, 'Check') !== 0) {
-            $checkNumber = '';
-            $bank = '';
-        }
+            if ($paymentType === '') {
+                $paymentType = 'Cash';
+            }
+            if (strcasecmp($paymentType, 'Check') !== 0) {
+                $checkNumber = '';
+                $bank = '';
+            }
 
-        [$sem, $sy] = $this->currentSemSy();
+            [$sem, $sy] = $this->currentSemSy();
 
-        $student = $this->getStudentContext($studentNumber, $sem, $sy);
-        $course = trim((string)($student->Course ?? ''));
-        if ($course === '') {
-            $course = trim((string)($p['Course'] ?? ''));
-        }
+            $student = $this->getStudentContext($studentNumber, $sem, $sy);
+            $course = trim((string)($student->Course ?? ''));
+            if ($course === '') {
+                $course = trim((string)($p['Course'] ?? ''));
+            }
 
-        $cashier = (string)$tokenRow['username'];
-        $dtNow = new DateTime('now', new DateTimeZone('Asia/Manila'));
+            $cashier = (string)$tokenRow['username'];
+            $dtNow = new DateTime('now', new DateTimeZone('Asia/Manila'));
 
-        $orNumber = '';
-        $insertOk = false;
-        $paymentData = [];
 
-        // A payment taken offline already handed the student a receipt number
-        // from this device's reserved block, so that number is authoritative —
-        // but only if the device really holds it.
-        $this->load->library('or_sequence');
-        $useReservedOr = $claimedOr !== ''
-            && $deviceId !== ''
-            && $this->or_sequence->owns($deviceId, $claimedOr);
+            // A payment taken offline already handed the student a receipt number
+            // from this device's reserved block, so that number is authoritative —
+            // but only if the device really holds it.
+            $this->load->library('or_sequence');
+            $useReservedOr = $claimedOr !== ''
+                && $deviceId !== ''
+                && $this->or_sequence->owns($deviceId, $claimedOr);
 
-        if ($claimedOr !== '' && !$useReservedOr) {
-            $body = json_encode([
-                'ok'      => false,
-                'message' => 'That O.R. number is not reserved to this device.',
-            ]);
-            $this->record_idempotent_response(409, $body);
-            return $this->json(json_decode($body, true), 409);
-        }
+            if ($claimedOr !== '' && !$useReservedOr) {
+                $body = json_encode([
+                    'ok'      => false,
+                    'message' => 'That O.R. number is not reserved to this device.',
+                ]);
+                $this->record_idempotent_response(409, $body);
+                return $this->json(json_decode($body, true), 409);
+            }
 
-        for ($attempt = 0; $attempt < 5; $attempt++) {
+            // One attempt: row IDs come from AUTO_INCREMENT and the lock above
+            // rules out a concurrent duplicate, so there is nothing to retry --
+            // retrying would only burn another O.R. number.
             $orNumber = $useReservedOr
                 ? $claimedOr
                 : $this->generateNextOrNumber($pDateInput);
             $paymentData = [
-                'ID'               => $this->nextTableId('paymentsaccounts', 'ID'),
                 'client_payment_id' => $clientId !== '' ? $clientId : null,
                 'StudentNumber'    => $studentNumber,
                 'Course'           => $course,
@@ -957,29 +958,27 @@ class MobileAccounting extends MobileApi
 
             $this->db->trans_begin();
             $insertOk = $this->db->insert('paymentsaccounts', $paymentData);
-            $insertError = $this->db->error();
-
-            if ($insertOk && $sem !== '' && $sy !== '') {
-                $this->recomputeStudeAccount($studentNumber, $sem, $sy);
+            if ($insertOk) {
+                $paymentData['ID'] = (int)$this->db->insert_id();
+                if ($sem !== '' && $sy !== '') {
+                    $this->recomputeStudeAccount($studentNumber, $sem, $sy);
+                }
             }
 
             if ($insertOk && $this->db->trans_status() !== false) {
                 $this->db->trans_commit();
-                break;
+            } else {
+                $this->db->trans_rollback();
+                $insertOk = false;
             }
 
-            $this->db->trans_rollback();
-            $insertOk = false;
-
-            if (!$this->isDuplicateDbError($insertError)) {
-                break;
+            if (!$insertOk) {
+                $body = json_encode(['ok' => false, 'message' => 'Unable to save payment. Please try again.']);
+                $this->record_idempotent_response(500, $body);
+                return $this->json(json_decode($body, true), 500);
             }
-        }
-
-        if (!$insertOk) {
-            $body = json_encode(['ok' => false, 'message' => 'Unable to save payment. Please try again.']);
-            $this->record_idempotent_response(500, $body);
-            return $this->json(json_decode($body, true), 500);
+        } finally {
+            $this->payment_lock->release();
         }
 
         if ($useReservedOr) {
@@ -1113,37 +1112,49 @@ class MobileAccounting extends MobileApi
             return $this->json(json_decode($body, true), 422);
         }
 
-        $payment = $this->db->select('ID, StudentNumber, ORNumber, PDate, Amount, description, Sem, SY, ORStatus, CollectionSource')
-            ->from('paymentsaccounts')
-            ->where('ID', $id)
-            ->limit(1)
-            ->get()
-            ->row();
-
-        if (!$payment) {
-            $body = json_encode(['ok' => false, 'message' => 'Payment not found.']);
-            $this->record_idempotent_response(404, $body);
-            return $this->json(json_decode($body, true), 404);
-        }
-        if ((string)$payment->ORStatus !== 'Valid') {
-            $body = json_encode(['ok' => false, 'message' => 'Only VALID payments can be deleted.']);
-            $this->record_idempotent_response(422, $body);
-            return $this->json(json_decode($body, true), 422);
-        }
-        if ((string)$payment->CollectionSource !== "Student's Account") {
-            $body = json_encode(['ok' => false, 'message' => "This payment is not under Student's Account."]);
-            $this->record_idempotent_response(422, $body);
-            return $this->json(json_decode($body, true), 422);
+        // Read the row again under its student's lock, so two deletes of the
+        // same entry cannot both succeed and both be logged.
+        $owner = $this->db->select('StudentNumber')->from('paymentsaccounts')->where('ID', $id)->limit(1)->get()->row();
+        $this->load->library('payment_lock');
+        if ($owner && !$this->payment_lock->acquire($owner->StudentNumber)) {
+            return $this->json(['ok' => false, 'message' => 'Another payment for this student is being saved. Please retry.'], 503);
         }
 
-        $studentNumber = trim((string)$payment->StudentNumber);
-        $sem = trim((string)$payment->Sem);
-        $sy  = trim((string)$payment->SY);
+        try {
+            $payment = $this->db->select('ID, StudentNumber, ORNumber, PDate, Amount, description, Sem, SY, ORStatus, CollectionSource')
+                ->from('paymentsaccounts')
+                ->where('ID', $id)
+                ->limit(1)
+                ->get()
+                ->row();
 
-        $this->db->trans_start();
-        $this->db->where('ID', (int)$id)->delete('paymentsaccounts');
-        $this->recomputeStudeAccount($studentNumber, $sem, $sy);
-        $this->db->trans_complete();
+            if (!$payment) {
+                $body = json_encode(['ok' => false, 'message' => 'Payment not found.']);
+                $this->record_idempotent_response(404, $body);
+                return $this->json(json_decode($body, true), 404);
+            }
+            if ((string)$payment->ORStatus !== 'Valid') {
+                $body = json_encode(['ok' => false, 'message' => 'Only VALID payments can be deleted.']);
+                $this->record_idempotent_response(422, $body);
+                return $this->json(json_decode($body, true), 422);
+            }
+            if ((string)$payment->CollectionSource !== "Student's Account") {
+                $body = json_encode(['ok' => false, 'message' => "This payment is not under Student's Account."]);
+                $this->record_idempotent_response(422, $body);
+                return $this->json(json_decode($body, true), 422);
+            }
+
+            $studentNumber = trim((string)$payment->StudentNumber);
+            $sem = trim((string)$payment->Sem);
+            $sy  = trim((string)$payment->SY);
+
+            $this->db->trans_start();
+            $this->db->where('ID', (int)$id)->delete('paymentsaccounts');
+            $this->recomputeStudeAccount($studentNumber, $sem, $sy);
+            $this->db->trans_complete();
+        } finally {
+            $this->payment_lock->release();
+        }
 
         if ($this->db->trans_status() === false) {
             $body = json_encode(['ok' => false, 'message' => 'Unable to delete payment. Please try again.']);

@@ -365,16 +365,6 @@ class Accounting extends CI_Controller
 		return true;
 	}
 
-	private function isDuplicateDbError($dbError)
-	{
-		$code = (int)($dbError['code'] ?? 0);
-		$message = (string)($dbError['message'] ?? '');
-
-		return $code === 1062 || stripos($message, 'Duplicate entry') !== false;
-	}
-
-
-
 	public function expenses()
 	{
 		$this->ensureAccess();
@@ -1528,14 +1518,6 @@ class Accounting extends CI_Controller
 				$bank = '';
 			}
 
-			$itemError = $this->validatePaymentItems($items, $studentNumber, $sem, $sy);
-			if ($itemError !== null) {
-				$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
-				$this->session->set_flashdata('danger', $itemError);
-				redirect('Accounting/Payment');
-				return;
-			}
-
 			$student = $this->getStudentContext($studentNumber, $sem, $sy);
 			$course = trim((string)($student->Course ?? ''));
 			if ($course === '') {
@@ -1549,28 +1531,43 @@ class Accounting extends CI_Controller
 
 			$dtNow = new DateTime('now', new DateTimeZone('Asia/Manila'));
 
-			// The O.R. number is read-only in the UI and always server-generated
-			// from the payment date. Retry a few times in case two cashiers hit
-			// the same date/sequence in the same instant, instead of bouncing
-			// the whole form back for something the cashier never typed.
-			//
-			// Every fee paid in this transaction gets its own row — balances,
-			// partial status and the price snapshot are all per fee — but they
-			// share one O.R. number, so it is one receipt at the counter.
-			$orNumber = '';
-			$insertOk = false;
-			$paymentRows = [];
+			// Two cashiers (or a cashier and the mobile app) can be taking
+			// money from the same student at the same moment. The balance
+			// check, the insert and the ledger recompute run under one lock
+			// per student, so the second save waits and then sees the first
+			// one's payment instead of collecting the same fee again.
+			$this->load->library('payment_lock');
+			if (!$this->payment_lock->acquire($studentNumber)) {
+				$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
+				$this->session->set_flashdata('danger', 'Another payment for this student is being saved right now. Please try again in a moment.');
+				redirect('Accounting/Payment');
+				return;
+			}
 
-			for ($attempt = 0; $attempt < 5; $attempt++) {
+			try {
+				$itemError = $this->validatePaymentItems($items, $studentNumber, $sem, $sy);
+				if ($itemError !== null) {
+					$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
+					$this->session->set_flashdata('danger', $itemError);
+					redirect('Accounting/Payment');
+					return;
+				}
+
+				// The O.R. number is read-only in the UI and always drawn from
+				// the shared counter, which hands each save its own number no
+				// matter how many cashiers save at once.
+				//
+				// Every fee paid in this transaction gets its own row — balances,
+				// partial status and the price snapshot are all per fee — but they
+				// share one O.R. number, so it is one receipt at the counter.
+				// Row IDs come from AUTO_INCREMENT, never MAX(ID)+1.
 				$orNumber = $this->generateNextOrNumber($pDateInput);
 				$paymentRows = [];
 				$insertOk = true;
-				$insertError = [];
 
 				$this->db->trans_begin();
 				foreach ($items as $item) {
 					$row = [
-						'ID'               => $this->nextTableId('paymentsaccounts', 'ID'),
 						'StudentNumber'    => $studentNumber,
 						'Course'           => $course,
 						'PDate'            => $pDateInput,
@@ -1592,9 +1589,9 @@ class Accounting extends CI_Controller
 
 					if (!$this->db->insert('paymentsaccounts', $row)) {
 						$insertOk = false;
-						$insertError = $this->db->error();
 						break;
 					}
+					$row['ID'] = (int)$this->db->insert_id();
 					$paymentRows[] = $row;
 				}
 
@@ -1604,15 +1601,12 @@ class Accounting extends CI_Controller
 
 				if ($insertOk && $this->db->trans_status() !== false) {
 					$this->db->trans_commit();
-					break;
+				} else {
+					$this->db->trans_rollback();
+					$insertOk = false;
 				}
-
-				$this->db->trans_rollback();
-				$insertOk = false;
-
-				if (!$this->isDuplicateDbError($insertError)) {
-					break;
-				}
+			} finally {
+				$this->payment_lock->release();
 			}
 
 			if (!$insertOk) {
@@ -1646,6 +1640,14 @@ class Accounting extends CI_Controller
 			$successMessage = count($paymentRows) > 1
 				? 'Payment saved successfully. O.R. #' . $orNumber . ' covers ' . count($paymentRows) . ' fees totalling ₱' . number_format($receiptTotal, 2) . '.'
 				: 'Payment saved successfully. O.R. #' . $orNumber . '.';
+
+			// The form shows the next O.R. as a preview when it opens. If
+			// another cashier saved first, this payment got a later number —
+			// say so, so the receipt handed over matches the system.
+			$previewOr = trim((string)$this->input->post('ORNumber', true));
+			if ($previewOr !== '' && $previewOr !== $orNumber) {
+				$successMessage .= ' Note: O.R. #' . $previewOr . ' was issued to another payment while this one was being entered, so this payment is O.R. #' . $orNumber . '.';
+			}
 			if (!empty($emailResult['attempted']) && !empty($emailResult['sent'])) {
 				$successMessage .= ' ' . trim((string)($emailResult['message'] ?? ''));
 				$this->session->set_flashdata('success', $successMessage);
@@ -1763,29 +1765,54 @@ class Accounting extends CI_Controller
 		$sem = trim((string)$payment->Sem);
 		$sy  = trim((string)$payment->SY);
 
-		// Sem/SY are intentionally not updated: re-tagging a payment to another
-		// term would rewrite history. Delete and re-enter it instead.
-		$this->db->trans_begin();
-		$this->db->where('ID', $id)->update('paymentsaccounts', [
-			'StudentNumber' => $studentNumber,
-			'PDate'         => $pDateInput,
-			'Amount'        => $amount,
-			'description'   => $description,
-		]);
-
-		$this->recomputeStudeAccount($oldStudentNumber, $sem, $sy);
-		if ($studentNumber !== $oldStudentNumber) {
-			$this->recomputeStudeAccount($studentNumber, $sem, $sy);
+		// Same per-student lock as a new payment, on both students when the
+		// payment moves between them, so the ledger recompute cannot race a
+		// payment being saved for either one.
+		$this->load->library('payment_lock');
+		if (!$this->payment_lock->acquire([$oldStudentNumber, $studentNumber])) {
+			$this->session->set_flashdata('danger', 'Another payment for this student is being saved right now. Please try again in a moment.');
+			redirect('Accounting/Payment');
+			return;
 		}
 
-		if ($this->db->trans_status() === false) {
-			$this->db->trans_rollback();
+		try {
+			// Sem/SY are intentionally not updated: re-tagging a payment to another
+			// term would rewrite history. Delete and re-enter it instead.
+			$this->db->trans_begin();
+			$this->db->where('ID', $id)->where('ORStatus', 'Valid')->update('paymentsaccounts', [
+				'StudentNumber' => $studentNumber,
+				'PDate'         => $pDateInput,
+				'Amount'        => $amount,
+				'description'   => $description,
+			]);
+			$updated = $this->db->affected_rows();
+
+			$this->recomputeStudeAccount($oldStudentNumber, $sem, $sy);
+			if ($studentNumber !== $oldStudentNumber) {
+				$this->recomputeStudeAccount($studentNumber, $sem, $sy);
+			}
+
+			$ok = $this->db->trans_status() !== false;
+			if ($ok) {
+				$this->db->trans_commit();
+			} else {
+				$this->db->trans_rollback();
+			}
+		} finally {
+			$this->payment_lock->release();
+		}
+
+		if (!$ok) {
 			$this->session->set_flashdata('danger', 'Unable to update payment. Please try again.');
 			redirect('Accounting/Payment');
 			return;
 		}
 
-		$this->db->trans_commit();
+		if ($updated < 1 && !$this->db->where('ID', $id)->count_all_results('paymentsaccounts')) {
+			$this->session->set_flashdata('danger', 'This payment was deleted by another user before your changes were saved.');
+			redirect('Accounting/Payment');
+			return;
+		}
 
 		$this->logPaymentAudit('edit', $payment, [
 			'StudentNumber' => $studentNumber,
@@ -2220,46 +2247,66 @@ class Accounting extends CI_Controller
 			return;
 		}
 
-		// Fetch payment first (needed for recompute, and for the audit log)
-		$payment = $this->db->select('ID, StudentNumber, ORNumber, PDate, Amount, description, Sem, SY, ORStatus, CollectionSource')
-			->from('paymentsaccounts')
-			->where('ID', $id)
-			->limit(1)
-			->get()
-			->row();
-
-		if (!$payment) {
-			$this->session->set_flashdata('danger', 'Payment not found.');
+		// Who the payment belongs to decides which lock to take; the row is
+		// then read again under that lock, so two users deleting the same
+		// entry at once cannot both "delete" it and log it twice.
+		$owner = $this->db->select('StudentNumber')->from('paymentsaccounts')->where('ID', $id)->limit(1)->get()->row();
+		if (!$owner) {
+			$this->session->set_flashdata('danger', 'Payment not found. It may have just been deleted by another user.');
 			redirect('Accounting/Payment');
 			return;
 		}
 
-		// Safety guards (optional, but recommended)
-		if ((string)$payment->ORStatus !== 'Valid') {
-			$this->session->set_flashdata('danger', 'Only VALID payments can be deleted.');
+		$this->load->library('payment_lock');
+		if (!$this->payment_lock->acquire($owner->StudentNumber)) {
+			$this->session->set_flashdata('danger', 'Another payment for this student is being saved right now. Please try again in a moment.');
 			redirect('Accounting/Payment');
 			return;
 		}
 
-		if ((string)$payment->CollectionSource !== "Student's Account") {
-			$this->session->set_flashdata('danger', "This payment is not under Student's Account.");
-			redirect('Accounting/Payment');
-			return;
+		try {
+			$payment = $this->db->select('ID, StudentNumber, ORNumber, PDate, Amount, description, Sem, SY, ORStatus, CollectionSource')
+				->from('paymentsaccounts')
+				->where('ID', $id)
+				->limit(1)
+				->get()
+				->row();
+
+			if (!$payment) {
+				$this->session->set_flashdata('danger', 'Payment not found. It may have just been deleted by another user.');
+				redirect('Accounting/Payment');
+				return;
+			}
+
+			// Safety guards (optional, but recommended)
+			if ((string)$payment->ORStatus !== 'Valid') {
+				$this->session->set_flashdata('danger', 'Only VALID payments can be deleted.');
+				redirect('Accounting/Payment');
+				return;
+			}
+
+			if ((string)$payment->CollectionSource !== "Student's Account") {
+				$this->session->set_flashdata('danger', "This payment is not under Student's Account.");
+				redirect('Accounting/Payment');
+				return;
+			}
+
+			$studentNumber = trim((string)$payment->StudentNumber);
+			$sem = trim((string)$payment->Sem);
+			$sy  = trim((string)$payment->SY);
+
+			$this->db->trans_start();
+
+			// Delete row
+			$this->db->where('ID', (int)$id)->delete('paymentsaccounts');
+
+			// Recompute totals (ONLY for same sem/sy)
+			$this->recomputeStudeAccount($studentNumber, $sem, $sy);
+
+			$this->db->trans_complete();
+		} finally {
+			$this->payment_lock->release();
 		}
-
-		$studentNumber = trim((string)$payment->StudentNumber);
-		$sem = trim((string)$payment->Sem);
-		$sy  = trim((string)$payment->SY);
-
-		$this->db->trans_start();
-
-		// Delete row
-		$this->db->where('ID', (int)$id)->delete('paymentsaccounts');
-
-		// Recompute totals (ONLY for same sem/sy)
-		$this->recomputeStudeAccount($studentNumber, $sem, $sy);
-
-		$this->db->trans_complete();
 
 		if ($this->db->trans_status() === false) {
 			$this->session->set_flashdata('danger', 'Unable to delete payment. Please try again.');
