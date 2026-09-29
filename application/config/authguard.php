@@ -192,6 +192,9 @@ $config['authguard_restricted_role_routes'] = array(
         'attendancelogs/*',
         'page/changepassword',
         'page/update_password',
+        'page/staffprofile',
+        'page/uploadprofpic',
+        'page/lockscreen',
         'login/logout',
     ),
     'Cashier' => array(
@@ -203,6 +206,9 @@ $config['authguard_restricted_role_routes'] = array(
         'page/voidors',
         'page/changepassword',
         'page/update_password',
+        'page/staffprofile',
+        'page/uploadprofpic',
+        'page/lockscreen',
         'login/logout',
     ),
 	'Auditor' => array(

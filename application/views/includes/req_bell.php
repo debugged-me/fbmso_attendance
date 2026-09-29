@@ -1,4 +1,4 @@
-<?php if ($this->session->userdata('level') !== 'Student'): ?>
+<?php if ($this->authguard->may('request/ajax_pending_count')): ?>
   <li class="dropdown notification-list req-bell"
     data-count-url="<?= site_url('request/ajax_pending_count'); ?>"
     data-list-url="<?= site_url('request/ajax_pending_list'); ?>"
