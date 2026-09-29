@@ -101,10 +101,6 @@ class CsrfInjectHook
      */
     protected function addHeadTags($CI, $output)
     {
-        if (stripos($output, 'name="csrf-token"') !== false) {
-            return $output;
-        }
-
         $name  = (string)$CI->security->get_csrf_token_name();
         $value = (string)$CI->security->get_csrf_hash();
 
@@ -112,9 +108,25 @@ class CsrfInjectHook
             return $output;
         }
 
-        $tags = '<meta name="csrf-token-name" content="' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '">'
-              . '<meta name="csrf-token" content="' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '">'
-              . '<script src="' . htmlspecialchars(base_url('assets/js/csrf.js?v=3'), ENT_QUOTES, 'UTF-8') . '"></script>';
+        $tags = '';
+
+        // Pages that print their own meta tags (includes/head.php) skip only
+        // the meta tags — they still need the script below.
+        if (stripos($output, 'name="csrf-token"') === false) {
+            $tags .= '<meta name="csrf-token-name" content="' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '">'
+                  .  '<meta name="csrf-token" content="' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '">';
+        }
+
+        // Without csrf.js every same-origin AJAX POST goes out with no token
+        // and 403s. Key off the script itself so a view that ships its own
+        // meta tags does not silently lose the prefilter.
+        if (stripos($output, 'csrf.js') === false) {
+            $tags .= '<script src="' . htmlspecialchars(base_url('assets/js/csrf.js?v=3'), ENT_QUOTES, 'UTF-8') . '"></script>';
+        }
+
+        if ($tags === '') {
+            return $output;
+        }
 
         // Before </head> so the prefilter is registered before page scripts
         // start firing requests.
