@@ -76,7 +76,7 @@ $config['enable_hooks'] = TRUE;
 | from the web. FALSE = normal operation.
 |
 */
-$config['maintenance_mode'] = TRUE;
+$config['maintenance_mode'] = FALSE;
 
 date_default_timezone_set('Asia/Manila');
 
