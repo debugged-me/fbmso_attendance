@@ -29,7 +29,12 @@
     $cashierPos  = trim((string)($settings->cashierPosition ?? 'Cashier'));
 
     $letterhead = trim((string)($settings->letterhead_web ?? ''));
-    $amountValue = (float)($payment->Amount ?? 0);
+    // One O.R. can cover several fees; older callers pass only the payment.
+    $receiptLines = !empty($lines) ? $lines : [$payment];
+    $amountValue = 0.0;
+    foreach ($receiptLines as $line) {
+        $amountValue += (float)($line->Amount ?? 0);
+    }
     ?>
 
     <div class="container-fluid p-2">
@@ -80,10 +85,6 @@
                         <span class="value"><?= htmlspecialchars((string)$payment->StudentNumber, ENT_QUOTES, 'UTF-8'); ?></span>
                     </div>
                     <div class="detail-row">
-                        <span class="label">Description:</span>
-                        <span class="value"><?= htmlspecialchars((string)$payment->description, ENT_QUOTES, 'UTF-8'); ?></span>
-                    </div>
-                    <div class="detail-row">
                         <span class="label">Type:</span>
                         <span class="value"><?= htmlspecialchars((string)$payment->PaymentType, ENT_QUOTES, 'UTF-8'); ?></span>
                     </div>
@@ -106,9 +107,21 @@
 
                 <div class="receipt-divider"></div>
 
+                <!-- Fees paid -->
+                <div class="receipt-lines">
+                    <?php foreach ($receiptLines as $line): ?>
+                        <div class="detail-row">
+                            <span class="value line-desc"><?= htmlspecialchars((string)($line->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span class="value"><?= number_format((float)($line->Amount ?? 0), 2); ?></span>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <div class="receipt-divider"></div>
+
                 <!-- Amount -->
                 <div class="receipt-amount">
-                    <span class="label">AMOUNT:</span>
+                    <span class="label"><?= count($receiptLines) > 1 ? 'TOTAL:' : 'AMOUNT:'; ?></span>
                     <span class="value">PHP <?= number_format($amountValue, 2); ?></span>
                 </div>
 
@@ -196,6 +209,14 @@
             text-align: right;
             word-wrap: break-word;
             word-break: break-word;
+        }
+
+        .receipt-lines .detail-row {
+            gap: 12px;
+        }
+
+        .receipt-lines .line-desc {
+            text-align: left;
         }
 
         .receipt-amount {

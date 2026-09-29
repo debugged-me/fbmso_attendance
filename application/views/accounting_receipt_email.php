@@ -18,7 +18,15 @@ if ($paidAt !== '' && $paidAt !== '0000-00-00') {
 
 $cashierName = trim((string)($payment->Cashier ?? ($settings->cashier ?? '')));
 $cashierPos = trim((string)($settings->cashierPosition ?? 'Cashier'));
-$amountValue = (float)($payment->Amount ?? 0);
+// One O.R. can cover several fees; the mobile API still passes a single payment.
+$receiptLines = !empty($lines) ? $lines : [$payment];
+$amountValue = 0.0;
+$lineNames = [];
+foreach ($receiptLines as $line) {
+    $amountValue += (float)($line->Amount ?? 0);
+    $lineNames[] = trim((string)($line->description ?? ''));
+}
+$isMultiLine = count($receiptLines) > 1;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -44,7 +52,7 @@ $amountValue = (float)($payment->Amount ?? 0);
 
         <div style="padding:28px 30px;">
             <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#334155;">
-                Your payment for <strong><?= htmlspecialchars((string)($payment->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></strong>
+                Your payment for <strong><?= htmlspecialchars(implode(', ', $lineNames), ENT_QUOTES, 'UTF-8'); ?></strong>
                 amounting to <strong style="color:#1d4ed8;">PHP <?= number_format($amountValue, 2); ?></strong> has been received.
                 Your official receipt details are below.
             </p>
@@ -66,10 +74,19 @@ $amountValue = (float)($payment->Amount ?? 0);
                     <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;">Student Number</td>
                     <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;text-align:right;color:#334155;"><?= htmlspecialchars((string)($payment->StudentNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                 </tr>
-                <tr>
-                    <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;">Description</td>
-                    <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;text-align:right;color:#334155;"><?= htmlspecialchars((string)($payment->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                </tr>
+                <?php if ($isMultiLine): ?>
+                    <?php foreach ($receiptLines as $line): ?>
+                        <tr>
+                            <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;color:#334155;"><?= htmlspecialchars((string)($line->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;text-align:right;color:#334155;">PHP <?= number_format((float)($line->Amount ?? 0), 2); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <tr>
+                        <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;">Description</td>
+                        <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;text-align:right;color:#334155;"><?= htmlspecialchars((string)($payment->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                    </tr>
+                <?php endif; ?>
                 <?php if (!empty($payment->refNo)): ?>
                     <tr>
                         <td style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-weight:700;color:#0f172a;">Reference Number</td>
@@ -86,7 +103,7 @@ $amountValue = (float)($payment->Amount ?? 0);
                     </tr>
                 <?php endif; ?>
                 <tr>
-                    <td style="padding:16px 16px 18px;font-weight:700;font-size:16px;color:#0f172a;background:#eef4ff;">Amount</td>
+                    <td style="padding:16px 16px 18px;font-weight:700;font-size:16px;color:#0f172a;background:#eef4ff;"><?= $isMultiLine ? 'Total' : 'Amount'; ?></td>
                     <td style="padding:16px 16px 18px;text-align:right;font-weight:800;font-size:18px;color:#1d4ed8;background:#eef4ff;">PHP <?= number_format($amountValue, 2); ?></td>
                 </tr>
             </table>

@@ -232,20 +232,100 @@ class Accounting extends CI_Controller
 
 	private function paymentFormStateFromPost(array $overrides = [])
 	{
-		$description = trim((string)$this->input->post('description', true));
-		if ($description === '') {
-			$description = trim((string)$this->input->post('descriptionField', true));
-		}
-
 		$state = [
 			'StudentNumber' => trim((string)$this->input->post('StudentNumber', true)),
 			'ORNumber'      => trim((string)$this->input->post('ORNumber', true)),
 			'PDate'         => trim((string)$this->input->post('PDate', true)),
-			'description'   => $description,
-			'Amount'        => trim((string)$this->input->post('Amount', true)),
+			'items'         => $this->paymentItemsFromPost(),
 		];
 
 		return array_merge($state, $overrides);
+	}
+
+	// The fees being paid in one transaction, as posted by the payment form's
+	// item list. Rows with neither a description nor an amount are dropped.
+	private function paymentItemsFromPost()
+	{
+		$posted = $this->input->post('items', true);
+		if (!is_array($posted)) {
+			return [];
+		}
+
+		$items = [];
+		foreach ($posted as $row) {
+			if (!is_array($row)) {
+				continue;
+			}
+
+			$description = trim((string)($row['description'] ?? ''));
+			$amount      = trim((string)($row['amount'] ?? ''));
+			if ($description === '' && $amount === '') {
+				continue;
+			}
+
+			$items[] = [
+				'description' => $description,
+				'amount'      => $amount,
+				'partial'     => trim((string)($row['partial'] ?? '')) !== '',
+			];
+		}
+
+		return $items;
+	}
+
+	// Checks every fee in a transaction against what the student still owes
+	// on it. Returns an error message, or null and fills in each item's
+	// float amount and the fee price to snapshot onto its payment row.
+	//
+	// The amount is only checkable when the description is a configured fee
+	// with a price; free-text descriptions stay unconstrained. The UI enforces
+	// the same rules, but it enforces them in the browser — this is the copy
+	// that actually decides.
+	private function validatePaymentItems(array &$items, $studentNumber, $sem, $sy)
+	{
+		if (empty($items)) {
+			return 'Select at least one fee description.';
+		}
+
+		$seen = [];
+		foreach ($items as &$item) {
+			$description = $item['description'];
+			if ($description === '') {
+				return 'Every item needs a description.';
+			}
+
+			$key = strtolower($description);
+			if (isset($seen[$key])) {
+				return $description . ' is listed more than once. Pay it as a single item.';
+			}
+			$seen[$key] = true;
+
+			if (!is_numeric($item['amount']) || (float)$item['amount'] <= 0) {
+				return 'Enter an amount greater than zero for ' . $description . '.';
+			}
+			$amount = round((float)$item['amount'], 2);
+
+			$balance = $this->feeBalanceFor($studentNumber, $description, $sem, $sy);
+			if ($balance['full'] > 0) {
+				if ($balance['remaining'] <= 0.004) {
+					return $description . ' is already fully paid for this term (₱' . number_format($balance['paid'], 2) . ' of ₱' . number_format($balance['full'], 2) . ').';
+				}
+
+				if ($amount > $balance['remaining'] + 0.004) {
+					return 'Amount exceeds the ₱' . number_format($balance['remaining'], 2) . ' still owed on ' . $description . ' for this term.';
+				}
+
+				if ($amount + 0.004 < $balance['remaining'] && !$item['partial']) {
+					return $description . ': ₱' . number_format($amount, 2) . ' is less than the ₱' . number_format($balance['remaining'], 2) . ' still owed. Tick "Partial" to record it as an instalment.';
+				}
+			}
+
+			$item['amount']        = $amount;
+			$item['feeFullAmount'] = $balance['full'];
+		}
+		unset($item);
+
+		return null;
 	}
 
 	private function generatePaymentSubmitToken()
@@ -1143,11 +1223,40 @@ class Accounting extends CI_Controller
 		]);
 	}
 
+	// Every valid fee paid under the same O.R. as this payment. One counter
+	// transaction can cover several fees, each stored as its own row, and the
+	// receipt has to show all of them — not just the row that was clicked.
+	private function getReceiptLines($payment)
+	{
+		$orNumber = trim((string)($payment->ORNumber ?? ''));
+		if ($orNumber === '') {
+			return [(object)[
+				'description' => (string)($payment->description ?? ''),
+				'Amount'      => (float)($payment->Amount ?? 0),
+			]];
+		}
+
+		$lines = $this->db->select('ID, description, Amount')
+			->from('paymentsaccounts')
+			->where('ORNumber', $orNumber)
+			->where('StudentNumber', (string)($payment->StudentNumber ?? ''))
+			->where('ORStatus', 'Valid')
+			->order_by('ID', 'ASC')
+			->get()
+			->result();
+
+		return !empty($lines) ? $lines : [(object)[
+			'description' => (string)($payment->description ?? ''),
+			'Amount'      => (float)($payment->Amount ?? 0),
+		]];
+	}
+
 	private function buildReceiptEmailHtml($payment, $settings)
 	{
 		return $this->load->view('accounting_receipt_email', [
 			'payment' => $payment,
 			'settings' => $settings,
+			'lines' => $this->getReceiptLines($payment),
 		], true);
 	}
 
@@ -1381,8 +1490,6 @@ class Accounting extends CI_Controller
 			}
 
 			$this->form_validation->set_rules('StudentNumber', 'Student', 'required|trim');
-			$this->form_validation->set_rules('description', 'Description', 'required|trim');
-			$this->form_validation->set_rules('Amount', 'Amount', 'required|numeric|greater_than[0]');
 			$this->form_validation->set_rules('PDate', 'Payment Date', 'required|trim');
 
 			if ($this->form_validation->run() === false) {
@@ -1393,8 +1500,7 @@ class Accounting extends CI_Controller
 			}
 
 			$studentNumber = trim((string)$this->input->post('StudentNumber', true));
-			$description   = trim((string)$this->input->post('description', true));
-			$amount        = (float)$this->input->post('Amount', true);
+			$items         = $this->paymentItemsFromPost();
 			$pDateInput    = trim((string)$this->input->post('PDate', true));
 			$paymentType   = trim((string)$this->input->post('PaymentType', true));
 			$checkNumber   = trim((string)$this->input->post('CheckNumber', true));
@@ -1422,35 +1528,12 @@ class Accounting extends CI_Controller
 				$bank = '';
 			}
 
-			// The amount is only checkable when the description is a configured
-			// fee with a price; free-text descriptions stay unconstrained. The
-			// UI enforces the same rules, but it enforces them in the browser —
-			// this is the copy that actually decides.
-			$balance      = $this->feeBalanceFor($studentNumber, $description, $sem, $sy);
-			$isPartial    = trim((string)$this->input->post('IsPartial', true)) !== '';
-			$feeFullAmount = $balance['full'];
-
-			if ($feeFullAmount > 0) {
-				if ($balance['remaining'] <= 0.004) {
-					$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
-					$this->session->set_flashdata('danger', $description . ' is already fully paid for this term (₱' . number_format($balance['paid'], 2) . ' of ₱' . number_format($feeFullAmount, 2) . ').');
-					redirect('Accounting/Payment');
-					return;
-				}
-
-				if ($amount > $balance['remaining'] + 0.004) {
-					$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
-					$this->session->set_flashdata('danger', 'Amount exceeds the ₱' . number_format($balance['remaining'], 2) . ' still owed on ' . $description . ' for this term.');
-					redirect('Accounting/Payment');
-					return;
-				}
-
-				if ($amount + 0.004 < $balance['remaining'] && !$isPartial) {
-					$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
-					$this->session->set_flashdata('danger', 'This is less than the ₱' . number_format($balance['remaining'], 2) . ' still owed. Tick "Partial payment" to record it as an instalment.');
-					redirect('Accounting/Payment');
-					return;
-				}
+			$itemError = $this->validatePaymentItems($items, $studentNumber, $sem, $sy);
+			if ($itemError !== null) {
+				$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
+				$this->session->set_flashdata('danger', $itemError);
+				redirect('Accounting/Payment');
+				return;
 			}
 
 			$student = $this->getStudentContext($studentNumber, $sem, $sy);
@@ -1470,36 +1553,50 @@ class Accounting extends CI_Controller
 			// from the payment date. Retry a few times in case two cashiers hit
 			// the same date/sequence in the same instant, instead of bouncing
 			// the whole form back for something the cashier never typed.
+			//
+			// Every fee paid in this transaction gets its own row — balances,
+			// partial status and the price snapshot are all per fee — but they
+			// share one O.R. number, so it is one receipt at the counter.
 			$orNumber = '';
 			$insertOk = false;
-			$paymentData = [];
+			$paymentRows = [];
 
 			for ($attempt = 0; $attempt < 5; $attempt++) {
 				$orNumber = $this->generateNextOrNumber($pDateInput);
-				$paymentData = [
-					'ID'               => $this->nextTableId('paymentsaccounts', 'ID'),
-					'StudentNumber'    => $studentNumber,
-					'Course'           => $course,
-					'PDate'            => $pDateInput,
-					'ORNumber'         => $orNumber,
-					'Amount'           => $amount,
-					'FeeFullAmount'    => $feeFullAmount,
-					'description'      => $description,
-					'PaymentType'      => $paymentType,
-					'CheckNumber'      => $checkNumber,
-					'Sem'              => $sem,
-					'SY'               => $sy,
-					'CollectionSource' => "Student's Account",
-					'Bank'             => $bank,
-					'ORStatus'         => 'Valid',
-					'Cashier'          => $cashier,
-					'pTime'            => $dtNow->format('H:i:s'),
-					'refNo'            => $refNo
-				];
+				$paymentRows = [];
+				$insertOk = true;
+				$insertError = [];
 
 				$this->db->trans_begin();
-				$insertOk = $this->db->insert('paymentsaccounts', $paymentData);
-				$insertError = $this->db->error();
+				foreach ($items as $item) {
+					$row = [
+						'ID'               => $this->nextTableId('paymentsaccounts', 'ID'),
+						'StudentNumber'    => $studentNumber,
+						'Course'           => $course,
+						'PDate'            => $pDateInput,
+						'ORNumber'         => $orNumber,
+						'Amount'           => $item['amount'],
+						'FeeFullAmount'    => $item['feeFullAmount'],
+						'description'      => $item['description'],
+						'PaymentType'      => $paymentType,
+						'CheckNumber'      => $checkNumber,
+						'Sem'              => $sem,
+						'SY'               => $sy,
+						'CollectionSource' => "Student's Account",
+						'Bank'             => $bank,
+						'ORStatus'         => 'Valid',
+						'Cashier'          => $cashier,
+						'pTime'            => $dtNow->format('H:i:s'),
+						'refNo'            => $refNo
+					];
+
+					if (!$this->db->insert('paymentsaccounts', $row)) {
+						$insertOk = false;
+						$insertError = $this->db->error();
+						break;
+					}
+					$paymentRows[] = $row;
+				}
 
 				if ($insertOk && $sem !== '' && $sy !== '') {
 					$this->recomputeStudeAccount($studentNumber, $sem, $sy);
@@ -1527,22 +1624,28 @@ class Accounting extends CI_Controller
 
 			// Payment entry is the cashier's main write, so it belongs in the
 			// same trail as edits and deletions (and in Super Admin's Audit Trail).
-			$this->logPaymentAudit('create', (object)$paymentData, [
-				'StudentNumber' => $studentNumber,
-				'ORNumber'      => $orNumber,
-				'PDate'         => $pDateInput,
-				'Amount'        => $amount,
-				'description'   => $description,
-				'PaymentType'   => $paymentType,
-				'Sem'           => $sem,
-				'SY'            => $sy,
-			]);
+			$receiptTotal = 0.0;
+			foreach ($paymentRows as $row) {
+				$receiptTotal += (float)$row['Amount'];
+				$this->logPaymentAudit('create', (object)$row, [
+					'StudentNumber' => $studentNumber,
+					'ORNumber'      => $orNumber,
+					'PDate'         => $pDateInput,
+					'Amount'        => $row['Amount'],
+					'description'   => $row['description'],
+					'PaymentType'   => $paymentType,
+					'Sem'           => $sem,
+					'SY'            => $sy,
+				]);
+			}
 
 			$receiptSettings = $this->getReceiptSettings();
-			$receiptPayment = $this->buildReceiptEmailPayment($paymentData, $student);
+			$receiptPayment = $this->buildReceiptEmailPayment($paymentRows[0], $student);
 			$emailResult = $this->sendReceiptEmailForPayment($receiptPayment, $receiptSettings);
 
-			$successMessage = 'Payment saved successfully. O.R. #' . $orNumber . '.';
+			$successMessage = count($paymentRows) > 1
+				? 'Payment saved successfully. O.R. #' . $orNumber . ' covers ' . count($paymentRows) . ' fees totalling ₱' . number_format($receiptTotal, 2) . '.'
+				: 'Payment saved successfully. O.R. #' . $orNumber . '.';
 			if (!empty($emailResult['attempted']) && !empty($emailResult['sent'])) {
 				$successMessage .= ' ' . trim((string)($emailResult['message'] ?? ''));
 				$this->session->set_flashdata('success', $successMessage);
@@ -1730,6 +1833,7 @@ class Accounting extends CI_Controller
 
 		$data = [
 			'payment'    => $payment,
+			'lines'      => $this->getReceiptLines($payment),
 			'settings'   => $settings,
 			'auto_print' => $this->input->get('print', true) === '1'
 		];

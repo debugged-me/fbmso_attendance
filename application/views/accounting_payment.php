@@ -277,9 +277,6 @@
                     <div class="modal-body">
                         <input type="hidden" name="payment_submit_token" value="<?= htmlspecialchars((string)($payment_submit_token ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
 
-                        <!-- keep description for controller, but hidden -->
-                        <input type="hidden" name="description" id="descriptionHidden" value="">
-
                         <div class="form-group">
                             <label for="studentSelect">Student</label>
                             <select class="form-control" id="studentSelect" name="StudentNumber" required>
@@ -331,46 +328,29 @@
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="descriptionField">Description <span class="text-danger">*</span></label>
-                            <select class="form-control" id="descriptionField" name="descriptionField" required>
-                                <option value="">Select or type description...</option>
-                            </select>
-                        </div>
-
-                        <div class="fee-balance" id="feeBalance" style="display:none;">
-                            <div class="fee-balance-item">
-                                <span class="fee-balance-label">Full amount</span>
-                                <span class="fee-balance-value" id="balanceFull">₱ 0.00</span>
-                            </div>
-                            <div class="fee-balance-item">
-                                <span class="fee-balance-label">Already paid</span>
-                                <span class="fee-balance-value" id="balancePaid" style="color:#16a34a;">₱ 0.00</span>
-                            </div>
-                            <div class="fee-balance-item">
-                                <span class="fee-balance-label">Remaining</span>
-                                <span class="fee-balance-value" id="balanceRemaining" style="color:#dc2626;">₱ 0.00</span>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="amount">Amount</label>
-                            <input type="number" class="form-control" id="amount" name="Amount" min="0" step="0.01" readonly required>
-                            <small class="form-text text-muted" id="amountHint">Set by the selected Description's configured fee.</small>
-                        </div>
-
-                        <div class="form-group custom-control custom-checkbox">
-                            <input type="checkbox" class="custom-control-input" id="partialPayment" name="IsPartial" value="1">
-                            <label class="custom-control-label" for="partialPayment">
-                                Partial payment — student is paying less than the amount still owed
+                        <div class="form-group custom-control custom-checkbox mb-2">
+                            <input type="checkbox" class="custom-control-input" id="multiFeeToggle">
+                            <label class="custom-control-label" for="multiFeeToggle">
+                                Multiple payments — student is paying more than one fee (one O.R.)
                             </label>
                         </div>
 
-                        <div class="alert alert-warning mt-2 mb-0" id="partialNotice" style="display:none;"></div>
-                        <div class="alert alert-success mt-2 mb-0" id="settledNotice" style="display:none;"></div>
+                        <div class="form-group">
+                            <label for="descriptionField">Description <span class="text-danger">*</span></label>
+                            <select class="form-control" id="descriptionField"></select>
+                            <small class="form-text text-muted" id="descriptionHint">Select a fee, or type a description that isn't listed.</small>
+                        </div>
+
+                        <div class="pay-items" id="payItems" style="display:none;">
+                            <div id="payItemsList"></div>
+                            <div class="pay-items-total">
+                                <span>Total</span>
+                                <span id="payItemsTotal">₱ 0.00</span>
+                            </div>
+                        </div>
 
                         <div class="alert alert-warning mt-2 mb-0" id="feeWarning" style="display:none;">
-                            Please enter or select a <b>Description</b>.
+                            Please select at least one <b>Description</b> to pay.
                         </div>
                     </div>
 
@@ -499,11 +479,14 @@
                 }
             }
 
-            function initDescSelect($el, items, dropdownParent) {
-                $el.empty().append($('<option>', {
-                    value: '',
-                    text: 'Select or type description...'
-                }));
+            function initDescSelect($el, items, dropdownParent, multiple) {
+                $el.empty();
+                if (!multiple) {
+                    $el.append($('<option>', {
+                        value: '',
+                        text: 'Select or type description...'
+                    }));
+                }
 
                 (items || []).forEach(function(item) {
                     var $opt = $('<option>', {
@@ -516,28 +499,78 @@
                 });
 
                 if ($el.data('select2')) $el.select2('destroy');
+                $el.prop('multiple', !!multiple);
 
                 $el.select2({
                     width: '100%',
                     tags: true,
                     tokenSeparators: [],
-                    dropdownParent: dropdownParent
+                    dropdownParent: dropdownParent,
+                    placeholder: multiple ? 'Select or type one or more descriptions...' : undefined
                 });
+            }
+
+            var feeList = [];
+
+            function isMultiFee() {
+                return $('#multiFeeToggle').prop('checked');
             }
 
             function loadFeesToBothSelects() {
                 return $.getJSON(baseUrl + 'Accounting/ajaxFees')
                     .then(function(resp) {
-                        var fees = (resp && resp.fees) ? resp.fees : [];
-                        initDescSelect($('#descriptionField'), fees, $('#paymentModal'));
-                        initDescSelect($('#editDescriptionField'), fees, $('#editPaymentModal'));
-                        return fees;
+                        feeList = (resp && resp.fees) ? resp.fees : [];
+                        initDescSelect($('#descriptionField'), feeList, $('#paymentModal'), isMultiFee());
+                        initDescSelect($('#editDescriptionField'), feeList, $('#editPaymentModal'));
+                        return feeList;
                     })
                     .catch(function() {
-                        initDescSelect($('#descriptionField'), [], $('#paymentModal'));
+                        feeList = [];
+                        initDescSelect($('#descriptionField'), [], $('#paymentModal'), isMultiFee());
                         initDescSelect($('#editDescriptionField'), [], $('#editPaymentModal'));
                         return [];
                     });
+            }
+
+            // The selected descriptions as a list, whichever mode the field is in.
+            function selectedDescriptions() {
+                var v = $('#descriptionField').val();
+                if ($.isArray(v)) return v;
+                return v ? [v] : [];
+            }
+
+            function setSelectedDescriptions(list) {
+                var $desc = $('#descriptionField');
+                list.forEach(function(d) {
+                    var exists = false;
+                    $desc.find('option').each(function() {
+                        if (this.value === d) {
+                            exists = true;
+                            return false;
+                        }
+                    });
+                    if (!exists) $desc.append($('<option>', { value: d, text: d }));
+                });
+                $desc.val(isMultiFee() ? list : (list[0] || '')).trigger('change');
+            }
+
+            // "Multiple payments" swaps Description between a single select and
+            // a multi-select. What was already picked carries over; going back
+            // to single keeps only the first fee line on screen (select2 reports
+            // values in option order, not the order they were picked).
+            function applyMultiFeeMode() {
+                var multi = isMultiFee();
+                var keep = payItemRows().map(function() {
+                    return $(this).data('desc');
+                }).get();
+                if (!keep.length) keep = selectedDescriptions();
+                if (!multi) keep = keep.slice(0, 1);
+
+                initDescSelect($('#descriptionField'), feeList, $('#paymentModal'), multi);
+                $('#descriptionHint').text(multi ?
+                    "Pick every fee the student is paying now — they all go on one O.R. You can also type a description that isn't listed." :
+                    "Select a fee, or type a description that isn't listed.");
+                setSelectedDescriptions(keep);
             }
 
             function setPaymentSubmitState(isSubmitting) {
@@ -562,89 +595,215 @@
                 return '₱ ' + Number(value || 0).toFixed(2);
             }
 
-            // Asks the server what this student still owes on this fee, so the
-            // form bills the remaining balance rather than assuming every
-            // payment starts from the full price again.
-            function refreshFeeBalance() {
-                var student = ($('#studentSelect').val() || '').trim();
-                var description = ($('#descriptionHidden').val() || '').trim();
-                var $amount = $('#amount');
-                var $partial = $('#partialPayment');
+            // ── Fees being paid (add form) ─────────────────────────────────
+            // Each description picked becomes one line with its own balance,
+            // amount and Partial tick. They are saved as separate payments
+            // (balances stay per fee) under one shared O.R. number.
+            var payItemSeq = 0;
+            var payItemRestore = {};
 
-                if (!student || !description) {
-                    $('#feeBalance').hide();
-                    $('#settledNotice').hide();
-                    $('#partialNotice').hide();
-                    $amount.removeData('remaining');
-                    return;
-                }
+            function payItemRows() {
+                return $('#payItemsList .pay-item');
+            }
 
-                $.getJSON(baseUrl + 'Accounting/ajaxFeeBalance', {
-                    student: student,
-                    description: description
-                }).done(function(res) {
-                    var full = parseFloat(res.full) || 0;
-                    var paid = parseFloat(res.paid) || 0;
-                    var remaining = parseFloat(res.remaining) || 0;
-
-                    $amount.data('full-amount', full).data('remaining', remaining);
-
-                    if (full <= 0) {
-                        $('#feeBalance').hide();
-                        $('#settledNotice').hide();
-                        return;
-                    }
-
-                    $('#balanceFull').text(peso(full));
-                    $('#balancePaid').text(peso(paid));
-                    $('#balanceRemaining').text(peso(remaining));
-                    $('#feeBalance').show();
-
-                    if (remaining <= 0.004) {
-                        $('#settledNotice')
-                            .text(description + ' is already fully paid for this term. Nothing further is owed.')
-                            .show();
-                        $amount.val('').prop('readonly', true);
-                        $partial.prop('checked', false).prop('disabled', true);
-                        setSubmitDisabled(true);
-                        return;
-                    }
-
-                    $('#settledNotice').hide();
-                    $partial.prop('disabled', false);
-                    setSubmitDisabled(false);
-
-                    // Default to clearing the whole remaining balance; ticking
-                    // "Partial" is what unlocks paying less than that.
-                    if (!$partial.prop('checked')) {
-                        $amount.val(remaining.toFixed(2));
-                    }
-                    updatePartialNotice();
+            function findPayItem(desc) {
+                return payItemRows().filter(function() {
+                    return $(this).data('desc') === desc;
                 });
             }
 
-            function setSubmitDisabled(disabled) {
-                $('#paymentSubmitBtn').prop('disabled', !!disabled);
+            function configuredFeeAmount(desc) {
+                var amt = NaN;
+                $('#descriptionField option').each(function() {
+                    if (this.value === desc) {
+                        amt = parseFloat($(this).attr('data-amount'));
+                        return false;
+                    }
+                });
+                return amt;
             }
 
-            function updatePartialNotice() {
-                var $amount = $('#amount');
-                var remaining = parseFloat($amount.data('remaining'));
-                var entered = parseFloat($amount.val());
+            function buildPayItem(desc) {
+                var i = payItemSeq++;
+                var partialId = 'payItemPartial' + i;
 
-                if (isNaN(remaining) || remaining <= 0 || isNaN(entered)) {
-                    $('#partialNotice').hide();
+                var $amount = $('<input>', {
+                    type: 'number',
+                    name: 'items[' + i + '][amount]',
+                    'class': 'form-control pay-item-amount',
+                    min: '0.01',
+                    step: '0.01',
+                    required: true,
+                    readonly: true
+                });
+
+                var $row = $('<div class="pay-item is-loading">').append(
+                    $('<input>', { type: 'hidden', name: 'items[' + i + '][description]', value: desc, 'class': 'pay-item-desc-input' }),
+                    $('<div class="pay-item-head">').append(
+                        $('<span class="pay-item-name">').text(desc),
+                        $('<button type="button" class="pay-item-remove" title="Remove this fee" aria-label="Remove this fee">').html('&times;')
+                    ),
+                    $('<div class="pay-item-meta">').text('Checking balance...'),
+                    $('<div class="pay-item-controls">').append(
+                        $('<div class="input-group input-group-sm pay-item-amount-wrap">').append(
+                            $('<div class="input-group-prepend">').append($('<span class="input-group-text">').text('₱')),
+                            $amount
+                        ),
+                        $('<div class="custom-control custom-checkbox pay-item-partial-wrap">').append(
+                            $('<input>', { type: 'checkbox', id: partialId, name: 'items[' + i + '][partial]', value: '1', 'class': 'custom-control-input pay-item-partial' }),
+                            $('<label>', { 'for': partialId, 'class': 'custom-control-label' }).text('Partial')
+                        )
+                    ),
+                    $('<div class="pay-item-note">')
+                );
+
+                $row.data('desc', desc);
+                if (payItemRestore[desc]) {
+                    $row.data('restore', payItemRestore[desc]);
+                    delete payItemRestore[desc];
+                }
+                return $row;
+            }
+
+            // Asks the server what this student still owes on the line's fee,
+            // so it bills the remaining balance rather than assuming every
+            // payment starts from the full price again.
+            function loadPayItemBalance($row) {
+                var student = ($('#studentSelect').val() || '').trim();
+                var desc = $row.data('desc');
+                var prior = $row.data('req');
+                if (prior && prior.readyState !== 4) prior.abort();
+
+                if (!student) {
+                    // No student yet: show the configured price as a preview.
+                    var configured = configuredFeeAmount(desc);
+                    applyPayItemBalance($row, configured > 0 ? configured : 0, 0, configured > 0 ? configured : 0);
+                    $row.find('.pay-item-meta').text(configured > 0 ?
+                        'Fee: ' + peso(configured) + ' — select a student to check what is still owed.' :
+                        'Not a configured fee — enter the amount received.');
                     return;
                 }
 
-                if (entered + 0.004 < remaining) {
-                    $('#partialNotice')
-                        .html('Short by ' + peso(remaining - entered) + '. Balance after this payment: <b>' +
-                            peso(remaining - entered) + '</b>.')
-                        .show();
-                } else {
-                    $('#partialNotice').hide();
+                $row.addClass('is-loading');
+                $row.find('.pay-item-meta').text('Checking balance...');
+                $row.data('req', $.getJSON(baseUrl + 'Accounting/ajaxFeeBalance', {
+                    student: student,
+                    description: desc
+                }).done(function(res) {
+                    applyPayItemBalance($row, parseFloat(res.full) || 0, parseFloat(res.paid) || 0, parseFloat(res.remaining) || 0);
+                }).fail(function(xhr, status) {
+                    if (status === 'abort') return;
+                    $row.removeClass('is-loading');
+                    $row.find('.pay-item-meta').text('Could not check the balance. Remove and re-add this fee to retry.');
+                    updatePayTotal();
+                }));
+            }
+
+            function applyPayItemBalance($row, full, paid, remaining) {
+                var $amount = $row.find('.pay-item-amount');
+                var $partial = $row.find('.pay-item-partial');
+                var restore = $row.data('restore');
+                $row.removeData('restore');
+
+                $row.removeClass('is-loading is-settled is-free');
+                $row.data('remaining', full > 0 ? remaining : null);
+                $row.find('input').prop('disabled', false);
+
+                if (full <= 0) {
+                    // Free-text description: nothing to check the amount against.
+                    $row.addClass('is-free');
+                    $row.find('.pay-item-meta').text('Not a configured fee — enter the amount received.');
+                    $partial.prop('checked', false);
+                    $amount.prop('readonly', false).removeAttr('max');
+                    if (restore) $amount.val(restore.amount || '');
+                    updatePayItemNote($row);
+                    return;
                 }
+
+                $row.find('.pay-item-meta').text('Full ' + peso(full) + ' · Paid ' + peso(paid) + ' · Remaining ' + peso(remaining));
+
+                if (remaining <= 0.004) {
+                    // Settled fees stay visible but are left out of the payment.
+                    $row.addClass('is-settled');
+                    $amount.val('');
+                    $partial.prop('checked', false);
+                    $row.find('input').prop('disabled', true);
+                    updatePayItemNote($row);
+                    return;
+                }
+
+                if (restore && restore.partial) {
+                    $partial.prop('checked', true);
+                }
+
+                if ($partial.prop('checked')) {
+                    $amount.prop('readonly', false).attr('max', remaining.toFixed(2));
+                    if (restore) $amount.val(restore.amount || '');
+                } else {
+                    // Default to clearing the whole remaining balance; ticking
+                    // "Partial" is what unlocks paying less than that.
+                    $amount.prop('readonly', true).removeAttr('max').val(remaining.toFixed(2));
+                }
+                updatePayItemNote($row);
+            }
+
+            function updatePayItemNote($row) {
+                var $note = $row.find('.pay-item-note');
+                var remaining = $row.data('remaining');
+                var entered = parseFloat($row.find('.pay-item-amount').val());
+
+                if ($row.hasClass('is-settled')) {
+                    $note.text('Already fully paid this term — not included.').show();
+                } else if (remaining !== null && remaining !== undefined && !isNaN(entered) && entered + 0.004 < remaining) {
+                    $note.text('Balance after this payment: ' + peso(remaining - entered)).show();
+                } else if (remaining !== null && remaining !== undefined && !isNaN(entered) && entered > remaining + 0.004) {
+                    $note.text('More than the ' + peso(remaining) + ' still owed.').show();
+                } else {
+                    $note.text('').hide();
+                }
+                updatePayTotal();
+            }
+
+            function updatePayTotal() {
+                var total = 0;
+                payItemRows().not('.is-settled').find('.pay-item-amount').each(function() {
+                    var v = parseFloat(this.value);
+                    if (!isNaN(v)) total += v;
+                });
+                $('#payItemsTotal').text(peso(total));
+            }
+
+            // Mirrors the multi-select into the item list, keeping lines that
+            // are still selected (and whatever was typed in them) untouched.
+            function syncPayItems() {
+                var selected = selectedDescriptions();
+
+                payItemRows().each(function() {
+                    if (selected.indexOf($(this).data('desc')) === -1) {
+                        var req = $(this).data('req');
+                        if (req && req.readyState !== 4) req.abort();
+                        $(this).remove();
+                    }
+                });
+
+                selected.forEach(function(desc) {
+                    if (!findPayItem(desc).length) {
+                        var $row = buildPayItem(desc);
+                        $('#payItemsList').append($row);
+                        loadPayItemBalance($row);
+                    }
+                });
+
+                $('#payItems').toggle(selected.length > 0);
+                if (selected.length) $('#feeWarning').hide();
+                updatePayTotal();
+            }
+
+            function clearPayItems() {
+                payItemRestore = {};
+                payItemRows().remove();
+                $('#payItems').hide();
+                updatePayTotal();
             }
 
             function applyDescriptionSelection($select, $hidden, $amount, $warn, $partialCheckbox) {
@@ -669,8 +828,6 @@
                     $amount.data('full-amount', amt);
                     $amount.val(Number(amt).toFixed(2));
                 }
-
-                refreshFeeBalance();
             }
 
             function bindPartialToggle($checkbox, $amount, $hint) {
@@ -686,10 +843,7 @@
                         $amount.prop('readonly', true).removeAttr('max').val(remaining.toFixed(2));
                         $hint.text('Settles the full remaining balance of ' + peso(remaining) + '.');
                     }
-                    updatePartialNotice();
                 });
-
-                $amount.on('input', updatePartialNotice);
             }
 
             function validateDesc($hidden, $warn) {
@@ -700,32 +854,6 @@
                 }
                 $warn.hide();
                 return true;
-            }
-
-            function setSelectValue($select, value) {
-                var normalized = $.trim(value || '');
-
-                if (!normalized) {
-                    $select.val('').trigger('change');
-                    return;
-                }
-
-                var hasOption = false;
-                $select.find('option').each(function() {
-                    if ($(this).val() === normalized) {
-                        hasOption = true;
-                        return false;
-                    }
-                });
-
-                if (!hasOption) {
-                    $select.append($('<option>', {
-                        value: normalized,
-                        text: normalized
-                    }));
-                }
-
-                $select.val(normalized).trigger('change');
             }
 
             // The O.R. field is read-only — this just refreshes the preview
@@ -753,36 +881,34 @@
 
                 $('#orNumber').val(defaultOrNumber);
                 $('#paymentDate').val(defaultPaymentDate);
-                $('#amount').val('').prop('readonly', true).removeAttr('max').removeData('full-amount').removeData('remaining');
-                $('#partialPayment').prop('checked', false).prop('disabled', false);
-                $('#amountHint').text("Set by the selected Description's configured fee.");
-                $('#descriptionHidden').val('');
                 $('#feeWarning').hide();
-                $('#feeBalance').hide();
-                $('#partialNotice').hide();
-                $('#settledNotice').hide();
+                clearPayItems();
 
                 if ($('#studentSelect').data('select2')) {
                     $('#studentSelect').val('').trigger('change');
                 }
 
+                // form.reset() already unticked "Multiple payments"; rebuild
+                // Description as a single select to match.
                 if ($('#descriptionField').data('select2')) {
-                    setSelectValue($('#descriptionField'), '');
+                    applyMultiFeeMode();
                 }
 
                 paymentFormSubmitting = false;
                 setPaymentSubmitState(false);
             }
 
+            // Brings the form back after the server rejected it, including
+            // every fee line with the amount and Partial tick it was sent with.
             function restorePaymentForm() {
                 var state = restoredPaymentForm || {};
                 var restoredPaymentDate = $.trim(state.PDate || '') || defaultPaymentDate;
+                var items = $.isArray(state.items) ? state.items : [];
 
                 $('#paymentDate').val(restoredPaymentDate);
                 $('#orNumber').val(defaultOrNumber);
-                $('#amount').val($.trim(state.Amount || ''));
-                $('#descriptionHidden').val($.trim(state.description || ''));
                 $('#feeWarning').hide();
+                clearPayItems();
 
                 if ($('#studentSelect').data('select2')) {
                     $('#studentSelect').val($.trim(state.StudentNumber || '')).trigger('change');
@@ -790,9 +916,18 @@
                     $('#studentSelect').val($.trim(state.StudentNumber || ''));
                 }
 
-                setSelectValue($('#descriptionField'), $.trim(state.description || ''));
-                $('#descriptionHidden').val($.trim(state.description || ''));
-                $('#amount').val($.trim(state.Amount || ''));
+                var descs = [];
+                items.forEach(function(item) {
+                    var d = $.trim(item.description || '');
+                    if (!d || descs.indexOf(d) !== -1) return;
+                    descs.push(d);
+                    payItemRestore[d] = item;
+                });
+
+                // Several fees came back: reopen in "Multiple payments" mode.
+                $('#multiFeeToggle').prop('checked', descs.length > 1);
+                applyMultiFeeMode();
+                setSelectedDescriptions(descs);
 
                 paymentFormSubmitting = false;
                 setPaymentSubmitState(false);
@@ -912,16 +1047,53 @@
                     useRestoredPaymentState = false;
                 });
 
+                // select2 locks the scroll of every scrollable container around
+                // an open dropdown, but on close it only unlocks containers
+                // that are *still* scrollable. The tall student list is often
+                // what made the modal scrollable, so the lock outlives the
+                // dropdown and the modal snaps back to the top on every
+                // scroll. Drop whatever lock is left once a dropdown closes.
+                $(document).on('select2:close', '#paymentModal select, #editPaymentModal select', function() {
+                    var $parents = $(this).parents();
+                    setTimeout(function() {
+                        $parents.off('scroll.select2');
+                    }, 0);
+                });
+
+                // A different student owes different balances — re-check every line.
                 $(document).on('change', '#studentSelect', function() {
                     updateStudentTermHint($(this));
-                    refreshFeeBalance();
+                    payItemRows().each(function() {
+                        loadPayItemBalance($(this));
+                    });
                 });
 
-                $(document).on('change', '#descriptionField', function() {
-                    applyDescriptionSelection($('#descriptionField'), $('#descriptionHidden'), $('#amount'), $('#feeWarning'), $('#partialPayment'));
+                $(document).on('change', '#descriptionField', syncPayItems);
+                $('#multiFeeToggle').on('change', applyMultiFeeMode);
+
+                $(document).on('click', '#payItemsList .pay-item-remove', function() {
+                    var desc = $(this).closest('.pay-item').data('desc');
+                    setSelectedDescriptions(selectedDescriptions().filter(function(d) {
+                        return d !== desc;
+                    }));
                 });
 
-                bindPartialToggle($('#partialPayment'), $('#amount'), $('#amountHint'));
+                $(document).on('change', '#payItemsList .pay-item-partial', function() {
+                    var $row = $(this).closest('.pay-item');
+                    var $amount = $row.find('.pay-item-amount');
+                    var remaining = parseFloat($row.data('remaining')) || 0;
+
+                    if (this.checked) {
+                        $amount.prop('readonly', false).attr('max', remaining.toFixed(2)).val('').focus();
+                    } else {
+                        $amount.prop('readonly', true).removeAttr('max').val(remaining.toFixed(2));
+                    }
+                    updatePayItemNote($row);
+                });
+
+                $(document).on('input', '#payItemsList .pay-item-amount', function() {
+                    updatePayItemNote($(this).closest('.pay-item'));
+                });
 
                 $('#paymentDate').on('change', function() {
                     refreshSuggestedOrNumber();
@@ -933,7 +1105,15 @@
                         return;
                     }
 
-                    if (!validateDesc($('#descriptionHidden'), $('#feeWarning'))) {
+                    var $active = payItemRows().not('.is-settled');
+                    if (!$active.length) {
+                        $('#feeWarning').show();
+                        e.preventDefault();
+                        return;
+                    }
+
+                    // An amount is filled in only once its balance comes back.
+                    if (payItemRows().filter('.is-loading').length) {
                         e.preventDefault();
                         return;
                     }
@@ -1046,37 +1226,142 @@
     </script>
 
     <style>
-        .fee-balance {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+        /* Selected-fee chips: the theme's white chip text lands on select2's
+           stock grey background here, so give them a readable pairing. */
+        #paymentModal .select2-selection--multiple .select2-selection__choice {
+            background-color: #eef4ff;
+            border: 1px solid #cddbf7;
+            color: #0d1b4b;
+            font-weight: 600;
+        }
+
+        #paymentModal .select2-selection--multiple .select2-selection__choice__remove {
+            color: #6b7a99;
+        }
+
+        #paymentModal .select2-selection--multiple .select2-selection__choice__remove:hover {
+            color: #dc2626;
+        }
+
+        /* On phones these modals are bottom sheets capped at 90dvh, and only
+           .modal-body scrolls. The <form> wrapping header/body/footer sits
+           between .modal-content and .modal-body, so it has to carry the
+           flex column down or the body never shrinks and the fee lines and
+           Save button are clipped off the bottom of the sheet. */
+        @media (max-width: 767.98px) {
+            #paymentModal .modal-content > form,
+            #editPaymentModal .modal-content > form {
+                display: flex;
+                flex-direction: column;
+                flex: 1 1 auto;
+                min-height: 0;
+            }
+
+            .pay-item-amount-wrap {
+                flex: 1 1 150px;
+            }
+        }
+
+        /* Fee lines in the Add Payment form — one per selected description. */
+        .pay-items {
+            border: 1px solid #e6ebf5;
+            border-radius: 10px;
+            overflow: hidden;
             margin-bottom: 1rem;
         }
 
-        .fee-balance-item {
-            flex: 1 1 120px;
-            border: 1px solid #e6ebf5;
-            border-radius: 10px;
+        .pay-item {
             padding: 10px 12px;
+            border-bottom: 1px solid #e6ebf5;
+            background: #fff;
+        }
+
+        .pay-item.is-settled {
+            background: #f6f8fb;
+        }
+
+        .pay-item.is-settled .pay-item-name,
+        .pay-item.is-settled .pay-item-controls {
+            opacity: .55;
+        }
+
+        .pay-item-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .pay-item-name {
+            font-weight: 700;
+            color: #0d1b4b;
+            word-break: break-word;
+        }
+
+        .pay-item-remove {
+            border: 0;
+            background: transparent;
+            color: #6b7a99;
+            font-size: 1.25rem;
+            line-height: 1;
+            padding: 0 4px;
+            cursor: pointer;
+        }
+
+        .pay-item-remove:hover {
+            color: #dc2626;
+        }
+
+        .pay-item-meta {
+            font-size: .78rem;
+            color: #6b7a99;
+            margin: 2px 0 8px;
+        }
+
+        .pay-item-controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 16px;
+        }
+
+        .pay-item-amount-wrap {
+            flex: 0 1 200px;
+            min-width: 150px;
+        }
+
+        .pay-item-amount[readonly] {
             background: #f8fbff;
         }
 
-        .fee-balance-label {
-            display: block;
-            font-size: .68rem;
-            font-weight: 700;
-            letter-spacing: .1em;
-            text-transform: uppercase;
-            color: #6b7a99;
-            margin-bottom: 4px;
+        .pay-item.is-free .pay-item-partial-wrap {
+            display: none;
         }
 
-        .fee-balance-value {
-            display: block;
-            font-size: 1rem;
+        .pay-item-note {
+            display: none;
+            font-size: .78rem;
+            font-weight: 600;
+            color: #b45309;
+            margin-top: 6px;
+        }
+
+        .pay-item.is-settled .pay-item-note {
+            color: #16a34a;
+        }
+
+        .pay-items-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: #f8fbff;
             font-weight: 800;
             color: #0d1b4b;
-            white-space: nowrap;
+        }
+
+        .pay-items-total #payItemsTotal {
+            font-size: 1.1rem;
         }
 
         /* ACTION BUTTONS: spacing + consistent size */
