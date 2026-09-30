@@ -26,6 +26,12 @@ class AuthApi {
     var normalized = value.trim();
     if (normalized.isEmpty) return '';
 
+    // A page URL pasted from the browser carries ?query and #fragment bits
+    // (e.g. /login?next=…) that are never part of the portal root.
+    final cut = normalized.indexOf(RegExp(r'[?#]'));
+    if (cut != -1) normalized = normalized.substring(0, cut);
+    if (normalized.isEmpty) return '';
+
     if (!RegExp(r'^https?://', caseSensitive: false).hasMatch(normalized)) {
       final host = normalized.startsWith('[')
           ? normalized.substring(0, normalized.indexOf(']') + 1)
@@ -34,6 +40,23 @@ class AuthApi {
     }
 
     return normalized.replaceFirst(RegExp(r'/+$'), '');
+  }
+
+  /// Every address worth probing, starting with [baseUrl] itself and then
+  /// each parent path up to the host root. People paste whatever page they
+  /// had open — /login, a deep link, an index.php path — so a portal that
+  /// lives a folder or two above the pasted URL is still found.
+  List<String> portalCandidates(String baseUrl) {
+    final out = <String>[baseUrl];
+    var rest = baseUrl;
+    final hostEnd = rest.indexOf('://') + 3;
+    while (true) {
+      final slash = rest.lastIndexOf('/');
+      if (slash < hostEnd) break;
+      rest = rest.substring(0, slash);
+      out.add(rest);
+    }
+    return out;
   }
 
   /// Why [baseUrl] (already normalized) can't be used, or null when it can.

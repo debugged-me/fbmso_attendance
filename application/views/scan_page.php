@@ -531,6 +531,22 @@
         logEl.innerHTML = '<div class="text-muted">Waiting for scans…</div>';
       }
 
+      // This page sends every scan to the server and keeps no offline copy —
+      // a phone that silently loses signal turns every scan into a lost one.
+      // Warn the moment the connection drops, and confirm when it is back.
+      window.addEventListener('offline', () => {
+        setStatus('No internet — scans are NOT being saved!', 'text-danger');
+        addLine('× Connection lost — scans will fail until it returns.',
+            'text-danger');
+      });
+      window.addEventListener('online', () => {
+        setStatus('Connection restored — keep scanning…', 'text-success');
+        addLine('✔ Connection restored.', 'text-success');
+      });
+      if (!navigator.onLine) {
+        setStatus('No internet — scans are NOT being saved!', 'text-danger');
+      }
+
       function applyPhoto(imgEl, iconEl, url) {
         if (!imgEl || !iconEl) return;
         if (url) {
@@ -955,8 +971,22 @@
             }
           })
           .catch((e) => {
-            addLine('× ' + (e && e.message ? e.message : 'Network error'), 'text-danger');
-            setStatus('Request failed — see log', 'text-danger');
+            // A fetch() rejection (TypeError: "Failed to fetch") means the
+            // request never got a response — the phone has no working
+            // connection. Server rejections arrive as HTTP errors above.
+            // This page has no offline queue: an unsent scan is LOST, so the
+            // operator must hear that plainly, not a raw browser error.
+            const noNet = (e instanceof TypeError) || !navigator.onLine;
+            if (noNet) {
+              addLine('× NO CONNECTION — scan NOT saved. Check data/Wi-Fi, '
+                  + 'then scan again.', 'text-danger');
+              setStatus('No internet — scans are NOT being saved!',
+                  'text-danger');
+            } else {
+              addLine('× ' + (e && e.message ? e.message : 'Network error'),
+                  'text-danger');
+              setStatus('Request failed — see log', 'text-danger');
+            }
           });
       }
 

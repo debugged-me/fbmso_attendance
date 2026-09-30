@@ -646,3 +646,21 @@ $config['rewrite_short_tags'] = FALSE;
 | Array:		array('10.0.1.200', '192.168.5.0/24')
 */
 $config['proxy_ips'] = '';
+
+/*
+|--------------------------------------------------------------------------
+| Mobile App Release
+|--------------------------------------------------------------------------
+|
+| Advertised to the Flutter app by GET /api/mobile/config so installed phones
+| can tell they are behind. Bump both values on every APK release and upload
+| the build to downloads/fbmso-attendance.apk — the app links there.
+|
+| mobile_app_min_version_code is the force-update floor: a build below it is
+| told to update before it can be used. Keep it at 1 unless a release makes
+| an older build unsafe to keep running (API break, bad sync bug).
+|
+*/
+$config['mobile_app_latest_version']      = '1.0.1';
+$config['mobile_app_latest_version_code'] = 2;
+$config['mobile_app_min_version_code']    = 1;

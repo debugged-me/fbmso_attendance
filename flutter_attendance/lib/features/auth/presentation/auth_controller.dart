@@ -7,6 +7,7 @@ import '../../../core/services/connectivity_service.dart';
 import '../../../core/services/outbox_service.dart';
 import '../../../core/services/roster_service.dart';
 import '../../../core/services/scan_ledger_service.dart';
+import '../../../core/services/update_service.dart';
 import '../data/auth_api.dart';
 import '../data/session_store.dart';
 import '../domain/app_session.dart';
@@ -84,6 +85,7 @@ class AuthController extends ChangeNotifier {
 
     try {
       _config = await _api.fetchConfig(_baseUrl, timeout: _bootTimeout);
+      unawaited(UpdateService.instance.evaluate(_config!));
     } catch (_) {
       // Config fetch failure is non-fatal during bootstrap; the user can
       // still attempt to log in.
@@ -120,6 +122,11 @@ class AuthController extends ChangeNotifier {
 
   /// Load `/config` for a freshly typed base URL (used by the welcome screen
   /// to show the school name/logo before login).
+  ///
+  /// People paste whatever page they had open — /login, a deep link, an
+  /// index.php path. When nothing answers at the pasted address, the probe
+  /// climbs one folder at a time until a portal answers or the host root is
+  /// reached, and the address that answered becomes the saved base URL.
   Future<void> loadConfig(String baseUrl) async {
     _error = null;
     final normalized = _api.normalizeBaseUrl(baseUrl);
@@ -136,13 +143,27 @@ class AuthController extends ChangeNotifier {
       return;
     }
     try {
-      _config = await _api.fetchConfig(normalized);
-      _baseUrl = normalized;
-      ConnectivityService.probeBaseUrl = normalized;
-      await _store.saveBaseUrl(normalized);
-    } on ApiException catch (e) {
-      _error = connectErrorMessage(normalized, e, isWeb: kIsWeb);
-      _config = null;
+      ApiException? failure;
+      for (final candidate in _api.portalCandidates(normalized)) {
+        try {
+          _config = await _api.fetchConfig(candidate);
+          _baseUrl = candidate;
+          ConnectivityService.probeBaseUrl = candidate;
+          await _store.saveBaseUrl(candidate);
+          unawaited(UpdateService.instance.evaluate(_config!));
+          failure = null;
+          break;
+        } on ApiException catch (e) {
+          failure = e;
+          // Only "nothing here" answers justify looking one level up — a
+          // dead connection or a server error will not be fixed by it.
+          if (e.statusCode != 404 && !e.message.contains('HTML page')) break;
+        }
+      }
+      if (failure != null) {
+        _error = connectErrorMessage(normalized, failure, isWeb: kIsWeb);
+        _config = null;
+      }
     } catch (e) {
       _error = e.toString();
       _config = null;
@@ -171,8 +192,9 @@ class AuthController extends ChangeNotifier {
       return "Can't reach $baseUrl. Check the address and your connection.";
     }
     if (e.statusCode == 404 || e.message.contains('HTML page')) {
-      return 'No attendance portal answered at $baseUrl. Check the address. '
-          'It usually ends with the site folder, e.g. …/fbmso_attendance.';
+      return 'No attendance portal answered at $baseUrl. Check the address — '
+          'it is usually just the school portal site, e.g. '
+          'https://portal.yourschool.edu.';
     }
     return e.message;
   }

@@ -7,6 +7,7 @@ import '../core/design/tokens/app_tokens.dart';
 import '../core/services/biometric_service.dart';
 import '../core/services/notification_service.dart';
 import '../core/theme/app_theme.dart';
+import '../core/widgets/update_gate.dart';
 import '../features/auth/data/auth_api.dart';
 import '../features/auth/data/session_store.dart';
 import '../features/auth/domain/app_session.dart';
@@ -63,10 +64,12 @@ class _FlutterAttendanceAppState extends State<FlutterAttendanceApp> {
       debugShowCheckedModeBanner: false,
       title: AppBrand.name,
       theme: AppTheme.build(),
-      builder: (context, child) => MediaQuery.withClampedTextScaling(
-        minScaleFactor: 0.85,
-        maxScaleFactor: 1.15,
-        child: child ?? const SizedBox.shrink(),
+      builder: (context, child) => UpdateGate(
+        child: MediaQuery.withClampedTextScaling(
+          minScaleFactor: 0.85,
+          maxScaleFactor: 1.15,
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
       home: FutureBuilder<({AuthController controller, bool biometricOk})>(
         future: _initFuture,

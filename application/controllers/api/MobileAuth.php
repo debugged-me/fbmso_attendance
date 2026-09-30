@@ -60,6 +60,14 @@ class MobileAuth extends MobileApi
             'login_background_url'  => $this->banner_url((string)($settings->loginFormImage ?? '')),
             'base_url'              => $baseUrl,
             'api_base_url'          => rtrim($baseUrl, '/') . '/api/mobile',
+            // Latest app build, from config.php. Phones compare their
+            // versionCode against app_latest_version_code and offer the
+            // APK download when behind; below app_min_version_code the
+            // update is required. Older app builds ignore these keys.
+            'app_latest_version'      => (string) config_item('mobile_app_latest_version'),
+            'app_latest_version_code' => (int) config_item('mobile_app_latest_version_code'),
+            'app_min_version_code'    => (int) config_item('mobile_app_min_version_code'),
+            'app_update_url'          => rtrim($baseUrl, '/') . '/downloads/fbmso-attendance.apk',
         ]);
     }
 

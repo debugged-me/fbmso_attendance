@@ -32,6 +32,33 @@ void main() {
           'HTTP://localhost/app');
       expect(api.normalizeBaseUrl('  '), '');
     });
+
+    test('query and fragment from a pasted page URL are dropped', () {
+      expect(
+          api.normalizeBaseUrl(
+              'https://fbmso.softtechservices.net/login?next=securitycheck%2Fkey'),
+          'https://fbmso.softtechservices.net/login');
+      expect(api.normalizeBaseUrl('https://a.b/app#section'), 'https://a.b/app');
+      expect(api.normalizeBaseUrl('https://a.b/?next=/x'), 'https://a.b');
+    });
+  });
+
+  group('portalCandidates', () {
+    test('climbs from the pasted page up to the host root', () {
+      expect(
+          api.portalCandidates('https://a.b/fbmso_attendance/login'),
+          ['https://a.b/fbmso_attendance/login',
+           'https://a.b/fbmso_attendance',
+           'https://a.b']);
+      expect(api.portalCandidates('https://a.b/login?next=x'.split('?').first),
+          ['https://a.b/login', 'https://a.b']);
+      expect(api.portalCandidates('http://192.168.1.10:8080/app'),
+          ['http://192.168.1.10:8080/app', 'http://192.168.1.10:8080']);
+    });
+
+    test('a bare host is its own only candidate', () {
+      expect(api.portalCandidates('https://a.b'), ['https://a.b']);
+    });
   });
 
   group('checkPortalUrl', () {

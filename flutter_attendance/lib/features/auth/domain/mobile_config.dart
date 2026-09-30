@@ -13,6 +13,10 @@ class MobileConfig {
     required this.loginBackgroundUrl,
     required this.baseUrl,
     required this.apiBaseUrl,
+    required this.appLatestVersion,
+    required this.appLatestVersionCode,
+    required this.appMinVersionCode,
+    required this.appUpdateUrl,
   });
 
   final bool ok;
@@ -25,6 +29,18 @@ class MobileConfig {
   final String baseUrl;
   final String apiBaseUrl;
 
+  /// Newest released build, per the server's config.php. versionCode is the
+  /// comparable number; the version string is only for display. Absent or 0
+  /// on servers that predate the field — the app then skips the check.
+  final String appLatestVersion;
+  final int appLatestVersionCode;
+
+  /// Builds below this are told to update before they can be used.
+  final int appMinVersionCode;
+
+  /// Where the update strip points — the server's APK download.
+  final String appUpdateUrl;
+
   factory MobileConfig.fromJson(Map<String, dynamic> json) {
     return MobileConfig(
       ok: json['ok'] == true,
@@ -36,6 +52,12 @@ class MobileConfig {
       loginBackgroundUrl: (json['login_background_url'] ?? '').toString(),
       baseUrl: (json['base_url'] ?? '').toString(),
       apiBaseUrl: (json['api_base_url'] ?? '').toString(),
+      appLatestVersion: (json['app_latest_version'] ?? '').toString(),
+      appLatestVersionCode:
+          (json['app_latest_version_code'] as num?)?.toInt() ?? 0,
+      appMinVersionCode:
+          (json['app_min_version_code'] as num?)?.toInt() ?? 0,
+      appUpdateUrl: (json['app_update_url'] ?? '').toString(),
     );
   }
 
@@ -49,5 +71,9 @@ class MobileConfig {
     loginBackgroundUrl: '',
     baseUrl: '',
     apiBaseUrl: '',
+    appLatestVersion: '',
+    appLatestVersionCode: 0,
+    appMinVersionCode: 0,
+    appUpdateUrl: '',
   );
 }

@@ -167,6 +167,32 @@ void main() {
     expect(controller.config, isNull);
   });
 
+  testWidgets('a pasted /login page link still finds the portal root',
+      (tester) async {
+    // Only the site root answers /config — anything under /login 404s, just
+    // like the real server.
+    final rootOnly = MockClient((request) async {
+      if (request.url.path == '/api/mobile/config') {
+        return http.Response(jsonEncode(configBody), 200,
+            headers: {'content-type': 'application/json'});
+      }
+      return http.Response('not found', 404);
+    });
+
+    final controller = await buildController(rootOnly);
+    await tester.pumpWidget(rootFlow(controller));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first,
+        'http://localhost/login?next=securitycheck%2Fkey');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LoginScreen), findsOneWidget,
+        reason: 'the probe should climb /login up to the portal root');
+    expect(controller.baseUrl, 'http://localhost');
+  });
+
   testWidgets('a paired user still reaches login when /config is unreachable',
       (tester) async {
     // Config probe fails; login still works. Mirrors being offline on cold start.
