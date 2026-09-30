@@ -2947,6 +2947,9 @@ class Page extends CI_Controller
 		// (Optional) if your view's transfer modal needs a list:
 		$result['prof'] = $result['data'];
 		$result['school'] = $this->SettingsModel->getSchoolInfo();
+		// Students with payments can't be deleted; the list marks them.
+		$this->load->library('student_payment_guard');
+		$result['with_payments'] = $this->student_payment_guard->studentsWithPayments();
 
 		if ($this->input->post('submit')) {
 			$StudentNumber  = $this->input->post('dataid', true);
@@ -3158,10 +3161,7 @@ class Page extends CI_Controller
 		$targets = array_values(array_filter($targets, function ($t) {
 			return $this->db->table_exists($t[0]) && $this->db->field_exists($t[1], $t[0]);
 		}));
-		$paymentTables = array_values(array_filter(
-			[['paymentsaccounts', 'StudentNumber'], ['online_payments', 'StudentNumber'], ['payment_audit_log', 'student_number']],
-			function ($t) { return $this->db->table_exists($t[0]) && $this->db->field_exists($t[1], $t[0]); }
-		));
+		$this->load->library('student_payment_guard');
 
 		$deleted = [];
 		$skipped = [];   // studno => reason
@@ -3181,11 +3181,9 @@ class Page extends CI_Controller
 				continue;
 			}
 
-			foreach ($paymentTables as $pt) {
-				if ($this->db->where($pt[1], $sn)->count_all_results($pt[0]) > 0) {
-					$skipped[$sn] = 'has payment records';
-					continue 2;
-				}
+			if ($this->student_payment_guard->hasPaymentRecords($sn)) {
+				$skipped[$sn] = 'has payment records';
+				continue;
 			}
 
 			$counts = [];
@@ -3276,6 +3274,16 @@ class Page extends CI_Controller
 		], static function ($v) {
 			return $v !== '';
 		})));
+
+		// Payments stay linked to their student (see Student_payment_guard).
+		$this->load->library('student_payment_guard');
+		foreach ($keys as $k) {
+			if ($this->student_payment_guard->hasPaymentRecords($k)) {
+				$this->session->set_flashdata('danger', Student_payment_guard::MESSAGE . ' (' . htmlspecialchars($k, ENT_QUOTES, 'UTF-8') . ')');
+				redirect($ref);
+				return;
+			}
+		}
 
 		$this->db->trans_start();
 
@@ -3401,6 +3409,24 @@ class Page extends CI_Controller
 
 		if ($studno === '') {
 			$this->session->set_flashdata('danger', 'No StudentNumber provided.');
+			$this->safeRedirect('Page/profileList');
+			return;
+		}
+
+		// Payments stay linked to their student (see Student_payment_guard).
+		$this->load->library('student_payment_guard');
+		if ($this->student_payment_guard->hasPaymentRecords($studno)) {
+			$this->AuditLogModel->write(
+				'delete',
+				'Signup',
+				'studentsignup',
+				$studno,
+				null,
+				null,
+				0,
+				'Delete refused: student has payment records'
+			);
+			$this->session->set_flashdata('danger', Student_payment_guard::MESSAGE . ' (' . htmlspecialchars($studno, ENT_QUOTES, 'UTF-8') . ')');
 			$this->safeRedirect('Page/profileList');
 			return;
 		}
@@ -6374,6 +6400,14 @@ class Page extends CI_Controller
 		$now = date('h:i:s A');
 		$date = date("Y-m-d");
 
+		// Payments stay linked to their student (see Student_payment_guard).
+		$this->load->library('student_payment_guard');
+		if ($this->student_payment_guard->hasPaymentRecords($id)) {
+			$this->session->set_flashdata('danger', Student_payment_guard::MESSAGE . ' (' . htmlspecialchars((string)$id, ENT_QUOTES, 'UTF-8') . ')');
+			redirect('Page/profileList');
+			return;
+		}
+
 		// Get current Semester and SY from session
 		$sem = $this->session->userdata('sem');
 		$sy = $this->session->userdata('sy');
@@ -6382,8 +6416,10 @@ class Page extends CI_Controller
 		$this->db->where('StudentNumber', $id);
 		$this->db->delete('studeprofile');
 
-		// Delete from o_users
+		// Delete from o_users — student logins only, never a staff account
+		// that happens to share the posted id.
 		$this->db->where('username', $id);
+		$this->db->where_in('position', ['Student', 'Stude Applicant']);
 		$this->db->delete('o_users');
 
 		// Delete from semesterstude

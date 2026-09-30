@@ -1213,6 +1213,12 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'You cannot delete your own account.'], 403);
         }
 
+        // Payments stay linked to their student (see Student_payment_guard).
+        $this->load->library('student_payment_guard');
+        if ($this->student_payment_guard->hasPaymentRecords($username)) {
+            return $this->json(['ok' => false, 'message' => Student_payment_guard::MESSAGE], 409);
+        }
+
         $this->db->where('username', $username)->delete('o_users');
         return $this->json(['ok' => true, 'message' => 'Account deleted.']);
     }
@@ -1314,9 +1320,17 @@ class MobileMisc extends MobileApi
             return $this->json(['ok' => false, 'message' => 'Student number is required.'], 422);
         }
 
+        // Payments stay linked to their student (see Student_payment_guard).
+        $this->load->library('student_payment_guard');
+        if ($this->student_payment_guard->hasPaymentRecords($studentNumber)) {
+            return $this->json(['ok' => false, 'message' => Student_payment_guard::MESSAGE], 409);
+        }
+
         $this->db->trans_start();
         $this->db->where('StudentNumber', $studentNumber)->delete('studentsignup');
-        $this->db->where('username', $studentNumber)->delete('o_users');
+        $this->db->where('username', $studentNumber)
+            ->where_in('position', ['Student', 'Stude Applicant'])
+            ->delete('o_users');
         $this->db->trans_complete();
 
         if (!$this->db->trans_status()) {

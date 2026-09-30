@@ -40,9 +40,15 @@ foreach ($ui_flash_map as $ui_key => $ui_type) {
         if (!is_scalar($ui_line) || trim((string)$ui_line) === '') {
             continue;
         }
+        // Messages may carry simple emphasis, but they often include text a
+        // user typed (a fee name, a student number). strip_tags() keeps the
+        // attributes of the tags it allows, so <b onmouseover=...> would
+        // survive — drop every attribute from the allowed tags as well.
+        $ui_message = strip_tags((string)$ui_line, '<b><strong><em><i><br>');
+        $ui_message = preg_replace('#<(/?)(b|strong|em|i|br)\b[^>]*>#i', '<$1$2>', $ui_message);
         $ui_notices[] = array(
             'type'    => $ui_type,
-            'message' => strip_tags((string)$ui_line, '<b><strong><em><i><br>'),
+            'message' => $ui_message,
             'html'    => true,
         );
     }

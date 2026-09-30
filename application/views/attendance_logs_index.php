@@ -927,7 +927,7 @@ if (!empty($activity_id) && !empty($activities)) {
                             + SD.section('Personal', SD.grid([F('Sex', info.sex), F('Civil status', info.civilStatus), F('Birth date', info.birthDate), F('Age', info.age)]))
                             + SD.section('Contact', SD.grid([F('Email', info.email, true), F('Mobile', info.contactNo), F('Address', info.address, true)]))
                             + SD.section('Guardian', SD.grid([F('Name', info.guardian, true), F('Relationship', info.guardianRelationship), F('Contact', info.guardianContact)]))
-                            + SD.section('Account', SD.grid([F('Login', statusMeta(info.status).label), F('Created', info.accountCreated), F('Signup status', info.signupStatus)]))
+                            + SD.section('Account', SD.grid([F('Login', statusMeta(info.status).label), F('Created', info.accountCreated)]))
                             + (info.hasSignup ? '' : '<p class="sd-note"><i class="mdi mdi-information-outline"></i> This student only has a login account — there is no registration record to open.</p>');
                     };
 

@@ -418,6 +418,26 @@ class Login extends CI_Controller
             ->select('username, position, fName, mName, lName, email, avatar, acctStat, dateCreated, name, IDNumber')
             ->where('username', $user)->limit(1)->get('o_users')->row_array();
 
+        // A student's login cannot be removed once they have payments: it is
+        // what marks them Active and payable (see Student_payment_guard).
+        $this->load->library('student_payment_guard');
+        if ($this->student_payment_guard->hasPaymentRecords($user)) {
+            $this->AuditLogModel->write(
+                'delete',
+                'User Accounts',
+                'o_users',
+                $user,
+                $oldAccount ?: null,
+                null,
+                0,
+                'Delete refused: student has payment records',
+                ['target_username' => $user]
+            );
+            $this->session->set_flashdata('danger', '<div class="alert alert-danger">' . htmlspecialchars(Student_payment_guard::MESSAGE, ENT_QUOTES, 'UTF-8') . '</div>');
+            redirect(base_url('Page/userAccounts'));
+            return;
+        }
+
         // Attempt to delete the user
         $deleteSuccess = $this->Login_model->deleteUser($user);
 

@@ -67,7 +67,6 @@
       $bdate  = !empty($row->birthDate) ? $row->birthDate : 'â€”';
       $yl     = $row->yearLevel ?? '';
       $sec    = $row->section ?? '';
-      $stat   = $row->signupStatus ?? '';
     ?>
     <tr>
       <td>
@@ -75,9 +74,6 @@
         <span class="badge badge-warning ml-2">Signup</span>
         <?php if ($yl || $sec): ?>
           <div class="text-muted small"><?= htmlspecialchars("$yl $sec", ENT_QUOTES, 'UTF-8'); ?></div>
-        <?php endif; ?>
-        <?php if ($stat): ?>
-          <div class="text-muted small">Status: <?= htmlspecialchars($stat, ENT_QUOTES, 'UTF-8'); ?></div>
         <?php endif; ?>
       </td>
       <td><?= htmlspecialchars($studno, ENT_QUOTES, 'UTF-8'); ?></td>

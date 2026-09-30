@@ -79,6 +79,10 @@
   .row-actions .dropdown-item.ra-success   { color:#15803d; }
   .row-actions .dropdown-item.ra-danger    { color:#dc2626; }
   .row-actions .dropdown-item.ra-danger:hover { background:#fef2f2; }
+  /* Delete unavailable: the student has payment records. */
+  .row-actions .dropdown-item.ra-locked { color:#94a3b8; cursor:not-allowed; flex-wrap:wrap; row-gap:2px; }
+  .row-actions .dropdown-item.ra-locked:hover { background:none; }
+  .row-actions .dropdown-item.ra-locked small { flex-basis:100%; padding-left:28px; font-size:.72rem; font-weight:500; color:#94a3b8; }
   .row-actions .dropdown-divider { margin:5px 4px; }
   .row-actions form { margin:0; }
 
@@ -546,6 +550,7 @@
                       // (deferRender) — writing ~3k <tr>s into the page made the
                       // browser build ~20k DOM nodes before init and was the lag.
                       $dtRows = [];
+                      $withPayments = (array)($with_payments ?? []);
                       foreach ((array)$data as $row) {
                           $ln = trim($row->LastName ?? '');
                           $fn = trim($row->FirstName ?? '');
@@ -560,6 +565,8 @@
                               'bdate'  => !empty($row->birthDate) ? $row->birthDate : 'N/A',
                               // null = no login account exists for this signup yet
                               'status' => isset($row->acctStat) ? strtolower(trim((string)$row->acctStat)) : null,
+                              // has payment records -> cannot be deleted
+                              'paid'   => isset($withPayments[strtolower(trim((string)($row->StudentNumber ?? '')))]),
                           ];
                       }
                       ?>
@@ -661,7 +668,7 @@
     // Only students who never got going can be bulk-deleted. The server
     // re-checks this; here it just decides which rows get a checkbox.
     function plDeletable(row) {
-      return row.status === null || row.status === 'pending verification';
+      return !row.paid && (row.status === null || row.status === 'pending verification');
     }
 
     // acctStat -> badge. null means the signup has no login account yet.
@@ -778,7 +785,13 @@
                 }
               }
 
-              if (PL_CAN_DELETE) {
+              if (PL_CAN_DELETE && row.paid) {
+                // The server refuses this too (Student_payment_guard).
+                items += '<div class="dropdown-divider"></div>'
+                  + '<span class="dropdown-item ra-locked" aria-disabled="true" title="Students with payment records cannot be deleted">'
+                  + '<i class="mdi mdi-lock-outline"></i> Delete unavailable'
+                  + '<small>Has payment records</small></span>';
+              } else if (PL_CAN_DELETE) {
                 items += '<div class="dropdown-divider"></div>'
                   + '<form method="post" action="' + PL_URL_DELETE + '" class="delete-signup-form">'
                   + csrfField
@@ -1232,7 +1245,7 @@
           + SD.section('Personal', SD.grid([F('Sex', info.sex), F('Civil status', info.civilStatus), F('Birth date', info.birthDate), F('Age', info.age)]))
           + SD.section('Contact', SD.grid([F('Email', info.email, true), F('Mobile', info.contactNo), F('Address', info.address, true)]))
           + SD.section('Guardian', SD.grid([F('Name', info.guardian, true), F('Relationship', info.guardianRelationship), F('Contact', info.guardianContact)]))
-          + SD.section('Account', SD.grid([F('Login', plStatusMeta(info.status).label), F('Created', info.accountCreated), F('Signup status', info.signupStatus)]))
+          + SD.section('Account', SD.grid([F('Login', plStatusMeta(info.status).label), F('Created', info.accountCreated)]))
           + (info.hasSignup ? '' : '<p class="sd-note"><i class="mdi mdi-information-outline"></i> This student only has a login account — there is no registration record to open.</p>');
       }
 

@@ -684,7 +684,7 @@ class Accounting extends CI_Controller
 
 	private function getexpensesbyId($expensesid)
 	{
-		$query = $this->db->query("SELECT * FROM expenses WHERE expensesid = '" . $expensesid . "'");
+		$query = $this->db->query("SELECT * FROM expenses WHERE expensesid = ?", [$expensesid]);
 		return $query->result();
 	}
 
@@ -708,7 +708,7 @@ class Accounting extends CI_Controller
 
 	private function getexpensescategorybyId($categoryID)
 	{
-		$query = $this->db->query("SELECT * FROM expensescategory WHERE categoryID = '" . $categoryID . "'");
+		$query = $this->db->query("SELECT * FROM expensescategory WHERE categoryID = ?", [$categoryID]);
 		return $query->result();
 	}
 
