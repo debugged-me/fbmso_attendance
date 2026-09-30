@@ -15,7 +15,7 @@
                     <!-- Title + actions -->
                     <div class="page-title-box">
                             <h4 class="up-page-title">Payment Activity Log</h4>
-                            <div class="up-page-sub">Every edit or deletion made to a student payment, and who made it.</div>
+                            <div class="up-page-sub">Every edit or deletion made to a student payment, who made it, and why it was deleted.</div>
                             <hr class="up-divider" />
                         </div>
 
@@ -160,6 +160,7 @@
                                                         'amount'    => (float)($row->amount ?? 0),
                                                         'by'        => (string)($row->changed_by ?? ''),
                                                         'byRole'    => (string)($row->actor_level ?? ''),
+                                                        'reason'    => trim((string)($row->reason ?? '')),
                                                         'diff'      => $old !== null && $new !== null,
                                                         'changes'   => $changes,
                                                         'unchanged' => $unchanged,
@@ -236,6 +237,10 @@
                         SD.field('Changed by', SD.esc(e.by) + (e.byRole ? '<small>' + SD.esc(e.byRole) + '</small>' : ''), false, true),
                         SD.field('Payment ID', e.paymentId && e.paymentId !== '0' ? '#' + e.paymentId : '')
                     ]));
+
+                    if (e.reason) {
+                        html += SD.section('Reason for deleting', '<p class="sd-desc">' + SD.esc(e.reason) + '</p>');
+                    }
 
                     if (e.diff) {
                         var rows = e.changes.map(function(c) {

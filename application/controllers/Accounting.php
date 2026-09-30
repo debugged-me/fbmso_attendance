@@ -119,7 +119,8 @@ class Accounting extends CI_Controller
 
 	// Records who created, edited or deleted a payment, and what it looked
 	// like before/after — so a cashier's changes are visible to Admin, not silent.
-	private function logPaymentAudit($action, $payment, $newValues = null)
+	// $reason is the cashier's explanation, required when deleting.
+	private function logPaymentAudit($action, $payment, $newValues = null, $reason = null)
 	{
 		$changedBy = trim((string)$this->session->userdata('username'));
 		if ($changedBy === '') {
@@ -141,7 +142,7 @@ class Accounting extends CI_Controller
 			$newValues = $snapshot;
 		}
 
-		$this->db->insert('payment_audit_log', [
+		$entry = [
 			'payment_id'     => (int)($payment->ID ?? 0),
 			'action'         => $action,
 			'or_number'      => (string)($payment->ORNumber ?? ''),
@@ -150,10 +151,17 @@ class Accounting extends CI_Controller
 			'amount'         => (float)($payment->Amount ?? 0),
 			'old_values'     => $oldValues !== null ? json_encode($oldValues) : null,
 			'new_values'     => $newValues !== null ? json_encode($newValues) : null,
+			'reason'         => $reason !== null && trim((string)$reason) !== '' ? trim((string)$reason) : null,
 			'changed_by'     => $changedBy,
 			'actor_level'    => (string)$this->session->userdata('level') ?: null,
 			'changed_at'     => (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s'),
-		]);
+		];
+		// Schema_migrator adds `reason`; until it has run, log without it
+		// rather than lose the entry.
+		if (!$this->db->field_exists('reason', 'payment_audit_log')) {
+			unset($entry['reason']);
+		}
+		$this->db->insert('payment_audit_log', $entry);
 	}
 
 	// Expenses, expense categories and fees feed the ledger and the payment
@@ -846,7 +854,10 @@ class Accounting extends CI_Controller
 			}
 		}
 
-		return $students;
+		// Only students with an Active account (Registered Students list)
+		// can be paid for — see Payable_students.
+		$this->load->library('payable_students');
+		return $this->payable_students->filter($students);
 	}
 
 	private function getStudentContext($studentNumber, $sem, $sy)
@@ -1519,6 +1530,14 @@ class Accounting extends CI_Controller
 				$bank = '';
 			}
 
+			$this->load->library('payable_students');
+			if (!$this->payable_students->isActive($studentNumber)) {
+				$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
+				$this->session->set_flashdata('danger', Payable_students::NOT_ACTIVE_MESSAGE);
+				redirect('Accounting/Payment');
+				return;
+			}
+
 			$student = $this->getStudentContext($studentNumber, $sem, $sy);
 			$course = trim((string)($student->Course ?? ''));
 			if ($course === '') {
@@ -1765,6 +1784,17 @@ class Accounting extends CI_Controller
 		$oldStudentNumber = trim((string)$payment->StudentNumber);
 		$sem = trim((string)$payment->Sem);
 		$sy  = trim((string)$payment->SY);
+
+		// Moving a payment to another student follows the same rule as a new
+		// payment. Correcting one that stays on its student is always allowed.
+		if ($studentNumber !== $oldStudentNumber) {
+			$this->load->library('payable_students');
+			if (!$this->payable_students->isActive($studentNumber)) {
+				$this->session->set_flashdata('danger', Payable_students::NOT_ACTIVE_MESSAGE);
+				redirect('Accounting/Payment');
+				return;
+			}
+		}
 
 		// Same per-student lock as a new payment, on both students when the
 		// payment moves between them, so the ledger recompute cannot race a
@@ -2232,6 +2262,72 @@ class Accounting extends CI_Controller
 		$to = sprintf('%04d-12-31', $year);
 		$this->renderCollection($from, $to, 'Collection Report (Yearly)');
 	}
+	// Fees on the same receipt as payment $id — one O.R. can cover several
+	// fees, each its own row — so the delete dialog can offer all of them.
+	public function ajaxReceiptItems()
+	{
+		$this->ensureWriteAccess();
+
+		$id = (int)$this->input->get('id', true);
+		$payment = $id > 0
+			? $this->db->select('ID, StudentNumber, ORNumber, PDate, description, Amount, ORStatus, CollectionSource')
+				->from('paymentsaccounts')->where('ID', $id)->limit(1)->get()->row()
+			: null;
+
+		if (!$payment) {
+			$this->output->set_status_header(404)->set_content_type('application/json')
+				->set_output(json_encode(['ok' => false, 'message' => 'Payment not found. It may have just been deleted by another user.']));
+			return;
+		}
+
+		$rows = [$payment];
+		if (trim((string)$payment->ORNumber) !== '') {
+			$rows = $this->db->select('ID, StudentNumber, ORNumber, description, Amount, ORStatus, CollectionSource')
+				->from('paymentsaccounts')
+				->where('ORNumber', (string)$payment->ORNumber)
+				->where('StudentNumber', (string)$payment->StudentNumber)
+				->order_by('ID', 'ASC')
+				->get()
+				->result();
+		}
+
+		$items = [];
+		foreach ($rows as $r) {
+			$items[] = [
+				'id'          => (int)$r->ID,
+				'description' => (string)$r->description,
+				'amount'      => (float)$r->Amount,
+				// Same guards as deletePayment().
+				'deletable'   => (string)$r->ORStatus === 'Valid' && (string)$r->CollectionSource === "Student's Account",
+			];
+		}
+
+		$studentNumber = (string)$payment->StudentNumber;
+		$name = $this->db->query(
+			"SELECT TRIM(CONCAT_WS(', ',
+					NULLIF(COALESCE(NULLIF(sp.LastName, ''), NULLIF(su.LastName, ''), ''), ''),
+					NULLIF(TRIM(CONCAT_WS(' ', COALESCE(NULLIF(sp.FirstName, ''), su.FirstName), COALESCE(NULLIF(sp.MiddleName, ''), su.MiddleName))), '')
+				)) AS name
+			   FROM (SELECT ? AS sn) x
+			   LEFT JOIN studeprofile sp ON sp.StudentNumber = x.sn
+			   LEFT JOIN studentsignup su ON su.StudentNumber = x.sn
+			  LIMIT 1",
+			[$studentNumber]
+		)->row();
+
+		$this->output->set_content_type('application/json')->set_output(json_encode([
+			'ok'             => true,
+			'or_number'      => (string)$payment->ORNumber,
+			'student_number' => $studentNumber,
+			'student_name'   => trim((string)($name->name ?? '')),
+			'payment_date'   => $this->isValidDate((string)$payment->PDate) ? date('M j, Y', strtotime((string)$payment->PDate)) : '',
+			'items'          => $items,
+		]));
+	}
+
+	// Deletes one or more fees from a single receipt (same O.R., same
+	// student) — e.g. the whole receipt when it was tagged to the wrong
+	// student. Every deleted fee is logged with the cashier's reason.
 	public function deletePayment()
 	{
 		$this->ensureWriteAccess();
@@ -2241,68 +2337,92 @@ class Accounting extends CI_Controller
 			return;
 		}
 
-		$id = (int)$this->input->post('id', true);
-		if ($id <= 0) {
-			$this->session->set_flashdata('danger', 'Invalid payment ID.');
+		$ids = $this->input->post('ids', true);
+		if (!is_array($ids)) {
+			$ids = [$this->input->post('id', true)];
+		}
+		$ids = array_values(array_unique(array_filter(array_map('intval', $ids), function ($v) {
+			return $v > 0;
+		})));
+		if (empty($ids) || count($ids) > 50) {
+			$this->session->set_flashdata('danger', 'Invalid payment selection.');
 			redirect('Accounting/Payment');
 			return;
 		}
 
-		// Who the payment belongs to decides which lock to take; the row is
+		// A deletion must say why — the reason goes to the Payment Activity
+		// Log and Super Admin's Audit Trail with each deleted entry.
+		$reason = trim(preg_replace('/\s+/u', ' ', (string)$this->input->post('reason', true)));
+		if (mb_strlen($reason) < 5) {
+			$this->session->set_flashdata('danger', 'Please give a reason for deleting this payment (at least 5 characters).');
+			redirect('Accounting/Payment');
+			return;
+		}
+		$reason = mb_substr($reason, 0, 255);
+
+		// Who the payments belong to decides which lock to take; the rows are
 		// then read again under that lock, so two users deleting the same
 		// entry at once cannot both "delete" it and log it twice.
-		$owner = $this->db->select('StudentNumber')->from('paymentsaccounts')->where('ID', $id)->limit(1)->get()->row();
-		if (!$owner) {
+		$owners = $this->db->select('StudentNumber, ORNumber')->from('paymentsaccounts')->where_in('ID', $ids)->get()->result();
+		if (count($owners) !== count($ids)) {
 			$this->session->set_flashdata('danger', 'Payment not found. It may have just been deleted by another user.');
 			redirect('Accounting/Payment');
 			return;
 		}
+		$students = array_unique(array_map(function ($o) { return trim((string)$o->StudentNumber); }, $owners));
+		$receipts = array_unique(array_map(function ($o) { return trim((string)$o->ORNumber); }, $owners));
+		if (count($students) !== 1 || count($receipts) !== 1) {
+			$this->session->set_flashdata('danger', 'Only fees on the same receipt (same O.R. and student) can be deleted together.');
+			redirect('Accounting/Payment');
+			return;
+		}
+		$studentNumber = reset($students);
 
 		$this->load->library('payment_lock');
-		if (!$this->payment_lock->acquire($owner->StudentNumber)) {
+		if (!$this->payment_lock->acquire($studentNumber)) {
 			$this->session->set_flashdata('danger', 'Another payment for this student is being saved right now. Please try again in a moment.');
 			redirect('Accounting/Payment');
 			return;
 		}
 
 		try {
-			$payment = $this->db->select('ID, StudentNumber, ORNumber, PDate, Amount, description, Sem, SY, ORStatus, CollectionSource')
+			$payments = $this->db->select('ID, StudentNumber, ORNumber, PDate, Amount, description, Sem, SY, ORStatus, CollectionSource')
 				->from('paymentsaccounts')
-				->where('ID', $id)
-				->limit(1)
+				->where_in('ID', $ids)
+				->order_by('ID', 'ASC')
 				->get()
-				->row();
+				->result();
 
-			if (!$payment) {
+			if (count($payments) !== count($ids)) {
 				$this->session->set_flashdata('danger', 'Payment not found. It may have just been deleted by another user.');
 				redirect('Accounting/Payment');
 				return;
 			}
 
-			// Safety guards (optional, but recommended)
-			if ((string)$payment->ORStatus !== 'Valid') {
-				$this->session->set_flashdata('danger', 'Only VALID payments can be deleted.');
-				redirect('Accounting/Payment');
-				return;
+			$terms = [];
+			foreach ($payments as $payment) {
+				if ((string)$payment->ORStatus !== 'Valid') {
+					$this->session->set_flashdata('danger', 'Only VALID payments can be deleted.');
+					redirect('Accounting/Payment');
+					return;
+				}
+				if ((string)$payment->CollectionSource !== "Student's Account") {
+					$this->session->set_flashdata('danger', "This payment is not under Student's Account.");
+					redirect('Accounting/Payment');
+					return;
+				}
+				$terms[trim((string)$payment->Sem) . '|' . trim((string)$payment->SY)] = true;
 			}
-
-			if ((string)$payment->CollectionSource !== "Student's Account") {
-				$this->session->set_flashdata('danger', "This payment is not under Student's Account.");
-				redirect('Accounting/Payment');
-				return;
-			}
-
-			$studentNumber = trim((string)$payment->StudentNumber);
-			$sem = trim((string)$payment->Sem);
-			$sy  = trim((string)$payment->SY);
 
 			$this->db->trans_start();
 
-			// Delete row
-			$this->db->where('ID', (int)$id)->delete('paymentsaccounts');
+			$this->db->where_in('ID', $ids)->delete('paymentsaccounts');
 
-			// Recompute totals (ONLY for same sem/sy)
-			$this->recomputeStudeAccount($studentNumber, $sem, $sy);
+			// Recompute totals for each term the deleted fees were booked in.
+			foreach (array_keys($terms) as $term) {
+				[$sem, $sy] = explode('|', $term, 2);
+				$this->recomputeStudeAccount($studentNumber, $sem, $sy);
+			}
 
 			$this->db->trans_complete();
 		} finally {
@@ -2315,9 +2435,16 @@ class Accounting extends CI_Controller
 			return;
 		}
 
-		$this->logPaymentAudit('delete', $payment);
+		$total = 0.0;
+		foreach ($payments as $payment) {
+			$total += (float)$payment->Amount;
+			$this->logPaymentAudit('delete', $payment, null, $reason);
+		}
 
-		$this->session->set_flashdata('success', 'Payment deleted successfully.');
+		$orNumber = trim((string)$payments[0]->ORNumber);
+		$this->session->set_flashdata('success', count($payments) > 1
+			? 'Deleted ' . count($payments) . ' payments' . ($orNumber !== '' ? ' from O.R. #' . $orNumber : '') . ' totalling ₱' . number_format($total, 2) . '.'
+			: 'Payment deleted successfully.');
 		redirect('Accounting/Payment');
 	}
 
@@ -2355,6 +2482,7 @@ class Accounting extends CI_Controller
 					(string)$row->description,
 					'₱ ' . number_format((float)$row->amount, 2),
 					(string)$row->changed_by,
+					(string)($row->reason ?? ''),
 				];
 			}
 
@@ -2364,9 +2492,9 @@ class Accounting extends CI_Controller
 					['label' => 'Printed', 'value' => date('F d, Y \a\t g:i A')],
 					['label' => 'Total Entries', 'value' => number_format(count($rows))],
 				],
-				['Date & Time', 'Action', 'O.R.', 'Student', 'Description', 'Amount', 'Changed By'],
+				['Date & Time', 'Action', 'O.R.', 'Student', 'Description', 'Amount', 'Changed By', 'Reason'],
 				$printRows,
-				['left', 'left', 'left', 'left', 'left', 'right', 'left'],
+				['left', 'left', 'left', 'left', 'left', 'right', 'left', 'left'],
 				null,
 				base_url('Accounting/paymentAuditLog'),
 				'landscape',

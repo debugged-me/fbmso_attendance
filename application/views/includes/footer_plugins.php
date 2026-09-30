@@ -6,7 +6,6 @@
 <script src="<?= base_url(); ?>assets/libs/moment/moment.min.js"></script>
 <script src="<?= base_url(); ?>assets/libs/jquery-scrollto/jquery.scrollTo.min.js"></script>
 <script src="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.js"></script>
-<script src="<?= base_url(); ?>assets/js/sweetalert.min.js"></script>
 
 <!-- . DataTables -->
 <script src="<?= base_url(); ?>assets/libs/datatables/jquery.dataTables.min.js"></script>

@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v19.done';
+    const MARKER = 'schema_migrations_v20.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -45,6 +45,22 @@ class Schema_migrator
     protected function migrations()
     {
         return array(
+
+            // A deleted payment must say why. The cashier's reason is kept
+            // with the delete entry so the Payment Activity Log and Super
+            // Admin's Audit Trail both show it.
+            '2026_09_30_payment_audit_reason' => array(
+                'check' => function () {
+                    return $this->tableExists('payment_audit_log')
+                        && !$this->columnExists('payment_audit_log', 'reason');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "ALTER TABLE `payment_audit_log`
+                         ADD COLUMN `reason` VARCHAR(255) DEFAULT NULL AFTER `new_values`"
+                    );
+                },
+            ),
 
             // Payment IDs were handed out as MAX(ID)+1 on a column with no
             // key, so two cashiers saving at the same moment could both write

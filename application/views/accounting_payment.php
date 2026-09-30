@@ -109,8 +109,24 @@
                             <div class="up-card">
                                 <div class="up-card-head" style="flex-wrap:wrap;gap:8px;">
                                     <h4><i class="mdi mdi-cash-multiple"></i> Recent Student Payments</h4>
-                                    <div class="d-flex align-items-center" style="gap:8px;">
-                                        <select id="dateFilter" class="form-control form-control-sm" style="max-width:220px;" title="Payments on">
+                                    <div class="pl-actions" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
+											<a href="<?= base_url(in_array($this->session->userdata('level'), ['Cashier', 'Auditor'], true) ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
+                                            <i class="mdi mdi-arrow-left"></i> Back to Dashboard
+                                        </a>
+                                        <a href="<?= base_url('Accounting/partialPayments'); ?>" class="up-btn up-btn-ghost">
+                                            <i class="mdi mdi-account-clock-outline"></i> View Partial Payments
+                                        </a>
+											<?php if (!$isAuditor): ?>
+												<button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#paymentModal">
+													<i class="mdi mdi-plus-circle"></i> Add Payment
+												</button>
+											<?php endif; ?>
+                                    </div>
+                                </div>
+                                <div class="pay-toolbar">
+                                    <div class="pay-filter">
+                                        <label for="dateFilter" class="pay-filter-label"><i class="mdi mdi-calendar-month-outline"></i> Payments on</label>
+                                        <select id="dateFilter" class="form-control form-control-sm pay-filter-select">
                                             <option value="all" <?= ($date_filter ?? '') === 'all' ? 'selected' : ''; ?>>All dates</option>
                                             <?php
                                             $todayVal = (string)($today ?? '');
@@ -127,20 +143,11 @@
                                                 <option value="<?= htmlspecialchars($todayVal, ENT_QUOTES, 'UTF-8'); ?>" <?= $todayVal === $selectedDate ? 'selected' : ''; ?>><?= htmlspecialchars(date('M d, Y', strtotime($todayVal)), ENT_QUOTES, 'UTF-8'); ?> (Today)</option>
                                             <?php endif; ?>
                                         </select>
-                                        <span class="badge badge-purple"><?= count($recent_payments); ?> entries</span>
-                                        <div class="pl-actions" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
-											<a href="<?= base_url(in_array($this->session->userdata('level'), ['Cashier', 'Auditor'], true) ? 'Page/accounting' : 'Page/admin'); ?>" class="up-btn up-btn-ghost d-md-none">
-                                                <i class="mdi mdi-arrow-left"></i> Back to Dashboard
-                                            </a>
-                                            <a href="<?= base_url('Accounting/partialPayments'); ?>" class="up-btn up-btn-ghost">
-                                                <i class="mdi mdi-account-clock-outline"></i> View Partial Payments
-                                            </a>
-											<?php if (!$isAuditor): ?>
-												<button type="button" class="up-btn up-btn-primary" data-toggle="modal" data-target="#paymentModal">
-													<i class="mdi mdi-plus-circle"></i> Add Payment
-												</button>
-											<?php endif; ?>
-                                        </div>
+                                        <?php $entryCount = count($recent_payments); ?>
+                                        <span class="pay-count"><strong><?= number_format($entryCount); ?></strong> <?= $entryCount === 1 ? 'entry' : 'entries'; ?></span>
+                                    </div>
+                                    <div class="pay-hint">
+                                        <i class="mdi mdi-information-outline"></i> Click a student's name to see their full details and balance.
                                     </div>
                                 </div>
                                 <div class="up-card-body" style="padding:0 !important;">
@@ -223,10 +230,9 @@
                                                                     </a>
                                                                     <div class="dropdown-divider"></div>
                                                                     <form method="post" action="<?= base_url('Accounting/deletePayment'); ?>" class="delete-payment-form"
-                                                                        data-ui-confirm="The payment is removed from the student's ledger and their balance is recomputed."
-                                                                        data-ui-confirm-title="Delete this payment entry?"
-                                                                        data-ui-confirm-ok="Delete payment">
+                                                                        data-or="<?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                                                                         <input type="hidden" name="id" value="<?= $rowId; ?>">
+                                                                        <input type="hidden" name="reason" value="">
                                                                         <button type="submit" class="dropdown-item text-danger">
                                                                             <i class="mdi mdi-delete"></i> Delete Payment
                                                                         </button>
@@ -1013,7 +1019,231 @@
                 initTooltips();
                 setPaymentSubmitState(false);
 
-                // DELETE confirm — see data-ui-confirm on .delete-payment-form
+                // DELETE — two steps. 1) Choose which fees on the clicked
+                // row's receipt to delete (one O.R. can cover several fees;
+                // only the clicked one starts selected) and give a reason.
+                // 2) Review what is deleted and what stays on the receipt,
+                // then confirm. The reason is logged against each fee.
+                var RECEIPT_ITEMS_URL = <?= json_encode(site_url('Accounting/ajaxReceiptItems')); ?>;
+
+                function delEsc(v) {
+                    return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
+                        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                    });
+                }
+
+                function delMoney(n) {
+                    return '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+
+                function delSum(list) {
+                    return list.reduce(function(t, it) { return t + (Number(it.amount) || 0); }, 0);
+                }
+
+                function delFeeList(list, tone) {
+                    return '<ul class="del-fee-list del-' + tone + '">' + list.map(function(it) {
+                        return '<li><span>' + delEsc(it.description || 'Payment') + '</span><b>' + delMoney(it.amount) + '</b></li>';
+                    }).join('') + '</ul>';
+                }
+
+                function openDeleteDialog(form, receipt) {
+                    var clickedId = parseInt(form.querySelector('input[name="id"]').value, 10);
+                    var items = receipt.items || [];
+                    var multi = items.length > 1;
+                    var selected = {};
+                    items.forEach(function(it) {
+                        if (it.deletable && (it.id === clickedId || !multi)) selected[it.id] = true;
+                    });
+                    var reason = '';
+                    var step = 1;
+
+                    var orLabel = receipt.or_number ? 'O.R. ' + receipt.or_number : 'Payment';
+                    var subtitle = [orLabel, receipt.student_name || receipt.student_number, receipt.payment_date]
+                        .filter(Boolean).join(' · ');
+
+                    var handle = UI.modal({
+                        title: 'Delete from receipt',
+                        subtitle: subtitle,
+                        icon: 'warning',
+                        size: 'del',
+                        body: ' ',
+                        html: true,
+                        buttons: [
+                            {
+                                label: 'Cancel',
+                                variant: 'ghost',
+                                onClick: function() {
+                                    if (step === 2) { showSelect(); return false; }
+                                }
+                            },
+                            {
+                                label: 'Review deletion',
+                                variant: 'danger',
+                                onClick: function() {
+                                    if (step === 1) { showReview(); return false; }
+                                    submitDelete();
+                                    return false;
+                                }
+                            }
+                        ]
+                    });
+
+                    var box = handle.modal;
+                    var titleEl = box.querySelector('.uk-modal-title');
+                    var backBtn = box.querySelector('.uk-modal-foot [data-uk-index="0"]');
+                    var okBtn = box.querySelector('.uk-modal-foot [data-uk-index="1"]');
+
+                    function chosen() { return items.filter(function(it) { return selected[it.id]; }); }
+                    function kept() { return items.filter(function(it) { return !selected[it.id]; }); }
+
+                    function showSelect() {
+                        step = 1;
+                        titleEl.textContent = 'Delete from receipt';
+                        backBtn.textContent = 'Cancel';
+
+                        var rows = items.map(function(it) {
+                            var off = !it.deletable;
+                            return '<label class="del-row' + (off ? ' is-off' : '') + (selected[it.id] ? ' is-on' : '') + '">'
+                                + '<input type="checkbox" class="del-check" value="' + it.id + '"'
+                                + (off ? ' disabled' : '') + (selected[it.id] ? ' checked' : '') + '>'
+                                + '<span class="del-row-text">'
+                                + '<span class="del-row-desc">' + delEsc(it.description || 'Payment') + '</span>'
+                                + (it.id === clickedId && multi ? '<span class="del-tag">Row you clicked</span>' : '')
+                                + (off ? '<span class="del-tag">Can\'t be deleted</span>' : '')
+                                + '</span>'
+                                + '<span class="del-row-amt">' + delMoney(it.amount) + '</span>'
+                                + '</label>';
+                        }).join('');
+
+                        handle.body.innerHTML =
+                            '<p class="del-lead">' + (multi
+                                ? 'This receipt has <b>' + items.length + ' fees</b>. Tick each fee you want to delete — fees you leave unticked stay on the receipt.'
+                                : 'This fee will be removed from the student\'s ledger and their balance recomputed.') + '</p>'
+                            + '<div class="del-list-head"><span>Fees on this receipt</span>'
+                            + (multi ? '<span class="del-links"><button type="button" class="del-all">Select all</button><button type="button" class="del-none">Clear</button></span>' : '')
+                            + '</div>'
+                            + '<div class="del-rows">' + rows + '</div>'
+                            + '<div class="del-summary"></div>'
+                            + '<label class="del-field-label" for="delReason">Reason for deleting <span>(required)</span></label>'
+                            + '<textarea id="delReason" class="del-reason" rows="2" maxlength="255" placeholder="e.g. Wrong student tagged, duplicate entry"></textarea>'
+                            + '<div class="del-error" hidden></div>';
+
+                        var reasonEl = handle.body.querySelector('#delReason');
+                        reasonEl.value = reason;
+                        reasonEl.addEventListener('input', function() { reason = reasonEl.value; refreshSelect(); });
+                        refreshSelect();
+                    }
+
+                    function refreshSelect() {
+                        var c = chosen(), k = kept();
+                        handle.body.querySelectorAll('.del-check').forEach(function(cb) {
+                            cb.closest('.del-row').classList.toggle('is-on', cb.checked);
+                        });
+                        handle.body.querySelector('.del-summary').innerHTML = c.length
+                            ? '<span class="del-sum-del"><b>' + c.length + '</b> to delete · ' + delMoney(delSum(c)) + '</span>'
+                              + (multi ? '<span class="del-sum-keep"><b>' + k.length + '</b> stay · ' + delMoney(delSum(k)) + '</span>' : '')
+                            : '<span class="del-sum-none">No fee selected yet.</span>';
+                        okBtn.textContent = 'Review deletion';
+                        okBtn.disabled = !c.length || reason.replace(/\s+/g, ' ').trim().length < 5;
+                    }
+
+                    function showReview() {
+                        var c = chosen(), k = kept();
+                        reason = reason.replace(/\s+/g, ' ').trim();
+                        if (!c.length || reason.length < 5) {
+                            var err = handle.body.querySelector('.del-error');
+                            err.textContent = !c.length ? 'Tick at least one fee to delete.' : 'Please give a reason (at least 5 characters).';
+                            err.hidden = false;
+                            return;
+                        }
+                        step = 2;
+                        titleEl.textContent = 'Confirm deletion';
+                        backBtn.textContent = 'Back';
+
+                        var remain = k.length
+                            ? '<div class="del-col del-col-keep"><div class="del-col-head">Will remain <span>' + k.length + '</span></div>'
+                              + delFeeList(k, 'keep') + '<div class="del-col-total">Remaining ' + delMoney(delSum(k)) + '</div></div>'
+                            : '<div class="del-col del-col-empty"><div class="del-col-head">Will remain <span>0</span></div>'
+                              + '<p>Nothing — the whole ' + delEsc(orLabel) + ' is removed.</p></div>';
+
+                        handle.body.innerHTML =
+                            '<div class="del-cols">'
+                            + '<div class="del-col del-col-del"><div class="del-col-head">Will be deleted <span>' + c.length + '</span></div>'
+                            + delFeeList(c, 'del') + '<div class="del-col-total">Deleting ' + delMoney(delSum(c)) + '</div></div>'
+                            + remain
+                            + '</div>'
+                            + '<div class="del-reason-view"><span>Reason</span>' + delEsc(reason) + '</div>'
+                            + '<p class="del-warn"><i class="mdi mdi-alert-outline"></i> This can\'t be undone. The student\'s balance is recomputed and the deletion is recorded in the Payment Activity Log.</p>'
+                            + '<label class="del-ack"><input type="checkbox" id="delAck"> I\'ve checked what will be deleted and what will remain.</label>';
+
+                        var ack = handle.body.querySelector('#delAck');
+                        okBtn.textContent = c.length > 1
+                            ? 'Delete ' + c.length + ' payments (' + delMoney(delSum(c)) + ')'
+                            : 'Delete payment (' + delMoney(delSum(c)) + ')';
+                        okBtn.disabled = true;
+                        ack.addEventListener('change', function() { okBtn.disabled = !ack.checked; });
+                    }
+
+                    function submitDelete() {
+                        var c = chosen();
+                        var ack = handle.body.querySelector('#delAck');
+                        if (!c.length || !ack || !ack.checked) return;
+
+                        form.querySelectorAll('input[name="ids[]"]').forEach(function(el) { el.remove(); });
+                        c.forEach(function(it) {
+                            var input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = 'ids[]';
+                            input.value = it.id;
+                            form.appendChild(input);
+                        });
+                        form.querySelector('input[name="reason"]').value = reason.slice(0, 255);
+                        okBtn.disabled = backBtn.disabled = true;
+                        handle.close(true);
+                        if (UI.busy) UI.busy(c.length > 1 ? 'Deleting payments...' : 'Deleting payment...');
+                        form.submit();
+                    }
+
+                    box.addEventListener('change', function(e) {
+                        if (step !== 1 || !e.target.classList.contains('del-check')) return;
+                        selected[e.target.value] = e.target.checked;
+                        if (!e.target.checked) delete selected[e.target.value];
+                        refreshSelect();
+                    });
+                    box.addEventListener('click', function(e) {
+                        if (step !== 1) return;
+                        var all = e.target.closest('.del-all'), none = e.target.closest('.del-none');
+                        if (!all && !none) return;
+                        items.forEach(function(it) {
+                            if (!it.deletable) return;
+                            if (all) selected[it.id] = true; else delete selected[it.id];
+                        });
+                        handle.body.querySelectorAll('.del-check:not(:disabled)').forEach(function(cb) { cb.checked = !!all; });
+                        refreshSelect();
+                    });
+
+                    showSelect();
+                }
+
+                $(document).on('submit', '.delete-payment-form', function(e) {
+                    e.preventDefault();
+                    var form = this;
+                    if (!window.UI || typeof UI.modal !== 'function') return;
+
+                    var id = form.querySelector('input[name="id"]').value;
+                    $.getJSON(RECEIPT_ITEMS_URL, { id: id })
+                        .done(function(res) {
+                            if (!res || !res.ok) {
+                                UI.error((res && res.message) || 'Could not load this receipt.');
+                                return;
+                            }
+                            openDeleteDialog(form, res);
+                        })
+                        .fail(function(xhr) {
+                            var msg = xhr.responseJSON && xhr.responseJSON.message;
+                            UI.error(msg || 'Could not load this receipt. Please try again.');
+                        });
+                });
 
                 // ADD modal init
                 $('#paymentModal').on('shown.bs.modal', function() {
@@ -1226,6 +1456,229 @@
     </script>
 
     <style>
+        /* Date filter + entry count, on their own row under the card title. */
+        .pay-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px 16px;
+            padding: 12px 22px;
+            background: var(--up-soft);
+            border-bottom: 1px solid var(--up-line);
+        }
+        .pay-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .pay-filter-label {
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: .8rem;
+            font-weight: 700;
+            color: var(--up-muted);
+        }
+        #dateFilter.pay-filter-select {
+            width: auto;
+            min-width: 190px;
+            height: 36px;
+            padding: 4px 30px 4px 12px;
+            border: 1px solid var(--up-line);
+            border-radius: 10px;
+            background-color: #fff;
+            font-size: .85rem;
+            font-weight: 600;
+            color: var(--up-ink);
+        }
+        .pay-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            height: 36px;
+            padding: 0 12px;
+            border: 1px solid var(--up-line);
+            border-radius: 10px;
+            background: #fff;
+            font-size: .8rem;
+            color: var(--up-muted);
+        }
+        .pay-count strong { color: var(--up-ink); }
+        .pay-hint {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border: 1px solid #c9d6f5;
+            border-radius: 10px;
+            background: #eaf0fd;
+            font-size: .8rem;
+            font-weight: 600;
+            color: var(--up-blue);
+        }
+        .pay-hint .mdi { color: var(--up-blue-2); font-size: 1rem; }
+        @media (max-width: 575.98px) {
+            .pay-toolbar { padding: 12px 16px; }
+            .pay-filter { width: 100%; }
+            #dateFilter.pay-filter-select { flex: 1 1 auto; min-width: 0; }
+        }
+
+        /* Delete dialog (two steps: choose fees, then review). UI-kit
+           tokens keep it right in the kit's dark theme too. Labels are
+           scoped under .uk-modal-body to beat the kit's label{display:block}. */
+        .uk-modal-del { max-width: 600px; }
+        .del-lead { margin: 0 0 14px; color: var(--uk-text-soft); font-size: .9rem; line-height: 1.5; }
+        .del-lead b { color: var(--uk-text); }
+        .del-list-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--uk-text-soft);
+        }
+        .del-links { display: inline-flex; gap: 4px; }
+        .del-links button {
+            border: 0;
+            background: none;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font: 600 .8rem/1.4 var(--uk-font);
+            letter-spacing: 0;
+            text-transform: none;
+            color: var(--uk-info);
+            cursor: pointer;
+        }
+        .del-links button:hover { background: rgba(37, 99, 235, .1); }
+        .del-rows { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding: 1px; }
+        .uk-modal-body label.del-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 0;
+            padding: 12px 14px;
+            border: 1px solid var(--uk-border);
+            border-radius: var(--uk-radius-sm);
+            background: var(--uk-surface);
+            font-weight: 500;
+            font-size: .9rem;
+            cursor: pointer;
+            transition: border-color .15s ease, background .15s ease;
+        }
+        .uk-modal-body label.del-row:hover { border-color: rgba(239, 68, 68, .45); }
+        .uk-modal-body label.del-row.is-on { border-color: var(--uk-error); background: rgba(239, 68, 68, .07); }
+        .uk-modal-body label.del-row.is-off { opacity: .55; cursor: not-allowed; }
+        .del-check { flex: 0 0 auto; width: 18px; height: 18px; margin: 0; accent-color: var(--uk-error); cursor: inherit; }
+        .del-row-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+        .del-row-desc { overflow-wrap: anywhere; color: var(--uk-text); }
+        .del-tag {
+            align-self: flex-start;
+            padding: 1px 8px;
+            border-radius: 999px;
+            background: var(--uk-surface-2);
+            border: 1px solid var(--uk-border);
+            font-size: .7rem;
+            font-weight: 600;
+            color: var(--uk-text-soft);
+        }
+        .del-row-amt { flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--uk-text); }
+        .del-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+            margin: 12px 0 16px;
+            padding: 10px 14px;
+            border-radius: var(--uk-radius-sm);
+            background: var(--uk-surface-2);
+            font-size: .84rem;
+            font-variant-numeric: tabular-nums;
+        }
+        .del-sum-del { color: var(--uk-error); font-weight: 600; }
+        .del-sum-keep { color: var(--uk-success); font-weight: 600; }
+        .del-sum-none { color: var(--uk-text-soft); }
+        .uk-modal-body label.del-field-label { margin-bottom: 6px; }
+        .del-field-label span { font-weight: 400; color: var(--uk-text-soft); }
+        .del-reason {
+            display: block;
+            box-sizing: border-box;
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--uk-border);
+            border-radius: var(--uk-radius-sm);
+            background: var(--uk-surface);
+            color: var(--uk-text);
+            font: 400 .9rem/1.5 var(--uk-font);
+            resize: vertical;
+        }
+        .del-reason:focus { outline: 0; border-color: var(--uk-info); box-shadow: 0 0 0 3px rgba(37, 99, 235, .15); }
+        .del-error { margin-top: 8px; font-size: .8rem; font-weight: 600; color: var(--uk-error); }
+
+        .del-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+        .del-col { border-radius: var(--uk-radius-sm); padding: 12px 14px; border: 1px solid; }
+        .del-col-del { border-color: rgba(239, 68, 68, .35); background: rgba(239, 68, 68, .06); }
+        .del-col-keep { border-color: rgba(16, 185, 129, .35); background: rgba(16, 185, 129, .06); }
+        .del-col-empty { border-color: var(--uk-border); border-style: dashed; background: var(--uk-surface-2); }
+        .del-col-empty p { margin: 0; font-size: .85rem; color: var(--uk-text-soft); }
+        .del-col-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+        .del-col-del .del-col-head { color: var(--uk-error); }
+        .del-col-keep .del-col-head { color: var(--uk-success); }
+        .del-col-empty .del-col-head { color: var(--uk-text-soft); }
+        .del-col-head span { padding: 0 8px; border: 1px solid currentColor; border-radius: 999px; }
+        .del-fee-list { list-style: none; margin: 0; padding: 0; font-size: .86rem; }
+        .del-fee-list li {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 5px 0;
+            border-bottom: 1px dashed var(--uk-border);
+            color: var(--uk-text);
+        }
+        .del-fee-list li:last-child { border-bottom: 0; }
+        .del-fee-list b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .del-del li span { text-decoration: line-through; text-decoration-color: rgba(239, 68, 68, .6); }
+        .del-col-total { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--uk-border); font-size: .82rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+        .del-col-del .del-col-total { color: var(--uk-error); }
+        .del-col-keep .del-col-total { color: var(--uk-success); }
+        .del-reason-view {
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border-left: 3px solid var(--uk-border);
+            background: var(--uk-surface-2);
+            border-radius: 0 var(--uk-radius-sm) var(--uk-radius-sm) 0;
+            font-size: .88rem;
+            color: var(--uk-text);
+            overflow-wrap: anywhere;
+        }
+        .del-reason-view span { display: block; margin-bottom: 2px; font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--uk-text-soft); }
+        .del-warn { display: flex; gap: 8px; margin: 0 0 12px; font-size: .84rem; color: var(--uk-text-soft); line-height: 1.5; }
+        .del-warn .mdi { color: var(--uk-warning); font-size: 1.1rem; line-height: 1.3; }
+        .uk-modal-body label.del-ack {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin: 0;
+            padding: 10px 14px;
+            border: 1px solid var(--uk-border);
+            border-radius: var(--uk-radius-sm);
+            font-weight: 600;
+            font-size: .86rem;
+            cursor: pointer;
+        }
+        .del-ack input { width: 18px; height: 18px; margin: 1px 0 0; flex: 0 0 auto; accent-color: var(--uk-error); }
+        @media (max-width: 575.98px) {
+            .del-cols { grid-template-columns: 1fr; }
+        }
+
         /* Selected-fee chips: the theme's white chip text lands on select2's
            stock grey background here, so give them a readable pairing. */
         #paymentModal .select2-selection--multiple .select2-selection__choice {

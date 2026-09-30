@@ -102,7 +102,8 @@ class MobileAccounting extends MobileApi
         return $this->db->table_exists($table);
     }
 
-    private function logPaymentAudit($action, $payment, $changedBy, $newValues = null)
+    // $reason is the cashier's explanation for a deletion (see Accounting).
+    private function logPaymentAudit($action, $payment, $changedBy, $newValues = null, $reason = null)
     {
         $snapshot = [
             'StudentNumber' => (string)($payment->StudentNumber ?? ''),
@@ -119,7 +120,7 @@ class MobileAccounting extends MobileApi
             $newValues = $snapshot;
         }
 
-        $this->db->insert('payment_audit_log', [
+        $entry = [
             'payment_id'     => (int)($payment->ID ?? 0),
             'action'         => $action,
             'or_number'      => (string)($payment->ORNumber ?? ''),
@@ -128,10 +129,17 @@ class MobileAccounting extends MobileApi
             'amount'         => (float)($payment->Amount ?? 0),
             'old_values'     => $oldValues !== null ? json_encode($oldValues) : null,
             'new_values'     => $newValues !== null ? json_encode($newValues) : null,
+            'reason'         => $reason !== null && trim((string)$reason) !== '' ? trim((string)$reason) : null,
             'changed_by'     => $changedBy,
             'actor_level'    => $this->position_of($changedBy) ?: null,
             'changed_at'     => (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s'),
-        ]);
+        ];
+        // Schema_migrator adds `reason`; until it has run, log without it
+        // rather than lose the entry.
+        if (!$this->db->field_exists('reason', 'payment_audit_log')) {
+            unset($entry['reason']);
+        }
+        $this->db->insert('payment_audit_log', $entry);
     }
 
     private function nextTableId($table, $idColumn)
@@ -291,7 +299,10 @@ class MobileAccounting extends MobileApi
             }
         }
 
-        return $students;
+        // Only students with an Active account (Registered Students list)
+        // can be paid for — see Payable_students.
+        $this->load->library('payable_students');
+        return $this->payable_students->filter($students);
     }
 
     private function getStudentContext($studentNumber, $sem, $sy)
@@ -887,6 +898,10 @@ class MobileAccounting extends MobileApi
             if ($description === '') $errors[] = 'Description is required.';
             if (!is_numeric($p['Amount'] ?? $p['amount'] ?? null) || $amount <= 0) $errors[] = 'Amount must be greater than 0.';
             if (!$this->isValidDate($pDateInput)) $errors[] = 'Invalid payment date.';
+            $this->load->library('payable_students');
+            if ($studentNumber !== '' && !$this->payable_students->isActive($studentNumber)) {
+                $errors[] = Payable_students::NOT_ACTIVE_MESSAGE;
+            }
             if ($errors) {
                 $body = json_encode(['ok' => false, 'message' => implode(' ', $errors)]);
                 $this->record_idempotent_response(422, $body);
@@ -1106,6 +1121,9 @@ class MobileAccounting extends MobileApi
 
         $p = $this->read_payload();
         $id = (int)($p['id'] ?? 0);
+        // Recorded when sent. Not required yet: app builds that predate the
+        // reason prompt would otherwise be unable to delete at all.
+        $reason = mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($p['reason'] ?? ''))), 0, 255);
         if ($id <= 0) {
             $body = json_encode(['ok' => false, 'message' => 'Invalid payment ID.']);
             $this->record_idempotent_response(422, $body);
@@ -1162,7 +1180,7 @@ class MobileAccounting extends MobileApi
             return $this->json(json_decode($body, true), 500);
         }
 
-        $this->logPaymentAudit('delete', $payment, (string)$tokenRow['username']);
+        $this->logPaymentAudit('delete', $payment, (string)$tokenRow['username'], null, $reason);
 
         $body = json_encode(['ok' => true, 'message' => 'Payment deleted successfully.']);
         $this->record_idempotent_response(200, $body);
@@ -1207,6 +1225,7 @@ class MobileAccounting extends MobileApi
                 'description'    => (string)$r->description,
                 'amount'         => (float)$r->amount,
                 'changed_by'     => (string)$r->changed_by,
+                'reason'         => trim((string)($r->reason ?? '')),
             ];
         }
 

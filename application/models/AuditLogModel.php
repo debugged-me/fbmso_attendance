@@ -176,6 +176,8 @@ class AuditLogModel extends CI_Model
         if ($this->db->table_exists('payment_audit_log')) {
             $role = $this->db->field_exists('actor_level', 'payment_audit_log')
                 ? 'p.actor_level' : 'NULL';
+            $reason = $this->db->field_exists('reason', 'payment_audit_log')
+                ? "NULLIF(TRIM(p.reason), '')" : 'NULL';
             $parts[] = "
                 SELECT CONVERT('payment' USING utf8mb4) COLLATE utf8mb4_unicode_ci AS source,
                        CONVERT(CONCAT('payment-', p.id) USING utf8mb4) COLLATE utf8mb4_unicode_ci AS event_key,
@@ -190,13 +192,16 @@ class AuditLogModel extends CI_Model
                        CONVERT(COALESCE(NULLIF({$role}, ''), NULLIF(u.position, ''), 'Unknown') USING utf8mb4) COLLATE utf8mb4_unicode_ci AS actor_level,
                        CONVERT(NULL USING utf8mb4) COLLATE utf8mb4_unicode_ci AS ip_address,
                        CONVERT(NULL USING utf8mb4) COLLATE utf8mb4_unicode_ci AS user_agent,
-                       CONVERT(CONCAT(UPPER(LEFT(p.action, 1)), SUBSTRING(p.action, 2),
-                              ' payment ', NULLIF(p.or_number, '')) USING utf8mb4) COLLATE utf8mb4_unicode_ci AS description,
+                       CONVERT(CONCAT_WS(' — Reason: ',
+                              CONCAT(UPPER(LEFT(p.action, 1)), SUBSTRING(p.action, 2),
+                                     ' payment ', COALESCE(NULLIF(p.or_number, ''), '')),
+                              {$reason}) USING utf8mb4) COLLATE utf8mb4_unicode_ci AS description,
                        CONVERT(p.old_values USING utf8mb4) COLLATE utf8mb4_unicode_ci AS old_values,
                        CONVERT(p.new_values USING utf8mb4) COLLATE utf8mb4_unicode_ci AS new_values,
                        CONVERT(CONCAT('{\"or_number\":', JSON_QUOTE(p.or_number),
                               ',\"student_number\":', JSON_QUOTE(p.student_number),
-                              ',\"amount\":', JSON_QUOTE(CAST(p.amount AS CHAR)), '}') USING utf8mb4) COLLATE utf8mb4_unicode_ci AS extra
+                              ',\"amount\":', JSON_QUOTE(CAST(p.amount AS CHAR)),
+                              COALESCE(CONCAT(',\"reason\":', JSON_QUOTE({$reason})), ''), '}') USING utf8mb4) COLLATE utf8mb4_unicode_ci AS extra
                   FROM payment_audit_log p
              LEFT JOIN o_users u ON u.username = CONVERT(p.changed_by USING latin1)";
         }
