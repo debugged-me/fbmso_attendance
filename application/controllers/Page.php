@@ -2951,34 +2951,10 @@ class Page extends CI_Controller
 		$this->load->library('student_payment_guard');
 		$result['with_payments'] = $this->student_payment_guard->studentsWithPayments();
 
-		if ($this->input->post('submit')) {
-			$StudentNumber  = $this->input->post('dataid', true);
-			$Company        = $this->input->post('Company', true);
-			$CompAddress    = $this->input->post('CompAddress', true);
-			$Position       = $this->input->post('Position', true);
-			$dateEmployed   = $this->input->post('dateEmployed', true);
-			$classification = $this->input->post('classification', true);
-			$income         = $this->input->post('income', true);
-
-			$this->db->insert('employment', [
-				'StudentNumber'  => $StudentNumber,
-				'Company'        => $Company,
-				'CompAddress'    => $CompAddress,
-				'Position'       => $Position,
-				'dateEmployed'   => $dateEmployed,
-				'classification' => $classification,
-				'income'         => $income
-			]);
-
-			// ⚠️ This updates studeprofile; keep it only if that row exists.
-			// Otherwise, wrap it in a conditional or remove it if you're fully moving to signups.
-			$this->db->where('StudentNumber', $StudentNumber)
-				->update('studeprofile', ['empStat' => 'Employed']);
-
-			redirect('Page/profileList');
-		} else {
-			$this->load->view('profile_list', $result);
-		}
+		// Read-only page. It used to also accept an "employment" POST that
+		// no form sends, which let any role that can open this list —
+		// Auditor included — write employment records.
+		$this->load->view('profile_list', $result);
 	}
 
 	/**
@@ -3404,7 +3380,6 @@ class Page extends CI_Controller
 
 		// Inputs (POST)
 		$studno       = trim((string)$this->input->post('id', true));   // StudentNumber
-		$email        = trim((string)$this->input->post('email', true)); // optional legacy
 		$return_level = trim((string)$this->input->post('return_level', true));
 
 		if ($studno === '') {
@@ -3473,12 +3448,10 @@ class Page extends CI_Controller
 			->delete('o_users');
 		$aff_users_by_username = $this->db->affected_rows();
 
-		// Optional legacy cleanup by email
+		// (The old "cleanup by email" step is gone: it deleted ANY account
+		// with the posted email — staff included — bypassing the student-only
+		// and payment checks. No page sends that field.)
 		$aff_users_by_email = 0;
-		if ($email !== '') {
-			$this->db->delete('o_users', ['email' => $email]);
-			$aff_users_by_email = $this->db->affected_rows();
-		}
 
 		// (4) . NEW: student_qr — remove any QR tokens for this student
 		$this->db->delete('student_qr', ['student_number' => $studno]);
@@ -3503,7 +3476,6 @@ class Page extends CI_Controller
 				0,
 				'Failed to delete signup record',
 				[
-					'email'                 => $email,
 					'aff_semesterstude'     => $aff_semesterstude,
 					'aff_studentsignup'     => $aff_studentsignup,
 					'aff_studeprofile'      => $aff_studeprofile,
@@ -3526,7 +3498,6 @@ class Page extends CI_Controller
 				1,
 				'Deleted signup record',
 				[
-					'email'                 => $email,
 					'aff_semesterstude'     => $aff_semesterstude,
 					'aff_studentsignup'     => $aff_studentsignup,
 					'aff_studeprofile'      => $aff_studeprofile,
@@ -3552,11 +3523,16 @@ class Page extends CI_Controller
 				$removed[] = 'QR code';
 			}
 
-			$msg = 'Deleted ' . htmlspecialchars($studno, ENT_QUOTES, 'UTF-8') . '.';
-			if ($removed) {
-				$msg .= ' Also removed: ' . implode(', ', $removed) . '.';
+			if (!$aff_studentsignup && !$removed) {
+				// Nothing matched — say so instead of claiming a deletion.
+				$this->session->set_flashdata('danger', 'No student ' . htmlspecialchars($studno, ENT_QUOTES, 'UTF-8') . ' was found. Nothing was deleted.');
+			} else {
+				$msg = 'Deleted ' . htmlspecialchars($studno, ENT_QUOTES, 'UTF-8') . '.';
+				if ($removed) {
+					$msg .= ' Also removed: ' . implode(', ', $removed) . '.';
+				}
+				$this->session->set_flashdata('success', $msg);
 			}
-			$this->session->set_flashdata('success', $msg);
 		}
 
 
@@ -8053,10 +8029,17 @@ class Page extends CI_Controller
 			// studentsignup table columns and persist via the existing model.
 			$oldRow = $this->StudentModel->getstudentsignupbyId($id);
 
-			// Use the hidden oldStudentNo as the WHERE key so the admin can
-			// actually change the StudentNumber itself.
-			$whereId = $this->input->post('oldStudentNo', true) ?: (string)$id;
-			$newStudentNumber = $this->input->post('StudentNumber', true);
+			// The record being edited is the one this page loaded — never a
+			// posted key, which could point the update (and the login rename
+			// below) at a different account. The posted StudentNumber is the
+			// new value, so the admin can still change it.
+			$whereId = (string)$student->StudentNumber;
+			$newStudentNumber = trim((string)$this->input->post('StudentNumber', true));
+			if ($newStudentNumber === '') {
+				$this->session->set_flashdata('danger', 'Student ID is required.');
+				redirect('Page/editSignup?id=' . urlencode($whereId));
+				return;
+			}
 
 			// Server-side duplicate guard for StudentNumber
 			if (strtoupper((string)$newStudentNumber) !== strtoupper((string)$whereId)) {
@@ -8111,6 +8094,10 @@ class Page extends CI_Controller
 				'sitio'       => $this->input->post('Sitio', true),
 			];
 
+			// All-or-nothing: a StudentNumber change touches several tables,
+			// and a half-applied one would split the student's records.
+			$this->db->trans_start();
+
 			$this->StudentModel->updatestudentsignup($whereId, $updateData);
 
 			// Always sync the edited fields to o_users and studeprofile so
@@ -8131,6 +8118,7 @@ class Page extends CI_Controller
 				$syncFields['IDNumber'] = $newStudentNumber;
 			}
 			$this->db->where('username', $whereId);
+			$this->db->where_in('position', ['Student', 'Stude Applicant']);
 			$this->db->update('o_users', $syncFields);
 
 			// studeprofile: update the same fields the form collects.
@@ -8161,6 +8149,18 @@ class Page extends CI_Controller
 
 				$this->db->where('StudentNumber', $whereId);
 				$this->db->update('studeaccount', ['StudentNumber' => $newStudentNumber]);
+
+				if ($this->db->table_exists('online_payments')) {
+					$this->db->where('StudentNumber', $whereId);
+					$this->db->update('online_payments', ['StudentNumber' => $newStudentNumber]);
+				}
+			}
+
+			$this->db->trans_complete();
+			if ($this->db->trans_status() === false) {
+				$this->session->set_flashdata('danger', 'The student profile could not be saved. Nothing was changed — please try again.');
+				redirect('Page/editSignup?id=' . urlencode($whereId));
+				return;
 			}
 
 			$this->AuditLogModel->write(
