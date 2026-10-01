@@ -30,42 +30,42 @@
 
                     <?php
                     $apRows = (array)($recent_payments ?? []);
-                    $apCollected = 0.0; $apFull = 0; $apPart = 0;
-                    foreach ($apRows as $row) {
-                        $amt  = (float)($row->Amount ?? 0);
-                        $full = (float)($row->FullAmount ?? 0);
-                        $paid = (float)($row->TotalPaid ?? $amt);
-                        $apCollected += $paid;
-                        if ($full > 0) {
-                            if ($paid + 0.004 < $full) $apPart++; else $apFull++;
-                        }
-                    }
+                    // Cards come from payment_stats — aggregates over every
+                    // payment matching the filter, not only the rows rendered
+                    // below. Counting rendered rows under-reported collections
+                    // whenever the list window was smaller than the day.
+                    $apStats = is_array($payment_stats ?? null)
+                        ? $payment_stats
+                        : ['count' => count($apRows), 'collected' => 0.0, 'fully_paid' => 0, 'partial' => 0];
+                    $apScope = ($date_filter ?? '') === 'all'
+                        ? 'all recorded payments'
+                        : 'payments on ' . date('M d, Y', strtotime((string)$date_filter));
                     ?>
                     <div class="nx-stats" style="margin-top:2px;margin-bottom:18px;">
                         <div class="nx-stat blue">
                             <div class="nx-stat-main">
                                 <div>
-                                    <div class="nx-stat-num"><?= number_format(count($apRows)); ?></div>
-                                    <div class="nx-stat-label">Payments Listed</div>
+                                    <div class="nx-stat-num"><?= number_format((int)$apStats['count']); ?></div>
+                                    <div class="nx-stat-label">Payments</div>
                                 </div>
                                 <div class="nx-stat-icon"><i class="mdi mdi-format-list-bulleted"></i></div>
                             </div>
-                            <div class="nx-stat-foot">Recent receipts below <i class="mdi mdi-arrow-right"></i></div>
+                            <div class="nx-stat-foot"><?= htmlspecialchars(ucfirst($apScope), ENT_QUOTES, 'UTF-8'); ?> <i class="mdi mdi-arrow-right"></i></div>
                         </div>
                         <div class="nx-stat green">
                             <div class="nx-stat-main">
                                 <div>
-                                    <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<?= number_format($apCollected, 2); ?></div>
+                                    <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<?= number_format((float)$apStats['collected'], 2); ?></div>
                                     <div class="nx-stat-label">Collected</div>
                                 </div>
                                 <div class="nx-stat-icon"><i class="mdi mdi-cash"></i></div>
                             </div>
-                            <div class="nx-stat-foot">Sum of payments shown <i class="mdi mdi-arrow-right"></i></div>
+                            <div class="nx-stat-foot">Total for <?= htmlspecialchars($apScope, ENT_QUOTES, 'UTF-8'); ?> <i class="mdi mdi-arrow-right"></i></div>
                         </div>
                         <div class="nx-stat cyan">
                             <div class="nx-stat-main">
                                 <div>
-                                    <div class="nx-stat-num"><?= number_format($apFull); ?></div>
+                                    <div class="nx-stat-num"><?= number_format((int)$apStats['fully_paid']); ?></div>
                                     <div class="nx-stat-label">Fully Paid</div>
                                 </div>
                                 <div class="nx-stat-icon"><i class="mdi mdi-check-decagram"></i></div>
@@ -75,7 +75,7 @@
                         <div class="nx-stat orange">
                             <div class="nx-stat-main">
                                 <div>
-                                    <div class="nx-stat-num"><?= number_format($apPart); ?></div>
+                                    <div class="nx-stat-num"><?= number_format((int)$apStats['partial']); ?></div>
                                     <div class="nx-stat-label">Partial</div>
                                 </div>
                                 <div class="nx-stat-icon"><i class="mdi mdi-account-clock-outline"></i></div>
@@ -144,12 +144,16 @@
                                             <?php endif; ?>
                                         </select>
                                         <?php $entryCount = count($recent_payments); ?>
-                                        <span class="pay-count"><strong><?= number_format($entryCount); ?></strong> <?= $entryCount === 1 ? 'entry' : 'entries'; ?></span>
+                                        <span class="pay-count"><strong><?= number_format($entryCount); ?></strong> <?= $entryCount === 1 ? 'entry' : 'entries'; ?><?php if (!empty($payments_truncated)): ?> (latest shown — <?= number_format((int)$apStats['count']); ?> total)<?php endif; ?></span>
                                     </div>
                                     <div class="pay-hint">
                                         <i class="mdi mdi-information-outline"></i> Click a student's name to see their full details and balance.
+                                        <span id="serverSearchWrap" style="display:none;">
+                                            &nbsp;·&nbsp; <a href="javascript:void(0);" id="serverSearchBtn">Not in this list? Search all records for &ldquo;<span id="serverSearchTerm"></span>&rdquo;</a>
+                                        </span>
                                     </div>
                                 </div>
+                                <div id="serverSearchResults" style="display:none;padding:10px 14px;border-bottom:1px solid var(--up-border,#e6ebf4);"></div>
                                 <div class="up-card-body" style="padding:0 !important;">
                                     <div class="table-responsive up-rt-host">
                                         <table id="recentPaymentsTable" class="table table-bordered table-sm up-rt ms-rt-keep" style="width:100%">
@@ -196,7 +200,7 @@
                                                     $dropdownId = 'paymentActions' . $rowId;
                                                     ?>
                                                     <tr>
-                                                        <td data-label="Date & Time" style="color:var(--up-muted);white-space:nowrap;"><?= htmlspecialchars($dateTimeLabel, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                        <td data-label="Date & Time" data-order="<?= htmlspecialchars(trim($pDate . ' ' . $pTime), ENT_QUOTES, 'UTF-8'); ?>" style="color:var(--up-muted);white-space:nowrap;"><?= htmlspecialchars($dateTimeLabel, ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="O.R." style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:var(--up-blue);"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                         <td data-label="Student" style="font-weight:600;color:var(--up-ink);">
                                                             <?php if (trim((string)($row->StudentNumber ?? '')) !== ''): ?>
@@ -941,8 +945,10 @@
             }
 
             $(function() {
-                // DataTable
-                $('#recentPaymentsTable').DataTable({
+                // DataTable — listTruncated flags the capped "all dates" view,
+                // where an off-window payment can only be found server-side.
+                var listTruncated = <?= !empty($payments_truncated) ? 'true' : 'false' ?>;
+                var paymentsTable = $('#recentPaymentsTable').DataTable({
                     pageLength: 10,
                     autoWidth: false,
                     order: [
@@ -950,7 +956,59 @@
                     ],
                     drawCallback: function() {
                         initTooltips();
+                        // The in-table search only sees rendered rows. When it
+                        // finds nothing — or the list is capped and a match
+                        // could sit outside the window — offer a whole-database
+                        // search instead of trusting what is on screen.
+                        var api = this.api();
+                        var info = api.page.info();
+                        var term = $.trim(api.search());
+                        if (term !== '' && (info.recordsDisplay === 0 || listTruncated)) {
+                            $('#serverSearchTerm').text(term);
+                            $('#serverSearchWrap').show();
+                        } else {
+                            $('#serverSearchWrap').hide();
+                            $('#serverSearchResults').hide().empty();
+                        }
                     }
+                });
+
+                // Whole-table search fallback — queries every payment, not
+                // only the rows on screen, so a receipt is findable even when
+                // it falls outside the rendered window.
+                $('#serverSearchBtn').on('click', function() {
+                    var term = $.trim(paymentsTable.search());
+                    if (term === '') return;
+                    var $out = $('#serverSearchResults').show()
+                        .html('<div style="color:var(--up-muted);font-size:.85rem;"><i class="mdi mdi-loading mdi-spin"></i> Searching all payment records&hellip;</div>');
+                    $.getJSON(baseUrl + 'Accounting/ajaxPaymentSearch', { q: term })
+                        .done(function(res) {
+                            var rows = (res && res.results) || [];
+                            if (!rows.length) {
+                                $out.html('<div style="color:var(--up-muted);font-size:.85rem;">No payment in any record matches &ldquo;' + $('<span>').text(term).html() + '&rdquo;.</div>');
+                                return;
+                            }
+                            var html = '<div style="font-size:.8rem;color:var(--up-muted);margin-bottom:6px;">Found ' + rows.length + ' match' + (rows.length === 1 ? '' : 'es') + ' in all payment records:</div>' +
+                                '<div class="table-responsive"><table class="table table-sm table-bordered" style="margin:0;">' +
+                                '<thead><tr><th>Date &amp; Time</th><th>O.R.</th><th>Student</th><th>Description</th><th class="text-right">Amount</th><th>Status</th><th></th></tr></thead><tbody>';
+                            $.each(rows, function(_, r) {
+                                var badge = r.status === 'Fully Paid' ? 'badge-success' : (r.status === 'Partial' ? 'badge-warning' : 'badge-secondary');
+                                html += '<tr>' +
+                                    '<td style="white-space:nowrap;color:var(--up-muted);">' + $('<span>').text(r.date + (r.time ? ' ' + r.time : '')).html() + '</td>' +
+                                    '<td style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:var(--up-blue);">' + $('<span>').text(r.or).html() + '</td>' +
+                                    '<td><a href="#" class="sd-link" data-student-balance data-sd-key="' + $('<span>').text(r.studno).html() + '" title="View balance">' + $('<span>').text(r.name).html() + '</a></td>' +
+                                    '<td style="color:var(--up-muted);">' + $('<span>').text(r.desc).html() + '</td>' +
+                                    '<td class="text-right" style="font-weight:700;white-space:nowrap;">₱ ' + Number(r.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</td>' +
+                                    '<td><span class="badge ' + badge + '" style="border-radius:6px;font-size:.72rem;font-weight:700;">' + $('<span>').text(r.status).html() + '</span></td>' +
+                                    '<td style="white-space:nowrap;"><a href="javascript:void(0);" class="print-receipt-btn" data-id="' + r.id + '"><i class="mdi mdi-printer"></i> Receipt</a></td>' +
+                                    '</tr>';
+                            });
+                            html += '</tbody></table></div>';
+                            $out.html(html);
+                        })
+                        .fail(function() {
+                            $out.html('<div style="color:#c42f41;font-size:.85rem;">Search failed — please try again.</div>');
+                        });
                 });
 
                 // Date filter — the list is scoped server-side (default: today),

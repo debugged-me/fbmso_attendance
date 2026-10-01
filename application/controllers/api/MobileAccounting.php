@@ -401,10 +401,20 @@ class MobileAccounting extends MobileApi
         return (int)$this->db->count_all_results();
     }
 
-    private function getRecentPayments($date = null, $limit = 200)
+    /**
+     * Recent valid payments, newest first.
+     *
+     * Mirrors Accounting::getRecentPayments: the full/remaining figures come
+     * from the price frozen onto each payment (FeeFullAmount) and the fee's
+     * per-term TotalPaid, so a mid-term price change cannot retro-mislabel a
+     * settled fee. $limit = 0 means no cap — the callers decide; $q filters
+     * server-side (AND per word) so the app can find any payment without
+     * downloading the whole table.
+     */
+    private function getRecentPayments($date = null, $limit = 200, $q = '')
     {
         $this->db->select("p.ID, p.PDate, p.pTime, p.ORNumber, p.StudentNumber, p.Amount, p.description, p.PaymentType, p.Cashier, p.Sem, p.SY,
-			f.FullAmount,
+			p.FeeFullAmount AS FullAmount, agg.TotalPaid,
 			COALESCE(NULLIF(TRIM(sp.email),''), NULLIF(TRIM(su.email),'')) AS Email,
 			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName,
 			COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName,
@@ -412,16 +422,35 @@ class MobileAccounting extends MobileApi
         $this->db->from('paymentsaccounts p');
         $this->db->join('studeprofile sp', 'sp.StudentNumber = p.StudentNumber', 'left');
         $this->db->join('studentsignup su', 'su.StudentNumber = p.StudentNumber', 'left');
-        $this->db->join('(SELECT Description, MAX(Amount) AS FullAmount FROM fees GROUP BY Description) f', 'f.Description = p.description', 'left');
+        $this->db->join(
+            "(SELECT StudentNumber, description, Sem, SY, SUM(Amount) AS TotalPaid
+                FROM paymentsaccounts
+               WHERE ORStatus = 'Valid' AND CollectionSource = \"Student's Account\"
+               GROUP BY StudentNumber, description, Sem, SY) agg",
+            'agg.StudentNumber = p.StudentNumber AND agg.description = p.description AND agg.Sem = p.Sem AND agg.SY = p.SY',
+            'left'
+        );
         $this->db->where('p.CollectionSource', "Student's Account");
         $this->db->where('p.ORStatus', 'Valid');
         if ($date !== null && $date !== '') {
             $this->db->where('p.PDate', $date);
         }
+        foreach (preg_split('/\s+/', trim((string)$q)) ?: [] as $term) {
+            if ($term === '') continue;
+            $like = '%' . $this->db->escape_like_str($term) . '%';
+            $this->db->where(
+                "CONCAT_WS(' ', p.StudentNumber, p.ORNumber, p.description,
+                    sp.LastName, sp.FirstName, sp.MiddleName,
+                    su.LastName, su.FirstName, su.MiddleName) LIKE " . $this->db->escape($like),
+                null, false
+            );
+        }
         $this->db->order_by('p.PDate', 'DESC');
         $this->db->order_by('p.pTime', 'DESC');
         $this->db->order_by('p.ID', 'DESC');
-        $this->db->limit((int)$limit);
+        if ((int)$limit > 0) {
+            $this->db->limit((int)$limit);
+        }
         return $this->db->get()->result();
     }
 
@@ -787,11 +816,20 @@ class MobileAccounting extends MobileApi
             'students'          => $students,
             'fees'              => $fees,
             'payment_dates'     => $dates,
-            'recent_payments'   => $this->shapePayments($this->getRecentPayments($today)),
+            // A single day is naturally bounded — no cap, so the app's
+            // "today" list can never silently drop a paid receipt.
+            'recent_payments'   => $this->shapePayments($this->getRecentPayments($today, 0)),
         ]);
     }
 
-    /** Recent valid payments for a date (or all when date=all). */
+    /**
+     * Recent valid payments for a date (or all when date=all).
+     *
+     * Optional `q` searches the whole table server-side (student number,
+     * name, O.R., description — AND per word), so a payment is always
+     * findable even when it falls outside the returned window. `limit`
+     * overrides the 200-row default; pass 0 for no cap.
+     */
     public function payments()
     {
         if ($this->input->method(true) !== 'GET') {
@@ -801,10 +839,13 @@ class MobileAccounting extends MobileApi
 
         $date = trim((string)$this->input->get('date', true));
         $filter = ($date === 'all' || !$this->isValidDate($date)) ? null : $date;
+        $q = trim((string)$this->input->get('q', true));
+        $limit = $this->input->get('limit');
+        $limit = ($limit === null || $limit === '' || !is_numeric($limit)) ? 200 : max(0, (int)$limit);
 
         return $this->json([
             'ok'       => true,
-            'payments' => $this->shapePayments($this->getRecentPayments($filter)),
+            'payments' => $this->shapePayments($this->getRecentPayments($filter, $limit, $q)),
         ]);
     }
 
@@ -825,6 +866,7 @@ class MobileAccounting extends MobileApi
                 'student_name'   => $name,
                 'amount'         => (float)$r->Amount,
                 'full_amount'    => isset($r->FullAmount) ? (float)$r->FullAmount : null,
+                'total_paid'     => isset($r->TotalPaid) ? (float)$r->TotalPaid : null,
                 'description'    => (string)$r->description,
                 'payment_type'   => (string)($r->PaymentType ?? ''),
                 'cashier'        => (string)($r->Cashier ?? ''),

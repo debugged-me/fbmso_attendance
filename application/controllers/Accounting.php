@@ -1018,7 +1018,7 @@ class Accounting extends CI_Controller
 		return (int)$this->db->count_all_results();
 	}
 
-	private function getRecentPayments($date = null, $limit = 200)
+	private function getRecentPayments($date = null, $limit = 0)
 	{
 		// Payments are tagged to the student's enrolment term, not always the
 		// active one — list the latest across all terms, otherwise a payment
@@ -1026,6 +1026,11 @@ class Accounting extends CI_Controller
 		// Status is per fee, not per receipt: two instalments that together
 		// settle a fee must both read "Fully Paid", not "Partial" twice. The
 		// price compared against is the one frozen onto the payment itself.
+		//
+		// The list must never silently drop rows: the table's search runs in
+		// the browser over what is rendered here, so a capped list made a paid
+		// student's receipt unfindable on busy days. $limit = 0 means no cap;
+		// a positive cap is only a page-weight guard for the "all dates" view.
 		$this->db->select("p.ID, p.PDate, p.pTime, p.ORNumber, p.StudentNumber, p.Amount, p.description, p.PaymentType, p.Cashier, p.Sem, p.SY,
 			p.FeeFullAmount AS FullAmount, agg.TotalPaid,
 			COALESCE(NULLIF(TRIM(sp.email),''), NULLIF(TRIM(su.email),'')) AS Email,
@@ -1051,8 +1056,46 @@ class Accounting extends CI_Controller
 		$this->db->order_by('p.PDate', 'DESC');
 		$this->db->order_by('p.pTime', 'DESC');
 		$this->db->order_by('p.ID', 'DESC');
-		$this->db->limit((int)$limit);
+		if ((int)$limit > 0) {
+			$this->db->limit((int)$limit);
+		}
 		return $this->db->get()->result();
+	}
+
+	// Stat cards describe every payment matching the filter, not just the
+	// rows rendered into the table — summing only the visible window made the
+	// Collected card disagree with the dashboard on busy days. Status counts
+	// use the same rule as the rows: the fee's frozen price against its
+	// per-(student, fee, term) total, counted per receipt line.
+	private function paymentStats($date = null)
+	{
+		$this->db->from('paymentsaccounts p')
+			->join(
+				"(SELECT StudentNumber, description, Sem, SY, SUM(Amount) AS TotalPaid
+				    FROM paymentsaccounts
+				   WHERE ORStatus = 'Valid' AND CollectionSource = \"Student's Account\"
+				   GROUP BY StudentNumber, description, Sem, SY) agg",
+				'agg.StudentNumber = p.StudentNumber AND agg.description = p.description AND agg.Sem = p.Sem AND agg.SY = p.SY',
+				'left'
+			)
+			->where('p.CollectionSource', "Student's Account")
+			->where('p.ORStatus', 'Valid');
+		if ($date !== null && $date !== '') {
+			$this->db->where('p.PDate', $date);
+		}
+		$row = $this->db->select("COUNT(*) AS Payments,
+				COALESCE(SUM(p.Amount),0) AS Collected,
+				COALESCE(SUM(CASE WHEN p.FeeFullAmount > 0 AND COALESCE(agg.TotalPaid,0) + 0.004 >= p.FeeFullAmount THEN 1 ELSE 0 END),0) AS FullyPaid,
+				COALESCE(SUM(CASE WHEN p.FeeFullAmount > 0 AND COALESCE(agg.TotalPaid,0) + 0.004 <  p.FeeFullAmount THEN 1 ELSE 0 END),0) AS Partial", false)
+			->get()
+			->row();
+
+		return [
+			'count'      => (int)($row->Payments ?? 0),
+			'collected'  => (float)($row->Collected ?? 0),
+			'fully_paid' => (int)($row->FullyPaid ?? 0),
+			'partial'    => (int)($row->Partial ?? 0),
+		];
 	}
 
 	// Distinct dates that have at least one payment — powers the "jump to a
@@ -1697,11 +1740,22 @@ class Accounting extends CI_Controller
 			$dateFilter = $today;
 		}
 
+		// A chosen date renders every payment that day — no cap: a hard limit
+		// once made real receipts vanish from the list and from the in-table
+		// search while the fees correctly read "already paid". Only the
+		// "all dates" view keeps a cap, purely as page-weight protection; the
+		// server-side search still reaches everything beyond it.
+		$statDate = $dateFilter === 'all' ? null : $dateFilter;
+		$stats = $this->paymentStats($statDate);
+		$recentPayments = $this->getRecentPayments($statDate, $dateFilter === 'all' ? 2000 : 0);
+
 		$data = [
 			'default_payment_date' => $today,
 			'next_or_number'       => $this->peekNextOrNumber($today),
 			'students'             => $this->getStudentsForPayment($sem, $sy),
-			'recent_payments'      => $this->getRecentPayments($dateFilter === 'all' ? null : $dateFilter),
+			'recent_payments'      => $recentPayments,
+			'payment_stats'        => $stats,
+			'payments_truncated'   => count($recentPayments) < $stats['count'],
 			'payment_dates'        => $this->distinctPaymentDates(),
 			'date_filter'          => $dateFilter,
 			'today'                => $today,
@@ -1981,6 +2035,93 @@ class Accounting extends CI_Controller
 				'paid'      => round($balance['paid'], 2),
 				'remaining' => round($balance['remaining'], 2),
 			]));
+	}
+
+	/**
+	 * Server-side payment search for the Recent Payments table.
+	 *
+	 * The table's own search only sees the rows rendered into the page. On a
+	 * busy day — or an "all dates" view that hit its cap — a real payment can
+	 * sit outside that window and the in-table search answers "no matching
+	 * records" for money that was actually taken. This endpoint searches the
+	 * whole paymentsaccounts table so a cashier can always find the receipt.
+	 *
+	 * Matching is AND-per-term like DataTables: every word must hit somewhere
+	 * in the student number, name, O.R., or description.
+	 */
+	public function ajaxPaymentSearch()
+	{
+		$this->ensureAccess();
+
+		$q = trim((string)$this->input->get('q', true));
+		$terms = preg_split('/\s+/', $q) ?: [];
+		$terms = array_values(array_filter($terms, function ($t) { return $t !== ''; }));
+
+		if (count($terms) < 1 || strlen($q) < 2) {
+			$this->output->set_content_type('application/json')
+				->set_output(json_encode(['ok' => true, 'results' => []]));
+			return;
+		}
+
+		$this->db->select("p.ID, p.PDate, p.pTime, p.ORNumber, p.StudentNumber, p.Amount, p.description, p.PaymentType, p.Cashier,
+			p.FeeFullAmount AS FullAmount, agg.TotalPaid,
+			COALESCE(NULLIF(sp.LastName,''), su.LastName, '') AS LastName,
+			COALESCE(NULLIF(sp.FirstName,''), su.FirstName, '') AS FirstName,
+			COALESCE(NULLIF(sp.MiddleName,''), su.MiddleName, '') AS MiddleName", false);
+		$this->db->from('paymentsaccounts p');
+		$this->db->join('studeprofile sp', 'sp.StudentNumber = p.StudentNumber', 'left');
+		$this->db->join('studentsignup su', 'su.StudentNumber = p.StudentNumber', 'left');
+		$this->db->join(
+			"(SELECT StudentNumber, description, Sem, SY, SUM(Amount) AS TotalPaid
+			    FROM paymentsaccounts
+			   WHERE ORStatus = 'Valid' AND CollectionSource = \"Student's Account\"
+			   GROUP BY StudentNumber, description, Sem, SY) agg",
+			'agg.StudentNumber = p.StudentNumber AND agg.description = p.description AND agg.Sem = p.Sem AND agg.SY = p.SY',
+			'left'
+		);
+		$this->db->where('p.CollectionSource', "Student's Account");
+		$this->db->where('p.ORStatus', 'Valid');
+		foreach ($terms as $term) {
+			$like = '%' . $this->db->escape_like_str($term) . '%';
+			$this->db->where(
+				"CONCAT_WS(' ', p.StudentNumber, p.ORNumber, p.description,
+					sp.LastName, sp.FirstName, sp.MiddleName,
+					su.LastName, su.FirstName, su.MiddleName) LIKE " . $this->db->escape($like),
+				null, false
+			);
+		}
+		$this->db->order_by('p.PDate', 'DESC');
+		$this->db->order_by('p.pTime', 'DESC');
+		$this->db->order_by('p.ID', 'DESC');
+		$rows = $this->db->limit(50)->get()->result();
+
+		$results = [];
+		foreach ($rows as $r) {
+			$name = trim((string)($r->LastName ?? ''));
+			if ($name !== '') $name .= ', ';
+			$name .= trim((string)(($r->FirstName ?? '') . ' ' . ($r->MiddleName ?? '')));
+			if (trim($name) === '') $name = (string)$r->StudentNumber;
+
+			$full = (float)($r->FullAmount ?? 0);
+			$paid = (float)($r->TotalPaid ?? $r->Amount ?? 0);
+			$status = $full <= 0 ? 'N/A' : ($paid + 0.004 < $full ? 'Partial' : 'Fully Paid');
+
+			$results[] = [
+				'id'      => (int)$r->ID,
+				'date'    => date('M d, Y', strtotime((string)$r->PDate)),
+				'time'    => trim((string)$r->pTime) !== '' ? date('h:i A', strtotime((string)$r->pTime)) : '',
+				'or'      => (string)$r->ORNumber,
+				'studno'  => (string)$r->StudentNumber,
+				'name'    => $name,
+				'desc'    => (string)$r->description,
+				'amount'  => (float)$r->Amount,
+				'status'  => $status,
+				'cashier' => (string)$r->Cashier,
+			];
+		}
+
+		$this->output->set_content_type('application/json')
+			->set_output(json_encode(['ok' => true, 'results' => $results], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 	}
 
 	public function course_setUp()
