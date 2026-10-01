@@ -91,17 +91,21 @@ class AppButton extends StatelessWidget {
           Icon(icon, size: iconSize, color: c.fg),
           const SizedBox(width: 8),
         ],
+        // A label that doesn't fit shrinks rather than losing its end to an
+        // ellipsis: "Sign out anyway" must not read as "Sign out a…".
         Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: AppTheme.fontFamily,
-              fontSize: fontSize,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.1,
-              color: c.fg,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                fontFamily: AppTheme.fontFamily,
+                fontSize: fontSize,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.1,
+                color: c.fg,
+              ),
             ),
           ),
         ),

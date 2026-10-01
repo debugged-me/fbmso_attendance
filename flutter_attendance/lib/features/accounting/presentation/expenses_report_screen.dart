@@ -299,15 +299,11 @@ class _Row extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                       color: AppInk.heading,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     '${r.date} · ${r.category}${r.responsible.isNotEmpty ? ' · ${r.responsible}' : ''}',
                     style: const TextStyle(
                         fontSize: 11.5, color: AppInk.muted),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

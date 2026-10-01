@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/design/components/components.dart';
 import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/anim_helpers.dart';
 import '../../../core/widgets/notification_bell.dart';
 import '../../../core/widgets/skeleton_loader.dart';
@@ -290,6 +291,22 @@ String _peso(double v) {
   return '₱${_thousands(v.truncate())}.$cents';
 }
 
+/// A scan time as "8:23 AM", with "Sep 30" beside it when it was not today.
+/// The raw "2026-10-01 08:23:45" took the width the student's name needs.
+({String time, String day}) _scanWhen(String raw) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+      'Sep', 'Oct', 'Nov', 'Dec'];
+  final at = DateTime.tryParse(raw.trim());
+  if (at == null) return (time: raw, day: '');
+  final now = DateTime.now();
+  final today =
+      at.year == now.year && at.month == now.month && at.day == now.day;
+  return (
+    time: to12HourFromDateTime(raw.trim()),
+    day: today ? '' : '${months[at.month - 1]} ${at.day}',
+  );
+}
+
 String _pesoCompact(double v) {
   if (v >= 1000000) return '₱${(v / 1000000).toStringAsFixed(1)}M';
   if (v >= 10000) return '₱${(v / 1000).toStringAsFixed(1)}k';
@@ -321,27 +338,26 @@ class _WelcomeHeader extends StatelessWidget {
     final first = session.firstName.trim().isNotEmpty
         ? session.firstName.trim()
         : session.displayName;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(_today(), style: AppType.caption.copyWith(fontSize: 13.5)),
-              const SizedBox(height: 4),
-              Text(
-                '${_greeting()}, $first',
-                style: AppType.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_today(),
+                    style: AppType.caption.copyWith(fontSize: 13.5)),
+                const SizedBox(height: 4),
+                Text('${_greeting()}, $first', style: AppType.title),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        AppAvatar(name: session.displayName, url: session.avatar, size: 48),
-      ],
+          const SizedBox(width: 12),
+          AppAvatar(name: session.displayName, url: session.avatar, size: 48),
+        ],
+      ),
     );
   }
 }
@@ -387,8 +403,6 @@ class _StudentIdCard extends StatelessWidget {
                           session.schoolName.isNotEmpty
                               ? session.schoolName
                               : 'Student ID',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: AppType.caption.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -416,8 +430,6 @@ class _StudentIdCard extends StatelessWidget {
                           children: [
                             Text(
                               session.displayName,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                               style: AppType.headline,
                             ),
                             const SizedBox(height: 2),
@@ -437,18 +449,21 @@ class _StudentIdCard extends StatelessWidget {
                   if (session.activeSy.isNotEmpty ||
                       session.activeSem.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _IdField(
-                              label: 'School year', value: session.activeSy),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _IdField(
-                              label: 'Semester', value: session.activeSem),
-                        ),
-                      ],
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: _IdField(
+                                label: 'School year', value: session.activeSy),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _IdField(
+                                label: 'Semester', value: session.activeSem),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ],
@@ -481,8 +496,6 @@ class _IdField extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             value.isEmpty ? '—' : value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: AppType.row.copyWith(fontSize: 14),
           ),
         ],
@@ -526,12 +539,24 @@ class _EmptyCard extends StatelessWidget {
   }
 }
 
-class _AnnouncementCard extends StatelessWidget {
+/// The dashboard is the only place an announcement is read in the app, so a
+/// long message opens in place instead of stopping at three lines.
+class _AnnouncementCard extends StatefulWidget {
   const _AnnouncementCard({required this.item});
   final Announcement item;
 
   @override
+  State<_AnnouncementCard> createState() => _AnnouncementCardState();
+}
+
+class _AnnouncementCardState extends State<_AnnouncementCard> {
+  static const _previewLines = 3;
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
+    final messageStyle = AppType.body.copyWith(fontSize: 14, height: 1.45);
     final meta = [item.author, item.datePosted]
         .where((e) => e.trim().isNotEmpty)
         .join(' · ');
@@ -550,11 +575,47 @@ class _AnnouncementCard extends StatelessWidget {
                 children: [
                   Text(item.title, style: AppType.row),
                   const SizedBox(height: 6),
-                  Text(
-                    item.message,
-                    style: AppType.body.copyWith(fontSize: 14, height: 1.45),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final painter = TextPainter(
+                        text: TextSpan(text: item.message, style: messageStyle),
+                        textDirection: TextDirection.ltr,
+                        textScaler: MediaQuery.textScalerOf(context),
+                        maxLines: _previewLines,
+                      )..layout(maxWidth: constraints.maxWidth);
+                      final long = painter.didExceedMaxLines;
+                      painter.dispose();
+                      final open = _expanded || !long;
+                      return GestureDetector(
+                        onTap: long
+                            ? () => setState(() => _expanded = !_expanded)
+                            : null,
+                        behavior: HitTestBehavior.opaque,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.message,
+                              style: messageStyle,
+                              maxLines: open ? null : _previewLines,
+                              overflow: open ? null : TextOverflow.ellipsis,
+                            ),
+                            if (long)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  _expanded ? 'Show less' : 'Read more',
+                                  style: AppType.caption.copyWith(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppInk.accent,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -566,8 +627,6 @@ class _AnnouncementCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           meta,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: AppType.caption,
                         ),
                       ),
@@ -707,8 +766,6 @@ class _StudentOverviewCard extends StatelessWidget {
                       '${_thousands(enrolled)} enrolled',
                       if (term.isNotEmpty) term,
                     ].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: AppType.caption.copyWith(fontSize: 13),
                   ),
                 ),
@@ -829,6 +886,44 @@ class _BarBreakdown extends StatelessWidget {
     final max = shown.fold<int>(0, (m, e) => e.count > m ? e.count : m);
     final total = shown.fold<int>(0, (s, e) => s + e.count);
 
+    // Section codes fit beside their bar; full course names ("Bachelor of
+    // Science in …") do not, and cut to one width they all read the same.
+    // Any label too wide for the column puts every label above its bar.
+    const labelWidth = 112.0;
+    final labelStyle = AppType.caption.copyWith(
+      fontSize: 12.5,
+      color: AppInk.body,
+      fontWeight: FontWeight.w500,
+    );
+    String labelOf(StatSlice s) => s.label.isEmpty ? 'Not set' : s.label;
+    final scaler = MediaQuery.textScalerOf(context);
+    final stacked = shown.any((s) {
+      final p = TextPainter(
+        text: TextSpan(text: labelOf(s), style: labelStyle),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      final width = p.width;
+      p.dispose();
+      return width > labelWidth;
+    });
+
+    Widget bar(int i) => ClipRRect(
+          borderRadius: BorderRadius.circular(99),
+          child: LinearProgressIndicator(
+            value: max > 0 ? shown[i].count / max : 0,
+            minHeight: 6,
+            backgroundColor: AppInk.subtle,
+            valueColor: AlwaysStoppedAnimation(AppChart.at(i)),
+          ),
+        );
+    Widget count(int i) => Text(
+          _thousands(shown[i].count),
+          textAlign: TextAlign.right,
+          style: AppType.value.copyWith(fontSize: 12.5),
+        );
+
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Column(
@@ -843,43 +938,36 @@ class _BarBreakdown extends StatelessWidget {
           const SizedBox(height: 10),
           for (var i = 0; i < shown.length; i++)
             Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 112,
-                    child: Text(
-                      shown[i].label.isEmpty ? 'Not set' : shown[i].label,
-                      style: AppType.caption.copyWith(
-                        fontSize: 12.5,
-                        color: AppInk.body,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+              padding: EdgeInsets.only(bottom: stacked ? 12 : 10),
+              child: stacked
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(labelOf(shown[i]), style: labelStyle),
+                            ),
+                            const SizedBox(width: 10),
+                            count(i),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        bar(i),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        SizedBox(
+                          width: labelWidth,
+                          child: Text(labelOf(shown[i]), style: labelStyle),
+                        ),
+                        Expanded(child: bar(i)),
+                        const SizedBox(width: 10),
+                        SizedBox(width: 40, child: count(i)),
+                      ],
                     ),
-                  ),
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(99),
-                      child: LinearProgressIndicator(
-                        value: max > 0 ? shown[i].count / max : 0,
-                        minHeight: 6,
-                        backgroundColor: AppInk.subtle,
-                        valueColor: AlwaysStoppedAnimation(AppChart.at(i)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    width: 40,
-                    child: Text(
-                      _thousands(shown[i].count),
-                      textAlign: TextAlign.right,
-                      style: AppType.value.copyWith(fontSize: 12.5),
-                    ),
-                  ),
-                ],
-              ),
             ),
         ],
       ),
@@ -911,23 +999,27 @@ class _CashierOverviewCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(_peso(stats.collectionToday), style: AppType.display),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              _MiniStat(
-                label: 'This month',
-                value: _pesoCompact(stats.collectionMonth),
-              ),
-              const SizedBox(width: 8),
-              _MiniStat(
-                label: 'This year',
-                value: _pesoCompact(stats.collectionYear),
-              ),
-              const SizedBox(width: 8),
-              _MiniStat(
-                label: 'With balance',
-                value: _thousands(stats.accountsBalance),
-              ),
-            ],
+          // Equal-height tiles when a label wraps on a narrow phone.
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _MiniStat(
+                  label: 'This month',
+                  value: _pesoCompact(stats.collectionMonth),
+                ),
+                const SizedBox(width: 8),
+                _MiniStat(
+                  label: 'This year',
+                  value: _pesoCompact(stats.collectionYear),
+                ),
+                const SizedBox(width: 8),
+                _MiniStat(
+                  label: 'With balance',
+                  value: _thousands(stats.accountsBalance),
+                ),
+              ],
+            ),
           ),
           if (stats.recentPayments.isNotEmpty) ...[
             const SizedBox(height: 18),
@@ -948,16 +1040,9 @@ class _CashierOverviewCard extends StatelessWidget {
                                 p.studentName.isNotEmpty
                                     ? p.studentName
                                     : p.studentNumber,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                                 style: AppType.row.copyWith(fontSize: 14),
                               ),
-                              Text(
-                                p.description,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppType.rowSub,
-                              ),
+                              Text(p.description, style: AppType.rowSub),
                             ],
                           ),
                         ),
@@ -993,21 +1078,70 @@ class _MiniStat extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppType.caption.copyWith(fontSize: 12),
-            ),
+            Text(label, style: AppType.caption.copyWith(fontSize: 12)),
+            const Spacer(),
             const SizedBox(height: 2),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppType.value.copyWith(fontSize: 15.5),
+            // An amount is never cut: it shrinks to fit the tile.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: AppType.value.copyWith(fontSize: 15.5),
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// One "Recent scans" line: who, which activity, and when.
+class _RecentScanRow extends StatelessWidget {
+  const _RecentScanRow({required this.scan});
+  final Map<String, dynamic> scan;
+
+  @override
+  Widget build(BuildContext context) {
+    // The API sends '' (not null) for a student with no profile row.
+    final rawName = '${scan['student_name'] ?? ''}'.trim();
+    final name =
+        rawName.isNotEmpty ? rawName : '${scan['student_number'] ?? ''}';
+    final activity = '${scan['activity_title'] ?? ''}'.trim();
+    final when =
+        _scanWhen('${scan['checked_in_at'] ?? scan['scanned_at'] ?? ''}');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppAvatar(name: name, size: 32),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: AppType.row.copyWith(fontSize: 14)),
+                if (activity.isNotEmpty)
+                  Text(activity, style: AppType.rowSub),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(when.time, style: AppType.caption),
+              if (when.day.isNotEmpty)
+                Text(
+                  when.day,
+                  style: AppType.caption.copyWith(color: AppInk.faint),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1081,43 +1215,7 @@ class _CommitteeOverviewCard extends StatelessWidget {
             ...appRuled(
               [
                 for (final s in stats.recentScans.take(5))
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    child: Row(
-                      children: [
-                        AppAvatar(
-                          name: '${s['student_name'] ?? s['student_number'] ?? ''}',
-                          size: 32,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${s['student_name'] ?? s['student_number'] ?? ''}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppType.row.copyWith(fontSize: 14),
-                              ),
-                              if (s['activity_title'] != null)
-                                Text(
-                                  '${s['activity_title']}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppType.rowSub,
-                                ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          (s['checked_in_at'] ?? s['scanned_at'] ?? '')
-                              .toString(),
-                          style: AppType.caption,
-                        ),
-                      ],
-                    ),
-                  ),
+                  _RecentScanRow(scan: s),
               ],
               indent: 42,
             ),

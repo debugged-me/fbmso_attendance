@@ -405,7 +405,7 @@ class _ActivityLogViewState extends State<ActivityLogView> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: widget.activity.title,
+      titleWidget: const SizedBox.shrink(),
       showBackButton: true,
       body: Column(
         children: [
@@ -426,20 +426,30 @@ class _ActivityLogViewState extends State<ActivityLogView> {
                           ),
                         ])
                       : _logs.isEmpty
-                          ? ListView(children: [
-                              const SizedBox(height: 80),
-                              const AppEmptyState(
-                                icon: AppIcons.history_rounded,
-                                title: 'No attendance records',
-                                subtitle: 'No one has checked in yet.',
-                              ),
-                            ])
+                          ? ListView(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                              children: [
+                                AppPageHeader(title: widget.activity.title),
+                                const SizedBox(height: 48),
+                                const AppEmptyState(
+                                  icon: AppIcons.history_rounded,
+                                  title: 'No attendance records',
+                                  subtitle: 'No one has checked in yet.',
+                                ),
+                              ],
+                            )
                           : ListView.builder(
                               padding:
-                                  const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                              itemCount: _logs.length,
+                                  const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                              itemCount: _logs.length + 1,
                               itemBuilder: (context, i) {
-                                final log = _logs[i];
+                                if (i == 0) {
+                                  return AppPageHeader(
+                                    title: widget.activity.title,
+                                    subtitle: '${_logs.length} checked in',
+                                  );
+                                }
+                                final log = _logs[i - 1];
                                 final name = (log['student_name'] ?? '')
                                     .toString()
                                     .trim();
@@ -471,8 +481,6 @@ class _ActivityLogViewState extends State<ActivityLogView> {
                                               Text(
                                                 name.isEmpty ? studentNo : name,
                                                 style: AppType.row,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
                                               ),
                                               const SizedBox(height: 2),
                                               Text(

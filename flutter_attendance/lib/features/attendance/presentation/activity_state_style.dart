@@ -232,12 +232,7 @@ class ActivityRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: Text(
-                        activity.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppType.row,
-                      ),
+                      child: Text(activity.title, style: AppType.row),
                     ),
                     if (trailing == null) ...[
                       const SizedBox(width: 8),
@@ -247,12 +242,7 @@ class ActivityRow extends StatelessWidget {
                 ),
                 if (sub.isNotEmpty) ...[
                   const SizedBox(height: 3),
-                  Text(
-                    sub,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppType.rowSub,
-                  ),
+                  Text(sub, style: AppType.rowSub),
                 ],
                 if (badge != null) ...[
                   const SizedBox(height: 6),

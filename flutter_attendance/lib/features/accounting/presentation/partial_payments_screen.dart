@@ -142,16 +142,12 @@ class _PartialRow extends StatelessWidget {
                       Text(
                         row.studentName,
                         style: AppType.row,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
                         '${row.studentNumber} · ${row.description}',
                         style: const TextStyle(
                             fontSize: 12, color: AppInk.muted),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),

@@ -2,7 +2,7 @@ name: flutter_attendance
 description: "FBMSO Attendance — native mobile app (one app, many clients)."
 publish_to: 'none'
 
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: ^3.5.0

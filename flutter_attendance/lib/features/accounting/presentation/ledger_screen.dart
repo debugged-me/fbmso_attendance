@@ -208,16 +208,20 @@ class _DateButton extends StatelessWidget {
               const Icon(AppIcons.event_rounded,
                   size: 15, color: AppInk.muted),
               const SizedBox(width: 6),
+              // A date shrinks to fit rather than losing its year.
               Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppInk.body,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppInk.body,
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -260,15 +264,20 @@ class _SummaryPill extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 3),
-            Text(
-              '₱${value.toStringAsFixed(0)}',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: color,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  '₱${value.toStringAsFixed(0)}',
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -319,15 +328,11 @@ class _LedgerTile extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       color: AppInk.heading,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     '${row.date} · ${row.ref}',
                     style: const TextStyle(
                         fontSize: 11, color: AppInk.muted),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

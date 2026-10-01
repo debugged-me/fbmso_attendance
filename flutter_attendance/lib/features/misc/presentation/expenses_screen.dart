@@ -393,8 +393,6 @@ class _ExpenseCard extends StatelessWidget {
                         ? '(no description)'
                         : expense.description,
                     style: AppType.row,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Wrap(

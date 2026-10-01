@@ -289,8 +289,6 @@ class _FeeTile extends StatelessWidget {
                   Text(
                     fee.description,
                     style: AppType.row,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   if (fee.type.isNotEmpty)
                     Text(

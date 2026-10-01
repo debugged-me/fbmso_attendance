@@ -282,8 +282,6 @@ class _PassCard extends StatelessWidget {
                       children: [
                         Text(
                           schoolName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: AppType.row.copyWith(fontSize: 14),
                         ),
                         Text('Attendance pass', style: AppType.caption),
@@ -329,8 +327,6 @@ class _PassCard extends StatelessWidget {
               Text(
                 displayName,
                 textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
                 style: AppType.headline.copyWith(fontSize: 20),
               ),
               const SizedBox(height: 4),

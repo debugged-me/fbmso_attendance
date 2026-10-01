@@ -340,16 +340,19 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: _isEdit ? 'Edit Activity' : 'New Activity',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: true,
       body: Column(
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  AppPageHeader(
+                    title: _isEdit ? 'Edit Activity' : 'New Activity',
+                  ),
                   AppInput(
                     controller: _title,
                     label: 'Title',
@@ -624,22 +627,38 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
     );
   }
 
+  /// The closed field is one line tall, so a long program name shrinks to
+  /// fit there; the open menu wraps it in full.
+  static Widget _fitSelected(String text) => FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: AlignmentDirectional.centerStart,
+        child: Text(text, maxLines: 1),
+      );
+
   Widget _buildProgramField() {
     return DropdownButtonFormField<String>(
       initialValue: _programChoice,
       isExpanded: true,
+      itemHeight: null,
       decoration: const InputDecoration(
         labelText: 'Program',
         border: OutlineInputBorder(),
         isDense: true,
       ),
       hint: Text(_programsLoading ? 'Loading programs…' : 'Select Program'),
+      selectedItemBuilder: (_) => [
+        _fitSelected('Add New'),
+        for (final p in _programs) _fitSelected(p),
+      ],
       items: [
         const DropdownMenuItem(value: _kCustomProgram, child: Text('Add New')),
         for (final p in _programs)
           DropdownMenuItem(
             value: p,
-            child: Text(p, overflow: TextOverflow.ellipsis),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(p),
+            ),
           ),
       ],
       onChanged: (v) {
@@ -659,6 +678,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
     return DropdownButtonFormField<String>(
       initialValue: _major,
       isExpanded: true,
+      itemHeight: null,
       decoration: InputDecoration(
         labelText: 'Major',
         helperText: _majors.isEmpty && !_majorsLoading
@@ -668,11 +688,15 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
         isDense: true,
       ),
       hint: Text(_majorsLoading ? 'Loading majors…' : '—'),
+      selectedItemBuilder: (_) => [for (final m in _majors) _fitSelected(m)],
       items: [
         for (final m in _majors)
           DropdownMenuItem(
             value: m,
-            child: Text(m, overflow: TextOverflow.ellipsis),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(m),
+            ),
           ),
       ],
       onChanged: _majors.isEmpty ? null : (v) => setState(() => _major = v),
@@ -705,7 +729,7 @@ class _SessionRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 86,
+            width: 104,
             child: Padding(
               padding: const EdgeInsets.only(top: 14),
               child: Row(
@@ -713,14 +737,18 @@ class _SessionRow extends StatelessWidget {
                   Icon(icon, size: 16, color: AppInk.muted),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppInk.body,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppInk.body,
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],

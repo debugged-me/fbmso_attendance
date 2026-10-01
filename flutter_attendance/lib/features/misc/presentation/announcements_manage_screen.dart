@@ -164,9 +164,7 @@ class _AnnouncementsManageScreenState extends State<AnnouncementsManageScreen> {
                                                   style: const TextStyle(
                                                       fontSize: 14,
                                                       fontWeight: FontWeight.w700,
-                                                      color: AppInk.heading),
-                                                  maxLines: 2,
-                                                  overflow: TextOverflow.ellipsis),
+                                                      color: AppInk.heading)),
                                               const SizedBox(height: 4),
                                               Text(a.message,
                                                   style: const TextStyle(fontSize: 12, color: AppInk.muted, height: 1.4),

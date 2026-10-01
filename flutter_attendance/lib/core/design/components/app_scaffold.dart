@@ -25,6 +25,7 @@ class AppScaffold extends StatelessWidget {
     this.centerTitle = false,
     this.showBackButton = true,
     this.automaticallyImplyLeading = true,
+    this.toolbarHeight,
   }) : _scrollable = false;
 
   /// A scrollable page with standard horizontal padding.
@@ -42,6 +43,7 @@ class AppScaffold extends StatelessWidget {
     this.centerTitle = false,
     this.showBackButton = true,
     this.automaticallyImplyLeading = true,
+    this.toolbarHeight,
   }) : _scrollable = true;
 
   final String? title;
@@ -56,6 +58,9 @@ class AppScaffold extends StatelessWidget {
   final bool centerTitle;
   final bool showBackButton;
   final bool automaticallyImplyLeading;
+
+  /// Taller app bar for a [titleWidget] that needs more than one line.
+  final double? toolbarHeight;
   final bool _scrollable;
 
   @override
@@ -72,6 +77,7 @@ class AppScaffold extends StatelessWidget {
               elevation: 0,
               scrolledUnderElevation: 0,
               centerTitle: centerTitle,
+              toolbarHeight: toolbarHeight,
               automaticallyImplyLeading: automaticallyImplyLeading,
               leadingWidth: 60,
               leading: leading ??

@@ -468,7 +468,7 @@ class _ScanPickerState extends State<_ScanPicker> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: _posterMode ? 'Poster mode' : 'Scan',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: false,
       leading: widget.menuButton,
       body: Column(
@@ -538,13 +538,15 @@ class _ScanPickerState extends State<_ScanPicker> {
                                     badge: a.activityId == _lastActivityId
                                         ? 'Last used'
                                         : null,
-                                    trailing: AppButton(
-                                      label: _posterMode ? 'Poster' : 'Scan',
+                                    trailing: AppCircleButton(
                                       icon: _posterMode
                                           ? AppIcons.qr_code_2
                                           : AppIcons.scan,
-                                      size: AppButtonSize.sm,
-                                      style: AppButtonStyle.tonal,
+                                      tooltip: _posterMode
+                                          ? 'Show poster'
+                                          : 'Scan',
+                                      background: AppInk.accentSoft,
+                                      color: AppInk.accentInk,
                                       onTap: () => _open(a),
                                     ),
                                     onTap: () => _open(a),
@@ -619,7 +621,7 @@ class _ActivityLogPickerState extends State<_ActivityLogPicker> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Attendance logs',
+      titleWidget: const SizedBox.shrink(),
       showBackButton: true,
       body: Column(
         children: [
@@ -824,7 +826,7 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: widget.activity.title,
+      titleWidget: const SizedBox.shrink(),
       showBackButton: true,
       actions: [
         IconButton(
@@ -848,18 +850,6 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
               onChanged: _onSearchChanged,
             ),
           ),
-          if (!_loading && _error == null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-              child: Row(
-                children: [
-                  Text(
-                    'Showing ${_logs.length} of $_total',
-                    style: AppType.caption,
-                  ),
-                ],
-              ),
-            ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _load,
@@ -877,19 +867,32 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
                           ),
                         ])
                       : _logs.isEmpty
-                          ? ListView(children: [
-                              const SizedBox(height: 80),
-                              const AppEmptyState(
-                                icon: AppIcons.history_rounded,
-                                title: 'No attendance records',
-                              ),
-                            ])
+                          ? ListView(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                              children: [
+                                AppPageHeader(title: widget.activity.title),
+                                const SizedBox(height: 48),
+                                const AppEmptyState(
+                                  icon: AppIcons.history_rounded,
+                                  title: 'No attendance records',
+                                ),
+                              ],
+                            )
                           : ListView.builder(
                               controller: _scrollController,
                               padding:
-                                  const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                              itemCount: _logs.length + (_loadingMore ? 1 : 0),
+                                  const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                              itemCount:
+                                  _logs.length + 1 + (_loadingMore ? 1 : 0),
                               itemBuilder: (context, i) {
+                                if (i == 0) {
+                                  return AppPageHeader(
+                                    title: widget.activity.title,
+                                    subtitle:
+                                        'Showing ${_logs.length} of $_total',
+                                  );
+                                }
+                                i -= 1;
                                 if (i >= _logs.length) {
                                   return const Padding(
                                     padding: EdgeInsets.all(16),
@@ -935,8 +938,6 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
                                               Text(
                                                 name.isEmpty ? studentNo : name,
                                                 style: AppType.row,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
                                               ),
                                               const SizedBox(height: 2),
                                               Text(
@@ -948,8 +949,6 @@ class _ActivityLogViewState extends State<_ActivityLogView> {
                                                     source.toUpperCase(),
                                                 ].join(' · '),
                                                 style: AppType.rowSub,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ],
                                           ),

@@ -212,8 +212,6 @@ class _PaymentCard extends StatelessWidget {
                         ? payment.description
                         : 'Payment',
                     style: AppType.row,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(width: 10),

@@ -271,16 +271,20 @@ class _FilterButton extends StatelessWidget {
             children: [
               Icon(icon, size: 15, color: AppInk.muted),
               const SizedBox(width: 6),
+              // A date shrinks to fit rather than losing its year.
               Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppInk.body,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppInk.body,
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -315,16 +319,12 @@ class _CollectionRow extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                       color: AppInk.heading,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${row.date} · O.R. ${row.orNumber} · ${row.description}',
                     style:
                         const TextStyle(fontSize: 11.5, color: AppInk.muted),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     '${row.paymentType} · ${row.cashier}',

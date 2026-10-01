@@ -294,9 +294,7 @@ class _UserCard extends StatelessWidget {
                       style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: AppInk.heading),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                          color: AppInk.heading)),
                   const SizedBox(height: 3),
                   Wrap(
                     spacing: 8,
@@ -322,9 +320,7 @@ class _UserCard extends StatelessWidget {
                   if (user.email.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(user.email,
-                        style: const TextStyle(fontSize: 12, color: AppInk.muted),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                        style: const TextStyle(fontSize: 12, color: AppInk.muted)),
                   ],
                 ],
               ),

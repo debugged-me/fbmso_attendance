@@ -219,8 +219,6 @@ class _PosterScanScreenState extends State<PosterScanScreen> {
                                 fontSize: 15,
                                 color: AppInk.onTint(tone),
                               ),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

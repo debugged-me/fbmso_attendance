@@ -243,8 +243,7 @@ class _PersonnelCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(personnel.fullName,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppInk.heading),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppInk.heading)),
                   const SizedBox(height: 3),
                   Wrap(
                     spacing: 8, runSpacing: 4,
@@ -268,8 +267,7 @@ class _PersonnelCard extends StatelessWidget {
                   if (personnel.email.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(personnel.email,
-                        style: const TextStyle(fontSize: 12, color: AppInk.muted),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                        style: const TextStyle(fontSize: 12, color: AppInk.muted)),
                   ],
                 ],
               ),

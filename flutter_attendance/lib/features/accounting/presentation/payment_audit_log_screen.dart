@@ -150,8 +150,6 @@ class _AuditTile extends StatelessWidget {
                         child: Text(
                           entry.studentName,
                           style: AppType.row,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
@@ -169,8 +167,6 @@ class _AuditTile extends StatelessWidget {
                     '${entry.description} · O.R. ${entry.orNumber}',
                     style:
                         const TextStyle(fontSize: 12, color: AppInk.muted),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 6),
                   Row(
@@ -198,8 +194,6 @@ class _AuditTile extends StatelessWidget {
                           '${entry.changedBy} · ${entry.changedAt}',
                           style: const TextStyle(
                               fontSize: 11, color: AppInk.muted),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],

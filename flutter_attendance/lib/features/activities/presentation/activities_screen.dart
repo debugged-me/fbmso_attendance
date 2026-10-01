@@ -155,7 +155,7 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
                                 subtitle: _activities.isEmpty
                                     ? null
                                     : '$openCount open · ${_activities.length} total',
-                                padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
+                                padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
                               ),
                             ),
                             if (_activities.isNotEmpty)
@@ -319,8 +319,6 @@ class _Meta extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: AppType.rowSub,
           ),
         ),

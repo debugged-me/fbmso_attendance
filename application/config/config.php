@@ -661,6 +661,6 @@ $config['proxy_ips'] = '';
 | an older build unsafe to keep running (API break, bad sync bug).
 |
 */
-$config['mobile_app_latest_version']      = '1.0.1';
-$config['mobile_app_latest_version_code'] = 2;
+$config['mobile_app_latest_version']      = '1.0.2';
+$config['mobile_app_latest_version_code'] = 3;
 $config['mobile_app_min_version_code']    = 1;

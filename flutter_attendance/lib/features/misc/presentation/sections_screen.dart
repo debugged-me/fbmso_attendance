@@ -202,9 +202,7 @@ class _SectionsScreenState extends State<SectionsScreen> {
                                                     ),
                                                   if (s.courseName.isNotEmpty)
                                                     Text(s.courseName,
-                                                        style: const TextStyle(fontSize: 12, color: AppInk.muted),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow.ellipsis),
+                                                        style: const TextStyle(fontSize: 12, color: AppInk.muted)),
                                                   if (s.yearLevel.isNotEmpty)
                                                     Text('${s.yearLevel} Year',
                                                         style: const TextStyle(fontSize: 11, color: AppInk.muted)),

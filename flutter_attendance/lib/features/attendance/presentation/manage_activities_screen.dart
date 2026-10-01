@@ -328,8 +328,6 @@ class _ActivityManageCard extends StatelessWidget {
                       Text(
                         activity.title,
                         style: AppType.row,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -352,8 +350,6 @@ class _ActivityManageCard extends StatelessWidget {
                                 activity.location,
                                 style: const TextStyle(
                                     fontSize: 12, color: AppInk.muted),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],

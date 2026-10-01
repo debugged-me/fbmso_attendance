@@ -284,16 +284,12 @@ class _PaymentTile extends StatelessWidget {
                       Text(
                         payment.studentName,
                         style: AppType.row,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
                         '${payment.studentNumber} · ${payment.description}',
                         style: const TextStyle(
                             fontSize: 12, color: AppInk.muted),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -569,7 +565,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'New Payment',
+      titleWidget: const SizedBox.shrink(),
       body: _loading
           ? const ListSkeleton(itemCount: 4)
           : _error != null
@@ -588,6 +584,7 @@ class _PaymentFormScreenState extends State<_PaymentFormScreen> {
               : ListView(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                   children: [
+                    const AppPageHeader(title: 'New Payment'),
                     // O.R. preview — the server issues this on save.
                     AppCard(
                       padding: const EdgeInsets.all(14),

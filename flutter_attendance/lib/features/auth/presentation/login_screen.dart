@@ -311,12 +311,10 @@ class _SchoolSwitch extends StatelessWidget {
               const Icon(AppIcons.school_outlined,
                   size: 16, color: AppInk.accent),
               const SizedBox(width: 8),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 220),
+              // Wraps to a second line: real school names run past 220px.
+              Flexible(
                 child: Text(
                   name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: AppType.caption.copyWith(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,

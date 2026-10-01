@@ -173,8 +173,6 @@ class _PersonnelCard extends StatelessWidget {
                     Text(
                       person.bio,
                       style: AppType.rowSub,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ],

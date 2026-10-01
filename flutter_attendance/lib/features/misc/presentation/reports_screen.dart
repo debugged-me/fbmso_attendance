@@ -159,8 +159,7 @@ class _ReportContent extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(e.title,
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppInk.heading),
-                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppInk.heading)),
                             if (e.activityDate.isNotEmpty)
                               Text(e.activityDate,
                                   style: const TextStyle(fontSize: 12, color: AppInk.muted)),
@@ -214,8 +213,7 @@ class _ReportContent extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(r.course,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppInk.heading),
-                          maxLines: 2, overflow: TextOverflow.ellipsis),
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppInk.heading)),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -246,12 +244,10 @@ class _ReportContent extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(r.studentName,
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppInk.heading),
-                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppInk.heading)),
                             const SizedBox(height: 2),
                             Text(r.activityTitle,
-                                style: const TextStyle(fontSize: 11, color: AppInk.muted),
-                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                                style: const TextStyle(fontSize: 11, color: AppInk.muted)),
                             const SizedBox(height: 2),
                             Wrap(
                               spacing: 6,
@@ -330,8 +326,7 @@ class _BarRow extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(label,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppInk.heading),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppInk.heading)),
               ),
               Text('$value',
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppInk.accent)),

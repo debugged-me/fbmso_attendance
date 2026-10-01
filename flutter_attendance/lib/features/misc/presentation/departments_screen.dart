@@ -227,9 +227,7 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
                                                   style: const TextStyle(
                                                       fontSize: 14,
                                                       fontWeight: FontWeight.w700,
-                                                      color: AppInk.heading),
-                                                  maxLines: 2,
-                                                  overflow: TextOverflow.ellipsis),
+                                                      color: AppInk.heading)),
                                               const SizedBox(height: 4),
                                               Wrap(
                                                 spacing: 8,

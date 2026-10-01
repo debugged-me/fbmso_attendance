@@ -263,9 +263,7 @@ class _StudentCard extends StatelessWidget {
                       style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: AppInk.heading),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                          color: AppInk.heading)),
                   const SizedBox(height: 3),
                   Wrap(
                     spacing: 8,

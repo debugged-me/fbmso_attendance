@@ -363,21 +363,49 @@ class _ScanScreenState extends State<ScanScreen> {
     }
   }
 
+  static const _caption = 'Scanner · works offline';
+
+  /// Staff confirm which event they are scanning by its name, so the app
+  /// bar grows to fit all of it rather than cutting it off.
+  double _toolbarHeight(BuildContext context, TextStyle titleStyle) {
+    // Title room: screen minus the 60px back button, the two 40px buttons
+    // with their 8px gaps, the app bar's title spacing, and 4px of slack.
+    final width = MediaQuery.sizeOf(context).width - 60 - 96 - 8 - 4;
+    final scaler = MediaQuery.textScalerOf(context);
+    final title = TextPainter(
+      text: TextSpan(text: widget.activityTitle, style: titleStyle),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+    )..layout(maxWidth: width);
+    final caption = TextPainter(
+      text: const TextSpan(text: _caption, style: AppType.caption),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+    )..layout();
+    final height = title.height + caption.height + 16;
+    title.dispose();
+    caption.dispose();
+    return height < kToolbarHeight ? kToolbarHeight : height;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final titleStyle = AppType.row.copyWith(fontSize: 16, height: 1.2);
     return AppScaffold(
       backgroundColor: Colors.white,
+      toolbarHeight: _toolbarHeight(context, titleStyle),
       titleWidget: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // The app bar's default style is one line with an ellipsis.
           Text(
             widget.activityTitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppType.row.copyWith(fontSize: 16),
+            softWrap: true,
+            overflow: TextOverflow.visible,
+            style: titleStyle,
           ),
-          Text('Scanner · works offline', style: AppType.caption),
+          const Text(_caption, style: AppType.caption),
         ],
       ),
       showBackButton: true,
@@ -610,8 +638,6 @@ class _ScanRecordTile extends StatelessWidget {
               children: [
                 Text(
                   who.isEmpty ? label : who,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: AppType.row.copyWith(fontSize: 14.5),
                 ),
                 const SizedBox(height: 2),
@@ -621,8 +647,6 @@ class _ScanRecordTile extends StatelessWidget {
                     if (r.message != null && r.message!.trim().isNotEmpty)
                       r.message!.trim(),
                   ].join(' · '),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                   style: AppType.caption.copyWith(
                     color: AppInk.onTint(color),
                     fontWeight: FontWeight.w600,
@@ -794,8 +818,6 @@ class _VerifyCard extends StatelessWidget {
                   children: [
                     Text(
                       name.isEmpty ? 'Unknown student' : name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: AppType.row.copyWith(fontSize: 16.5),
                     ),
                     const SizedBox(height: 2),
@@ -805,8 +827,6 @@ class _VerifyCard extends StatelessWidget {
                         if (course.isNotEmpty) course,
                         if (section.isNotEmpty) section,
                       ].join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: AppType.rowSub,
                     ),
                     const SizedBox(height: 8),

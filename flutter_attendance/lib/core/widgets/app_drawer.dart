@@ -76,8 +76,6 @@ class AppAppDrawer extends StatelessWidget {
                         Text(
                           session.displayName,
                           style: AppType.row.copyWith(fontSize: 16),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Row(
@@ -116,8 +114,6 @@ class AppAppDrawer extends StatelessWidget {
                           if (session.schoolName.isNotEmpty)
                             Text(
                               session.schoolName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                               style: AppType.caption.copyWith(
                                 color: AppInk.heading,
                                 fontWeight: FontWeight.w600,
@@ -240,26 +236,19 @@ class AppAppDrawer extends StatelessWidget {
               AppNotice(message: w, tone: AppInk.caution),
             ],
             const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: AppButton(
-                    label: 'Cancel',
-                    style: AppButtonStyle.outline,
-                    fullWidth: true,
-                    onTap: () => Navigator.pop(ctx, false),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: AppButton(
-                    label: warnings.isEmpty ? 'Sign out' : 'Sign out anyway',
-                    style: AppButtonStyle.destructive,
-                    fullWidth: true,
-                    onTap: () => Navigator.pop(ctx, true),
-                  ),
-                ),
-              ],
+            // Stacked: half of a dialog is too narrow for "Sign out anyway".
+            AppButton(
+              label: warnings.isEmpty ? 'Sign out' : 'Sign out anyway',
+              style: AppButtonStyle.destructive,
+              fullWidth: true,
+              onTap: () => Navigator.pop(ctx, true),
+            ),
+            const SizedBox(height: 8),
+            AppButton(
+              label: 'Cancel',
+              style: AppButtonStyle.outline,
+              fullWidth: true,
+              onTap: () => Navigator.pop(ctx, false),
             ),
           ],
         ),
@@ -333,8 +322,6 @@ class _DrawerTile extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                     color: tone ?? AppInk.body,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

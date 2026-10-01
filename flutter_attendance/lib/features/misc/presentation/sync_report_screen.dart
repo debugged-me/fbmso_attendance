@@ -68,7 +68,7 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
         _rows.where((r) => r['status'] == 'auth_blocked').toList();
 
     return AppScaffold(
-      title: 'Sync report',
+      titleWidget: const SizedBox.shrink(),
       actions: [
         IconButton(
           tooltip: 'Sync now',
@@ -90,8 +90,9 @@ class _SyncReportScreenState extends State<SyncReportScreen> {
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: ListView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                       children: [
+                        const AppPageHeader(title: 'Sync report'),
                         if (_rows.isEmpty) _allClear(),
                         if (authBlocked.isNotEmpty)
                           _section(
