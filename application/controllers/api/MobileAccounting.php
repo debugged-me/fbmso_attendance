@@ -843,8 +843,13 @@ class MobileAccounting extends MobileApi
         $date = trim((string)$this->input->get('date', true));
         $filter = ($date === 'all' || !$this->isValidDate($date)) ? null : $date;
         $q = trim((string)$this->input->get('q', true));
+        // Same rule as the web Payment page: a chosen day returns every
+        // payment that day (no cap — truncated lists hid real receipts);
+        // only the unbounded "all" view keeps a default page weight.
         $limit = $this->input->get('limit');
-        $limit = ($limit === null || $limit === '' || !is_numeric($limit)) ? 200 : max(0, (int)$limit);
+        $limit = ($limit === null || $limit === '' || !is_numeric($limit))
+            ? ($filter !== null || $q !== '' ? 0 : 200)
+            : max(0, (int)$limit);
 
         return $this->json([
             'ok'       => true,
