@@ -5,6 +5,7 @@ import '../../../core/design/tokens/app_tokens.dart';
 import '../../../core/widgets/sync_status_banner.dart';
 import '../../../core/widgets/skeleton_loader.dart';
 import '../../auth/domain/app_session.dart';
+import '../../auth/domain/staff_permissions.dart';
 import '../data/attendance_api.dart';
 import '../domain/attendance_models.dart';
 import 'activity_form_screen.dart';
@@ -166,7 +167,9 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
       body: Column(
         children: [
           const SyncStatusBanner(),
-          // Poster Mode toggle — mirrors the web sidebar switch
+          // Poster Mode toggle — mirrors the web sidebar switch, which only
+          // Admin sees (Activities::set_mode rejects everyone else).
+          if (StaffPermissions.of(widget.session).canTogglePosterMode)
           Container(
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -263,7 +266,14 @@ class _ManageActivitiesScreenState extends State<ManageActivitiesScreen> {
                               posterMode: _posterMode,
                               session: widget.session,
                               onEdit: () => _openForm(a),
-                              onToggleStatus: () => _toggleStatus(a),
+                              // The web list's open/close button works for
+                              // Admin, Instructor and Registrar only; other
+                              // staff change status through Edit.
+                              onToggleStatus: StaffPermissions.of(
+                                          widget.session)
+                                      .canQuickToggleActivityStatus
+                                  ? () => _toggleStatus(a)
+                                  : null,
                             );
                           },
                         ),
@@ -291,7 +301,7 @@ class _ActivityManageCard extends StatelessWidget {
 
   final Activity activity;
   final VoidCallback onEdit;
-  final VoidCallback onToggleStatus;
+  final VoidCallback? onToggleStatus;
   final bool posterMode;
   final AppSession session;
 
@@ -372,15 +382,17 @@ class _ActivityManageCard extends StatelessWidget {
             ],
 
             // ── Quick open/close override ───────────────────────────
-            const SizedBox(height: 10),
-            AppButton(
-              label: isOpen ? 'Close check-ins' : 'Open check-ins',
-              icon: isOpen ? AppIcons.lock_outline_rounded : AppIcons.lock_open_rounded,
-              size: AppButtonSize.sm,
-              style: AppButtonStyle.outline,
-              fullWidth: true,
-              onTap: onToggleStatus,
-            ),
+            if (onToggleStatus != null) ...[
+              const SizedBox(height: 10),
+              AppButton(
+                label: isOpen ? 'Close check-ins' : 'Open check-ins',
+                icon: isOpen ? AppIcons.lock_outline_rounded : AppIcons.lock_open_rounded,
+                size: AppButtonSize.sm,
+                style: AppButtonStyle.outline,
+                fullWidth: true,
+                onTap: onToggleStatus,
+              ),
+            ],
             // ── Poster mode action row ──────────────────────────────
             if (posterMode) ...[
               const SizedBox(height: 10),

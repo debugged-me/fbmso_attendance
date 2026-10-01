@@ -18,15 +18,14 @@ import '../../../core/theme/app_icons.dart';
 
 /// Shows the activity detail bottom sheet with role-based actions.
 /// - Students: "Scan Poster QR" + "Show My QR"
-/// - Admins: "Scan Students" + "View Attendance Logs" (+ "Edit" for managers)
+/// - Staff: the web activities list's row menu — Scan or Poster depending
+///   on poster mode, Attendance logs, and Edit for managers.
 void showActivityDetailSheet(
   BuildContext context,
   Activity activity,
   AppSession session,
 ) {
   final isStudent = session.role.isStudentLike;
-  final permissions = StaffPermissions.of(session);
-  final canManage = permissions.canManageActivities;
 
   showModalBottomSheet(
     context: context,
@@ -35,10 +34,15 @@ void showActivityDetailSheet(
     builder: (ctx) => ActivityDetailSheet(
       activity: activity,
       isStudent: isStudent,
-      canManage: canManage,
-      canScan: permissions.canScan,
-      canViewLogs: permissions.canViewAttendanceLogs,
-      canViewPoster: permissions.canViewActivityPoster,
+      permissions: StaffPermissions.of(session),
+      // Scan vs Poster follows the school-wide poster mode, as on the web.
+      // Offline this resolves to off, which keeps scanning available.
+      posterMode: isStudent
+          ? Future.value(false)
+          : AttendanceApi().posterMode(
+              baseUrl: session.baseUrl,
+              token: session.token,
+            ),
       session: session,
     ),
   );
@@ -49,19 +53,15 @@ class ActivityDetailSheet extends StatelessWidget {
     super.key,
     required this.activity,
     required this.isStudent,
-    required this.canManage,
-    required this.canScan,
-    required this.canViewLogs,
-    required this.canViewPoster,
+    required this.permissions,
+    required this.posterMode,
     required this.session,
   });
 
   final Activity activity;
   final bool isStudent;
-  final bool canManage;
-  final bool canScan;
-  final bool canViewLogs;
-  final bool canViewPoster;
+  final StaffPermissions permissions;
+  final Future<bool> posterMode;
   final AppSession session;
 
   String _timeRange(Activity a) {
@@ -224,91 +224,117 @@ class ActivityDetailSheet extends StatelessWidget {
                     );
                   },
                 ),
-              ] else ...[
-                if (canScan) AppButton(
-                  label: isOpen ? 'Scan students' : 'Check-in closed',
-                  icon: isOpen
-                      ? AppIcons.qr_code_scanner_rounded
-                      : AppIcons.lock_outline_rounded,
-                  fullWidth: true,
-                  size: AppButtonSize.lg,
-                  disabled: !isOpen,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ScanScreen(
-                          session: session,
-                          activityId: activity.activityId,
-                          activityTitle: activity.title,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                if (canScan && (canViewPoster || canViewLogs))
-                  const SizedBox(height: 10),
-                if (canViewPoster) AppButton(
-                  label: 'Show QR poster',
-                  icon: AppIcons.qr_code_2_rounded,
-                  fullWidth: true,
-                  size: AppButtonSize.lg,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ActivityPosterScreen(
-                          session: session,
-                          activityId: activity.activityId,
-                          activityTitle: activity.title,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                if (canViewPoster && canViewLogs) const SizedBox(height: 10),
-                if (canViewLogs) AppButton(
-                  label: 'Attendance logs',
-                  icon: AppIcons.history_rounded,
-                  fullWidth: true,
-                  size: AppButtonSize.lg,
-                  style: AppButtonStyle.outline,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ActivityLogView(
-                          session: session,
-                          activity: activity,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                // Edit — same action the web activities list exposes to
-                // managers (activities/edit/<id>).
-                if (canManage) ...[
-                  const SizedBox(height: 10),
-                  AppButton(
-                    label: 'Edit activity',
-                    icon: AppIcons.edit_outlined,
-                    fullWidth: true,
-                    size: AppButtonSize.lg,
-                    style: AppButtonStyle.outline,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ActivityFormScreen(
-                            session: session,
-                            activity: activity,
+              ] else
+                FutureBuilder<bool>(
+                  future: posterMode,
+                  builder: (context, snap) {
+                    if (snap.connectionState != ConnectionState.done) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
                           ),
                         ),
                       );
-                    },
-                  ),
-                ],
-              ],
+                    }
+                    final pm = snap.data ?? false;
+                    final showScan = permissions.canScanActivity(posterMode: pm);
+                    final showPoster =
+                        permissions.canShowActivityPoster(posterMode: pm);
+                    final canViewLogs = permissions.canViewAttendanceLogs;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (showScan) AppButton(
+                          label: isOpen ? 'Scan students' : 'Check-in closed',
+                          icon: isOpen
+                              ? AppIcons.qr_code_scanner_rounded
+                              : AppIcons.lock_outline_rounded,
+                          fullWidth: true,
+                          size: AppButtonSize.lg,
+                          disabled: !isOpen,
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ScanScreen(
+                                  session: session,
+                                  activityId: activity.activityId,
+                                  activityTitle: activity.title,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        if (showScan && (showPoster || canViewLogs))
+                          const SizedBox(height: 10),
+                        if (showPoster) AppButton(
+                          label: 'Show QR poster',
+                          icon: AppIcons.qr_code_2_rounded,
+                          fullWidth: true,
+                          size: AppButtonSize.lg,
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ActivityPosterScreen(
+                                  session: session,
+                                  activityId: activity.activityId,
+                                  activityTitle: activity.title,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        if (showPoster && canViewLogs) const SizedBox(height: 10),
+                        if (canViewLogs) AppButton(
+                          label: 'Attendance logs',
+                          icon: AppIcons.history_rounded,
+                          fullWidth: true,
+                          size: AppButtonSize.lg,
+                          style: AppButtonStyle.outline,
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ActivityLogView(
+                                  session: session,
+                                  activity: activity,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        // Edit — same action the web activities list exposes to
+                        // managers (activities/edit/<id>).
+                        if (permissions.canManageActivities) ...[
+                          const SizedBox(height: 10),
+                          AppButton(
+                            label: 'Edit activity',
+                            icon: AppIcons.edit_outlined,
+                            fullWidth: true,
+                            size: AppButtonSize.lg,
+                            style: AppButtonStyle.outline,
+                            onTap: () {
+                              Navigator.of(context).pop();
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ActivityFormScreen(
+                                    session: session,
+                                    activity: activity,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                ),
               const SizedBox(height: 8),
             ],
           ),

@@ -71,8 +71,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         token: widget.session.token,
       );
       // Cashier is denied /activities (web allowlist is accounting-only) —
-      // skip the call so their dashboard doesn't trip a 403.
-      final act = perms.isCashier
+      // skip the call so their dashboard doesn't trip a 403. Students get no
+      // activity list on the web either (activities/index is not on their
+      // route allowlist; their dashboard shows announcements only).
+      final act = perms.isCashier || perms.isStudent
           ? Future<List<Activity>>.value(const [])
           : _attApi.activities(
               baseUrl: widget.session.baseUrl,

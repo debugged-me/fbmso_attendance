@@ -1862,8 +1862,11 @@ class MobileMisc extends MobileApi
         }
         $tokenRow = $this->require_token();
         if ($tokenRow === null) return;
-        if (!$this->is_staff($tokenRow)) {
-            return $this->json(['ok' => false, 'message' => 'Staff only.'], 403);
+        // Web parity: sections are deleted through Page/deleteSection
+        // (Super Admin, Admin, IT) or Settings/deleteSection (adds School
+        // Admin) — not by every staff role, and never by the Auditor.
+        if (!$this->is_settings_admin($tokenRow)) {
+            return $this->json(['ok' => false, 'message' => 'Only Super Admin, Admin, IT or School Admin can delete sections.'], 403);
         }
 
         $p = $this->read_payload();

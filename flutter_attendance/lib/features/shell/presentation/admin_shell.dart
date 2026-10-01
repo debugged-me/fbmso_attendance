@@ -164,8 +164,9 @@ class _AdminShellState extends State<AdminShell> {
       // Accounting block — mirrors the web Cashier sidebar in order:
       // Payment Entry, School Expenses (+reports), Payment Setup (fees),
       // Collection Reports, Ledger, Partial Payments, Payment Activity Log.
-      // Auditor sees the same records with all mutations removed.
-      if (p.canViewAccounting)
+      // Auditor sees the same records with all mutations removed. Admin's
+      // web sidebar has only School Expenses and Payment Activity Log here.
+      if (p.canViewAccountingRecords)
         DrawerItem(
           group: 'Accounting',
           icon: AppIcons.payments_outlined,
@@ -209,7 +210,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canViewAccounting)
+      if (p.canViewAccountingRecords)
         DrawerItem(
           group: 'Accounting',
           icon: AppIcons.sell_outlined,
@@ -224,7 +225,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canViewAccounting)
+      if (p.canViewAccountingRecords)
         DrawerItem(
           group: 'Accounting',
           icon: AppIcons.description_outlined,
@@ -239,7 +240,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canViewAccounting)
+      if (p.canViewAccountingRecords)
         DrawerItem(
           group: 'Accounting',
           icon: AppIcons.menu_book_outlined,
@@ -253,7 +254,7 @@ class _AdminShellState extends State<AdminShell> {
             );
           },
         ),
-      if (p.canViewAccounting)
+      if (p.canViewAccountingRecords)
         DrawerItem(
           group: 'Accounting',
           icon: AppIcons.hourglass_bottom_rounded,
@@ -460,7 +461,10 @@ class _ScanPickerState extends State<_ScanPicker> {
 
     setState(() {
       _activities = open;
-      _posterMode = pm;
+      // Web activities list: in poster mode staff get the poster, but
+      // Committee keeps scanning.
+      _posterMode =
+          pm && !StaffPermissions.of(widget.session).isCommittee;
       _loading = false;
     });
   }
