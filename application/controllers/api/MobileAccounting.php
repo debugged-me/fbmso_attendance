@@ -28,7 +28,7 @@ class MobileAccounting extends MobileApi
     public function __construct()
     {
         parent::__construct();
-        $this->load->helper(['url', 'fbmso_email']);
+        $this->load->helper(['url', 'fbmso_email', 'receipt_verify']);
         $this->load->library('term');
         $this->load->model('StudentModel');
         $this->load->model('SettingsModel');
@@ -573,9 +573,11 @@ class MobileAccounting extends MobileApi
 
         $schoolName = trim((string)($settings->SchoolName ?? 'School Records Management System'));
         $subject = 'Official Receipt #' . trim((string)($payment->ORNumber ?? '')) . ' - ' . $schoolName;
+        $this->load->helper('receipt_verify');
         $message = $this->load->view('accounting_receipt_email', [
             'payment'  => $payment,
             'settings' => $settings,
+            'verify_url' => receipt_verify_url($payment->ORNumber ?? '', $payment->StudentNumber ?? ''),
         ], true);
 
         if (!fbmso_mailqueue_push($this, $recipientEmail, $subject, $message, $schoolName)) {
@@ -739,6 +741,7 @@ class MobileAccounting extends MobileApi
                 'id'             => (int)($r->ID ?? 0),
                 'date'           => (string)($r->PDate ?? ''),
                 'or_number'      => (string)($r->ORNumber ?? ''),
+                'verify_url'     => receipt_verify_url($r->ORNumber ?? '', $r->StudentNumber ?? ''),
                 'student_number' => (string)($r->StudentNumber ?? ''),
                 'student_name'   => trim((string)($r->LastName ?? '') . ', ' . (string)($r->FirstName ?? '')),
                 'amount'         => (float)($r->Amount ?? 0),
@@ -851,6 +854,7 @@ class MobileAccounting extends MobileApi
 
     private function shapePayments($rows): array
     {
+        $this->load->helper('receipt_verify');
         $out = [];
         foreach ($rows as $r) {
             $name = trim((string)($r->LastName ?? '') . ', ' . (string)($r->FirstName ?? '') . ' ' . (string)($r->MiddleName ?? ''));
@@ -862,6 +866,7 @@ class MobileAccounting extends MobileApi
                 'date'           => (string)$r->PDate,
                 'time'           => (string)($r->pTime ?? ''),
                 'or_number'      => (string)$r->ORNumber,
+                'verify_url'     => receipt_verify_url($r->ORNumber ?? '', $r->StudentNumber ?? ''),
                 'student_number' => (string)$r->StudentNumber,
                 'student_name'   => $name,
                 'amount'         => (float)$r->Amount,

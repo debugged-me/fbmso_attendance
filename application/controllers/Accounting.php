@@ -10,7 +10,7 @@ class Accounting extends CI_Controller
 	{
 		parent::__construct();
 		$this->load->database();
-		$this->load->helper(['url', 'form']);
+		$this->load->helper(['url', 'form', 'receipt_verify']);
 		$this->load->library(['session', 'form_validation', 'term']);
 		$this->load->library('securityaudit');
 		$this->load->model('SettingsModel');
@@ -1325,6 +1325,7 @@ class Accounting extends CI_Controller
 			'payment' => $payment,
 			'settings' => $settings,
 			'lines' => $this->getReceiptLines($payment),
+			'verify_url' => receipt_verify_url($payment->ORNumber ?? '', $payment->StudentNumber ?? ''),
 		], true);
 	}
 
@@ -1970,6 +1971,7 @@ class Accounting extends CI_Controller
 			'payment'    => $payment,
 			'lines'      => $this->getReceiptLines($payment),
 			'settings'   => $settings,
+			'verify_url' => receipt_verify_url($payment->ORNumber ?? '', $payment->StudentNumber ?? ''),
 			'auto_print' => $this->input->get('print', true) === '1'
 		];
 

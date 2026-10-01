@@ -273,7 +273,13 @@
                                         <tbody>
                                             <?php foreach (($payments ?? []) as $row): ?>
                                                 <tr>
-                                                    <td data-label="OR No."><span class="ar-or"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                                    <td data-label="OR No.">
+                                                        <?php if (!empty($row->verify_url)): ?>
+                                                            <a href="<?= htmlspecialchars($row->verify_url, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener" class="ar-or" title="Verify this receipt online"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?> <i class="mdi mdi-open-in-new"></i></a>
+                                                        <?php else: ?>
+                                                            <span class="ar-or"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        <?php endif; ?>
+                                                    </td>
                                                     <td data-label="Payment Date"><?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td data-label="Time"><?= htmlspecialchars((string)($row->pTime ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td data-label="Description"><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>

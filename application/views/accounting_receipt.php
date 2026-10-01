@@ -134,6 +134,13 @@
                     <div class="sig-pos"><?= htmlspecialchars($cashierPos, ENT_QUOTES, 'UTF-8'); ?></div>
                 </div>
 
+                <?php if (!empty($verify_url)): ?>
+                <div class="receipt-verify">
+                    <div id="receiptQr" class="receipt-qr"></div>
+                    <div class="verify-label">Scan to verify this receipt</div>
+                </div>
+                <?php endif; ?>
+
                 <div class="receipt-footer">
                     Sem/SY: <?= htmlspecialchars(trim((string)$payment->Sem . ' ' . (string)$payment->SY), ENT_QUOTES, 'UTF-8'); ?>
                 </div>
@@ -251,6 +258,23 @@
             margin-top: 1px;
         }
 
+        .receipt-verify {
+            text-align: center;
+            margin-top: 0.08in;
+        }
+
+        .receipt-qr img,
+        .receipt-qr canvas {
+            display: block;
+            margin: 0 auto;
+        }
+
+        .verify-label {
+            font-size: 8px;
+            margin-top: 3px;
+            letter-spacing: 0.5px;
+        }
+
         .receipt-footer {
             text-align: center;
             font-size: 9px;
@@ -293,6 +317,18 @@
             }
         }
     </style>
+
+    <?php if (!empty($verify_url)): ?>
+        <script src="<?= base_url('assets/libs/qrcode/qrcode.min.js'); ?>"></script>
+        <script>
+            new QRCode(document.getElementById('receiptQr'), {
+                text: <?= json_encode($verify_url); ?>,
+                width: 96,
+                height: 96,
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        </script>
+    <?php endif; ?>
 
     <?php if (!empty($auto_print)): ?>
         <script>

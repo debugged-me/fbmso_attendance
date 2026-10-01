@@ -1164,6 +1164,14 @@ class Page extends CI_Controller
 		$this->db->order_by('ID', 'DESC');
 		$payments = $this->db->get()->result();
 
+		// Each O.R. links to its public verification page — the same URL the
+		// printed receipt's QR carries — so a student can always pull up
+		// proof that a payment exists.
+		$this->load->helper('receipt_verify');
+		foreach ($payments as $row) {
+			$row->verify_url = receipt_verify_url($row->ORNumber ?? '', $studentNumber);
+		}
+
 		$totalValid = 0.0;
 		$totalAll   = 0.0;
 		foreach ($payments as $row) {

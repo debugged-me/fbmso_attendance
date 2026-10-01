@@ -36,6 +36,13 @@ $config['authguard_public'] = array(
     // The public signup form plus the AJAX endpoints its dropdowns call.
     'registration/*',
 
+    // --- Receipt QR verification -----------------------------------------
+    // The QR printed on official receipts lands here so anyone holding the
+    // paper can confirm it is genuine — typically a student on a phone with
+    // no session. The URL's HMAC signature binds to (O.R. + student number),
+    // so the page can't be enumerated or forged without the encryption key.
+    'verify/receipt',
+
     // --- Activity QR / attendance scanning ------------------------------
     // These MUST stay public or the activity scan flow breaks:
     //   activities/poster  -> printable QR poster carrying the check-in URL

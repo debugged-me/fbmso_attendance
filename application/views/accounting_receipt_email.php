@@ -108,6 +108,13 @@ $isMultiLine = count($receiptLines) > 1;
                 </tr>
             </table>
 
+            <?php if (!empty($verify_url)): ?>
+            <div style="margin-top:22px;text-align:center;">
+                <a href="<?= htmlspecialchars($verify_url, ENT_QUOTES, 'UTF-8'); ?>" style="display:inline-block;padding:10px 22px;border-radius:999px;background:#166534;color:#ffffff;font-size:13px;font-weight:700;text-decoration:none;">Verify this receipt online</a>
+                <div style="margin-top:8px;font-size:11px;color:#94a3b8;">Opens a page confirming this O.R. exists in the system.</div>
+            </div>
+            <?php endif; ?>
+
             <div style="margin-top:24px;padding-top:18px;border-top:1px dashed #cbd5e1;font-size:13px;color:#64748b;">
                 <div style="font-weight:700;color:#334155;">Processed by: <?= htmlspecialchars($cashierName, ENT_QUOTES, 'UTF-8'); ?></div>
                 <div><?= htmlspecialchars($cashierPos, ENT_QUOTES, 'UTF-8'); ?></div>

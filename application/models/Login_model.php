@@ -82,6 +82,14 @@ class Login_model extends CI_Model
       [$username]
     )->result_array();
 
+    // An exact username hit is authoritative: do NOT keep hunting for a
+    // normalised sibling. Collisions exist — e.g. '2023-2794' and '20232794'
+    // are two different accounts — and letting a password meant for one
+    // unlock the other silently lands the user on the wrong account.
+    if (!empty($byUsername)) {
+      return $byUsername;
+    }
+
     // 2) Fallback for ID/student-number input, accepting dashed and
     //    non-dashed forms (e.g. 2024-0194 / 20240194).
     $normalizedInput = preg_replace('/[\s-]+/', '', $username);

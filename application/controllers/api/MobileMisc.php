@@ -480,6 +480,7 @@ class MobileMisc extends MobileApi
             if (!empty($r->Sem)) $semOptions[(string)$r->Sem] = (string)$r->Sem;
         }
 
+        $this->load->helper('receipt_verify');
         $payments = [];
         foreach ($rows as $r) {
             $payments[] = [
@@ -487,6 +488,7 @@ class MobileMisc extends MobileApi
                 'date'              => (string)($r->PDate ?? ''),
                 'time'              => (string)($r->pTime ?? ''),
                 'or_number'         => (string)($r->ORNumber ?? ''),
+                'verify_url'        => receipt_verify_url($r->ORNumber ?? '', $username),
                 'amount'            => (float)($r->Amount ?? 0),
                 'description'       => (string)($r->description ?? ''),
                 'payment_type'      => (string)($r->PaymentType ?? ''),
