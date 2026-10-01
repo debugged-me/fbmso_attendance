@@ -47,6 +47,10 @@ $canManage = ($level === 'Cashier');
 						<div class="up-flash up-flash-info"><i class="mdi mdi-information-outline"></i> <?= htmlspecialchars($notice, ENT_QUOTES, 'UTF-8'); ?></div>
 					<?php endif; ?>
 
+					<?php if ($notice = $this->session->flashdata('expenses')): ?>
+						<div class="up-flash up-flash-info"><i class="mdi mdi-information-outline"></i> <?= htmlspecialchars($notice, ENT_QUOTES, 'UTF-8'); ?></div>
+					<?php endif; ?>
+
                     <!-- start row -->
                     <div class="row">
                         <div class="col-md-12">
@@ -67,6 +71,33 @@ $canManage = ($level === 'Cashier');
 							<?php endif; ?>
                         </div>
 </div>
+                                <div class="pay-toolbar">
+                                    <div class="pay-filter">
+                                        <label for="expenseDateFilter" class="pay-filter-label"><i class="mdi mdi-calendar-month-outline"></i> Expenses on</label>
+                                        <select id="expenseDateFilter" class="form-control form-control-sm pay-filter-select">
+                                            <option value="all" <?= ($expense_date_filter ?? '') === 'all' ? 'selected' : ''; ?>>All dates</option>
+                                            <?php
+                                            $todayVal = (string)($today ?? '');
+                                            $selectedDate = (string)($expense_date_filter ?? '');
+                                            $hasToday = false;
+                                            foreach (($expense_dates ?? []) as $d):
+                                                $dateVal = (string)($d->ExpenseDate ?? '');
+                                                if ($dateVal === $todayVal) $hasToday = true;
+                                                $label = date('M d, Y', strtotime($dateVal)) . ($dateVal === $todayVal ? ' (Today)' : '');
+                                            ?>
+                                                <option value="<?= htmlspecialchars($dateVal, ENT_QUOTES, 'UTF-8'); ?>" <?= $dateVal === $selectedDate ? 'selected' : ''; ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?></option>
+                                            <?php endforeach; ?>
+                                            <?php if (!$hasToday && $todayVal !== ''): ?>
+                                                <option value="<?= htmlspecialchars($todayVal, ENT_QUOTES, 'UTF-8'); ?>" <?= $todayVal === $selectedDate ? 'selected' : ''; ?>><?= htmlspecialchars(date('M d, Y', strtotime($todayVal)), ENT_QUOTES, 'UTF-8'); ?> (Today)</option>
+                                            <?php endif; ?>
+                                        </select>
+                                        <?php $entryCount = count($data); ?>
+                                        <span class="pay-count"><strong><?= number_format($entryCount); ?></strong> <?= $entryCount === 1 ? 'entry' : 'entries'; ?> &middot; <strong>&#8369; <?= number_format((float)($expense_total ?? 0), 2); ?></strong></span>
+                                    </div>
+                                    <div class="pay-hint">
+                                        <i class="mdi mdi-information-outline"></i> Ledger totals cover a date range — pick the same day here to compare figures.
+                                    </div>
+                                </div>
                                 <div class="up-card-body" style="padding:0 !important;">
                                     <div class="table-responsive">
                                         <table id="datatable" class="table table-bordered dt-responsive nowrap up-rt" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
@@ -139,6 +170,7 @@ $canManage = ($level === 'Cashier');
                                     <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
                                     <form method="post" action="<?= base_url('Accounting/Deleteexpenses'); ?>" class="d-inline">
                                         <input type="hidden" name="expensesid" id="deleteId" value="">
+                                        <input type="hidden" name="back" value="<?= htmlspecialchars((string)($expense_date_filter ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
                                         <button type="submit" class="up-btn up-btn-danger">Delete</button>
                                     </form>
                                 </div>
@@ -296,6 +328,84 @@ $canManage = ($level === 'Cashier');
 
     <!-- Datatables init -->
     <script src="<?= base_url(); ?>assets/js/pages/datatables.init.js"></script>
+
+    <script>
+        (function($) {
+            // Date filter — the list is scoped server-side (default: today),
+            // so changing it just reloads with the chosen date.
+            $('#expenseDateFilter').on('change', function() {
+                window.location = <?= json_encode(base_url('Accounting/expenses')); ?> + '?date=' + encodeURIComponent(this.value);
+            });
+        })(jQuery);
+    </script>
+
+    <style>
+        /* Date filter + entry count, on their own row under the card title —
+           same markup/styles the Payments page uses. */
+        .pay-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px 16px;
+            padding: 12px 22px;
+            background: var(--up-soft);
+            border-bottom: 1px solid var(--up-line);
+        }
+        .pay-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .pay-filter-label {
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: .8rem;
+            font-weight: 700;
+            color: var(--up-muted);
+        }
+        #expenseDateFilter.pay-filter-select {
+            width: auto;
+            min-width: 190px;
+            height: 36px;
+            padding: 4px 30px 4px 12px;
+            border: 1px solid var(--up-line);
+            border-radius: 10px;
+            background-color: #fff;
+            font-size: .85rem;
+            font-weight: 600;
+            color: var(--up-ink);
+        }
+        .pay-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            height: 36px;
+            padding: 0 12px;
+            border: 1px solid var(--up-line);
+            border-radius: 10px;
+            background: #fff;
+            font-size: .8rem;
+            color: var(--up-muted);
+        }
+        .pay-count strong { color: var(--up-ink); }
+        .pay-hint {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border: 1px solid #c9d6f5;
+            border-radius: 10px;
+            background: #eaf0fd;
+            font-size: .8rem;
+            font-weight: 600;
+            color: var(--up-blue);
+        }
+        .pay-hint .mdi { color: var(--up-blue-2); font-size: 1rem; }
+        @media (max-width: 575.98px) {
+            .pay-toolbar { padding: 12px 16px; }
+            .pay-filter { width: 100%; }
+            #expenseDateFilter.pay-filter-select { flex: 1 1 auto; min-width: 0; }
+        }
+    </style>
 
 
 </body>

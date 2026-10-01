@@ -34,11 +34,11 @@
                             <div class="nx-stat-main">
                                 <div>
                                     <div class="nx-stat-num"><?= number_format((int)$total_count); ?></div>
-                                    <div class="nx-stat-label">Transactions</div>
+                                    <div class="nx-stat-label">Payments</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-receipt"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-format-list-numbered"></i></div>
                             </div>
-                            <div class="nx-stat-foot">In this report <i class="mdi mdi-arrow-right"></i></div>
+                            <div class="nx-stat-foot">Fee line items paid <i class="mdi mdi-arrow-right"></i></div>
                         </div>
                         <div class="nx-stat green">
                             <div class="nx-stat-main">
@@ -53,22 +53,22 @@
                         <div class="nx-stat cyan">
                             <div class="nx-stat-main">
                                 <div>
-                                    <div class="nx-stat-num" style="font-size:1.45rem;">₱<?= number_format($total_count ? (float)$total_amount / (int)$total_count : 0, 2); ?></div>
-                                    <div class="nx-stat-label">Avg / Transaction</div>
+                                    <div class="nx-stat-num"><?= number_format((int)$receipt_count); ?></div>
+                                    <div class="nx-stat-label">Receipts</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-calculator-variant"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-receipt"></i></div>
                             </div>
-                            <div class="nx-stat-foot">Mean payment size <i class="mdi mdi-arrow-right"></i></div>
+                            <div class="nx-stat-foot">Distinct O.R.s issued <i class="mdi mdi-arrow-right"></i></div>
                         </div>
                         <div class="nx-stat violet">
                             <div class="nx-stat-main">
                                 <div>
-                                    <div class="nx-stat-num" style="font-size:1.15rem;line-height:1.3;"><?= htmlspecialchars(date('M d', strtotime((string)$from)), ENT_QUOTES, 'UTF-8'); ?> &ndash; <?= htmlspecialchars(date('M d, Y', strtotime((string)$to)), ENT_QUOTES, 'UTF-8'); ?></div>
-                                    <div class="nx-stat-label">Report Period</div>
+                                    <div class="nx-stat-num"><?= number_format((int)$student_count); ?></div>
+                                    <div class="nx-stat-label">Students Paid</div>
                                 </div>
-                                <div class="nx-stat-icon"><i class="mdi mdi-calendar-range-outline"></i></div>
+                                <div class="nx-stat-icon"><i class="mdi mdi-account-multiple"></i></div>
                             </div>
-                            <div class="nx-stat-foot">Selected date range <i class="mdi mdi-arrow-right"></i></div>
+                            <div class="nx-stat-foot">Distinct payers <i class="mdi mdi-arrow-right"></i></div>
                         </div>
                     </div>
 

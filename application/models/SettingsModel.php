@@ -53,10 +53,30 @@ class SettingsModel extends CI_Model
         return $query->result();
     }
 
-    public function expenses()
+    public function expenses($date = null)
     {
-        $query = $this->db->get('expenses');
-        return $query->result();
+        if (is_string($date) && $date !== '' && $date !== 'all') {
+            $this->db->where('ExpenseDate', $date);
+        }
+        return $this->db
+            ->order_by('ExpenseDate', 'DESC')
+            ->order_by('expensesid', 'DESC')
+            ->get('expenses')
+            ->result();
+    }
+
+    /**
+     * Distinct expense dates, newest first, for the "Expenses on" filter —
+     * same pattern as the Payments page's date picker.
+     */
+    public function expenseDates()
+    {
+        return $this->db
+            ->select('ExpenseDate')
+            ->distinct()
+            ->order_by('ExpenseDate', 'DESC')
+            ->get('expenses')
+            ->result();
     }
 
     /**

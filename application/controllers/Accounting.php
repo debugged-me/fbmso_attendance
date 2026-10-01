@@ -380,7 +380,25 @@ class Accounting extends CI_Controller
 			$this->ensureExpenseWriteAccess('Accounting/expenses');
 		}
 
-		$data['data'] = $this->SettingsModel->expenses();
+		// Same convention as the Payments page: today's entries by default,
+		// "all" or a specific day via ?date=. Scoping the list to a day keeps
+		// it comparable with the Ledger, which totals a from→to range.
+		$dateFilter = trim((string)$this->input->get('date', true));
+		if ($dateFilter !== 'all' && !$this->isValidDate($dateFilter)) {
+			$dateFilter = date('Y-m-d');
+		}
+
+		$rows = $this->SettingsModel->expenses($dateFilter === 'all' ? null : $dateFilter);
+		$total = 0.0;
+		foreach ($rows as $row) {
+			$total += (float)$row->Amount;
+		}
+
+		$data['data'] = $rows;
+		$data['expense_dates'] = $this->SettingsModel->expenseDates();
+		$data['expense_date_filter'] = $dateFilter;
+		$data['expense_total'] = $total;
+		$data['today'] = date('Y-m-d');
 		$data['data1'] = $this->SettingsModel->get_expensesCategory();
 
 		$this->load->view('expenses', $data);
@@ -406,8 +424,10 @@ class Accounting extends CI_Controller
 				$data['Description']
 			);
 
-			// Redirect back to the expenses page after saving
-			redirect('Accounting/expenses');
+			// Redirect to the expense's own date so the new row stays visible
+			// even when it isn't dated today.
+			$expenseDate = trim((string)$this->input->post('ExpenseDate'));
+			redirect('Accounting/expenses?date=' . urlencode($this->isValidDate($expenseDate) ? $expenseDate : 'all'));
 		}
 	}
 
@@ -444,7 +464,7 @@ class Accounting extends CI_Controller
 				], $ok, 'Updated expense', $Description);
 			}
 			$this->session->set_flashdata('expenses', 'Record updated successfully');
-			redirect("Accounting/expenses");
+			redirect('Accounting/expenses?date=' . urlencode($this->isValidDate($ExpenseDate) ? $ExpenseDate : 'all'));
 		}
 	}
 
@@ -481,7 +501,10 @@ class Accounting extends CI_Controller
 			$this->session->set_flashdata('expenses', 'Error deleting record');
 		}
 
-		redirect("Accounting/expenses");
+		// Return to the date filter the cashier was looking at (sent as a
+		// hidden field on the delete form).
+		$back = trim((string)$this->input->post('back', true));
+		redirect('Accounting/expenses' . (($back === 'all' || $this->isValidDate($back)) ? '?date=' . urlencode($back) : ''));
 	}
 
 
@@ -2272,9 +2295,21 @@ class Accounting extends CI_Controller
 	{
 		$rows = $this->collectionRows($from, $to, $sem, $sy);
 		$total = 0.0;
+		$receipts = [];
+		$students = [];
 		foreach ($rows as $row) {
 			$total += (float)$row->Amount;
+			$or = trim((string)$row->ORNumber);
+			if ($or !== '') {
+				$receipts[$or] = true;
+			}
+			$sn = trim((string)$row->StudentNumber);
+			if ($sn !== '') {
+				$students[$sn] = true;
+			}
 		}
+		$receiptCount = count($receipts);
+		$studentCount = count($students);
 
 		$settings = $this->getReceiptSettings();
 		$reportPeriod = $from === $to
@@ -2310,7 +2345,9 @@ class Accounting extends CI_Controller
 				[
 					['label' => 'Coverage', 'value' => $reportPeriod],
 					['label' => 'Printed', 'value' => $generatedAt],
-					['label' => 'Transactions', 'value' => number_format(count($rows))],
+					['label' => 'Payments', 'value' => number_format(count($rows))],
+					['label' => 'Receipts', 'value' => number_format($receiptCount)],
+					['label' => 'Students Paid', 'value' => number_format($studentCount)],
 					['label' => 'Total Collection', 'value' => '₱ ' . number_format($total, 2)],
 				],
 				['Date', 'O.R.', 'Student No.', 'Student', 'Description', 'Payment Type', 'Sem/SY', 'Amount', 'Cashier'],
@@ -2336,6 +2373,8 @@ class Accounting extends CI_Controller
 			'rows'           => $rows,
 			'total_amount'   => $total,
 			'total_count'    => count($rows),
+			'receipt_count'  => $receiptCount,
+			'student_count'  => $studentCount,
 			'settings'       => $settings,
 		];
 
