@@ -77,6 +77,58 @@ if (!function_exists('fbmso_password_verify')) {
     }
 }
 
+if (!function_exists('fbmso_login_clean')) {
+    /**
+     * Strip what copy-paste adds around a typed credential: the trailing
+     * space a phone's text selection takes along, a non-breaking space or a
+     * zero-width character from an email client. Used for sign-in on web and
+     * mobile alike, so the same credential works in both.
+     */
+    function fbmso_login_clean($value)
+    {
+        $value = str_replace(["\xc2\xa0", "\xe2\x80\x8b"], ' ', (string)$value);
+        $value = (string)preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\x{00AD}]/u', '', $value);
+
+        return (string)preg_replace('/^\s+|\s+$/u', '', $value);
+    }
+}
+
+if (!function_exists('fbmso_password_match_typed')) {
+    /**
+     * Verify a password a person typed or pasted: exactly as given first,
+     * then without the whitespace copy-paste adds around it. A temporary
+     * password copied out of Gmail on a phone often carries a trailing or
+     * non-breaking space. Trying the exact form first keeps a password that
+     * really was set with edge spaces working.
+     *
+     * Every place that checks a typed password (sign-in, "current password"
+     * on web and mobile) goes through here, so a password that signs in is
+     * never then rejected as "wrong current password".
+     *
+     * @return string|null The form that matched, or NULL.
+     */
+    function fbmso_password_match_typed($typed, $stored)
+    {
+        $typed = (string)$typed;
+
+        foreach (array_unique([$typed, fbmso_login_clean($typed)]) as $attempt) {
+            if ($attempt !== '' && fbmso_password_verify($attempt, $stored)) {
+                return $attempt;
+            }
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('fbmso_login_clean_username')) {
+    /** fbmso_login_clean() plus collapsing inner runs of whitespace. */
+    function fbmso_login_clean_username($value)
+    {
+        return trim((string)preg_replace('/\s+/u', ' ', fbmso_login_clean($value)));
+    }
+}
+
 if (!function_exists('fbmso_password_needs_rehash')) {
     /** TRUE when the stored hash is legacy sha1 or below the current cost. */
     function fbmso_password_needs_rehash($stored)

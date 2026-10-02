@@ -43,12 +43,16 @@ class Login_model extends CI_Model
     foreach ($this->findLoginCandidates($username) as $candidate) {
       $stored = (string)($candidate['password'] ?? '');
 
-      if (!fbmso_password_verify($password, $stored)) {
+      // As typed, then without copy-paste whitespace. The web form used to
+      // strip it but the mobile app sent it as-is, so the same emailed
+      // password worked on one and was "incorrect" on the other.
+      $matched = fbmso_password_match_typed($password, $stored);
+      if ($matched === null) {
         continue;
       }
 
       // Transparent upgrade: sha1 -> bcrypt on first successful sign-in.
-      fbmso_password_upgrade($candidate['username'], $password, $stored);
+      fbmso_password_upgrade($candidate['username'], $matched, $stored);
 
       return $this->db->query(
         "SELECT * FROM o_users WHERE username = ? LIMIT 1",

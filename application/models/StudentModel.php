@@ -3122,7 +3122,9 @@ class StudentModel extends CI_Model
 			return FALSE;
 		}
 
-		return fbmso_password_verify($currentpass, (string)$row->password);
+		// Same rule as sign-in: a password that just signed the student in
+		// must not then be "wrong" here because Gmail added a space to it.
+		return fbmso_password_match_typed($currentpass, (string)$row->password) !== null;
 	}
 
 	function reset_userpassword($username, $newpass)

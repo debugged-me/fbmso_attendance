@@ -112,19 +112,13 @@ class Login extends CI_Controller
 
     function auth()
     {
-        $username     = (string)$this->input->post('username', TRUE);
-
         // Normalize copied values (NBSP/zero-width/line-breaks) and trim edges.
-        $username = str_replace(["\xc2\xa0", "\xe2\x80\x8b"], ' ', $username);
-        $username = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\x{00AD}]/u', '', $username);
-        $username = trim(preg_replace('/\s+/u', ' ', $username));
+        $username = fbmso_login_clean_username($this->input->post('username', TRUE));
 
-        // 🔧 Do NOT XSS-filter the password (keeps characters intact)
-        $raw_password = (string)$this->input->post('password');   // <-- removed TRUE
-        $raw_password = str_replace(["\xc2\xa0", "\xe2\x80\x8b"], ' ', $raw_password);
-        $raw_password = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}\x{00AD}]/u', '', $raw_password);
-        // Trim only leading/trailing whitespace so accidental copy spaces won't break login.
-        $raw_password = preg_replace('/^\s+|\s+$/u', '', $raw_password);
+        // 🔧 Do NOT XSS-filter the password (keeps characters intact). It goes
+        // to validate() as typed: validate() tries it exactly, then without
+        // copy-paste whitespace — the same rule the mobile app gets.
+        $raw_password = (string)$this->input->post('password');
 
 		// The Academic Term setting is authoritative for every role. Hidden
 		// form fields are display conveniences and must not be able to put one

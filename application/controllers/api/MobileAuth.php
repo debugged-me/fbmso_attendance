@@ -240,7 +240,8 @@ class MobileAuth extends MobileApi
         }
 
         $payload     = $this->read_payload();
-        $username    = trim((string)($payload['username'] ?? ''));
+        $username    = fbmso_login_clean_username($payload['username'] ?? '');
+        // As typed — validate() also tries it without copy-paste whitespace.
         $passwordRaw = (string)($payload['password'] ?? '');
         $settings    = $this->current_settings();
 		// The mobile client receives the same institution-wide term as web
@@ -386,7 +387,7 @@ class MobileAuth extends MobileApi
             return $this->json(['ok' => false, 'message' => 'User not found.'], 404);
         }
 
-        if (!fbmso_password_verify($currentPassword, (string)($userRow['password'] ?? ''))) {
+        if (fbmso_password_match_typed($currentPassword, (string)($userRow['password'] ?? '')) === null) {
             return $this->json(['ok' => false, 'message' => 'Current password is incorrect.'], 401);
         }
 
