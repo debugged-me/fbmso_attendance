@@ -385,6 +385,21 @@ $config['login_attempt_pepper'] = base64_decode('NzlhZTE0ODNmOTE5ZjM0NmQ3YWVmYzl
 
 /*
 |--------------------------------------------------------------------------
+| Forgot-password cooldown
+|--------------------------------------------------------------------------
+|
+| Seconds between temporary-password emails to the same address. Every reset
+| request rotates the account password, so a student who taps "Forgot
+| password" twice before the first email lands (delivery takes ~1 minute)
+| ends up holding a mailbox full of dead temp passwords -- only the newest
+| one works. The cooldown keeps the first issued password alive long enough
+| to be used.
+|
+*/
+$config['forgot_password_cooldown'] = 180;
+
+/*
+|--------------------------------------------------------------------------
 | Security report recipients
 |--------------------------------------------------------------------------
 |

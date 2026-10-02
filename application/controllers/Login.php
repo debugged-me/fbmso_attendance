@@ -542,6 +542,19 @@ class Login extends CI_Controller
             return;
         }
 
+        // Cooldown: a credential email queued moments ago is still in flight.
+        // Letting the request through would rotate the password again and
+        // silently kill the temp password the student is about to receive.
+        $wait = $this->Login_model->passwordResetCooldownRemaining($email);
+        if ($wait > 0) {
+            $mins = (int)ceil($wait / 60);
+            $this->redirect_forgot_password(
+                'A temporary password was already sent a moment ago — please check your inbox and spam folder. Only the newest reset email works. You can request a new one in about ' . $mins . ' ' . ($mins === 1 ? 'minute' : 'minutes') . '.',
+                $email
+            );
+            return;
+        }
+
         $sendResult = $this->Login_model->sendTemporaryPasswordForUser((string)$user['username']);
 
         $this->AuditLogModel->write(

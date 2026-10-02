@@ -532,10 +532,32 @@ class MobileAuth extends MobileApi
             return $this->json(['ok' => true, 'message' => 'If that email exists, a temporary password has been sent.']);
         }
 
+        // Cooldown: a credential email queued moments ago is still in flight.
+        // A second request would rotate the password again and silently kill
+        // the temp password that email is carrying.
+        $wait = $this->Login_model->passwordResetCooldownRemaining($email);
+        if ($wait > 0) {
+            $mins = (int)ceil($wait / 60);
+            return $this->json([
+                'ok'          => false,
+                'message'     => 'A temporary password was already sent — check your inbox and spam folder. Only the newest reset email works. You can request a new one in about ' . $mins . ' ' . ($mins === 1 ? 'minute' : 'minutes') . '.',
+                'retry_after' => (int)$wait,
+            ], 429);
+        }
+
         // Returns ['ok' => bool, 'message' => string] — a bare truthiness check
         // on the array would always pass and report success on a failed reset.
         $sent = $this->Login_model->sendTemporaryPasswordForUser((string)($account['username'] ?? ''));
         if (empty($sent['ok'])) {
+            // A concurrent request may have queued the email between the
+            // cooldown check above and the send — surface it as 429, not 500.
+            if (!empty($sent['cooldown'])) {
+                return $this->json([
+                    'ok'          => false,
+                    'message'     => (string)$sent['message'],
+                    'retry_after' => (int)$sent['cooldown'],
+                ], 429);
+            }
             $this->loginthrottle->fail($email);
             return $this->json(['ok' => false, 'message' => 'Unable to send a reset email right now. Please try again later.'], 500);
         }

@@ -162,6 +162,56 @@ class Login_model extends CI_Model
     return $this->findUserByEmail($email);
   }
 
+  /**
+   * Seconds until another password-credential email may be sent to this
+   * address (0 = allowed now).
+   *
+   * Every reset rotates the account password, so rapid re-requests strand
+   * the student: each new email silently kills the temp password in the
+   * previous one. The queue itself is the source of truth — a credential
+   * email was queued at created_at, which is exactly "an email was sent",
+   * regardless of whether the async sender has delivered it yet.
+   *
+   * Matches every subject that delivers a working password: self-service
+   * temp passwords, admin resets, and new-account credential emails.
+   */
+  public function passwordResetCooldownRemaining($email)
+  {
+    $email = strtolower(trim((string)$email));
+
+    if ($email === '' || !$this->db->table_exists('fbmso_email_queue')) {
+      return 0;
+    }
+
+    $cooldown = (int)$this->config->item('forgot_password_cooldown');
+    if ($cooldown <= 0) {
+      return 0;
+    }
+
+    $row = $this->db->query(
+      "
+        SELECT created_at
+        FROM fbmso_email_queue
+        WHERE LOWER(TRIM(to_email)) = ?
+          AND created_at >= ?
+          AND (
+            subject LIKE 'Temporary Password%'
+            OR subject LIKE 'Your Password Has Been Reset%'
+            OR subject LIKE 'Your FBMSO Account%'
+          )
+        ORDER BY id DESC
+        LIMIT 1
+      ",
+      [$email, date('Y-m-d H:i:s', time() - $cooldown)]
+    )->row();
+
+    if (!$row) {
+      return 0;
+    }
+
+    return max(0, $cooldown - (time() - strtotime($row->created_at)));
+  }
+
   public function sendTemporaryPasswordForUser($username)
   {
     $username = trim((string)$username);
@@ -190,6 +240,23 @@ class Login_model extends CI_Model
       return [
         'ok' => false,
         'message' => 'This account is not active. Verify your email or contact support.'
+      ];
+    }
+
+    // Cooldown backstop: a credential email was already queued moments ago.
+    // Sending another now would rotate the password again and orphan the
+    // temp password that is still in flight. Callers that pre-check via
+    // passwordResetCooldownRemaining() never reach this; it protects every
+    // other path into this method (e.g. the legacy sendpassword() flow).
+    $wait = $this->passwordResetCooldownRemaining((string)$user['email']);
+    if ($wait > 0) {
+      $mins = (int)ceil($wait / 60);
+      return [
+        'ok' => false,
+        'cooldown' => $wait,
+        'message' => 'A temporary password was already sent a moment ago. '
+          . 'Please check the inbox and spam folder — only the newest reset email works. '
+          . 'A new one can be requested in about ' . $mins . ' ' . ($mins === 1 ? 'minute' : 'minutes') . '.'
       ];
     }
 
