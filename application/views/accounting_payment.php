@@ -3,6 +3,429 @@
 <?php include('includes/head.php'); ?>
 <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 <link href="<?= base_url(); ?>assets/libs/select2/select2.min.css" rel="stylesheet" type="text/css" />
+    <!-- Page styles live up here, not after the page: placed at the end they
+         applied only once the whole document had arrived, so the toolbar
+         painted unstyled first and then jumped. -->
+    <style>
+        /* Date filter + entry count, on their own row under the card title. */
+        .pay-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px 16px;
+            padding: 12px 22px;
+            background: var(--up-soft);
+            border-bottom: 1px solid var(--up-line);
+        }
+        .pay-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+        /* A payment that was just saved, so the cashier sees where it landed. */
+        #recentPaymentsTable tr.pay-row-new > td { animation: payRowNew 2.6s ease-out; }
+        @keyframes payRowNew { 0%, 35% { background-color: #e7f6ec; } 100% { background-color: transparent; } }
+        @media (prefers-reduced-motion: reduce) { #recentPaymentsTable tr.pay-row-new > td { animation: none; } }
+        .pay-filter-label {
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: .8rem;
+            font-weight: 700;
+            color: var(--up-muted);
+        }
+        #dateFilter.pay-filter-select {
+            width: auto;
+            min-width: 190px;
+            height: 36px;
+            padding: 4px 30px 4px 12px;
+            border: 1px solid var(--up-line);
+            border-radius: 10px;
+            background-color: #fff;
+            font-size: .85rem;
+            font-weight: 600;
+            color: var(--up-ink);
+        }
+        .pay-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            height: 36px;
+            padding: 0 12px;
+            border: 1px solid var(--up-line);
+            border-radius: 10px;
+            background: #fff;
+            font-size: .8rem;
+            color: var(--up-muted);
+        }
+        .pay-count strong { color: var(--up-ink); }
+        .pay-hint {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border: 1px solid #c9d6f5;
+            border-radius: 10px;
+            background: #eaf0fd;
+            font-size: .8rem;
+            font-weight: 600;
+            color: var(--up-blue);
+        }
+        .pay-hint .mdi { color: var(--up-blue-2); font-size: 1rem; }
+        @media (max-width: 575.98px) {
+            .pay-toolbar { padding: 12px 16px; }
+            .pay-filter { width: 100%; }
+            #dateFilter.pay-filter-select { flex: 1 1 auto; min-width: 0; }
+        }
+
+        /* Delete dialog (two steps: choose fees, then review). UI-kit
+           tokens keep it right in the kit's dark theme too. Labels are
+           scoped under .uk-modal-body to beat the kit's label{display:block}. */
+        .uk-modal-del { max-width: 600px; }
+        .del-lead { margin: 0 0 14px; color: var(--uk-text-soft); font-size: .9rem; line-height: 1.5; }
+        .del-lead b { color: var(--uk-text); }
+        .del-list-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--uk-text-soft);
+        }
+        .del-links { display: inline-flex; gap: 4px; }
+        .del-links button {
+            border: 0;
+            background: none;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font: 600 .8rem/1.4 var(--uk-font);
+            letter-spacing: 0;
+            text-transform: none;
+            color: var(--uk-info);
+            cursor: pointer;
+        }
+        .del-links button:hover { background: rgba(37, 99, 235, .1); }
+        .del-rows { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding: 1px; }
+        .uk-modal-body label.del-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 0;
+            padding: 12px 14px;
+            border: 1px solid var(--uk-border);
+            border-radius: var(--uk-radius-sm);
+            background: var(--uk-surface);
+            font-weight: 500;
+            font-size: .9rem;
+            cursor: pointer;
+            transition: border-color .15s ease, background .15s ease;
+        }
+        .uk-modal-body label.del-row:hover { border-color: rgba(239, 68, 68, .45); }
+        .uk-modal-body label.del-row.is-on { border-color: var(--uk-error); background: rgba(239, 68, 68, .07); }
+        .uk-modal-body label.del-row.is-off { opacity: .55; cursor: not-allowed; }
+        .del-check { flex: 0 0 auto; width: 18px; height: 18px; margin: 0; accent-color: var(--uk-error); cursor: inherit; }
+        .del-row-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+        .del-row-desc { overflow-wrap: anywhere; color: var(--uk-text); }
+        .del-tag {
+            align-self: flex-start;
+            padding: 1px 8px;
+            border-radius: 999px;
+            background: var(--uk-surface-2);
+            border: 1px solid var(--uk-border);
+            font-size: .7rem;
+            font-weight: 600;
+            color: var(--uk-text-soft);
+        }
+        .del-row-amt { flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--uk-text); }
+        .del-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+            margin: 12px 0 16px;
+            padding: 10px 14px;
+            border-radius: var(--uk-radius-sm);
+            background: var(--uk-surface-2);
+            font-size: .84rem;
+            font-variant-numeric: tabular-nums;
+        }
+        .del-sum-del { color: var(--uk-error); font-weight: 600; }
+        .del-sum-keep { color: var(--uk-success); font-weight: 600; }
+        .del-sum-none { color: var(--uk-text-soft); }
+        .uk-modal-body label.del-field-label { margin-bottom: 6px; }
+        .del-field-label span { font-weight: 400; color: var(--uk-text-soft); }
+        .del-reason {
+            display: block;
+            box-sizing: border-box;
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--uk-border);
+            border-radius: var(--uk-radius-sm);
+            background: var(--uk-surface);
+            color: var(--uk-text);
+            font: 400 .9rem/1.5 var(--uk-font);
+            resize: vertical;
+        }
+        .del-reason:focus { outline: 0; border-color: var(--uk-info); box-shadow: 0 0 0 3px rgba(37, 99, 235, .15); }
+        .del-error { margin-top: 8px; font-size: .8rem; font-weight: 600; color: var(--uk-error); }
+
+        .del-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+        .del-col { border-radius: var(--uk-radius-sm); padding: 12px 14px; border: 1px solid; }
+        .del-col-del { border-color: rgba(239, 68, 68, .35); background: rgba(239, 68, 68, .06); }
+        .del-col-keep { border-color: rgba(16, 185, 129, .35); background: rgba(16, 185, 129, .06); }
+        .del-col-empty { border-color: var(--uk-border); border-style: dashed; background: var(--uk-surface-2); }
+        .del-col-empty p { margin: 0; font-size: .85rem; color: var(--uk-text-soft); }
+        .del-col-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+        .del-col-del .del-col-head { color: var(--uk-error); }
+        .del-col-keep .del-col-head { color: var(--uk-success); }
+        .del-col-empty .del-col-head { color: var(--uk-text-soft); }
+        .del-col-head span { padding: 0 8px; border: 1px solid currentColor; border-radius: 999px; }
+        .del-fee-list { list-style: none; margin: 0; padding: 0; font-size: .86rem; }
+        .del-fee-list li {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 5px 0;
+            border-bottom: 1px dashed var(--uk-border);
+            color: var(--uk-text);
+        }
+        .del-fee-list li:last-child { border-bottom: 0; }
+        .del-fee-list b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .del-del li span { text-decoration: line-through; text-decoration-color: rgba(239, 68, 68, .6); }
+        .del-col-total { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--uk-border); font-size: .82rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+        .del-col-del .del-col-total { color: var(--uk-error); }
+        .del-col-keep .del-col-total { color: var(--uk-success); }
+        .del-reason-view {
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border-left: 3px solid var(--uk-border);
+            background: var(--uk-surface-2);
+            border-radius: 0 var(--uk-radius-sm) var(--uk-radius-sm) 0;
+            font-size: .88rem;
+            color: var(--uk-text);
+            overflow-wrap: anywhere;
+        }
+        .del-reason-view span { display: block; margin-bottom: 2px; font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--uk-text-soft); }
+        .del-warn { display: flex; gap: 8px; margin: 0 0 12px; font-size: .84rem; color: var(--uk-text-soft); line-height: 1.5; }
+        .del-warn .mdi { color: var(--uk-warning); font-size: 1.1rem; line-height: 1.3; }
+        .uk-modal-body label.del-ack {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin: 0;
+            padding: 10px 14px;
+            border: 1px solid var(--uk-border);
+            border-radius: var(--uk-radius-sm);
+            font-weight: 600;
+            font-size: .86rem;
+            cursor: pointer;
+        }
+        .del-ack input { width: 18px; height: 18px; margin: 1px 0 0; flex: 0 0 auto; accent-color: var(--uk-error); }
+        @media (max-width: 575.98px) {
+            .del-cols { grid-template-columns: 1fr; }
+        }
+
+        /* Selected-fee chips: the theme's white chip text lands on select2's
+           stock grey background here, so give them a readable pairing. */
+        #paymentModal .select2-selection--multiple .select2-selection__choice {
+            background-color: #eef4ff;
+            border: 1px solid #cddbf7;
+            color: #0d1b4b;
+            font-weight: 600;
+        }
+
+        #paymentModal .select2-selection--multiple .select2-selection__choice__remove {
+            color: #6b7a99;
+        }
+
+        #paymentModal .select2-selection--multiple .select2-selection__choice__remove:hover {
+            color: #dc2626;
+        }
+
+        /* On phones these modals are bottom sheets capped at 90dvh, and only
+           .modal-body scrolls. The <form> wrapping header/body/footer sits
+           between .modal-content and .modal-body, so it has to carry the
+           flex column down or the body never shrinks and the fee lines and
+           Save button are clipped off the bottom of the sheet. */
+        @media (max-width: 767.98px) {
+            #paymentModal .modal-content > form,
+            #editPaymentModal .modal-content > form {
+                display: flex;
+                flex-direction: column;
+                flex: 1 1 auto;
+                min-height: 0;
+            }
+
+            .pay-item-amount-wrap {
+                flex: 1 1 150px;
+            }
+        }
+
+        /* Fee lines in the Add Payment form — one per selected description. */
+        .pay-items {
+            border: 1px solid #e6ebf5;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .pay-item {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e6ebf5;
+            background: #fff;
+        }
+
+        .pay-item.is-settled {
+            background: #f6f8fb;
+        }
+
+        .pay-item.is-settled .pay-item-name,
+        .pay-item.is-settled .pay-item-controls {
+            opacity: .55;
+        }
+
+        .pay-item-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .pay-item-name {
+            font-weight: 700;
+            color: #0d1b4b;
+            word-break: break-word;
+        }
+
+        .pay-item-remove {
+            border: 0;
+            background: transparent;
+            color: #6b7a99;
+            font-size: 1.25rem;
+            line-height: 1;
+            padding: 0 4px;
+            cursor: pointer;
+        }
+
+        .pay-item-remove:hover {
+            color: #dc2626;
+        }
+
+        .pay-item-meta {
+            font-size: .78rem;
+            color: #6b7a99;
+            margin: 2px 0 8px;
+        }
+
+        .pay-item-controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 16px;
+        }
+
+        .pay-item-amount-wrap {
+            flex: 0 1 200px;
+            min-width: 150px;
+        }
+
+        .pay-item-amount[readonly] {
+            background: #f8fbff;
+        }
+
+        .pay-item.is-free .pay-item-partial-wrap {
+            display: none;
+        }
+
+        .pay-item-note {
+            display: none;
+            font-size: .78rem;
+            font-weight: 600;
+            color: #b45309;
+            margin-top: 6px;
+        }
+
+        .pay-item.is-settled .pay-item-note {
+            color: #16a34a;
+        }
+
+        .pay-items-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: #f8fbff;
+            font-weight: 800;
+            color: #0d1b4b;
+        }
+
+        .pay-items-total #payItemsTotal {
+            font-size: 1.1rem;
+        }
+
+        /* ACTION BUTTONS: spacing + consistent size */
+        .action-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+        }
+
+        .action-wrap .action-btn {
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+
+        .action-wrap form {
+            margin: 0;
+        }
+
+        /* ROW ACTIONS DROPDOWN: placement comes from --ra-top/--ra-left, set
+           by JS in viewport coords. Needs !important + extra specificity to
+           beat the theme's `.dropdown-menu.show { top: 100% !important }`. */
+        .row-actions-menu {
+            display: inline-block;
+            position: relative;
+        }
+
+        .row-actions-menu .dropdown-menu {
+            min-width: 220px;
+        }
+
+        .row-actions-menu .dropdown-menu.show {
+            position: fixed !important;
+            top: var(--ra-top, 100%) !important;
+            left: var(--ra-left, auto) !important;
+            right: auto !important;
+            margin: 0 !important;
+            z-index: 1080;
+        }
+
+        .row-actions-menu .dropdown-menu form {
+            margin: 0;
+        }
+
+        /* The card-mode rules in uniform-page.css centre every control in an
+           actions cell; menu items still need to read as a left-aligned list. */
+        .row-actions-menu .dropdown-menu .dropdown-item {
+            text-align: left;
+        }
+    </style>
 
 <body>
     <div id="wrapper">
@@ -45,7 +468,7 @@
                         <div class="nx-stat blue">
                             <div class="nx-stat-main">
                                 <div>
-                                    <div class="nx-stat-num"><?= number_format((int)$apStats['count']); ?></div>
+                                    <div class="nx-stat-num" id="apStatCount"><?= number_format((int)$apStats['count']); ?></div>
                                     <div class="nx-stat-label">Payments</div>
                                 </div>
                                 <div class="nx-stat-icon"><i class="mdi mdi-format-list-bulleted"></i></div>
@@ -55,7 +478,7 @@
                         <div class="nx-stat green">
                             <div class="nx-stat-main">
                                 <div>
-                                    <div class="nx-stat-num" style="font-size:1.45rem;">&#8369;<?= number_format((float)$apStats['collected'], 2); ?></div>
+                                    <div class="nx-stat-num" id="apStatCollected" style="font-size:1.45rem;">&#8369;<?= number_format((float)$apStats['collected'], 2); ?></div>
                                     <div class="nx-stat-label">Collected</div>
                                 </div>
                                 <div class="nx-stat-icon"><i class="mdi mdi-cash"></i></div>
@@ -65,7 +488,7 @@
                         <div class="nx-stat cyan">
                             <div class="nx-stat-main">
                                 <div>
-                                    <div class="nx-stat-num"><?= number_format((int)$apStats['fully_paid']); ?></div>
+                                    <div class="nx-stat-num" id="apStatFully"><?= number_format((int)$apStats['fully_paid']); ?></div>
                                     <div class="nx-stat-label">Fully Paid</div>
                                 </div>
                                 <div class="nx-stat-icon"><i class="mdi mdi-check-decagram"></i></div>
@@ -75,7 +498,7 @@
                         <div class="nx-stat orange">
                             <div class="nx-stat-main">
                                 <div>
-                                    <div class="nx-stat-num"><?= number_format((int)$apStats['partial']); ?></div>
+                                    <div class="nx-stat-num" id="apStatPartial"><?= number_format((int)$apStats['partial']); ?></div>
                                     <div class="nx-stat-label">Partial</div>
                                 </div>
                                 <div class="nx-stat-icon"><i class="mdi mdi-account-clock-outline"></i></div>
@@ -144,7 +567,7 @@
                                             <?php endif; ?>
                                         </select>
                                         <?php $entryCount = count($recent_payments); ?>
-                                        <span class="pay-count"><strong><?= number_format($entryCount); ?></strong> <?= $entryCount === 1 ? 'entry' : 'entries'; ?><?php if (!empty($payments_truncated)): ?> (latest shown — <?= number_format((int)$apStats['count']); ?> total)<?php endif; ?></span>
+                                        <span class="pay-count"><strong id="payCountNum"><?= number_format($entryCount); ?></strong> <span id="payCountWord"><?= $entryCount === 1 ? 'entry' : 'entries'; ?></span><?php if (!empty($payments_truncated)): ?> (latest shown — <?= number_format((int)$apStats['count']); ?> total)<?php endif; ?></span>
                                     </div>
                                     <div class="pay-hint">
                                         <i class="mdi mdi-information-outline"></i> Click a student's name to see their full details and balance.
@@ -170,82 +593,7 @@
                                             </thead>
                                             <tbody>
                                                 <?php foreach ($recent_payments as $row): ?>
-                                                    <?php
-                                                    $studentName = trim((string)($row->LastName ?? ''));
-                                                    if ($studentName !== '') $studentName .= ', ';
-                                                    $studentName .= trim((string)(($row->FirstName ?? '') . ' ' . ($row->MiddleName ?? '')));
-                                                    if (trim($studentName) === '') $studentName = (string)($row->StudentNumber ?? '');
-                                                    $rowId = (int)($row->ID ?? 0);
-                                                    $pDate = (string)($row->PDate ?? '');
-                                                    $pTime = (string)($row->pTime ?? '');
-                                                    $dateTimeLabel = $pDate !== '' ? date('M d, Y', strtotime($pDate)) : '';
-                                                    if ($pTime !== '') $dateTimeLabel .= ' ' . date('h:i A', strtotime($pTime));
-
-                                                    $amount = (float)($row->Amount ?? 0);
-                                                    $fullAmount = (float)($row->FullAmount ?? 0);
-                                                    // Status reflects the fee's whole balance, not this one
-                                                    // receipt — instalments that add up to the full price
-                                                    // are fully paid, however many receipts it took.
-                                                    $totalPaid = (float)($row->TotalPaid ?? $amount);
-                                                    if ($fullAmount <= 0) {
-                                                        $statusLabel = 'N/A';
-                                                        $statusClass = 'badge-secondary';
-                                                    } elseif ($totalPaid + 0.004 < $fullAmount) {
-                                                        $statusLabel = 'Partial';
-                                                        $statusClass = 'badge-warning';
-                                                    } else {
-                                                        $statusLabel = 'Fully Paid';
-                                                        $statusClass = 'badge-success';
-                                                    }
-                                                    $dropdownId = 'paymentActions' . $rowId;
-                                                    ?>
-                                                    <tr>
-                                                        <td data-label="Date & Time" data-order="<?= htmlspecialchars(trim($pDate . ' ' . $pTime), ENT_QUOTES, 'UTF-8'); ?>" style="color:var(--up-muted);white-space:nowrap;"><?= htmlspecialchars($dateTimeLabel, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td data-label="O.R." style="font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;color:var(--up-blue);"><?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td data-label="Student" style="font-weight:600;color:var(--up-ink);">
-                                                            <?php if (trim((string)($row->StudentNumber ?? '')) !== ''): ?>
-                                                                <a href="#" class="sd-link" data-student-balance data-sd-key="<?= htmlspecialchars((string)$row->StudentNumber, ENT_QUOTES, 'UTF-8'); ?>" title="View balance"><?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?></a>
-                                                            <?php else: ?>
-                                                                <?= htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8'); ?>
-                                                            <?php endif; ?>
-                                                        </td>
-                                                        <td data-label="Description" style="color:var(--up-muted);"><?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                                        <td data-label="Amount" class="text-right" style="font-weight:700;color:var(--up-ink);white-space:nowrap;">₱ <?= number_format($amount, 2); ?></td>
-                                                        <td data-label="Status"><span class="badge <?= $statusClass; ?>" style="border-radius:6px;font-size:.72rem;font-weight:700;"><?= $statusLabel; ?></span></td>
-                                                        <td data-label="Actions" class="up-rt-actions">
-                                                            <div class="row-actions-menu">
-                                                                <button type="button" class="up-btn up-btn-ghost row-actions-toggle" style="padding:8px 12px;font-size:.78rem;"
-                                                                    id="<?= $dropdownId; ?>" aria-haspopup="true" aria-expanded="false">
-                                                                    <i class="mdi mdi-dots-vertical"></i> Actions
-                                                                </button>
-                                                                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="<?= $dropdownId; ?>">
-                                                                    <a class="dropdown-item print-receipt-btn" href="javascript:void(0);" data-id="<?= $rowId; ?>">
-                                                                        <i class="mdi mdi-printer"></i> Print Receipt
-                                                                    </a>
-													<?php if (!$isAuditor): ?>
-                                                                    <a class="dropdown-item edit-payment-btn" href="javascript:void(0);"
-                                                                        data-id="<?= $rowId; ?>"
-                                                                        data-studentno="<?= htmlspecialchars((string)($row->StudentNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                        data-ornumber="<?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                        data-date="<?= htmlspecialchars((string)($row->PDate ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                        data-description="<?= htmlspecialchars((string)($row->description ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                                                        data-amount="<?= htmlspecialchars((string)($row->Amount ?? 0), ENT_QUOTES, 'UTF-8'); ?>">
-                                                                        <i class="mdi mdi-pencil"></i> Edit Payment
-                                                                    </a>
-                                                                    <div class="dropdown-divider"></div>
-                                                                    <form method="post" action="<?= base_url('Accounting/deletePayment'); ?>" class="delete-payment-form"
-                                                                        data-or="<?= htmlspecialchars((string)($row->ORNumber ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-                                                                        <input type="hidden" name="id" value="<?= $rowId; ?>">
-                                                                        <input type="hidden" name="reason" value="">
-                                                                        <button type="submit" class="dropdown-item text-danger">
-                                                                            <i class="mdi mdi-delete"></i> Delete Payment
-                                                                        </button>
-                                                                    </form>
-													<?php endif; ?>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
+                                                    <?php include(APPPATH . 'views/includes/accounting_payment_row.php'); ?>
                                                 <?php endforeach; ?>
                                             </tbody>
                                         </table>
@@ -263,7 +611,6 @@
     </div>
 
     <?php include('includes/footer_plugins.php'); ?>
-    <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
     <?php include('includes/side_drawer.php'); ?>
     <script>
         if (window.StudentBalancePanel) StudentBalancePanel({ url: <?= json_encode(site_url('Accounting/studentSummary')); ?> });
@@ -286,37 +633,12 @@
 
                     <div class="modal-body">
                         <input type="hidden" name="payment_submit_token" value="<?= htmlspecialchars((string)($payment_submit_token ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                        <input type="hidden" name="list_date" value="<?= htmlspecialchars((string)($date_filter ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
 
                         <div class="form-group">
                             <label for="studentSelect">Student</label>
                             <select class="form-control" id="studentSelect" name="StudentNumber" required>
-                                <option value="">Select student...</option>
-                                <?php foreach ($students as $student): ?>
-                                    <?php
-                                    $studentNo = trim((string)($student->StudentNumber ?? ''));
-                                    $ln = trim((string)($student->LastName ?? ($student->LName ?? '')));
-                                    $fn = trim((string)($student->FirstName ?? ($student->FName ?? '')));
-                                    $mn = trim((string)($student->MiddleName ?? ($student->MName ?? '')));
-
-                                    $name = trim(($ln !== '' ? $ln . ', ' : '') . $fn . ($mn !== '' ? ' ' . $mn : ''));
-                                    $optionText = ($name !== '') ? trim($studentNo . ' - ' . $name) : $studentNo;
-
-                                    $course = trim((string)($student->Course ?? ''));
-                                    $major = trim((string)($student->Major ?? ''));
-                                    $yearLevel = trim((string)($student->YearLevel ?? ''));
-                                    $studentSem = trim((string)($student->Semester ?? ''));
-                                    $studentSy = trim((string)($student->SY ?? ''));
-                                    ?>
-                                    <option
-                                        value="<?= htmlspecialchars($studentNo, ENT_QUOTES, 'UTF-8'); ?>"
-                                        data-course="<?= htmlspecialchars($course, ENT_QUOTES, 'UTF-8'); ?>"
-                                        data-major="<?= htmlspecialchars($major, ENT_QUOTES, 'UTF-8'); ?>"
-                                        data-yearlevel="<?= htmlspecialchars($yearLevel, ENT_QUOTES, 'UTF-8'); ?>"
-                                        data-sem="<?= htmlspecialchars($studentSem, ENT_QUOTES, 'UTF-8'); ?>"
-                                        data-sy="<?= htmlspecialchars($studentSy, ENT_QUOTES, 'UTF-8'); ?>">
-                                        <?= htmlspecialchars($optionText, ENT_QUOTES, 'UTF-8'); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <option value="">Type a name or student number…</option>
                             </select>
                             <span id="studentTermHint" class="form-text text-muted" style="display:none;"></span>
                         </div>
@@ -399,7 +721,7 @@
                         <div class="form-group">
                             <label for="editStudentSelect">Student</label>
                             <select class="form-control" id="editStudentSelect" name="StudentNumber" required>
-                                <option value="">Select student...</option>
+                                <option value="">Type a name or student number…</option>
                             </select>
                         </div>
 
@@ -468,10 +790,14 @@
 
             // Show the selected student's enrolment term for context — the
             // payment itself always records under the active term.
+            // What the student search returned, by student number — course,
+            // year and enrolment term for the hint below the picker.
+            var studentInfo = {};
+
             function updateStudentTermHint($select) {
-                var $opt = $select.find('option:selected');
-                var sem = $.trim($opt.attr('data-sem') || '');
-                var sy = $.trim($opt.attr('data-sy') || '');
+                var info = studentInfo[$select.val()] || {};
+                var sem = $.trim(info.sem || '');
+                var sy = $.trim(info.sy || '');
                 var $hint = $('#studentTermHint');
                 if (sem !== '' || sy !== '') {
                     $hint.text('Student enrolled in: ' + $.trim(sem + ' ' + sy)).show();
@@ -487,6 +813,68 @@
                         trigger: 'hover'
                     });
                 }
+            }
+
+            // Students are looked up on the server as the cashier types. The
+            // page used to carry all ~3,000 of them as <option>s — 2 MB of
+            // HTML on every load, and a long freeze each time the form opened.
+            function initStudentPicker($select, $parent) {
+                if ($select.data('select2')) return;
+                $select.select2({
+                    width: '100%',
+                    dropdownParent: $parent,
+                    placeholder: 'Type a name or student number…',
+                    minimumInputLength: 2,
+                    ajax: {
+                        url: baseUrl + 'Accounting/ajaxPaymentStudents',
+                        dataType: 'json',
+                        delay: 250,
+                        cache: true,
+                        data: function(params) {
+                            return { q: params.term || '' };
+                        },
+                        processResults: function(resp) {
+                            var results = (resp && resp.results) || [];
+                            results.forEach(function(r) {
+                                studentInfo[r.id] = r;
+                            });
+                            return { results: results };
+                        }
+                    },
+                    language: {
+                        inputTooShort: function() {
+                            return 'Type at least 2 letters or digits of a name or student number';
+                        },
+                        searching: function() {
+                            return 'Searching students…';
+                        },
+                        noResults: function() {
+                            return 'No payable student matches';
+                        },
+                        errorLoading: function() {
+                            return 'Could not search — check the connection and try again';
+                        }
+                    }
+                });
+            }
+
+            // Put a known student in a picker without searching (the edit
+            // form, or a form the server sent back).
+            function setPickerStudent($select, studentNo, label) {
+                studentNo = $.trim(studentNo || '');
+                if (studentNo === '') {
+                    $select.val('').trigger('change');
+                    return;
+                }
+                var $existing = $select.find('option').filter(function() {
+                    return this.value === studentNo;
+                });
+                if (!$existing.length) {
+                    $select.append(new Option(label || studentNo, studentNo, false, false));
+                } else if (label) {
+                    $existing.text(label);
+                }
+                $select.val(studentNo).trigger('change');
             }
 
             function initDescSelect($el, items, dropdownParent, multiple) {
@@ -920,10 +1308,15 @@
                 $('#feeWarning').hide();
                 clearPayItems();
 
-                if ($('#studentSelect').data('select2')) {
-                    $('#studentSelect').val($.trim(state.StudentNumber || '')).trigger('change');
-                } else {
-                    $('#studentSelect').val($.trim(state.StudentNumber || ''));
+                var restoredStudent = $.trim(state.StudentNumber || '');
+                setPickerStudent($('#studentSelect'), restoredStudent);
+                if (restoredStudent !== '') {
+                    $.getJSON(baseUrl + 'Accounting/ajaxPaymentStudents', { q: restoredStudent }).done(function(resp) {
+                        ((resp && resp.results) || []).forEach(function(r) {
+                            studentInfo[r.id] = r;
+                            if (r.id === restoredStudent) setPickerStudent($('#studentSelect'), r.id, r.text);
+                        });
+                    });
                 }
 
                 var descs = [];
@@ -1305,10 +1698,7 @@
 
                 // ADD modal init
                 $('#paymentModal').on('shown.bs.modal', function() {
-                    $('#studentSelect').select2({
-                        width: '100%',
-                        dropdownParent: $('#paymentModal')
-                    });
+                    initStudentPicker($('#studentSelect'), $('#paymentModal'));
                     loadFeesToBothSelects().then(function() {
                         if (useRestoredPaymentState) {
                             restorePaymentForm();
@@ -1408,7 +1798,123 @@
 
                     paymentFormSubmitting = true;
                     setPaymentSubmitState(true);
+
+                    // Saved in place. Reloading the whole page after every
+                    // payment re-downloaded and re-drew the list each time —
+                    // the jump cashiers saw dozens of times a day.
+                    e.preventDefault();
+                    var form = this;
+                    $.ajax({
+                        url: form.action,
+                        type: 'POST',
+                        data: $(form).serialize(),
+                        dataType: 'json'
+                    }).done(function(res) {
+                        if (res && res.token) {
+                            $(form).find('[name="payment_submit_token"]').val(res.token);
+                        }
+                        paymentFormSubmitting = false;
+                        setPaymentSubmitState(false);
+                        if (!res || !res.ok) {
+                            notify('error', (res && res.message) || 'Unable to save payment. Please try again.');
+                            return;
+                        }
+                        applySavedPayment(res);
+                        $('#paymentModal').modal('hide');
+                    }).fail(function() {
+                        // No usable answer (connection dropped, session ended):
+                        // the payment may or may not have been recorded, so show
+                        // the real list rather than invite a second save.
+                        notify('error', 'The save could not be confirmed. Reloading the list so you can check whether it went through.');
+                        window.setTimeout(function() {
+                            window.location.reload();
+                        }, 1800);
+                    });
                 });
+
+                function notify(type, message, extra) {
+                    if (window.UI && typeof UI.toast === 'function') {
+                        UI.toast($.extend({ type: type, message: message, duration: type === 'error' ? 7000 : 6000 }, extra || {}));
+                    } else {
+                        window.alert(message);
+                    }
+                }
+
+                var csrfName = $('meta[name="csrf-token-name"]').attr('content') || '';
+                var csrfValue = $('meta[name="csrf-token"]').attr('content') || '';
+
+                function statusFor(full, total) {
+                    if (!(full > 0)) return ['N/A', 'badge-secondary'];
+                    return total + 0.004 < full ? ['Partial', 'badge-warning'] : ['Fully Paid', 'badge-success'];
+                }
+
+                function applySavedPayment(res) {
+                    var listDate = $.trim($('#paymentForm [name="list_date"]').val() || '');
+                    var inList = listDate === 'all' || listDate === res.pdate;
+
+                    if (inList && res.rows_html) {
+                        var $rows = $('<tbody>').html(res.rows_html).children('tr');
+                        // Server-rendered pages get the CSRF field from the output
+                        // hook; these rows arrived as JSON, so their delete form
+                        // needs it added here.
+                        if (csrfName) {
+                            $rows.find('form[method="post"]').each(function() {
+                                if (!this.querySelector('[name="' + csrfName + '"]')) {
+                                    $('<input type="hidden">').attr('name', csrfName).val(csrfValue).appendTo(this);
+                                }
+                            });
+                        }
+                        $rows.each(function() {
+                            paymentsTable.row.add(this);
+                        });
+                        paymentsTable.order([0, 'desc']).draw();
+                        paymentsTable.page('first').draw('page');
+                        $rows.addClass('pay-row-new');
+                        window.setTimeout(function() {
+                            $rows.removeClass('pay-row-new');
+                        }, 2600);
+                    }
+
+                    // An instalment can settle a fee paid earlier: refresh every
+                    // row of the same student, fee and term.
+                    $.each(res.totals || {}, function(key, total) {
+                        $(paymentsTable.rows().nodes()).find('[data-status-key]').each(function() {
+                            if (this.getAttribute('data-status-key') !== key) return;
+                            var s = statusFor(parseFloat(this.getAttribute('data-full')) || 0, total);
+                            this.className = 'badge ' + s[1];
+                            this.textContent = s[0];
+                            paymentsTable.row($(this).closest('tr')).invalidate('dom');
+                        });
+                    });
+                    paymentsTable.draw(false);
+
+                    if (res.stats) {
+                        $('#apStatCount').text(Number(res.stats.count || 0).toLocaleString());
+                        $('#apStatCollected').text('\u20B1' + Number(res.stats.collected || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                        $('#apStatFully').text(Number(res.stats.fully_paid || 0).toLocaleString());
+                        $('#apStatPartial').text(Number(res.stats.partial || 0).toLocaleString());
+                    }
+                    var count = paymentsTable.rows().count();
+                    $('#payCountNum').text(count.toLocaleString());
+                    $('#payCountWord').text(count === 1 ? 'entry' : 'entries');
+
+                    if (res.next_or_number) defaultOrNumber = res.next_or_number;
+
+                    notify('success', res.message, {
+                        title: 'Payment saved',
+                        duration: 8000,
+                        action: res.receipt_id ? {
+                            label: 'Print receipt',
+                            onClick: function() {
+                                window.open(baseUrl + 'Accounting/receipt/' + res.receipt_id + '?print=1', '_blank');
+                            }
+                        } : null
+                    });
+                    if (res.warning) notify('warning', res.warning);
+                    if (!inList) {
+                        notify('info', 'Saved for ' + res.pdate_label + '. Choose that date under "Payments on" to see it in the list.');
+                    }
+                }
 
                 // EDIT open
                 $(document).on('click', '.edit-payment-btn', function() {
@@ -1426,30 +1932,17 @@
                     $('#editPaymentDate').val(date);
                     $('#editAmount').val(parseFloat(amount || 0).toFixed(2));
 
-                    // The edit select is populated by cloning the add form's
-                    // options — rendering ~3000 <option> nodes twice would
-                    // double this page's weight for no benefit.
-                    var $editSel = $('#editStudentSelect');
-                    if ($editSel.find('option').length <= 1) {
-                        $('#studentSelect option').each(function() {
-                            if (this.value !== '') {
-                                $editSel.append($(this).clone());
-                            }
-                        });
-                    }
+                    var studentName = String($btn.data('studentname') || '');
 
                     $('#editFeeWarning').hide();
 
                     $('#editPaymentModal').modal('show');
 
                     $('#editPaymentModal').one('shown.bs.modal', function() {
-                        $('#editStudentSelect').select2({
-                            width: '100%',
-                            dropdownParent: $('#editPaymentModal')
-                        });
+                        initStudentPicker($('#editStudentSelect'), $('#editPaymentModal'));
 
                         loadFeesToBothSelects().then(function() {
-                            $('#editStudentSelect').val(studentNo).trigger('change');
+                            setPickerStudent($('#editStudentSelect'), studentNo, studentName);
                             // Selecting the description resets Amount to the fee's
                             // full price and unchecks Partial — restore what was
                             // actually paid afterwards, and flag it as partial if
@@ -1513,422 +2006,6 @@
         })();
     </script>
 
-    <style>
-        /* Date filter + entry count, on their own row under the card title. */
-        .pay-toolbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 10px 16px;
-            padding: 12px 22px;
-            background: var(--up-soft);
-            border-bottom: 1px solid var(--up-line);
-        }
-        .pay-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-        .pay-filter-label {
-            margin: 0;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: .8rem;
-            font-weight: 700;
-            color: var(--up-muted);
-        }
-        #dateFilter.pay-filter-select {
-            width: auto;
-            min-width: 190px;
-            height: 36px;
-            padding: 4px 30px 4px 12px;
-            border: 1px solid var(--up-line);
-            border-radius: 10px;
-            background-color: #fff;
-            font-size: .85rem;
-            font-weight: 600;
-            color: var(--up-ink);
-        }
-        .pay-count {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            height: 36px;
-            padding: 0 12px;
-            border: 1px solid var(--up-line);
-            border-radius: 10px;
-            background: #fff;
-            font-size: .8rem;
-            color: var(--up-muted);
-        }
-        .pay-count strong { color: var(--up-ink); }
-        .pay-hint {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border: 1px solid #c9d6f5;
-            border-radius: 10px;
-            background: #eaf0fd;
-            font-size: .8rem;
-            font-weight: 600;
-            color: var(--up-blue);
-        }
-        .pay-hint .mdi { color: var(--up-blue-2); font-size: 1rem; }
-        @media (max-width: 575.98px) {
-            .pay-toolbar { padding: 12px 16px; }
-            .pay-filter { width: 100%; }
-            #dateFilter.pay-filter-select { flex: 1 1 auto; min-width: 0; }
-        }
-
-        /* Delete dialog (two steps: choose fees, then review). UI-kit
-           tokens keep it right in the kit's dark theme too. Labels are
-           scoped under .uk-modal-body to beat the kit's label{display:block}. */
-        .uk-modal-del { max-width: 600px; }
-        .del-lead { margin: 0 0 14px; color: var(--uk-text-soft); font-size: .9rem; line-height: 1.5; }
-        .del-lead b { color: var(--uk-text); }
-        .del-list-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: .72rem;
-            font-weight: 700;
-            letter-spacing: .06em;
-            text-transform: uppercase;
-            color: var(--uk-text-soft);
-        }
-        .del-links { display: inline-flex; gap: 4px; }
-        .del-links button {
-            border: 0;
-            background: none;
-            padding: 2px 6px;
-            border-radius: 6px;
-            font: 600 .8rem/1.4 var(--uk-font);
-            letter-spacing: 0;
-            text-transform: none;
-            color: var(--uk-info);
-            cursor: pointer;
-        }
-        .del-links button:hover { background: rgba(37, 99, 235, .1); }
-        .del-rows { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding: 1px; }
-        .uk-modal-body label.del-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 0;
-            padding: 12px 14px;
-            border: 1px solid var(--uk-border);
-            border-radius: var(--uk-radius-sm);
-            background: var(--uk-surface);
-            font-weight: 500;
-            font-size: .9rem;
-            cursor: pointer;
-            transition: border-color .15s ease, background .15s ease;
-        }
-        .uk-modal-body label.del-row:hover { border-color: rgba(239, 68, 68, .45); }
-        .uk-modal-body label.del-row.is-on { border-color: var(--uk-error); background: rgba(239, 68, 68, .07); }
-        .uk-modal-body label.del-row.is-off { opacity: .55; cursor: not-allowed; }
-        .del-check { flex: 0 0 auto; width: 18px; height: 18px; margin: 0; accent-color: var(--uk-error); cursor: inherit; }
-        .del-row-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-        .del-row-desc { overflow-wrap: anywhere; color: var(--uk-text); }
-        .del-tag {
-            align-self: flex-start;
-            padding: 1px 8px;
-            border-radius: 999px;
-            background: var(--uk-surface-2);
-            border: 1px solid var(--uk-border);
-            font-size: .7rem;
-            font-weight: 600;
-            color: var(--uk-text-soft);
-        }
-        .del-row-amt { flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--uk-text); }
-        .del-summary {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px 16px;
-            margin: 12px 0 16px;
-            padding: 10px 14px;
-            border-radius: var(--uk-radius-sm);
-            background: var(--uk-surface-2);
-            font-size: .84rem;
-            font-variant-numeric: tabular-nums;
-        }
-        .del-sum-del { color: var(--uk-error); font-weight: 600; }
-        .del-sum-keep { color: var(--uk-success); font-weight: 600; }
-        .del-sum-none { color: var(--uk-text-soft); }
-        .uk-modal-body label.del-field-label { margin-bottom: 6px; }
-        .del-field-label span { font-weight: 400; color: var(--uk-text-soft); }
-        .del-reason {
-            display: block;
-            box-sizing: border-box;
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--uk-border);
-            border-radius: var(--uk-radius-sm);
-            background: var(--uk-surface);
-            color: var(--uk-text);
-            font: 400 .9rem/1.5 var(--uk-font);
-            resize: vertical;
-        }
-        .del-reason:focus { outline: 0; border-color: var(--uk-info); box-shadow: 0 0 0 3px rgba(37, 99, 235, .15); }
-        .del-error { margin-top: 8px; font-size: .8rem; font-weight: 600; color: var(--uk-error); }
-
-        .del-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
-        .del-col { border-radius: var(--uk-radius-sm); padding: 12px 14px; border: 1px solid; }
-        .del-col-del { border-color: rgba(239, 68, 68, .35); background: rgba(239, 68, 68, .06); }
-        .del-col-keep { border-color: rgba(16, 185, 129, .35); background: rgba(16, 185, 129, .06); }
-        .del-col-empty { border-color: var(--uk-border); border-style: dashed; background: var(--uk-surface-2); }
-        .del-col-empty p { margin: 0; font-size: .85rem; color: var(--uk-text-soft); }
-        .del-col-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: .72rem;
-            font-weight: 700;
-            letter-spacing: .06em;
-            text-transform: uppercase;
-        }
-        .del-col-del .del-col-head { color: var(--uk-error); }
-        .del-col-keep .del-col-head { color: var(--uk-success); }
-        .del-col-empty .del-col-head { color: var(--uk-text-soft); }
-        .del-col-head span { padding: 0 8px; border: 1px solid currentColor; border-radius: 999px; }
-        .del-fee-list { list-style: none; margin: 0; padding: 0; font-size: .86rem; }
-        .del-fee-list li {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            padding: 5px 0;
-            border-bottom: 1px dashed var(--uk-border);
-            color: var(--uk-text);
-        }
-        .del-fee-list li:last-child { border-bottom: 0; }
-        .del-fee-list b { font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .del-del li span { text-decoration: line-through; text-decoration-color: rgba(239, 68, 68, .6); }
-        .del-col-total { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--uk-border); font-size: .82rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
-        .del-col-del .del-col-total { color: var(--uk-error); }
-        .del-col-keep .del-col-total { color: var(--uk-success); }
-        .del-reason-view {
-            margin-bottom: 12px;
-            padding: 10px 14px;
-            border-left: 3px solid var(--uk-border);
-            background: var(--uk-surface-2);
-            border-radius: 0 var(--uk-radius-sm) var(--uk-radius-sm) 0;
-            font-size: .88rem;
-            color: var(--uk-text);
-            overflow-wrap: anywhere;
-        }
-        .del-reason-view span { display: block; margin-bottom: 2px; font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--uk-text-soft); }
-        .del-warn { display: flex; gap: 8px; margin: 0 0 12px; font-size: .84rem; color: var(--uk-text-soft); line-height: 1.5; }
-        .del-warn .mdi { color: var(--uk-warning); font-size: 1.1rem; line-height: 1.3; }
-        .uk-modal-body label.del-ack {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            margin: 0;
-            padding: 10px 14px;
-            border: 1px solid var(--uk-border);
-            border-radius: var(--uk-radius-sm);
-            font-weight: 600;
-            font-size: .86rem;
-            cursor: pointer;
-        }
-        .del-ack input { width: 18px; height: 18px; margin: 1px 0 0; flex: 0 0 auto; accent-color: var(--uk-error); }
-        @media (max-width: 575.98px) {
-            .del-cols { grid-template-columns: 1fr; }
-        }
-
-        /* Selected-fee chips: the theme's white chip text lands on select2's
-           stock grey background here, so give them a readable pairing. */
-        #paymentModal .select2-selection--multiple .select2-selection__choice {
-            background-color: #eef4ff;
-            border: 1px solid #cddbf7;
-            color: #0d1b4b;
-            font-weight: 600;
-        }
-
-        #paymentModal .select2-selection--multiple .select2-selection__choice__remove {
-            color: #6b7a99;
-        }
-
-        #paymentModal .select2-selection--multiple .select2-selection__choice__remove:hover {
-            color: #dc2626;
-        }
-
-        /* On phones these modals are bottom sheets capped at 90dvh, and only
-           .modal-body scrolls. The <form> wrapping header/body/footer sits
-           between .modal-content and .modal-body, so it has to carry the
-           flex column down or the body never shrinks and the fee lines and
-           Save button are clipped off the bottom of the sheet. */
-        @media (max-width: 767.98px) {
-            #paymentModal .modal-content > form,
-            #editPaymentModal .modal-content > form {
-                display: flex;
-                flex-direction: column;
-                flex: 1 1 auto;
-                min-height: 0;
-            }
-
-            .pay-item-amount-wrap {
-                flex: 1 1 150px;
-            }
-        }
-
-        /* Fee lines in the Add Payment form — one per selected description. */
-        .pay-items {
-            border: 1px solid #e6ebf5;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 1rem;
-        }
-
-        .pay-item {
-            padding: 10px 12px;
-            border-bottom: 1px solid #e6ebf5;
-            background: #fff;
-        }
-
-        .pay-item.is-settled {
-            background: #f6f8fb;
-        }
-
-        .pay-item.is-settled .pay-item-name,
-        .pay-item.is-settled .pay-item-controls {
-            opacity: .55;
-        }
-
-        .pay-item-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 8px;
-        }
-
-        .pay-item-name {
-            font-weight: 700;
-            color: #0d1b4b;
-            word-break: break-word;
-        }
-
-        .pay-item-remove {
-            border: 0;
-            background: transparent;
-            color: #6b7a99;
-            font-size: 1.25rem;
-            line-height: 1;
-            padding: 0 4px;
-            cursor: pointer;
-        }
-
-        .pay-item-remove:hover {
-            color: #dc2626;
-        }
-
-        .pay-item-meta {
-            font-size: .78rem;
-            color: #6b7a99;
-            margin: 2px 0 8px;
-        }
-
-        .pay-item-controls {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 8px 16px;
-        }
-
-        .pay-item-amount-wrap {
-            flex: 0 1 200px;
-            min-width: 150px;
-        }
-
-        .pay-item-amount[readonly] {
-            background: #f8fbff;
-        }
-
-        .pay-item.is-free .pay-item-partial-wrap {
-            display: none;
-        }
-
-        .pay-item-note {
-            display: none;
-            font-size: .78rem;
-            font-weight: 600;
-            color: #b45309;
-            margin-top: 6px;
-        }
-
-        .pay-item.is-settled .pay-item-note {
-            color: #16a34a;
-        }
-
-        .pay-items-total {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 12px;
-            background: #f8fbff;
-            font-weight: 800;
-            color: #0d1b4b;
-        }
-
-        .pay-items-total #payItemsTotal {
-            font-size: 1.1rem;
-        }
-
-        /* ACTION BUTTONS: spacing + consistent size */
-        .action-wrap {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: nowrap;
-            white-space: nowrap;
-        }
-
-        .action-wrap .action-btn {
-            width: 34px;
-            height: 34px;
-            padding: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-        }
-
-        .action-wrap form {
-            margin: 0;
-        }
-
-        /* ROW ACTIONS DROPDOWN: placement comes from --ra-top/--ra-left, set
-           by JS in viewport coords. Needs !important + extra specificity to
-           beat the theme's `.dropdown-menu.show { top: 100% !important }`. */
-        .row-actions-menu {
-            display: inline-block;
-            position: relative;
-        }
-
-        .row-actions-menu .dropdown-menu {
-            min-width: 220px;
-        }
-
-        .row-actions-menu .dropdown-menu.show {
-            position: fixed !important;
-            top: var(--ra-top, 100%) !important;
-            left: var(--ra-left, auto) !important;
-            right: auto !important;
-            margin: 0 !important;
-            z-index: 1080;
-        }
-
-        .row-actions-menu .dropdown-menu form {
-            margin: 0;
-        }
-
-        /* The card-mode rules in uniform-page.css centre every control in an
-           actions cell; menu items still need to read as a left-aligned list. */
-        .row-actions-menu .dropdown-menu .dropdown-item {
-            text-align: left;
-        }
-    </style>
 </body>
 
 </html>

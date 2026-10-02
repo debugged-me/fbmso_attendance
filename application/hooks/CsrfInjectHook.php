@@ -28,7 +28,25 @@ class CsrfInjectHook
             $output = $this->addHeadTags($CI, $output);
         }
 
+        // CodeIgniter runs a single display_override hook, so the page's
+        // final polish (asset versions, app bar title, loading state) rides
+        // along here. After the CSRF pass, so the csrf.js tag it adds is
+        // versioned too.
+        if ($this->isHtmlPage($CI, $output)) {
+            $CI->load->library('page_finish');
+            $output = $CI->page_finish->apply($output);
+        }
+
         $CI->output->_display($output);
+    }
+
+    protected function isHtmlPage($CI, $output)
+    {
+        if ($output === '' || stripos($output, '</head>') === false) {
+            return false;
+        }
+        $type = (string)$CI->output->get_content_type();
+        return $type === '' || stripos($type, 'html') !== false;
     }
 
     /** Only touch HTML responses that actually contain a POST form. */

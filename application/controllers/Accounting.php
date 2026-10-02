@@ -1041,7 +1041,7 @@ class Accounting extends CI_Controller
 		return (int)$this->db->count_all_results();
 	}
 
-	private function getRecentPayments($date = null, $limit = 0)
+	private function getRecentPayments($date = null, $limit = 0, ?array $ids = null)
 	{
 		// Payments are tagged to the student's enrolment term, not always the
 		// active one — list the latest across all terms, otherwise a payment
@@ -1075,6 +1075,9 @@ class Accounting extends CI_Controller
 		$this->db->where('p.ORStatus', 'Valid');
 		if ($date !== null && $date !== '') {
 			$this->db->where('p.PDate', $date);
+		}
+		if ($ids !== null) {
+			$this->db->where_in('p.ID', $ids ?: [0]);
 		}
 		$this->db->order_by('p.PDate', 'DESC');
 		$this->db->order_by('p.pTime', 'DESC');
@@ -1553,19 +1556,14 @@ class Accounting extends CI_Controller
 			$this->ensureWriteAccess();
 			$submitToken = trim((string)$this->input->post('payment_submit_token', true));
 			if (!$this->consumePaymentSubmitToken($submitToken)) {
-				$this->session->set_flashdata('danger', 'This payment form was already submitted or expired. Please try again.');
-				redirect('Accounting/Payment');
-				return;
+				return $this->paymentFail('This payment form was already submitted or expired. Please try again.', false);
 			}
 
 			$this->form_validation->set_rules('StudentNumber', 'Student', 'required|trim');
 			$this->form_validation->set_rules('PDate', 'Payment Date', 'required|trim');
 
 			if ($this->form_validation->run() === false) {
-				$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
-				$this->session->set_flashdata('danger', strip_tags(validation_errors(' ', ' ')));
-				redirect('Accounting/Payment');
-				return;
+				return $this->paymentFail(trim(strip_tags(validation_errors(' ', ' '))));
 			}
 
 			$studentNumber = trim((string)$this->input->post('StudentNumber', true));
@@ -1582,10 +1580,7 @@ class Accounting extends CI_Controller
 			// during term X".
 
 			if (!$this->isValidDate($pDateInput)) {
-				$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
-				$this->session->set_flashdata('danger', 'Invalid payment date.');
-				redirect('Accounting/Payment');
-				return;
+				return $this->paymentFail('Invalid payment date.');
 			}
 
 			if ($paymentType === '') {
@@ -1599,10 +1594,7 @@ class Accounting extends CI_Controller
 
 			$this->load->library('payable_students');
 			if (!$this->payable_students->isActive($studentNumber)) {
-				$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
-				$this->session->set_flashdata('danger', Payable_students::NOT_ACTIVE_MESSAGE);
-				redirect('Accounting/Payment');
-				return;
+				return $this->paymentFail(Payable_students::NOT_ACTIVE_MESSAGE);
 			}
 
 			$student = $this->getStudentContext($studentNumber, $sem, $sy);
@@ -1625,19 +1617,14 @@ class Accounting extends CI_Controller
 			// one's payment instead of collecting the same fee again.
 			$this->load->library('payment_lock');
 			if (!$this->payment_lock->acquire($studentNumber)) {
-				$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
-				$this->session->set_flashdata('danger', 'Another payment for this student is being saved right now. Please try again in a moment.');
-				redirect('Accounting/Payment');
-				return;
+				return $this->paymentFail('Another payment for this student is being saved right now. Please try again in a moment.');
 			}
 
 			try {
 				$itemError = $this->validatePaymentItems($items, $studentNumber, $sem, $sy);
 				if ($itemError !== null) {
-					$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
-					$this->session->set_flashdata('danger', $itemError);
-					redirect('Accounting/Payment');
-					return;
+					// finally{} still releases the lock on this return.
+					return $this->paymentFail($itemError);
 				}
 
 				// The O.R. number is read-only in the UI and always drawn from
@@ -1697,10 +1684,7 @@ class Accounting extends CI_Controller
 			}
 
 			if (!$insertOk) {
-				$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
-				$this->session->set_flashdata('danger', 'Unable to save payment. Please try again.');
-				redirect('Accounting/Payment');
-				return;
+				return $this->paymentFail('Unable to save payment. Please try again.');
 			}
 
 			// Payment entry is the cashier's main write, so it belongs in the
@@ -1735,14 +1719,21 @@ class Accounting extends CI_Controller
 			if ($previewOr !== '' && $previewOr !== $orNumber) {
 				$successMessage .= ' Note: O.R. #' . $previewOr . ' was issued to another payment while this one was being entered, so this payment is O.R. #' . $orNumber . '.';
 			}
+			$emailWarning = '';
 			if (!empty($emailResult['attempted']) && !empty($emailResult['sent'])) {
 				$successMessage .= ' ' . trim((string)($emailResult['message'] ?? ''));
-				$this->session->set_flashdata('success', $successMessage);
 			} else {
-				$this->session->set_flashdata('success', $successMessage);
-				$this->session->set_flashdata('warning', (string)$emailResult['message']);
+				$emailWarning = (string)$emailResult['message'];
 			}
 
+			if ($this->input->is_ajax_request()) {
+				return $this->paymentSavedJson($paymentRows, $orNumber, $pDateInput, $successMessage, $emailWarning);
+			}
+
+			$this->session->set_flashdata('success', $successMessage);
+			if ($emailWarning !== '') {
+				$this->session->set_flashdata('warning', $emailWarning);
+			}
 			redirect('Accounting/Payment');
 			return;
 		}
@@ -1776,7 +1767,6 @@ class Accounting extends CI_Controller
 		$data = [
 			'default_payment_date' => $today,
 			'next_or_number'       => $this->peekNextOrNumber($today),
-			'students'             => $this->getStudentsForPayment($sem, $sy),
 			'recent_payments'      => $recentPayments,
 			'payment_stats'        => $stats,
 			'payments_truncated'   => count($recentPayments) < $stats['count'],
@@ -1790,6 +1780,127 @@ class Accounting extends CI_Controller
 		];
 
 		$this->load->view('accounting_payment', $data);
+	}
+
+	// One exit for a rejected payment. A plain form post goes back to the
+	// page with the form refilled; the page's AJAX save gets JSON and keeps
+	// its form open, with a fresh submit token since this one is spent.
+	private function paymentFail($message, $keepForm = true)
+	{
+		if ($this->input->is_ajax_request()) {
+			$this->output->set_content_type('application/json')->set_output(json_encode([
+				'ok'      => false,
+				'message' => (string)$message,
+				'token'   => $this->generatePaymentSubmitToken(),
+			], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+			return;
+		}
+
+		if ($keepForm) {
+			$this->session->set_flashdata('payment_form_old', $this->paymentFormStateFromPost());
+		}
+		$this->session->set_flashdata('danger', (string)$message);
+		redirect('Accounting/Payment');
+	}
+
+	// What the Payment page needs to show a save without reloading: the new
+	// rows rendered exactly like the server-rendered ones, each fee's new
+	// running total (an earlier "Partial" row may now be fully paid), and
+	// the stat cards for whatever date the cashier's list is showing.
+	private function paymentSavedJson(array $paymentRows, $orNumber, $pDate, $message, $warning)
+	{
+		$ids = array_map(function ($row) {
+			return (int)$row['ID'];
+		}, $paymentRows);
+
+		$rowsHtml = '';
+		$totals = [];
+		$isAuditor = $this->isAuditor();
+		foreach ($this->getRecentPayments(null, 0, $ids) as $row) {
+			$rowsHtml .= $this->load->view('includes/accounting_payment_row', ['row' => $row, 'isAuditor' => $isAuditor], true);
+			$totals[$this->paymentStatusKey($row)] = (float)($row->TotalPaid ?? $row->Amount);
+		}
+
+		$listDate = trim((string)$this->input->post('list_date', true));
+		$statDate = $listDate === 'all' ? null : ($this->isValidDate($listDate) ? $listDate : $pDate);
+		$today = (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d');
+
+		$this->output->set_content_type('application/json')->set_output(json_encode([
+			'ok'             => true,
+			'message'        => (string)$message,
+			'warning'        => (string)$warning,
+			'or_number'      => (string)$orNumber,
+			'receipt_id'     => $ids ? min($ids) : 0,
+			'pdate'          => (string)$pDate,
+			'pdate_label'    => date('M d, Y', strtotime($pDate)),
+			'rows_html'      => $rowsHtml,
+			'totals'         => $totals,
+			'stats'          => $this->paymentStats($statDate),
+			'next_or_number' => $this->peekNextOrNumber($today),
+			'token'          => $this->generatePaymentSubmitToken(),
+		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+	}
+
+	// Identifies the (student, fee, term) a payment row's status belongs to.
+	// Matches data-status-key in includes/accounting_payment_row.php.
+	private function paymentStatusKey($row)
+	{
+		return implode('|', [
+			trim((string)($row->StudentNumber ?? '')),
+			(string)($row->description ?? ''),
+			(string)($row->Sem ?? ''),
+			(string)($row->SY ?? ''),
+		]);
+	}
+
+	// Student picker on the Payment form. The page used to embed every
+	// payable student (~3,000 <option>s, 2 MB of HTML on every load); now the
+	// picker asks here as the cashier types. Same list as before, so the same
+	// students are payable. A student number matches with or without its
+	// dash, since both forms exist in the data.
+	public function ajaxPaymentStudents()
+	{
+		$this->ensureAccess();
+		$this->output->set_content_type('application/json');
+
+		[$sem, $sy] = $this->currentSemSy();
+		$q = trim((string)$this->input->get('q', true));
+		$terms = array_values(array_filter(preg_split('/\s+/u', mb_strtolower($q, 'UTF-8')), function ($t) {
+			return $t !== '';
+		}));
+
+		$results = [];
+		if ($terms) {
+			foreach ($this->getStudentsForPayment($sem, $sy) as $student) {
+				$sn = trim((string)($student->StudentNumber ?? ''));
+				$ln = trim((string)($student->LastName ?? ''));
+				$given = trim(trim((string)($student->FirstName ?? '')) . ' ' . trim((string)($student->MiddleName ?? '')));
+				$name = trim(($ln !== '' ? $ln . ', ' : '') . $given);
+				$text = $name !== '' ? $sn . ' - ' . $name : $sn;
+
+				$haystack = mb_strtolower($text . ' ' . str_replace('-', '', $sn), 'UTF-8');
+				foreach ($terms as $term) {
+					if (mb_strpos($haystack, $term) === false && mb_strpos($haystack, str_replace('-', '', $term)) === false) {
+						continue 2;
+					}
+				}
+
+				$results[] = [
+					'id'        => $sn,
+					'text'      => $text,
+					'course'    => trim((string)($student->Course ?? '')),
+					'major'     => trim((string)($student->Major ?? '')),
+					'yearlevel' => trim((string)($student->YearLevel ?? '')),
+					'sem'       => trim((string)($student->Semester ?? '')),
+					'sy'        => trim((string)($student->SY ?? '')),
+				];
+				if (count($results) >= 30) {
+					break;
+				}
+			}
+		}
+
+		$this->output->set_output(json_encode(['results' => $results], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 	}
 
 	public function updatePayment()
