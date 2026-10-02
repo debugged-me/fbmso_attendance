@@ -410,6 +410,13 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                             <span> Financial Statements </span>
                         </a>
                     </li>
+
+                    <li class="<?= $active('Accounting/feePayers'); ?>">
+                        <a href="<?= base_url('Accounting/feePayers'); ?>" class="waves-effect">
+                            <i class="mdi mdi-account-cash-outline"></i>
+                            <span> Paid Students by Fee </span>
+                        </a>
+                    </li>
                     <!-- To Do (keep visible) -->
                     <!-- <li>
                 <a href="javascript: void(0);" class="waves-effect">
@@ -1303,6 +1310,13 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         <a href="<?= base_url('Accounting/financialStatements'); ?>" class="waves-effect">
                             <i class="mdi mdi-file-chart-outline"></i>
                             <span> Financial Statements </span>
+                        </a>
+                    </li>
+
+                    <li class="<?= $active('Accounting/feePayers'); ?>">
+                        <a href="<?= base_url('Accounting/feePayers'); ?>" class="waves-effect">
+                            <i class="mdi mdi-account-cash-outline"></i>
+                            <span> Paid Students by Fee </span>
                         </a>
                     </li>
 

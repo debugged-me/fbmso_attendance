@@ -21,6 +21,9 @@
         background: #eef2ff; font-size: .92rem;
     }
     .fs-amt { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .fs-drill { color: inherit; text-decoration: none; border-bottom: 1px dashed #9aa8d6; }
+    .fs-drill:hover { color: #2a4090; border-bottom-color: #2a4090; text-decoration: none; }
+    .fs-drill .mdi { font-size: .95em; color: #7c8bc4; margin-left: 4px; }
     .fs-neg { color: #dc2626 !important; }
     .fs-empty td {
         text-align: center; padding: 20px 14px !important; color: var(--up-muted, #6b7a99);
@@ -116,6 +119,14 @@
                             . '&sem=' . urlencode((string)$sem)
                             . '&sy=' . urlencode((string)$sy)
                             . '&stmt=' . $key;
+                    };
+                    // Who paid a revenue line: same term and dates, so the names add up to the line.
+                    $payersUrl = function ($item) use ($from, $to, $sem, $sy) {
+                        return base_url('Accounting/feePayers') . '?from=' . urlencode((string)$from)
+                            . '&to=' . urlencode((string)$to)
+                            . '&sem=' . urlencode((string)$sem)
+                            . '&sy=' . urlencode((string)$sy)
+                            . '&fee=' . urlencode((string)$item);
                     };
                     $active = isset($activeStmt) ? (string)$activeStmt : 'all';
                     if ($active === 'all') {
@@ -224,6 +235,10 @@
                                                 <a class="dropdown-item" href="<?= base_url('Accounting/financialStatements'); ?>?<?= $stmtParam('balance'); ?>&print=1" target="_blank">
                                                     <i class="mdi mdi-bank-outline mr-1"></i> Balance Sheet only
                                                 </a>
+                                                <div class="dropdown-divider"></div>
+                                                <a class="dropdown-item" href="<?= htmlspecialchars($payersUrl('') . '&print=1', ENT_QUOTES, 'UTF-8'); ?>" target="_blank">
+                                                    <i class="mdi mdi-account-cash-outline mr-1"></i> Names of payers, per fee
+                                                </a>
                                             </div>
                                         </div>
                                     </div>
@@ -255,10 +270,15 @@
                                     <!-- INCOME STATEMENT -->
                                     <div class="tab-pane <?= $active === 'income' ? 'active' : ''; ?>" id="pane-income" role="tabpanel">
                                         <div class="fs-pane-toolbar">
-                                            <span class="fs-pane-sub">Revenues and expenses for <?= htmlspecialchars((string)$periodLabel, ENT_QUOTES, 'UTF-8'); ?></span>
-                                            <a href="<?= base_url('Accounting/financialStatements'); ?>?<?= $stmtParam('income'); ?>&print=1" target="_blank" class="up-btn up-btn-ghost" style="padding:5px 12px;font-size:.78rem;">
-                                                <i class="mdi mdi-printer"></i> Print this statement
-                                            </a>
+                                            <span class="fs-pane-sub">Revenues and expenses for <?= htmlspecialchars((string)$periodLabel, ENT_QUOTES, 'UTF-8'); ?> &middot; click a revenue line to see who paid</span>
+                                            <div class="d-flex" style="gap:8px;flex-wrap:wrap;">
+                                                <a href="<?= htmlspecialchars($payersUrl(''), ENT_QUOTES, 'UTF-8'); ?>" class="up-btn up-btn-ghost" style="padding:5px 12px;font-size:.78rem;">
+                                                    <i class="mdi mdi-account-cash-outline"></i> Who paid
+                                                </a>
+                                                <a href="<?= base_url('Accounting/financialStatements'); ?>?<?= $stmtParam('income'); ?>&print=1" target="_blank" class="up-btn up-btn-ghost" style="padding:5px 12px;font-size:.78rem;">
+                                                    <i class="mdi mdi-printer"></i> Print this statement
+                                                </a>
+                                            </div>
                                         </div>
                                         <div class="fs-pane-body">
                                         <div class="table-responsive up-rt-host">
@@ -275,7 +295,9 @@
                                                     <?php if (!empty($revenueRows)): ?>
                                                         <?php foreach ($revenueRows as $row): ?>
                                                             <tr class="fs-indent">
-                                                                <td data-label="Line Item"><?= htmlspecialchars((string)$row->Item, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                <td data-label="Line Item">
+                                                                    <a class="fs-drill" href="<?= htmlspecialchars($payersUrl($row->Item), ENT_QUOTES, 'UTF-8'); ?>" title="See who paid"><?= htmlspecialchars((string)$row->Item, ENT_QUOTES, 'UTF-8'); ?><i class="mdi mdi-account-multiple-outline"></i></a>
+                                                                </td>
                                                                 <td data-label="Entries" class="text-center"><?= number_format((int)$row->TxnCount); ?></td>
                                                                 <td data-label="Amount" class="fs-amt">&#8369; <?= number_format((float)$row->Total, 2); ?></td>
                                                             </tr>
@@ -340,7 +362,9 @@
                                                     <?php if (!empty($revenueRows)): ?>
                                                         <?php foreach ($revenueRows as $row): ?>
                                                             <tr class="fs-indent">
-                                                                <td data-label="Line Item"><?= htmlspecialchars((string)$row->Item, ENT_QUOTES, 'UTF-8'); ?></td>
+                                                                <td data-label="Line Item">
+                                                                    <a class="fs-drill" href="<?= htmlspecialchars($payersUrl($row->Item), ENT_QUOTES, 'UTF-8'); ?>" title="See who paid"><?= htmlspecialchars((string)$row->Item, ENT_QUOTES, 'UTF-8'); ?><i class="mdi mdi-account-multiple-outline"></i></a>
+                                                                </td>
                                                                 <td data-label="Entries" class="text-center"><?= number_format((int)$row->TxnCount); ?></td>
                                                                 <td data-label="Amount" class="fs-amt">&#8369; <?= number_format((float)$row->Total, 2); ?></td>
                                                             </tr>
@@ -511,7 +535,7 @@
                         <div class="g-icon"><i class="mdi mdi-file-chart-outline"></i></div>
                         <div>
                             <div class="g-title">Income Statement</div>
-                            <div class="g-text">Collections (revenues) minus expenses within the period. The bottom line is your <b>Net Income</b> — or <b>Net Loss</b>, shown in parentheses, when expenses exceed collections.</div>
+                            <div class="g-text">Collections (revenues) minus expenses within the period. The bottom line is your <b>Net Income</b> — or <b>Net Loss</b>, shown in parentheses, when expenses exceed collections. Click any revenue line (e.g. a membership fee) to see the names of the students who paid it.</div>
                         </div>
                     </div>
                     <div class="fs-guide-item">

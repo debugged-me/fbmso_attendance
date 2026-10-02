@@ -3101,10 +3101,11 @@ class Accounting extends CI_Controller
 		return [array_values($lines), count($students), $total];
 	}
 
-	public function financialStatements()
+	// Term and date window from the query string, shared by the statements
+	// and the Paid Students by Fee report so a drill-down from a revenue line
+	// covers exactly the same payments as the line itself.
+	private function statementScopeFromRequest()
 	{
-		$this->ensureAccess();
-
 		[$activeSem, $activeSy] = $this->currentSemSy();
 
 		// Missing term params default to the active term; an explicitly blank
@@ -3128,6 +3129,15 @@ class Accounting extends CI_Controller
 		if ($from > $to) {
 			[$from, $to] = [$to, $from];
 		}
+
+		return [$sem, $sy, $from, $to, $activeSem, $activeSy];
+	}
+
+	public function financialStatements()
+	{
+		$this->ensureAccess();
+
+		[$sem, $sy, $from, $to, $activeSem, $activeSy] = $this->statementScopeFromRequest();
 
 		// Which statement to print — 'all' prints the full set. On screen the
 		// same value just decides which tab opens first.
@@ -3316,6 +3326,324 @@ class Accounting extends CI_Controller
 			'receivableStudents'  => $receivableStudents,
 			'totalReceivables'    => $totalReceivables,
 			'activeStmt'          => $stmt,
+		]);
+	}
+
+	// ------------------------------------------------------------------
+	// Paid Students by Fee — the names behind each Income Statement line
+	// ------------------------------------------------------------------
+
+	// One row per student, fee and term, in the same scope as
+	// statementCollectionRows(): with no course filter, the rows for a fee
+	// add up to that fee's revenue line on the Income Statement.
+	//
+	// Payments are summed on their own and names / enrolment are looked up
+	// afterwards — a duplicate profile or enrolment row joined into the SUM
+	// would silently double a student's amount.
+	private function feePayerRows($from, $to, $sem, $sy, $course = '')
+	{
+		$item = "COALESCE(NULLIF(TRIM(description),''),'(No description)')";
+
+		$q = $this->db->select("StudentNumber, Sem, SY, $item AS Item,
+				COUNT(*) AS PaymentCount, COALESCE(SUM(Amount),0) AS PaidAmount, MAX(PDate) AS LastPaymentDate,
+				GROUP_CONCAT(DISTINCT ORNumber ORDER BY ORNumber SEPARATOR ', ') AS ORNumbers", false)
+			->from('paymentsaccounts')
+			->where('ORStatus', 'Valid')
+			->where('CollectionSource', "Student's Account")
+			->where('PDate >=', $from)
+			->where('PDate <=', $to);
+		if ($sem !== '') {
+			$q->where('Sem', $sem);
+		}
+		if ($sy !== '') {
+			$q->where('SY', $sy);
+		}
+		$rows = $q->group_by('StudentNumber, Sem, SY, Item')->get()->result();
+		if (empty($rows)) {
+			return [];
+		}
+
+		$numbers = array_values(array_unique(array_map(function ($r) {
+			return (string)$r->StudentNumber;
+		}, $rows)));
+
+		// Paid / partial is judged on everything paid toward the fee that term,
+		// not just inside the date window, against the price frozen on the
+		// student's own payments — the same rule as Partial Payments.
+		$termTotals = [];
+		$t = $this->db->select("StudentNumber, Sem, SY, $item AS Item,
+				COALESCE(SUM(Amount),0) AS TermPaid, MAX(FeeFullAmount) AS FullAmount", false)
+			->from('paymentsaccounts')
+			->where('ORStatus', 'Valid')
+			->where('CollectionSource', "Student's Account")
+			->where_in('StudentNumber', $numbers);
+		if ($sem !== '') {
+			$t->where('Sem', $sem);
+		}
+		if ($sy !== '') {
+			$t->where('SY', $sy);
+		}
+		foreach ($t->group_by('StudentNumber, Sem, SY, Item')->get()->result() as $r) {
+			$termTotals[$r->StudentNumber . '|' . $r->Sem . '|' . $r->SY . '|' . $r->Item] = $r;
+		}
+
+		// Name parts: studeprofile wins where it has a value, else studentsignup
+		// — the same precedence as the other accounting reports.
+		$names = [];
+		foreach (['studentsignup', 'studeprofile'] as $table) {
+			$found = $this->db->select('StudentNumber, LastName, FirstName, MiddleName')
+				->from($table)
+				->where_in('StudentNumber', $numbers)
+				->get()
+				->result();
+			foreach ($found as $n) {
+				foreach (['LastName', 'FirstName', 'MiddleName'] as $field) {
+					$value = trim((string)$n->$field);
+					if ($value !== '') {
+						$names[(string)$n->StudentNumber][$field] = $value;
+					}
+				}
+			}
+		}
+
+		// Course and year from the enrolment for the payment's term, falling
+		// back to the student's latest enrolment.
+		$enrolByTerm = [];
+		$enrolLatest = [];
+		$found = $this->db->select('StudentNumber, Semester, SY, Course, YearLevel')
+			->from('semesterstude')
+			->where_in('StudentNumber', $numbers)
+			->order_by('semstudentid', 'ASC')
+			->get()
+			->result();
+		foreach ($found as $e) {
+			$enrolByTerm[$e->StudentNumber . '|' . $e->Semester . '|' . $e->SY] = $e;
+			$enrolLatest[(string)$e->StudentNumber] = $e;
+		}
+
+		$courseCodes = [];
+		foreach ($this->db->select('CourseDescription, CourseCode')->from('course_table')->get()->result() as $c) {
+			$desc = strtolower(trim((string)$c->CourseDescription));
+			$code = trim((string)$c->CourseCode);
+			if ($desc !== '' && $code !== '') {
+				$courseCodes[$desc] = $code;
+			}
+		}
+
+		$out = [];
+		foreach ($rows as $r) {
+			$sn = (string)$r->StudentNumber;
+			$enrol = $enrolByTerm[$sn . '|' . $r->Sem . '|' . $r->SY] ?? ($enrolLatest[$sn] ?? null);
+			$courseName = trim((string)($enrol->Course ?? ''));
+			if ($course !== '' && strcasecmp($courseName, $course) !== 0) {
+				continue;
+			}
+			$courseLabel = $courseCodes[strtolower($courseName)] ?? $courseName;
+
+			$parts = $names[$sn] ?? [];
+			$name = $parts['LastName'] ?? '';
+			$given = trim(($parts['FirstName'] ?? '') . ' ' . ($parts['MiddleName'] ?? ''));
+			if ($given !== '') {
+				$name .= ($name !== '' ? ', ' : '') . $given;
+			}
+
+			$term = $termTotals[$sn . '|' . $r->Sem . '|' . $r->SY . '|' . $r->Item] ?? null;
+			$full = (float)($term->FullAmount ?? 0);
+			$termPaid = (float)($term->TermPaid ?? $r->PaidAmount);
+			$balance = $full > 0 ? max($full - $termPaid, 0.0) : 0.0;
+
+			$out[] = [
+				'studno'     => $sn,
+				'name'       => $name !== '' ? $name : $sn,
+				'courseYear' => trim($courseLabel . ' ' . trim((string)($enrol->YearLevel ?? ''))),
+				'fee'        => (string)$r->Item,
+				'term'       => trim($r->Sem . ' ' . $r->SY),
+				'payments'   => (int)$r->PaymentCount,
+				'orNumbers'  => (string)$r->ORNumbers,
+				'lastDate'   => (string)$r->LastPaymentDate,
+				'amount'     => (float)$r->PaidAmount,
+				'balance'    => $balance,
+				'status'     => $full <= 0 ? 'n/a' : ($balance > 0.004 ? 'partial' : 'paid'),
+			];
+		}
+
+		usort($out, function ($a, $b) {
+			return strcasecmp($a['fee'], $b['fee'])
+				?: strcasecmp($a['name'], $b['name'])
+				?: strcmp($a['term'], $b['term']);
+		});
+
+		return $out;
+	}
+
+	private function feePayerStatusText(array $row)
+	{
+		if ($row['status'] === 'paid') {
+			return 'Fully paid';
+		}
+		if ($row['status'] === 'partial') {
+			return 'Partial — ₱ ' . number_format($row['balance'], 2) . ' balance';
+		}
+		return '—';
+	}
+
+	public function feePayers()
+	{
+		$this->ensureAccess();
+
+		[$sem, $sy, $from, $to, $activeSem, $activeSy] = $this->statementScopeFromRequest();
+		// Not XSS-cleaned: the fee must match the stored description exactly.
+		// It is only ever compared in PHP and escaped on output.
+		$fee    = trim((string)$this->input->get('fee'));
+		$course = trim((string)$this->input->get('course', true));
+
+		$allRows = $this->feePayerRows($from, $to, $sem, $sy, $course);
+
+		// Per-fee summary for the fee picker, built from the same rows — with
+		// no course filter each total equals the fee's Income Statement line.
+		$fees = [];
+		$allStudents = [];
+		foreach ($allRows as $row) {
+			$allStudents[$row['studno']] = true;
+			$key = $row['fee'];
+			if (!isset($fees[$key])) {
+				$fees[$key] = ['fee' => $key, 'payers' => 0, 'amount' => 0.0];
+			}
+			$fees[$key]['payers']++;
+			$fees[$key]['amount'] += $row['amount'];
+		}
+		if ($fee !== '' && !isset($fees[$fee])) {
+			$fees[$fee] = ['fee' => $fee, 'payers' => 0, 'amount' => 0.0];
+		}
+		ksort($fees, SORT_STRING | SORT_FLAG_CASE);
+
+		$rows = $fee === ''
+			? $allRows
+			: array_values(array_filter($allRows, function ($row) use ($fee) {
+				return $row['fee'] === $fee;
+			}));
+
+		$students = [];
+		$totalAmount = 0.0;
+		$paidCount = 0;
+		$partialCount = 0;
+		foreach ($rows as $row) {
+			$students[$row['studno']] = true;
+			$totalAmount += $row['amount'];
+			if ($row['status'] === 'paid') {
+				$paidCount++;
+			} elseif ($row['status'] === 'partial') {
+				$partialCount++;
+			}
+		}
+
+		// The same student can pay the same fee in two terms when the term
+		// filter is open, so the term column only shows when it can differ.
+		$showTerm = $sem === '' || $sy === '';
+		$termLabel = ($sem === '' && $sy === '') ? 'All terms' : trim($sem . ' ' . $sy);
+		$periodLabel = date('M d, Y', strtotime($from)) . ' to ' . date('M d, Y', strtotime($to));
+		$query = 'from=' . urlencode($from) . '&to=' . urlencode($to)
+			. '&sem=' . urlencode($sem) . '&sy=' . urlencode($sy)
+			. '&course=' . urlencode($course);
+
+		if ($this->input->get('print', true) === '1') {
+			$columns = ['#', 'Student No.', 'Student Name', 'Course & Year'];
+			$aligns  = ['center', 'left', 'left', 'left'];
+			if ($showTerm) {
+				$columns[] = 'Term';
+				$aligns[]  = 'left';
+			}
+			array_push($columns, 'O.R. No.', 'Date Paid', 'Amount', 'Status');
+			array_push($aligns, 'left', 'left', 'right', 'left');
+
+			$sections = [];
+			foreach ($fee === '' ? array_keys($fees) : [$fee] as $item) {
+				$secRows = [];
+				$secTotal = 0.0;
+				foreach ($rows as $row) {
+					if ($row['fee'] !== $item) {
+						continue;
+					}
+					$line = [count($secRows) + 1, $row['studno'], $row['name'], $row['courseYear']];
+					if ($showTerm) {
+						$line[] = $row['term'];
+					}
+					array_push(
+						$line,
+						$row['orNumbers'],
+						date('M d, Y', strtotime($row['lastDate'])),
+						'₱ ' . number_format($row['amount'], 2),
+						$this->feePayerStatusText($row)
+					);
+					$secRows[] = $line;
+					$secTotal += $row['amount'];
+				}
+				$secTotals = array_fill(0, count($columns), '');
+				$secTotals[2] = 'Total — ' . number_format(count($secRows)) . ' paid';
+				$secTotals[count($columns) - 2] = '₱ ' . number_format($secTotal, 2);
+
+				$sections[] = [
+					'title'         => $item,
+					'columns'       => $columns,
+					'rows'          => $secRows,
+					'aligns'        => $aligns,
+					'totals'        => $secRows ? $secTotals : null,
+					'empty_message' => 'No payments for this fee in the period.',
+				];
+			}
+
+			$meta = [
+				['label' => 'Period', 'value' => $periodLabel],
+				['label' => 'Term', 'value' => $termLabel],
+			];
+			if ($course !== '') {
+				$meta[] = ['label' => 'Course', 'value' => $course];
+			}
+			array_push(
+				$meta,
+				['label' => 'Students Paid', 'value' => number_format(count($students))],
+				['label' => 'Total Collected', 'value' => '₱ ' . number_format($totalAmount, 2)],
+				['label' => 'Printed', 'value' => date('F d, Y \a\t g:i A')]
+			);
+
+			$this->renderReportPrint(
+				$fee === '' ? 'Paid Students by Fee' : 'Paid Students — ' . $fee,
+				$meta,
+				[],
+				[],
+				[],
+				null,
+				base_url('Accounting/feePayers?' . $query . '&fee=' . urlencode($fee)),
+				'landscape',
+				'No payments in this period.',
+				$sections
+			);
+			return;
+		}
+
+		[$semOptions, $syOptions] = $this->statementTermOptions($activeSem, $activeSy);
+
+		$this->load->view('accounting_fee_payers', [
+			'from'         => $from,
+			'to'           => $to,
+			'sem'          => $sem,
+			'sy'           => $sy,
+			'fee'          => $fee,
+			'course'       => $course,
+			'query'        => $query,
+			'termLabel'    => $termLabel,
+			'periodLabel'  => $periodLabel,
+			'semOptions'   => $semOptions,
+			'syOptions'    => $syOptions,
+			'courseList'   => $this->courseList(),
+			'fees'         => array_values($fees),
+			'allStudents'  => count($allStudents),
+			'rows'         => $rows,
+			'showTerm'     => $showTerm,
+			'studentCount' => count($students),
+			'totalAmount'  => $totalAmount,
+			'paidCount'    => $paidCount,
+			'partialCount' => $partialCount,
 		]);
 	}
 }
