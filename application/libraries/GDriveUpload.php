@@ -19,8 +19,16 @@ defined('BASEPATH') or exit('No direct script access allowed');
 class GDriveUpload
 {
     const TOKEN_URL  = 'https://oauth2.googleapis.com/token';
+    // Some hosts can reach www.googleapis.com but not oauth2.googleapis.com —
+    // the v4 endpoint is the same token service on a different edge.
+    const TOKEN_URL_ALT = 'https://www.googleapis.com/oauth2/v4/token';
     const FILES_URL  = 'https://www.googleapis.com/drive/v3/files';
     const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true';
+    // Resumable-upload protocol — used automatically for files >= 64 MiB so
+    // multi-GB dumps stream in chunks instead of loading into memory.
+    const RESUMABLE_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,webViewLink';
+    const RESUMABLE_MIN = 67108864; // 64 MiB
+    const CHUNK_SIZE    = 8388608;  // 8 MiB — Drive requires multiples of 256 KiB
     const SCOPE      = 'https://www.googleapis.com/auth/drive.file';
     const FOLDER_MIME = 'application/vnd.google-apps.folder';
     const FOLDER_NAME = 'FBMSO Backups';
@@ -80,6 +88,39 @@ class GDriveUpload
     public function resolvedFolderId()
     {
         return $this->resolvedFolder;
+    }
+
+    /**
+     * Exchange an OAuth authorization code for a refresh token.
+     *
+     * @return string|false refresh token on success, false on failure (see error()).
+     */
+    public function exchangeCode($clientId, $clientSecret, $code, $redirectUri)
+    {
+        $resp = $this->tokenPost(array(
+            'code'          => $code,
+            'client_id'     => $clientId,
+            'client_secret' => $clientSecret,
+            'redirect_uri'  => $redirectUri,
+            'grant_type'    => 'authorization_code',
+        ));
+
+        if ($resp === null) {
+            return false; // error() already carries the curl failure detail
+        }
+
+        list($status, $raw) = $resp;
+        $data    = json_decode($raw, true);
+        $refresh = isset($data['refresh_token']) ? (string)$data['refresh_token'] : '';
+
+        if ($status >= 200 && $status < 300 && $refresh !== '') {
+            return $refresh;
+        }
+
+        $this->error = isset($data['error_description']) ? (string)$data['error_description']
+                     : (isset($data['error']) ? (string)$data['error']
+                     : 'Google token exchange failed (HTTP ' . $status . ')');
+        return false;
     }
 
     /**
@@ -143,14 +184,25 @@ class GDriveUpload
     private $isPermError = false;
 
     /**
-     * One multipart upload attempt. Keeps the last error in $this->error and
-     * flags permission-style failures in $this->isPermError so upload() can
-     * decide whether the auto-folder fallback is worth trying.
+     * One upload attempt. Picks multipart (small files, one request) or
+     * resumable chunked (large files, flat memory) by size. Keeps the last
+     * error in $this->error and flags permission-style failures in
+     * $this->isPermError so upload() can decide whether the auto-folder
+     * fallback is worth trying.
      */
     private function doUpload($token, $filePath, $name, $folderId)
     {
         $this->isPermError = false;
 
+        $size = filesize($filePath);
+        if ($size !== false && $size >= self::RESUMABLE_MIN) {
+            return $this->doUploadResumable($token, $filePath, $name, $folderId);
+        }
+        return $this->doUploadMultipart($token, $filePath, $name, $folderId);
+    }
+
+    private function doUploadMultipart($token, $filePath, $name, $folderId)
+    {
         $meta = array('name' => $name);
         if ($folderId !== '') {
             $meta['parents'] = array($folderId);
@@ -193,6 +245,184 @@ class GDriveUpload
         $msg = isset($data['error']['message']) ? (string)$data['error']['message'] : trim((string)$raw);
         $this->error = 'Drive upload failed (HTTP ' . $status . '): ' . substr($msg, 0, 300);
         return false;
+    }
+
+    /**
+     * Resumable-upload path for large dumps: opens a session, streams the
+     * file in 8 MiB chunks (flat ~8MB memory regardless of file size), and
+     * on a dropped connection asks the session how much Google already has
+     * and continues from there instead of restarting.
+     */
+    private function doUploadResumable($token, $filePath, $name, $folderId)
+    {
+        $size = filesize($filePath);
+        if ($size === false || $size <= 0) {
+            $this->error = 'cannot stat upload file';
+            return false;
+        }
+
+        $meta = array('name' => $name);
+        if ($folderId !== '') {
+            $meta['parents'] = array($folderId);
+        }
+
+        // --- Open the resumable session --------------------------------
+        $hdrs = array();
+        $resp = $this->httpRaw('POST', self::RESUMABLE_URL, json_encode($meta), array(
+            'Authorization: Bearer ' . $token,
+            'Content-Type: application/json; charset=UTF-8',
+            'X-Upload-Content-Type: application/gzip',
+            'X-Upload-Content-Length: ' . $size,
+        ), 60, $hdrs);
+
+        if ($resp === null) {
+            return false;
+        }
+
+        list($status, $raw) = $resp;
+        $session = isset($hdrs['location']) ? $hdrs['location'] : '';
+        if ($session === '' || !($status >= 200 && $status < 300)) {
+            $data = json_decode($raw, true);
+            if ($status === 403 || $status === 404) {
+                $reason = isset($data['error']['errors'][0]['reason']) ? (string)$data['error']['errors'][0]['reason'] : '';
+                $this->isPermError = in_array($reason, array('notFound', 'insufficientFilePermissions', 'insufficientPermissions'), true);
+            }
+            $msg = isset($data['error']['message']) ? (string)$data['error']['message'] : trim((string)$raw);
+            $this->error = 'Drive upload failed (HTTP ' . $status . '): ' . substr($msg, 0, 300);
+            return false;
+        }
+
+        $fh = fopen($filePath, 'rb');
+        if (!$fh) {
+            $this->error = 'cannot open upload file';
+            return false;
+        }
+
+        // --- Stream chunks ----------------------------------------------
+        $offset   = 0;
+        $failures = 0;
+        $final    = null;
+
+        while ($offset < $size) {
+            $chunk = fread($fh, min(self::CHUNK_SIZE, $size - $offset));
+            if ($chunk === false || $chunk === '') {
+                fclose($fh);
+                $this->error = 'could not read backup file for upload';
+                return false;
+            }
+            $end = $offset + strlen($chunk) - 1;
+
+            $resp = $this->httpRaw('PUT', $session, $chunk, array(
+                'Authorization: Bearer ' . $token,
+                'Content-Type: application/gzip',
+                'Content-Range: bytes ' . $offset . '-' . $end . '/' . $size,
+            ), 300, $hdrs);
+
+            $status = ($resp !== null) ? $resp[0] : 0;
+            $raw    = ($resp !== null) ? $resp[1] : '';
+
+            if ($status === 308) {
+                // Chunk accepted — the Range header is authoritative for how
+                // many bytes actually arrived (a cut mid-send counts less).
+                if (isset($hdrs['range']) && preg_match('/bytes=(\d+)-(\d+)/', $hdrs['range'], $m)) {
+                    $offset = (int)$m[2] + 1;
+                    fseek($fh, $offset);
+                } else {
+                    $offset = $end + 1;
+                }
+                $failures = 0;
+                continue;
+            }
+
+            if ($status >= 200 && $status < 300) {
+                $final = json_decode($raw, true);
+                break;
+            }
+
+            if (++$failures > 8) {
+                fclose($fh);
+                $detail = trim((string)$raw) !== '' ? trim((string)$raw) : $this->error;
+                $this->error = 'Drive upload failed after retries (HTTP ' . $status . '): ' . substr($detail, 0, 300);
+                return false;
+            }
+
+            // Dropped mid-upload — ask the session how much it has and
+            // continue from there (may be less than we think we sent).
+            sleep(min(10, $failures * 2));
+            $offset = $this->queryUploadOffset($session, $size, $token);
+            fseek($fh, $offset);
+        }
+
+        fclose($fh);
+
+        if (is_array($final) && !empty($final['id'])) {
+            return array(
+                'id'   => (string)$final['id'],
+                'link' => isset($final['webViewLink']) ? (string)$final['webViewLink']
+                        : 'https://drive.google.com/file/d/' . $final['id'] . '/view',
+            );
+        }
+
+        $this->error = 'Drive upload ended without a file id';
+        return false;
+    }
+
+    /**
+     * Ask a resumable session how many bytes it has so far.
+     * Returns the offset to continue writing from.
+     */
+    private function queryUploadOffset($session, $size, $token)
+    {
+        $hdrs = array();
+        $resp = $this->httpRaw('PUT', $session, '', array(
+            'Authorization: Bearer ' . $token,
+            'Content-Range: bytes */' . $size,
+        ), 60, $hdrs);
+
+        if ($resp !== null && isset($hdrs['range']) && preg_match('/bytes=(\d+)-(\d+)/', $hdrs['range'], $m)) {
+            return (int)$m[2] + 1;
+        }
+        return 0; // session holds nothing (or is gone) — start over
+    }
+
+    /**
+     * Low-level HTTP request that also captures response headers (needed
+     * for resumable Location / Range). No retry — callers decide.
+     */
+    private function httpRaw($method, $url, $body, array $headers, $timeout, &$respHeaders)
+    {
+        $respHeaders = array();
+        $ch = curl_init($url);
+        curl_setopt_array($ch, array(
+            CURLOPT_CUSTOMREQUEST  => $method,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_CONNECTTIMEOUT => 30,
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
+            CURLOPT_HEADERFUNCTION => function ($ch, $line) use (&$respHeaders) {
+                $len = strlen($line);
+                $t   = trim($line);
+                if (strpos($t, ':') !== false) {
+                    list($k, $v) = explode(':', $t, 2);
+                    $respHeaders[strtolower(trim($k))] = trim($v);
+                }
+                return $len;
+            },
+        ));
+
+        $raw    = curl_exec($ch);
+        $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $errMsg = curl_error($ch);
+        unset($ch); // curl handles free themselves since PHP 8.0 (curl_close deprecated in 8.5)
+
+        if ($raw === false) {
+            $this->error = 'HTTPS request failed: ' . $errMsg;
+            return null;
+        }
+
+        return array($status, (string)$raw);
     }
 
     /**
@@ -241,16 +471,12 @@ class GDriveUpload
     private function accessToken()
     {
         if ($this->mode === 'oauth') {
-            $resp = $this->httpPost(
-                self::TOKEN_URL,
-                http_build_query(array(
-                    'grant_type'    => 'refresh_token',
-                    'refresh_token' => $this->oauth['refresh_token'],
-                    'client_id'     => $this->oauth['client_id'],
-                    'client_secret' => $this->oauth['client_secret'],
-                )),
-                array('Content-Type: application/x-www-form-urlencoded')
-            );
+            $resp = $this->tokenPost(array(
+                'grant_type'    => 'refresh_token',
+                'refresh_token' => $this->oauth['refresh_token'],
+                'client_id'     => $this->oauth['client_id'],
+                'client_secret' => $this->oauth['client_secret'],
+            ));
 
             if ($resp === null) {
                 return null;
@@ -294,14 +520,10 @@ class GDriveUpload
 
         $jwt .= '.' . $this->b64($signature);
 
-        $resp = $this->httpPost(
-            self::TOKEN_URL,
-            http_build_query(array(
-                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                'assertion'  => $jwt,
-            )),
-            array('Content-Type: application/x-www-form-urlencoded')
-        );
+        $resp = $this->tokenPost(array(
+            'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            'assertion'  => $jwt,
+        ));
 
         if ($resp === null) {
             return null;
@@ -317,6 +539,28 @@ class GDriveUpload
         $msg = isset($data['error_description']) ? (string)$data['error_description']
              : (isset($data['error']) ? (string)$data['error'] : trim((string)$raw));
         $this->error = 'Google token request failed (HTTP ' . $status . '): ' . substr($msg, 0, 300);
+        return null;
+    }
+
+    /**
+     * POST url-encoded params to Google's token service. Tries the canonical
+     * endpoint, then the same service on the reachable www.googleapis.com
+     * edge — some hosts' routes to oauth2.googleapis.com time out entirely.
+     */
+    private function tokenPost(array $params)
+    {
+        $body    = http_build_query($params);
+        $headers = array('Content-Type: application/x-www-form-urlencoded');
+
+        foreach (array(self::TOKEN_URL, self::TOKEN_URL_ALT) as $url) {
+            $resp = $this->httpPost($url, $body, $headers, 60);
+            if ($resp !== null) {
+                return $resp;
+            }
+            $lastErr = $this->error;
+        }
+
+        $this->error = isset($lastErr) ? $lastErr : 'Google token endpoint unreachable';
         return null;
     }
 
@@ -346,7 +590,7 @@ class GDriveUpload
             $curlErr = curl_errno($ch);
             $status  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $errMsg  = curl_error($ch);
-            curl_close($ch);
+            unset($ch); // curl handles free themselves since PHP 8.0 (curl_close deprecated in 8.5)
 
             if ($raw !== false) {
                 return array($status, (string)$raw);
@@ -375,7 +619,7 @@ class GDriveUpload
         $raw     = curl_exec($ch);
         $curlErr = curl_error($ch);
         $status  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        unset($ch); // curl handles free themselves since PHP 8.0 (curl_close deprecated in 8.5)
 
         if ($raw === false) {
             $this->error = 'HTTPS request failed: ' . $curlErr;

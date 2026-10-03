@@ -506,29 +506,20 @@ class Backup extends CI_Controller
         }
 
         $s = $this->getSettings();
-        $ch = curl_init('https://oauth2.googleapis.com/token');
-        curl_setopt_array($ch, array(
-            CURLOPT_POST           => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => array('Content-Type: application/x-www-form-urlencoded'),
-            CURLOPT_POSTFIELDS     => http_build_query(array(
-                'code'          => $code,
-                'client_id'     => $s['drive_client_id'],
-                'client_secret' => $s['drive_client_secret'],
-                'redirect_uri'  => site_url('backup/google-callback'),
-                'grant_type'    => 'authorization_code',
-            )),
-            CURLOPT_CONNECTTIMEOUT => 15,
-            CURLOPT_TIMEOUT        => 30,
+        require_once APPPATH . 'libraries/GDriveUpload.php';
+        $gd = new GDriveUpload(array(
+            'client_id'     => 'x',
+            'client_secret' => 'x',
+            'refresh_token' => 'x',
         ));
-        $raw = curl_exec($ch);
-        $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        $refresh = $gd->exchangeCode(
+            $s['drive_client_id'],
+            $s['drive_client_secret'],
+            $code,
+            site_url('backup/google-callback')
+        );
 
-        $data = json_decode((string)$raw, true);
-        $refresh = isset($data['refresh_token']) ? (string)$data['refresh_token'] : '';
-
-        if ($status >= 200 && $status < 300 && $refresh !== '') {
+        if ($refresh !== false) {
             $this->db->where('id', 1)->update('backup_settings', array(
                 'drive_refresh_token' => $refresh,
                 'drive_enabled'       => 1,
@@ -536,9 +527,7 @@ class Backup extends CI_Controller
             ));
             $this->session->set_flashdata('success', 'Google Drive connected — backups will upload to a "FBMSO Backups" folder in your Drive.');
         } else {
-            $msg = isset($data['error_description']) ? (string)$data['error_description']
-                 : (isset($data['error']) ? (string)$data['error'] : 'HTTP ' . $status);
-            $this->session->set_flashdata('danger', 'Drive connection failed: ' . $msg);
+            $this->session->set_flashdata('danger', 'Drive connection failed: ' . $gd->error());
         }
         redirect('backup');
     }
@@ -895,12 +884,14 @@ class Backup extends CI_Controller
             return; // nothing delivered it — this file is the only copy
         }
 
-        // A queued (not yet sent) email may still need this file attached.
-        $pending = $this->db->where('attachment_path', $path)
-            ->where_in('status', array('pending'))
+        // Deletion waits until every queue row referencing this file has
+        // actually sent — 'pending' still needs it, 'failed' means the email
+        // never delivered it, so the file is still the only delivered copy.
+        $undelivered = $this->db->where('attachment_path', $path)
+            ->where('status !=', 'sent')
             ->count_all_results('fbmso_email_queue');
-        if ($pending > 0) {
-            $messages[] = 'local copy kept for now: a queued email is still carrying it';
+        if ($undelivered > 0) {
+            $messages[] = 'local copy kept for now: the email attachment has not been sent yet';
             return;
         }
 

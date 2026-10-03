@@ -1,0 +1,4 @@
+<?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
+
+ERROR - 2026-10-04 07:26:24 --> Severity: Warning --> include(/Applications/XAMPP/xamppfiles/htdocs/fbmso_attendance/application/views/errors/cli/error_general.php): Failed to open stream: No such file or directory /Applications/XAMPP/xamppfiles/htdocs/fbmso_attendance/system/core/Exceptions.php 183
+ERROR - 2026-10-04 07:26:24 --> Severity: Warning --> include(): Failed opening '/Applications/XAMPP/xamppfiles/htdocs/fbmso_attendance/application/views/errors/cli/error_general.php' for inclusion (include_path='.:/opt/homebrew/Cellar/php/8.5.9/share/php/pear') /Applications/XAMPP/xamppfiles/htdocs/fbmso_attendance/system/core/Exceptions.php 183
