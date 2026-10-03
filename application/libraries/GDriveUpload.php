@@ -337,6 +337,9 @@ class GDriveUpload
                 CURLOPT_POSTFIELDS     => $body,
                 CURLOPT_CONNECTTIMEOUT => 30,
                 CURLOPT_TIMEOUT        => $timeout,
+                // Shared hosts frequently have broken IPv6 routes — googleapis
+                // resolves v6-first and the connect hangs until timeout.
+                CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
             ));
 
             $raw     = curl_exec($ch);
@@ -366,6 +369,7 @@ class GDriveUpload
             CURLOPT_HTTPHEADER     => array('Authorization: Bearer ' . $token),
             CURLOPT_CONNECTTIMEOUT => 30,
             CURLOPT_TIMEOUT        => 60,
+            CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
         ));
 
         $raw     = curl_exec($ch);
