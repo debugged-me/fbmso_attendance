@@ -247,6 +247,15 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         </a>
                     </li>
 
+                    <!-- Error log viewer — Super Admin only, enforced by
+                         AuthGuard and the Errorlogs controller. -->
+                    <li class="<?= strpos($currentUriLower, 'error-logs') === 0 || strpos($currentUriLower, 'errorlogs') === 0 ? 'mm-active active' : ''; ?>">
+                        <a href="<?= base_url('error-logs'); ?>" class="waves-effect">
+                            <i class="mdi mdi-clipboard-text-outline"></i>
+                            <span> Error Logs </span>
+                        </a>
+                    </li>
+
                 </ul>
             </div>
 

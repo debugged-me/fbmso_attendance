@@ -191,6 +191,11 @@ $config['authguard_roles'] = array(
     // every record including password hashes and tokens. The controller
     // checks this for itself too.
     'backup/*' => array('Super Admin'),
+
+    // Error log viewer. Super Admin only — log lines carry absolute file
+    // paths, SQL fragments, IPs, and the raw PHP error_log. The controller
+    // checks this for itself too.
+    'errorlogs/*' => array('Super Admin'),
 );
 
 /*

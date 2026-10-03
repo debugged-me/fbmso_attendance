@@ -79,6 +79,10 @@ $route['backup/cron']            = 'backup/cron';
 $route['backup/cron/(:any)']     = 'backup/cron/$1';
 $route['backup/file/(:num)']     = 'backup/file/$1';
 $route['backup/remove/(:num)']   = 'backup/remove/$1';
+
+$route['error-logs']                  = 'errorlogs/index';
+$route['error-logs/download/(:any)']  = 'errorlogs/download/$1';
+$route['error-logs/clear/(:any)']     = 'errorlogs/clear/$1';
 $route['fbmso-personnels']        = 'FbmsoPersonnels/index';
 $route['admin/fbmso-personnels']  = 'FbmsoPersonnels/manage';
 
