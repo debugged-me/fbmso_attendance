@@ -328,10 +328,17 @@ if (!function_exists('fbmso_mailqueue_deliver'))
         $body = (string) $htmlBody;
         $attachmentPath = trim((string) $attachmentPath);
         if ($attachmentPath !== '' && is_file($attachmentPath) && method_exists($ci->email, 'attach')) {
-            $ci->email->attach($attachmentPath, 'inline');
-            $cid = method_exists($ci->email, 'attachment_cid') ? $ci->email->attachment_cid($attachmentPath) : '';
-            if ($cid) {
-                $body = str_replace('__INLINE_IMAGE_CID__', $cid, $body);
+            if (strpos($body, '__INLINE_IMAGE_CID__') !== false) {
+                // Legacy inline-image use: CID-embed so the image renders in place.
+                $ci->email->attach($attachmentPath, 'inline');
+                $cid = method_exists($ci->email, 'attachment_cid') ? $ci->email->attachment_cid($attachmentPath) : '';
+                if ($cid) {
+                    $body = str_replace('__INLINE_IMAGE_CID__', $cid, $body);
+                }
+            } else {
+                // Ordinary file attachment (e.g. a .sql.gz backup): proper
+                // attachment disposition so mail clients show it as a file.
+                $ci->email->attach($attachmentPath);
             }
         }
         // Clean up any placeholder that wasn't replaced (missing file).

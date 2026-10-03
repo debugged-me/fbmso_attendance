@@ -71,6 +71,14 @@ $config['authguard_public'] = array(
     // weak_passwords remain CLI-only and 404 over HTTP.
     'securitycheck/daily_report',
 
+    // --- Backup cron ------------------------------------------------------
+    // Backup/cron authenticates with its own shared token
+    // (hash_equals against Backup::token) and is called by cron with no
+    // session. ONLY this method is public: the download/settings endpoints
+    // stay behind the Super Admin session gate because dumps contain
+    // password hashes and tokens.
+    'backup/cron',
+
     // --- Mobile API (native Flutter app) --------------------------------
     // The entire /api/mobile/* namespace is bearer-token authenticated
     // inside each controller (MobileAuth, MobileAttendance, ...). It does

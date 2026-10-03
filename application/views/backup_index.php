@@ -101,6 +101,220 @@
       </div>
     </div>
 
+    <!-- ==================== Automation ==================== -->
+    <div class="row mt-4">
+      <div class="col-12">
+        <div class="bk-card-wrap">
+          <div class="bk-card-head">
+            <h5><i class="mdi mdi-clock-outline"></i> Automatic backups</h5>
+            <a href="<?= base_url('backup/key'); ?>" class="up-btn up-btn-ghost" style="padding:5px 12px;font-size:.75rem"><i class="mdi mdi-key-outline"></i> Cron setup &amp; key</a>
+            <?php if (!empty($settings['auto_enabled'])): ?>
+              <span class="badge badge-success" style="font-size:.72rem;padding:.4rem .7rem"><i class="mdi mdi-check"></i> Enabled</span>
+            <?php else: ?>
+              <span class="badge badge-secondary" style="font-size:.72rem;padding:.4rem .7rem">Off</span>
+            <?php endif; ?>
+          </div>
+          <div class="bk-card-body">
+            <form method="post" action="<?= base_url('backup/settings'); ?>">
+              <div class="form-row align-items-end">
+                <div class="form-group col-md-3">
+                  <div class="custom-control custom-checkbox" style="padding-top:8px">
+                    <input type="checkbox" class="custom-control-input" id="auto_enabled" name="auto_enabled" value="1" <?= !empty($settings['auto_enabled']) ? 'checked' : ''; ?>>
+                    <label class="custom-control-label" for="auto_enabled"><b>Run automatically</b></label>
+                  </div>
+                </div>
+                <div class="form-group col-md-3">
+                  <label for="backup_time">Backup time (Manila)</label>
+                  <input type="time" class="form-control" id="backup_time" name="backup_time" value="<?= html_escape((string)$settings['backup_time']); ?>">
+                </div>
+                <div class="form-group col-md-3">
+                  <label for="keep_days">Keep stored backups for</label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="keep_days" name="keep_days" min="1" max="90" value="<?= (int)$settings['keep_days']; ?>">
+                    <div class="input-group-append"><span class="input-group-text">days</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="up-section-head"><span class="up-section-dot"></span><span class="up-section-label">Email delivery</span><span class="up-section-line"></span></div>
+              <div class="form-row align-items-end">
+                <div class="form-group col-md-3">
+                  <div class="custom-control custom-checkbox" style="padding-top:8px">
+                    <input type="checkbox" class="custom-control-input" id="email_enabled" name="email_enabled" value="1" <?= !empty($settings['email_enabled']) ? 'checked' : ''; ?>>
+                    <label class="custom-control-label" for="email_enabled"><b>Email the backup</b></label>
+                  </div>
+                </div>
+                <div class="form-group col-md-2">
+                  <label for="email_time">Send at (Manila)</label>
+                  <input type="time" class="form-control" id="email_time" name="email_time" value="<?= html_escape((string)$settings['email_time']); ?>">
+                </div>
+                <div class="form-group col-md-2">
+                  <label for="attach_max_mb">Attach if under</label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="attach_max_mb" name="attach_max_mb" min="1" max="50" value="<?= (int)$settings['attach_max_mb']; ?>">
+                    <div class="input-group-append"><span class="input-group-text">MB</span></div>
+                  </div>
+                </div>
+                <div class="form-group col-md-5">
+                  <label for="email_recipients">Recipients (comma-separated)</label>
+                  <input type="text" class="form-control" id="email_recipients" name="email_recipients"
+                         placeholder="you@gmail.com, other@gmail.com"
+                         value="<?= html_escape(implode(', ', preg_split('/[\s,;]+/', (string)$settings['email_recipients'], -1, PREG_SPLIT_NO_EMPTY))); ?>">
+                </div>
+              </div>
+
+              <div class="up-section-head"><span class="up-section-dot"></span><span class="up-section-label">Google Drive</span><span class="up-section-line"></span></div>
+              <div class="form-row">
+                <div class="form-group col-md-3">
+                  <div class="custom-control custom-checkbox" style="padding-top:8px">
+                    <input type="checkbox" class="custom-control-input" id="drive_enabled" name="drive_enabled" value="1" <?= !empty($settings['drive_enabled']) ? 'checked' : ''; ?>>
+                    <label class="custom-control-label" for="drive_enabled"><b>Upload to Google Drive</b></label>
+                  </div>
+                </div>
+                <div class="form-group col-md-4">
+                  <label for="drive_folder_id">Drive folder ID <small class="text-muted">(optional)</small></label>
+                  <input type="text" class="form-control" id="drive_folder_id" name="drive_folder_id"
+                         placeholder="blank = auto &quot;FBMSO Backups&quot; folder"
+                         value="<?= html_escape((string)$settings['drive_folder_id']); ?>">
+                </div>
+              </div>
+
+              <?php $gdConnected = trim((string)$settings['drive_refresh_token']) !== ''; ?>
+              <div class="up-panel" style="margin-bottom:14px">
+                <div class="d-flex align-items-center justify-content-between" style="flex-wrap:wrap;gap:8px">
+                  <div>
+                    <b><i class="mdi mdi-google-drive"></i> Option A — connect your Google account</b>
+                    <div class="text-muted" style="font-size:.82rem;margin-top:2px">
+                      Uploads land in your own Drive (a folder named <b>FBMSO Backups</b> is created automatically). One-time consent.
+                    </div>
+                  </div>
+                  <?php if ($gdConnected): ?>
+                    <span class="badge badge-success" style="font-size:.75rem;padding:.45rem .7rem"><i class="mdi mdi-check"></i> Connected</span>
+                  <?php endif; ?>
+                </div>
+                <div class="form-row" style="margin-top:10px">
+                  <div class="form-group col-md-5">
+                    <label for="drive_client_id">OAuth Client ID</label>
+                    <input type="text" class="form-control" id="drive_client_id" name="drive_client_id"
+                           placeholder="xxxx.apps.googleusercontent.com"
+                           value="<?= html_escape((string)$settings['drive_client_id']); ?>">
+                  </div>
+                  <div class="form-group col-md-4">
+                    <label for="drive_client_secret">OAuth Client Secret <?= !$gdConnected && $settings['drive_client_secret'] !== '' ? '<span class="badge badge-success">saved</span>' : ''; ?></label>
+                    <input type="password" class="form-control" id="drive_client_secret" name="drive_client_secret"
+                           placeholder="<?= $settings['drive_client_secret'] !== '' ? '(saved — leave blank to keep)' : 'GOCSPX-…'; ?>">
+                  </div>
+                </div>
+                <small class="text-muted d-block" style="margin-bottom:8px">
+                  In Google Cloud Console &rarr; <b>APIs &amp; Services &rarr; Credentials &rarr; Create OAuth client ID &rarr; Web application</b>,
+                  and register this redirect URI: <code><?= html_escape(site_url('backup/google-callback')); ?></code>
+                </small>
+                <div class="d-flex" style="gap:8px">
+                  <a href="<?= base_url('backup/google-connect'); ?>" class="up-btn up-btn-primary" style="font-size:.8rem;padding:7px 14px">
+                    <i class="mdi mdi-google"></i> <?= $gdConnected ? 'Reconnect Google Drive' : 'Connect Google Drive'; ?>
+                  </a>
+                  <?php if ($gdConnected): ?>
+                    <button type="submit" form="gd-disconnect" class="up-btn up-btn-danger" style="font-size:.8rem;padding:7px 14px">
+                      <i class="mdi mdi-link-variant-off"></i> Disconnect
+                    </button>
+                  <?php endif; ?>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="drive_sa_json">Option B — service account JSON <small class="text-muted">(Shared Drive only)</small> <?= !empty($settings['drive_sa_json']) ? '<span class="badge badge-success">saved</span>' : ''; ?></label>
+                <textarea class="form-control" id="drive_sa_json" name="drive_sa_json" rows="2" style="font-family:monospace;font-size:.78rem"
+                          placeholder='{"type":"service_account","client_email":"…","private_key":"…"} — only works with a Shared Drive; leave blank to keep the saved key'></textarea>
+                <small class="text-muted">
+                  Service accounts have no Drive storage of their own — this path only works when the target is a
+                  <b>Shared Drive</b> (Google Workspace) with the account added as a member. For a normal folder, use Option A.
+                </small>
+              </div>
+
+              <div class="d-flex align-items-center" style="gap:10px;flex-wrap:wrap">
+                <button type="submit" class="up-btn up-btn-primary"><i class="mdi mdi-content-save-outline"></i> Save automation</button>
+              </div>
+            </form>
+            <form id="gd-disconnect" method="post" action="<?= base_url('backup/google-disconnect'); ?>" style="display:none"></form>
+            <form method="post" action="<?= base_url('backup/run-now'); ?>" style="display:inline"
+                  onsubmit="return confirm('Run a full backup right now?\n\nIt will generate the dump, then email and upload to Drive per these settings.')">
+              <button type="submit" class="up-btn up-btn-ghost" style="margin-top:10px"><i class="mdi mdi-play-circle-outline"></i> Run now (backup + email + Drive)</button>
+            </form>
+
+            <?php if (!empty($settings['auto_enabled'])): ?>
+              <div class="up-note" style="margin-top:16px;margin-bottom:0">
+                <i class="mdi mdi-clock-outline"></i>
+                <span>
+                  Automation fires when this URL is requested — point your server's cron at it:
+                  <code style="display:block;margin-top:6px;word-break:break-all"><?= html_escape($cron_line); ?></code>
+                  Local cPanel/DirectAdmin: add it in <b>Cron Jobs</b>. On this machine you can also run
+                  <code>php index.php Backup cron</code>. Keep the URL secret — the key authenticates it.
+                </span>
+              </div>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== Stored backups ==================== -->
+    <div class="row mt-4">
+      <div class="col-12">
+        <div class="bk-card-wrap">
+          <div class="bk-card-head">
+            <h5><i class="mdi mdi-archive-outline"></i> Stored backups</h5>
+            <span class="up-page-sub" style="margin:0">Kept on this server for <?= (int)$settings['keep_days']; ?> day(s)</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Generated</th><th>File</th><th>Size</th><th>Trigger</th><th>Status</th><th>Delivered</th><th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php if (empty($runs)): ?>
+                  <tr><td colspan="7" class="text-center text-muted py-4">No scheduled backups yet. Enable automation above or press <b>Run now</b>.</td></tr>
+                <?php else: ?>
+                  <?php foreach ($runs as $r): ?>
+                    <tr>
+                      <td><small class="text-muted"><?= html_escape((string)$r['created_at']); ?></small></td>
+                      <td style="font-family:monospace;font-size:.8rem"><?= html_escape((string)$r['filename']); ?></td>
+                      <td><?= $r['file_size'] ? number_format((int)$r['file_size'] / 1048576, 1) . ' MB' : '—'; ?></td>
+                      <td><span class="badge badge-light"><?= html_escape((string)$r['triggered_by']); ?></span></td>
+                      <td>
+                        <?php if ($r['status'] === 'ok'): ?>
+                          <span class="badge badge-success">ok</span>
+                        <?php else: ?>
+                          <span class="badge badge-danger" title="<?= html_escape((string)$r['error']); ?>">failed</span>
+                        <?php endif; ?>
+                        <?php if (!empty($r['error']) && $r['status'] === 'ok'): ?>
+                          <span class="badge badge-warning" title="<?= html_escape((string)$r['error']); ?>">partial</span>
+                        <?php endif; ?>
+                      </td>
+                      <td>
+                        <?php if (!empty($r['emailed_at'])): ?><span class="badge badge-info" title="<?= html_escape((string)$r['emailed_at']); ?>"><i class="mdi mdi-email-outline"></i> emailed</span><?php endif; ?>
+                        <?php if (!empty($r['drive_link'])): ?><a class="badge badge-primary" href="<?= html_escape((string)$r['drive_link']); ?>" target="_blank" rel="noopener"><i class="mdi mdi-google-drive"></i> drive</a><?php endif; ?>
+                      </td>
+                      <td class="text-right" style="white-space:nowrap">
+                        <?php if ($r['status'] === 'ok' && $r['filename'] !== ''): ?>
+                          <a href="<?= base_url('backup/file/' . (int)$r['id']); ?>" class="up-btn up-btn-ghost" style="padding:5px 10px;font-size:.72rem"><i class="mdi mdi-download"></i> .sql.gz</a>
+                        <?php endif; ?>
+                        <form method="post" action="<?= base_url('backup/remove/' . (int)$r['id']); ?>" style="display:inline"
+                              onsubmit="return confirm('Delete this stored backup?');">
+                          <button type="submit" class="up-btn up-btn-danger" style="padding:5px 10px;font-size:.72rem"><i class="mdi mdi-delete"></i></button>
+                        </form>
+                      </td>
+                    </tr>
+                  <?php endforeach; ?>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div></div>
   <?php include('includes/footer_plugins.php'); ?>
   <?php include('includes/footer.php'); ?>

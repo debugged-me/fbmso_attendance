@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v21.done';
+    const MARKER = 'schema_migrations_v23.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -45,6 +45,73 @@ class Schema_migrator
     protected function migrations()
     {
         return array(
+
+            // Scheduled database backups: one-row settings table (schedule,
+            // recipients, Google Drive credentials, retention) plus a run
+            // history that doubles as the "did today's backup happen" check
+            // for the cron endpoint.
+            '2026_10_03_backup_tables' => array(
+                'check' => function () {
+                    return !$this->tableExists('backup_settings')
+                        || !$this->tableExists('backup_runs');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "CREATE TABLE IF NOT EXISTS `backup_settings` (
+                            `id` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+                            `auto_enabled` TINYINT(1) NOT NULL DEFAULT 0,
+                            `backup_time` VARCHAR(5) NOT NULL DEFAULT '22:30',
+                            `email_enabled` TINYINT(1) NOT NULL DEFAULT 0,
+                            `email_time` VARCHAR(5) NOT NULL DEFAULT '23:00',
+                            `email_recipients` TEXT NULL,
+                            `attach_max_mb` SMALLINT UNSIGNED NOT NULL DEFAULT 15,
+                            `drive_enabled` TINYINT(1) NOT NULL DEFAULT 0,
+                            `drive_folder_id` VARCHAR(128) NOT NULL DEFAULT '',
+                            `drive_sa_json` MEDIUMTEXT NULL,
+                            `keep_days` SMALLINT UNSIGNED NOT NULL DEFAULT 14,
+                            `updated_at` DATETIME NULL,
+                            PRIMARY KEY (`id`)
+                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
+                    $this->CI->db->query(
+                        "CREATE TABLE IF NOT EXISTS `backup_runs` (
+                            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                            `filename` VARCHAR(255) NOT NULL DEFAULT '',
+                            `file_size` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+                            `tables_count` INT UNSIGNED NOT NULL DEFAULT 0,
+                            `rows_count` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+                            `duration_sec` DECIMAL(8,2) NOT NULL DEFAULT 0,
+                            `status` ENUM('ok','failed') NOT NULL DEFAULT 'ok',
+                            `triggered_by` ENUM('cron','run_now') NOT NULL DEFAULT 'cron',
+                            `emailed_at` DATETIME NULL,
+                            `drive_file_id` VARCHAR(128) NOT NULL DEFAULT '',
+                            `drive_link` VARCHAR(512) NOT NULL DEFAULT '',
+                            `error` VARCHAR(500) NOT NULL DEFAULT '',
+                            `created_at` DATETIME NOT NULL,
+                            PRIMARY KEY (`id`),
+                            KEY `idx_created` (`created_at`)
+                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
+                },
+            ),
+
+            // OAuth user-consent credentials for Drive upload — service
+            // accounts can't upload on regular accounts (no storage quota),
+            // so uploads ride on the connected user's refresh token.
+            '2026_10_03_backup_oauth_columns' => array(
+                'check' => function () {
+                    return $this->tableExists('backup_settings')
+                        && !$this->columnExists('backup_settings', 'drive_refresh_token');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "ALTER TABLE `backup_settings`
+                            ADD COLUMN `drive_client_id` VARCHAR(255) NOT NULL DEFAULT '',
+                            ADD COLUMN `drive_client_secret` VARCHAR(255) NOT NULL DEFAULT '',
+                            ADD COLUMN `drive_refresh_token` VARCHAR(512) NOT NULL DEFAULT ''"
+                    );
+                },
+            ),
 
             // The Backup controller audits downloads as action 'export', but
             // the enum predates it and silently stored a blank action. ENUM
