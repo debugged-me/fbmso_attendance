@@ -128,11 +128,18 @@
                   <input type="time" class="form-control" id="backup_time" name="backup_time" value="<?= html_escape((string)$settings['backup_time']); ?>">
                 </div>
                 <div class="form-group col-md-3">
-                  <label for="keep_days">Keep stored backups for</label>
+                  <label for="keep_days">Delete run history older than</label>
                   <div class="input-group">
                     <input type="number" class="form-control" id="keep_days" name="keep_days" min="1" max="90" value="<?= (int)$settings['keep_days']; ?>">
                     <div class="input-group-append"><span class="input-group-text">days</span></div>
                   </div>
+                </div>
+                <div class="form-group col-md-3">
+                  <div class="custom-control custom-checkbox" style="padding-top:8px">
+                    <input type="checkbox" class="custom-control-input" id="keep_local" name="keep_local" value="1" <?= !empty($settings['keep_local']) ? 'checked' : ''; ?>>
+                    <label class="custom-control-label" for="keep_local">Also keep a copy on this server</label>
+                  </div>
+                  <small class="text-muted">Off = the server copy is deleted as soon as the backup reaches Drive or an emailed attachment is sent. If delivery fails, the copy is kept so the backup isn't lost.</small>
                 </div>
               </div>
 
@@ -262,8 +269,8 @@
       <div class="col-12">
         <div class="bk-card-wrap">
           <div class="bk-card-head">
-            <h5><i class="mdi mdi-archive-outline"></i> Stored backups</h5>
-            <span class="up-page-sub" style="margin:0">Kept on this server for <?= (int)$settings['keep_days']; ?> day(s)</span>
+            <h5><i class="mdi mdi-archive-outline"></i> Backup history</h5>
+            <span class="up-page-sub" style="margin:0"><?= !empty($settings['keep_local']) ? 'Server copies kept' : 'Server copies auto-delete once delivered'; ?> · history kept <?= (int)$settings['keep_days']; ?> day(s)</span>
           </div>
           <div class="table-responsive">
             <table class="table table-sm table-hover mb-0">
@@ -297,8 +304,10 @@
                         <?php if (!empty($r['drive_link'])): ?><a class="badge badge-primary" href="<?= html_escape((string)$r['drive_link']); ?>" target="_blank" rel="noopener"><i class="mdi mdi-google-drive"></i> drive</a><?php endif; ?>
                       </td>
                       <td class="text-right" style="white-space:nowrap">
-                        <?php if ($r['status'] === 'ok' && $r['filename'] !== ''): ?>
+                        <?php if ($r['status'] === 'ok' && !empty($r['local_exists'])): ?>
                           <a href="<?= base_url('backup/file/' . (int)$r['id']); ?>" class="up-btn up-btn-ghost" style="padding:5px 10px;font-size:.72rem"><i class="mdi mdi-download"></i> .sql.gz</a>
+                        <?php elseif ($r['status'] === 'ok' && $r['filename'] !== ''): ?>
+                          <span class="badge badge-light" title="Removed from this server after delivery"><i class="mdi mdi-shield-check"></i> off server</span>
                         <?php endif; ?>
                         <form method="post" action="<?= base_url('backup/remove/' . (int)$r['id']); ?>" style="display:inline"
                               onsubmit="return confirm('Delete this stored backup?');">

@@ -71,6 +71,11 @@ class Backup extends CI_Controller
         $data['stats']     = $this->dbbackup->stats();
         $data['settings']  = $this->getSettings();
         $data['runs']      = $this->db->order_by('id', 'DESC')->limit(10)->get('backup_runs')->result_array();
+        foreach ($data['runs'] as &$r) {
+            $r['local_exists'] = $r['filename'] !== ''
+                && is_file($this->backupDir() . DIRECTORY_SEPARATOR . basename($r['filename']));
+        }
+        unset($r);
         $data['cron_url']  = site_url('backup/cron') . '?key=' . self::token($this);
         $data['cron_line'] = '* * * * * curl -s "' . $data['cron_url'] . '" > /dev/null 2>&1';
         $this->load->view('backup_index', $data);
@@ -197,6 +202,7 @@ class Backup extends CI_Controller
                 `drive_client_secret` VARCHAR(255) NOT NULL DEFAULT '',
                 `drive_refresh_token` VARCHAR(512) NOT NULL DEFAULT '',
                 `keep_days` SMALLINT UNSIGNED NOT NULL DEFAULT 14,
+                `keep_local` TINYINT(1) NOT NULL DEFAULT 0,
                 `updated_at` DATETIME NULL,
                 PRIMARY KEY (`id`)
              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
@@ -206,6 +212,7 @@ class Backup extends CI_Controller
             'drive_client_id'     => "VARCHAR(255) NOT NULL DEFAULT ''",
             'drive_client_secret' => "VARCHAR(255) NOT NULL DEFAULT ''",
             'drive_refresh_token' => "VARCHAR(512) NOT NULL DEFAULT ''",
+            'keep_local'          => "TINYINT(1) NOT NULL DEFAULT 0",
         ) as $col => $type) {
             $exists = $this->db->query(
                 "SHOW COLUMNS FROM `backup_settings` LIKE " . $this->db->escape($col)
@@ -251,6 +258,7 @@ class Backup extends CI_Controller
             'drive_client_secret' => '',
             'drive_refresh_token' => '',
             'keep_days'        => 14,
+            'keep_local'       => 0,
         );
         $row = $this->db->limit(1)->get('backup_settings')->row_array();
         return $row ? array_merge($defaults, $row) : $defaults;
@@ -303,6 +311,7 @@ class Backup extends CI_Controller
                 ? trim((string)$this->input->post('drive_client_secret', true))
                 : (string)$current['drive_client_secret'],
             'keep_days'        => max(1, min(90, (int)$this->input->post('keep_days'))),
+            'keep_local'       => $this->input->post('keep_local') ? 1 : 0,
             'updated_at'       => date('Y-m-d H:i:s'),
         );
 
@@ -650,6 +659,18 @@ class Backup extends CI_Controller
                 }
             }
 
+            // --- Local copy cleanup -----------------------------------------
+            // Drop the server-side .sql.gz once the backup exists elsewhere
+            // (Drive upload done, or email attachment actually sent). If no
+            // channel delivered, the file stays — it's the only copy.
+            if ($latest) {
+                try {
+                    $this->maybeRemoveLocal($latest, $settings, $messages);
+                } catch (Throwable $e) {
+                    $messages[] = 'local cleanup failed: ' . $e->getMessage();
+                }
+            }
+
             // --- Retention --------------------------------------------------
             try {
                 $this->prune((int)$settings['keep_days'], $messages);
@@ -826,6 +847,51 @@ class Backup extends CI_Controller
             'error'         => '',
         ));
         $messages[] = 'uploaded to Google Drive';
+    }
+
+    /**
+     * Delete the server-side dump once it has been delivered elsewhere —
+     * keeps the disk clean and shrinks the window a stolen file would be
+     * useful. Deferred while a queued email still references the file as an
+     * attachment. keep_local = 1 opts back into keeping every copy.
+     */
+    private function maybeRemoveLocal(array $run, array $settings, array &$messages)
+    {
+        if (!empty($settings['keep_local']) || (string)$run['filename'] === '') {
+            return;
+        }
+
+        $path = $this->backupDir() . DIRECTORY_SEPARATOR . basename($run['filename']);
+        if (!is_file($path)) {
+            return;
+        }
+
+        // Re-fetch: emailed_at / drive_file_id may have been set moments ago.
+        $run = $this->db->where('id', (int)$run['id'])->get('backup_runs')->row_array();
+        if (!$run) {
+            return;
+        }
+
+        $delivered = ((string)$run['drive_file_id'] !== '')
+            || (!empty($settings['email_enabled']) && !empty($run['emailed_at']));
+        if (!$delivered) {
+            return; // nothing delivered it — this file is the only copy
+        }
+
+        // A queued (not yet sent) email may still need this file attached.
+        $pending = $this->db->where('attachment_path', $path)
+            ->where_in('status', array('pending'))
+            ->count_all_results('fbmso_email_queue');
+        if ($pending > 0) {
+            $messages[] = 'local copy kept for now: a queued email is still carrying it';
+            return;
+        }
+
+        if (@unlink($path)) {
+            $messages[] = 'local copy removed (delivered elsewhere)';
+        } else {
+            $messages[] = 'could not remove the local copy';
+        }
     }
 
     /** Drop run rows + files older than the retention window. */

@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v23.done';
+    const MARKER = 'schema_migrations_v24.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -109,6 +109,21 @@ class Schema_migrator
                             ADD COLUMN `drive_client_id` VARCHAR(255) NOT NULL DEFAULT '',
                             ADD COLUMN `drive_client_secret` VARCHAR(255) NOT NULL DEFAULT '',
                             ADD COLUMN `drive_refresh_token` VARCHAR(512) NOT NULL DEFAULT ''"
+                    );
+                },
+            ),
+
+            // Opt-out flag: keep_local=1 retains every server-side copy;
+            // default deletes each dump once Drive/email delivered it.
+            '2026_10_03_backup_keep_local' => array(
+                'check' => function () {
+                    return $this->tableExists('backup_settings')
+                        && !$this->columnExists('backup_settings', 'keep_local');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "ALTER TABLE `backup_settings`
+                            ADD COLUMN `keep_local` TINYINT(1) NOT NULL DEFAULT 0"
                     );
                 },
             ),
