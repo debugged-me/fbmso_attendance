@@ -13,35 +13,47 @@ require_once APPPATH . 'views/security_partials.php';
   <div class="content-page"><div class="content"><div class="container-fluid">
 
     <div class="row"><div class="col-12">
-      <div class="page-title-box d-flex justify-content-between align-items-center">
-        <h4 class="page-title mb-0">Who is signed in right now</h4>
+      <div class="page-title-box d-flex justify-content-between align-items-center flex-wrap">
         <div>
+          <h4 class="up-page-title mb-0"><i class="mdi mdi-account-clock-outline"></i> Active Sessions</h4>
+          <div class="up-page-sub">Who is signed in right now.</div>
+          <hr class="up-divider" style="margin-bottom:0">
+        </div>
+        <div class="up-header-actions">
           <form method="post" action="<?= base_url('Securityadmin/purge_sessions') ?>" style="display:inline"
                 onsubmit="return confirm('Delete session records?\n\n0 = delete ALL (does NOT kick out active users)\n7 = older than 7 days\n\nThis cannot be undone.')">
             <input type="number" name="days" value="0" min="0" max="365"
                    style="width:70px;display:inline-block" class="form-control form-control-sm d-inline-block"
                    title="0 = delete all, or enter days">
-            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="mdi mdi-delete"></i> Purge</button>
+            <button type="submit" class="up-btn up-btn-danger"><i class="mdi mdi-delete"></i> Purge</button>
           </form>
-          <a href="<?= base_url('Security'); ?>" class="btn btn-sm btn-outline-secondary">Back</a>
+          <a href="<?= base_url('Security'); ?>" class="up-btn up-btn-ghost"><i class="mdi mdi-arrow-left"></i> Back</a>
         </div>
       </div>
     </div></div>
 
     <?php foreach (array('success' => 'success', 'danger' => 'danger') as $k => $cls):
       if ($m = $this->session->flashdata($k)): ?>
-        <div class="alert alert-<?= $cls; ?>"><?= sec_e($m); ?></div>
+        <div class="up-flash up-flash-<?= $cls; ?>"><?= sec_e($m); ?></div>
     <?php endif; endforeach; ?>
 
-    <div class="card"><div class="card-body">
-      <p class="text-muted" style="font-size:13px">
-        Ending a session signs that person out on their next click. It does <strong>not</strong> change
+    <div class="up-card">
+      <div class="up-card-head">
+        <h5><i class="mdi mdi-account-clock-outline"></i> Signed-in users</h5>
+        <?php if (!empty($sessions)): ?>
+          <span class="badge badge-primary" style="font-size:.72rem;padding:.35rem .6rem"><?= count($sessions); ?> active</span>
+        <?php endif; ?>
+      </div>
+      <div class="up-card-body" style="padding:0">
+      <div class="up-note" style="margin:16px 22px">
+        <i class="mdi mdi-information-outline"></i>
+        <span>Ending a session signs that person out on their next click. It does <strong>not</strong> change
         their password &mdash; if someone else knows it, they can sign straight back in. Reset the
-        password as well.
-      </p>
+        password as well.</span>
+      </div>
 
       <?php if (empty($sessions)): ?>
-        <p class="mb-0 text-muted">Nobody is signed in.</p>
+        <div class="up-empty"><i class="mdi mdi-account-off-outline"></i>Nobody is signed in.</div>
       <?php else: ?>
       <div class="table-responsive"><table class="table table-sm mb-0">
         <thead><tr>
@@ -63,12 +75,12 @@ require_once APPPATH . 'views/security_partials.php';
               <form method="post" action="<?= base_url('Security/revoke_session'); ?>" style="display:inline"
                     onsubmit="return confirm('Sign out <?= sec_e($s['username']); ?> on this device?');">
                 <input type="hidden" name="reference" value="<?= sec_e($s['session_reference']); ?>">
-                <button class="btn btn-sm btn-outline-danger">Sign out</button>
+                <button class="up-btn up-btn-danger up-btn-sm"><i class="mdi mdi-logout-variant"></i> Sign out</button>
               </form>
               <form method="post" action="<?= base_url('Security/revoke_user'); ?>" style="display:inline"
                     onsubmit="return confirm('Sign out <?= sec_e($s['username']); ?> everywhere?');">
                 <input type="hidden" name="username" value="<?= sec_e($s['username']); ?>">
-                <button class="btn btn-sm btn-outline-danger">All devices</button>
+                <button class="up-btn up-btn-danger up-btn-sm"><i class="mdi mdi-devices"></i> All devices</button>
               </form>
               <?php else: ?>
                 <small class="text-muted">&mdash;</small>
@@ -79,7 +91,8 @@ require_once APPPATH . 'views/security_partials.php';
         </tbody>
       </table></div>
       <?php endif; ?>
-    </div></div>
+      </div>
+    </div>
 
   </div></div>
   <?php include('includes/footer.php'); ?>

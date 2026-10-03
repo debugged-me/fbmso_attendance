@@ -22,22 +22,9 @@ class Admin extends CI_Controller
             return;
         }
 
-        $this->load->dbutil();
-        $this->load->helper('download');
-
-        $prefs = array(
-            'format'      => 'zip',
-            'filename'    => 'srms_backup.sql',
-            'add_drop'    => TRUE,
-            'add_insert'  => TRUE,
-            'newline'     => "\n"
-        );
-
-        $backup = $this->dbutil->backup($prefs);
-
-        $db_name = 'backup-on-' . date("Y-m-d-H-i-s") . '.zip';
-
-        // Direct download to browser
-        force_download($db_name, $backup);
+        // The real implementation lives in Backup::download — a streaming
+        // phpMyAdmin-compatible dump. (The old dbutil->backup() buffered the
+        // whole database in memory and could not finish on a large DB.)
+        redirect('Backup/download');
     }
 }

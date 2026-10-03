@@ -178,6 +178,11 @@ $config['authguard_roles'] = array(
     // Super Admin only: this exposes forensic data, captured photos,
     // GPS coordinates, and device fingerprints from all login sessions.
     'securityadmin/*' => array('Super Admin'),
+
+    // Full database backup download. Super Admin only — the dump contains
+    // every record including password hashes and tokens. The controller
+    // checks this for itself too.
+    'backup/*' => array('Super Admin'),
 );
 
 /*

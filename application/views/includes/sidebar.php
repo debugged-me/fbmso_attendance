@@ -238,6 +238,15 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         </a>
                     </li>
 
+                    <!-- Database backup — Super Admin only, enforced by
+                         AuthGuard and the Backup controller. -->
+                    <li class="<?= strpos($currentUriLower, 'backup') === 0 ? 'mm-active active' : ''; ?>">
+                        <a href="<?= base_url('Backup'); ?>" class="waves-effect">
+                            <i class="mdi mdi-database-export"></i>
+                            <span> Database Backup </span>
+                        </a>
+                    </li>
+
                 </ul>
             </div>
 

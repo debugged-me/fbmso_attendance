@@ -13,44 +13,52 @@ require_once APPPATH . 'views/security_partials.php';
   <div class="content-page"><div class="content"><div class="container-fluid">
 
     <div class="row"><div class="col-12">
-      <div class="page-title-box d-flex justify-content-between align-items-center">
-        <h4 class="page-title mb-0">Devices</h4>
+      <div class="page-title-box d-flex justify-content-between align-items-center flex-wrap">
         <div>
+          <h4 class="up-page-title mb-0"><i class="mdi mdi-cellphone-link"></i> Devices</h4>
+          <div class="up-page-sub">Known devices and fingerprints.</div>
+          <hr class="up-divider" style="margin-bottom:0">
+        </div>
+        <div class="up-header-actions">
           <form method="post" action="<?= base_url('Securityadmin/purge_devices') ?>" style="display:inline"
                 onsubmit="return confirm('Delete device records?\n\n0 = delete ALL\n30 = older than 30 days\n\nThis cannot be undone.')">
             <input type="number" name="days" value="0" min="0" max="365"
                    style="width:70px;display:inline-block" class="form-control form-control-sm d-inline-block"
                    title="0 = delete all, or enter days">
-            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="mdi mdi-delete"></i> Purge</button>
+            <button type="submit" class="up-btn up-btn-danger"><i class="mdi mdi-delete"></i> Purge</button>
           </form>
-          <a href="<?= base_url('Security'); ?>" class="btn btn-sm btn-outline-secondary">Back</a>
+          <a href="<?= base_url('Security'); ?>" class="up-btn up-btn-ghost"><i class="mdi mdi-arrow-left"></i> Back</a>
         </div>
       </div>
     </div></div>
 
     <?php foreach (array('success', 'danger') as $k):
       if ($m = $this->session->flashdata($k)): ?>
-        <div class="alert alert-<?= $k; ?>"><?= sec_e($m); ?></div>
+        <div class="up-flash up-flash-<?= $k === 'danger' ? 'danger' : 'success'; ?>"><?= sec_e($m); ?></div>
     <?php endif; endforeach; ?>
 
-    <div class="card"><div class="card-body">
-      <form method="get" class="form-inline mb-3">
-        <input type="text" name="u" class="form-control form-control-sm mr-2"
-               placeholder="Filter by account, e.g. 2025-0116" value="<?= sec_e($q); ?>">
-        <button class="btn btn-sm btn-primary">Search</button>
-        <?php if ($q !== ''): ?>
-          <a href="<?= base_url('Security/devices'); ?>" class="btn btn-sm btn-link">Clear</a>
-        <?php endif; ?>
-      </form>
-
-      <p class="text-muted" style="font-size:13px">
-        A device is a browser, not a phone. Clearing cookies or using a different browser
+    <div class="up-card">
+      <div class="up-card-head">
+        <h5><i class="mdi mdi-cellphone-link"></i> Known devices</h5>
+        <form method="get" class="form-inline">
+          <input type="text" name="u" class="form-control form-control-sm mr-2"
+                 placeholder="Filter by account, e.g. 2025-0116" value="<?= sec_e($q); ?>" style="width:220px">
+          <button class="up-btn up-btn-primary up-btn-sm"><i class="mdi mdi-magnify"></i> Search</button>
+          <?php if ($q !== ''): ?>
+            <a href="<?= base_url('Security/devices'); ?>" class="up-btn up-btn-ghost up-btn-sm ml-1">Clear</a>
+          <?php endif; ?>
+        </form>
+      </div>
+      <div class="up-card-body" style="padding:0">
+      <div class="up-note" style="margin:16px 22px">
+        <i class="mdi mdi-information-outline"></i>
+        <span>A device is a browser, not a phone. Clearing cookies or using a different browser
         shows up as a new device &mdash; so "new" is normal, and only matters combined with
-        something else. Revoking one makes its next sign-in score as high risk.
-      </p>
+        something else. Revoking one makes its next sign-in score as high risk.</span>
+      </div>
 
       <?php if (empty($devices)): ?>
-        <p class="mb-0 text-muted">No devices recorded yet. They appear from the next sign-in onward.</p>
+        <div class="up-empty"><i class="mdi mdi-cellphone-off"></i>No devices recorded yet. They appear from the next sign-in onward.</div>
       <?php else: ?>
       <div class="table-responsive"><table class="table table-sm mb-0">
         <thead><tr>
@@ -74,7 +82,7 @@ require_once APPPATH . 'views/security_partials.php';
                     onsubmit="return confirm('Revoke this device for <?= sec_e($d['username']); ?>?');">
                 <input type="hidden" name="username" value="<?= sec_e($d['username']); ?>">
                 <input type="hidden" name="token_hash" value="<?= sec_e($d['device_token_hash']); ?>">
-                <button class="btn btn-sm btn-outline-danger">Revoke</button>
+                <button class="up-btn up-btn-danger up-btn-sm"><i class="mdi mdi-cancel"></i> Revoke</button>
               </form>
               <?php else: ?><small class="text-muted">&mdash;</small><?php endif; ?>
             </td>
@@ -83,7 +91,8 @@ require_once APPPATH . 'views/security_partials.php';
         </tbody>
       </table></div>
       <?php endif; ?>
-    </div></div>
+      </div>
+    </div>
 
   </div></div>
   <?php include('includes/footer.php'); ?>

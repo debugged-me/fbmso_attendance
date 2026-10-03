@@ -3,8 +3,23 @@
 
 <?php include('includes/head.php'); ?>
 <link href="<?= base_url(); ?>assets/libs/summernote/summernote-bs4.css" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
 
 <style>
+    .ma-stats { display:flex; gap:0; }
+    .ma-stat { flex:1; padding:18px 22px; }
+    .ma-stat + .ma-stat { border-left:1px solid var(--up-line,#e6ebf5); }
+    .ma-stat-num { font-size:1.6rem; font-weight:800; color:var(--up-ink,#0d1b4b); line-height:1.1; }
+    .ma-stat-label { font-size:.7rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--up-muted,#6b7a99); margin-top:4px; }
+
+    .ma-modal .modal-content{border:0;border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(13,27,75,.28)}
+    .ma-modal .modal-header{background:linear-gradient(135deg,#1a2a6c,#2a4090);color:#fff;border-bottom:0;padding:18px 22px;align-items:center}
+    .ma-modal .modal-title{font-weight:700;font-size:1.02rem;display:flex;align-items:center;gap:9px;color:#fff;margin:0}
+    .ma-modal .modal-title .mdi{font-size:1.25rem;opacity:.92}
+    .ma-modal .modal-header .close{color:#fff;opacity:.75;text-shadow:none;font-size:1.7rem;font-weight:300;padding:0;margin:0 0 0 auto;line-height:1}
+    .ma-modal .modal-header .close:hover{opacity:1}
+    .ma-modal .modal-body{padding:20px 24px}
+
     .announcement-history-mobile-item {
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         border-radius: 10px;
@@ -22,9 +37,13 @@
     }
 
     @media (max-width: 767.98px) {
+        .up-card-body,
         .card-body {
-            padding: 1rem;
+            padding: 16px;
         }
+
+        .ma-stats { flex-direction:column; }
+        .ma-stat + .ma-stat { border-left:0; border-top:1px solid var(--up-line,#e6ebf5); }
 
         .header-title {
             font-size: 16px;
@@ -35,7 +54,7 @@
             width: 100%;
         }
 
-        #announcementHistoryCollapse .card-body {
+        #announcementHistoryCollapse .up-card-body {
             padding: 14px;
         }
 
@@ -53,14 +72,13 @@
             display: block !important;
         }
 
-        .page-title-box .page-title {
+        .page-title-box .up-page-title {
             font-size: 20px;
         }
 
-        .btn.btn-outline-info,
-        .btn.btn-outline-secondary,
-        .btn.btn-primary {
+        .up-btn {
             width: 100%;
+            justify-content: center;
             margin-top: 8px;
         }
 
@@ -140,13 +158,15 @@
                         <div class="col-12">
                             <div class="page-title-box d-flex flex-wrap align-items-center justify-content-between">
                                 <div>
-                                    <h4 class="page-title mb-1">Mass Announcement</h4>
+                                    <h4 class="up-page-title"><i class="mdi mdi-bullhorn-outline"></i> Mass Announcement</h4>
+                                    <div class="up-page-sub">Send an email announcement to enrolled students.</div>
+                                    <hr class="up-divider" style="margin-bottom:0">
                                 </div>
 
                                 <?php if (!empty($can_manage_mass_email)): ?>
-                                    <div class="mt-2 mt-md-0">
-                                        <a href="<?= site_url('Settings/schoolInfo?panel=mass_email'); ?>" class="btn btn-outline-secondary btn-sm">
-                                            Email Setup
+                                    <div class="up-header-actions">
+                                        <a href="<?= site_url('Settings/schoolInfo?panel=mass_email'); ?>" class="up-btn up-btn-ghost">
+                                            <i class="mdi mdi-email-cog-outline"></i> Email Setup
                                         </a>
                                     </div>
                                 <?php endif; ?>
@@ -155,7 +175,7 @@
                     </div>
 
                     <?php if ($this->session->flashdata('success')): ?>
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <div class="up-flash up-flash-success" role="alert">
                             <?= $this->session->flashdata('success'); ?>
                             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
@@ -164,7 +184,7 @@
                     <?php endif; ?>
 
                     <?php if ($this->session->flashdata('warning')): ?>
-                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        <div class="up-flash up-flash-info" role="alert">
                             <?= $this->session->flashdata('warning'); ?>
                             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
@@ -173,7 +193,7 @@
                     <?php endif; ?>
 
                     <?php if ($this->session->flashdata('danger')): ?>
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <div class="up-flash up-flash-danger" role="alert">
                             <?= $this->session->flashdata('danger'); ?>
                             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
@@ -183,24 +203,14 @@
 
                     <div class="row mb-3">
                         <div class="col-lg-8">
-                            <div class="card mb-3 mb-lg-0">
-                                <div class="card-body py-3">
-                                    <div class="row">
-                                        <div class="col-md-4 mb-2 mb-md-0">
-                                            <div class="text-muted small">Enrolled students</div>
-                                            <div class="h4 mb-0"><?= (int) ($current_term_student_count ?? 0); ?></div>
-                                        </div>
-
-                                        <div class="col-md-4 mb-2 mb-md-0">
-                                            <div class="text-muted small">Students with email</div>
-                                            <div class="h4 mb-0"><?= (int) ($current_term_email_count ?? 0); ?></div>
-                                        </div>
-                                        <!-- 
-                                        <div class="col-md-4">
-                                            <div class="text-muted small">Transport</div>
-                                            <div class="h6 mb-0"><?= html_escape($emailTransport); ?></div>
-                                        </div> -->
-                                    </div>
+                            <div class="up-card ma-stats mb-3 mb-lg-0">
+                                <div class="ma-stat">
+                                    <div class="ma-stat-num"><?= number_format((int) ($current_term_student_count ?? 0)); ?></div>
+                                    <div class="ma-stat-label">Enrolled students</div>
+                                </div>
+                                <div class="ma-stat">
+                                    <div class="ma-stat-num"><?= number_format((int) ($current_term_email_count ?? 0)); ?></div>
+                                    <div class="ma-stat-label">Students with email</div>
                                 </div>
                             </div>
                         </div>
@@ -208,22 +218,24 @@
                         <div class="col-lg-4 d-flex flex-wrap justify-content-lg-end align-items-start">
                             <button
                                 type="button"
-                                class="btn btn-outline-info"
+                                class="up-btn up-btn-ghost"
                                 data-toggle="collapse"
                                 data-target="#announcementHistoryCollapse"
                                 aria-expanded="<?= $openHistory ? 'true' : 'false'; ?>"
                                 aria-controls="announcementHistoryCollapse">
-                                View History
+                                <i class="mdi mdi-history"></i> View History
                             </button>
                         </div>
                     </div>
 
-                    <div class="card">
-                        <div class="card-body">
-                            <h4 class="header-title mb-3">Send Announcement to Enrolled Students</h4>
-
+                    <div class="up-card">
+                        <div class="up-card-head">
+                            <h5><i class="mdi mdi-send-outline"></i> Send Announcement to Enrolled Students</h5>
+                        </div>
+                        <div class="up-card-body">
                             <?php if (!$emailReady): ?>
-                                <div class="alert alert-warning">
+                                <div class="up-flash up-flash-info">
+                                    <i class="mdi mdi-alert-outline"></i>
                                     Mass announcement sending is disabled until the mass email setup is completed.
                                 </div>
                             <?php endif; ?>
@@ -313,23 +325,25 @@
 
                                 <button
                                     type="submit"
-                                    class="btn btn-primary"
+                                    class="up-btn up-btn-primary"
                                     <?= !$emailReady ? 'disabled' : ''; ?>
                                     data-ui-confirm="Emails go out immediately to everyone in the selected audience. There is no recall."
                                     data-ui-confirm-title="Send this announcement now?"
                                     data-ui-confirm-ok="Send it"
                                     data-ui-confirm-variant="primary"
                                     data-ui-confirm-icon="question">
-                                    Send Mass Announcement
+                                    <i class="mdi mdi-send-outline"></i> Send Mass Announcement
                                 </button>
                             </form>
                         </div>
                     </div>
 
                     <div class="collapse <?= $openHistory ? 'show' : ''; ?>" id="announcementHistoryCollapse">
-                        <div class="card mt-3">
-                            <div class="card-body">
-                                <h4 class="header-title mb-3">Announcement History</h4>
+                        <div class="up-card mt-3">
+                            <div class="up-card-head">
+                                <h5><i class="mdi mdi-history"></i> Announcement History</h5>
+                            </div>
+                            <div class="up-card-body">
 
                                 <?php if (!empty($announcement_history)): ?>
 
@@ -357,12 +371,12 @@
                                                         <td>
                                                             <button
                                                                 type="button"
-                                                                class="btn btn-sm btn-outline-primary view-ann-msg"
+                                                                class="up-btn up-btn-ghost view-ann-msg"
                                                                 data-toggle="modal"
                                                                 data-target="#announcementMessageModal"
                                                                 data-subject="<?= html_escape((string) ($row->subject ?? '')); ?>"
                                                                 data-message="<?= html_escape($messageHtml); ?>">
-                                                                View
+                                                                <i class="mdi mdi-eye-outline"></i> View
                                                             </button>
 
                                                             <div class="small text-muted mt-1">
@@ -412,7 +426,7 @@
                                                 <div class="mt-3">
                                                     <button
                                                         type="button"
-                                                        class="btn btn-sm btn-outline-primary btn-block view-ann-msg"
+                                                        class="up-btn up-btn-ghost btn-block view-ann-msg"
                                                         data-toggle="modal"
                                                         data-target="#announcementMessageModal"
                                                         data-subject="<?= html_escape((string) ($row->subject ?? '')); ?>"
@@ -440,11 +454,11 @@
         </div>
     </div>
 
-    <div class="modal fade" id="announcementMessageModal" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+    <div class="modal fade ma-modal" id="announcementMessageModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="announcementMessageTitle">Announcement Message</h5>
+                    <h5 class="modal-title"><i class="mdi mdi-bullhorn-outline"></i> <span id="announcementMessageTitle">Announcement Message</span></h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>

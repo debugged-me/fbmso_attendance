@@ -371,6 +371,20 @@ class Page extends CI_Controller
 			$result['audit_summary'] = $this->AuditLogModel->auditSummary(30);
 			$result['recent_audit'] = $this->AuditLogModel->getUnified([], 8, 0);
 			$result['recent_deletions'] = $this->AuditLogModel->getUnified(['action' => 'delete'], 5, 0);
+
+			// Headline numbers for the stat tiles
+			$result['stat_accounts']  = (int)$this->db->count_all('o_users');
+			$result['stat_sessions']  = (int)$this->db->query(
+				"SELECT COUNT(*) AS c FROM user_security_sessions WHERE revoked_at IS NULL"
+			)->row()->c;
+			$result['stat_failed']    = (int)$this->db->query(
+				"SELECT COUNT(*) AS c FROM login_logs WHERE status = 'failed' AND login_time >= CURDATE()"
+			)->row()->c;
+			$result['stat_blocked']   = (int)$this->db->query(
+				"SELECT COUNT(*) AS c FROM ip_blacklist
+				  WHERE is_permanent = 1 OR (expires_at IS NOT NULL AND expires_at > NOW())"
+			)->row()->c;
+
 			$this->load->view('dashboard_SuperAdmin', $result);
 		} else {
 			echo "Access Denied";

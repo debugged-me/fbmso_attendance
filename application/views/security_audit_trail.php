@@ -273,22 +273,20 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
     <div class="content-page">
         <div class="content">
             <div class="container-fluid audit-page">
-                <div class="audit-header">
-                    <div class="audit-header-title">
-                        <span class="audit-header-icon"><i class="mdi mdi-history"></i></span>
-                        <div>
-                            <h4 class="mb-0">
-                                Audit Trail
-                                <span class="audit-readonly" data-toggle="tooltip" data-placement="bottom" title="Events can't be edited or deleted here. Passwords, tokens, and other secrets are hidden.">
-                                    <i class="mdi mdi-lock-outline"></i> Read-only
-                                </span>
-                            </h4>
-                            <p class="audit-header-sub mb-0">Activity across all monitored roles</p>
-                        </div>
+                <div class="page-title-box d-flex justify-content-between align-items-center flex-wrap">
+                    <div>
+                        <h4 class="up-page-title mb-0">
+                            <i class="mdi mdi-history"></i> Audit Trail
+                            <span class="audit-readonly" data-toggle="tooltip" data-placement="bottom" title="Events can't be edited or deleted here. Passwords, tokens, and other secrets are hidden.">
+                                <i class="mdi mdi-lock-outline"></i> Read-only
+                            </span>
+                        </h4>
+                        <div class="up-page-sub">Activity across all monitored roles</div>
+                        <hr class="up-divider" style="margin-bottom:0">
                     </div>
-                    <div class="audit-header-actions">
-                        <a href="<?= base_url('Page/superAdmin'); ?>" class="btn btn-sm audit-btn-ghost"><i class="mdi mdi-view-dashboard-outline"></i> Dashboard</a>
-                        <a href="<?= base_url('Securityadmin'); ?>" class="btn btn-sm audit-btn-ghost"><i class="mdi mdi-shield-account-outline"></i> Security</a>
+                    <div class="up-header-actions">
+                        <a href="<?= base_url('Page/superAdmin'); ?>" class="up-btn up-btn-ghost"><i class="mdi mdi-view-dashboard-outline"></i> Dashboard</a>
+                        <a href="<?= base_url('Securityadmin'); ?>" class="up-btn up-btn-ghost"><i class="mdi mdi-shield-account-outline"></i> Security</a>
                     </div>
                 </div>
 
@@ -318,11 +316,11 @@ foreach ((isset($events) && is_array($events) ? $events : array()) as $index => 
                             <i class="mdi mdi-magnify"></i>
                             <input type="search" name="q" maxlength="100" value="<?= audit_e($filters['q'] ?? ''); ?>" class="form-control" placeholder="Search actor, module, record ID, or IP" aria-label="Search audit events">
                         </label>
-                        <button type="button" class="btn audit-btn-ghost audit-filter-toggle" data-toggle="collapse" data-target="#auditFilters" aria-expanded="false" aria-controls="auditFilters">
+                        <button type="button" class="up-btn up-btn-ghost up-btn-sm audit-filter-toggle" data-toggle="collapse" data-target="#auditFilters" aria-expanded="false" aria-controls="auditFilters">
                             <i class="mdi mdi-tune"></i> Filters
                             <?php if ($advancedCount > 0): ?><span class="audit-filter-count"><?= $advancedCount; ?></span><?php endif; ?>
                         </button>
-                        <button type="submit" class="btn btn-primary audit-btn-primary">Apply</button>
+                        <button type="submit" class="up-btn up-btn-primary up-btn-sm">Apply</button>
                     </div>
 
                     <div class="collapse" id="auditFilters">

@@ -2,6 +2,13 @@
 <html lang="en">
 
 <?php include('includes/head.php'); ?>
+<link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
+
+<style>
+    .si-panel { border:1px solid var(--up-line,#e6ebf5); border-radius:14px; background:#f8faff; padding:20px 22px; margin-bottom:18px; }
+    .si-panel-note { font-size:.85rem; color:var(--up-muted,#6b7a99); margin-bottom:16px; }
+    .up-card .form-check-input { position:relative; margin-top:.3rem; }
+</style>
 
 <body>
 
@@ -36,10 +43,17 @@
                     <div class="row">
                         <div class="col-md-12">
                             <div class="page-title-box">
-                                <!-- <h4 class="page-title">School Information</h4> -->
+                                <?php if ($canManageMassEmail): ?>
+                                    <h4 class="up-page-title"><i class="mdi mdi-email-cog-outline"></i> Mass Email Setup</h4>
+                                    <div class="up-page-sub">Configure the sender and transport used for mass email announcements.</div>
+                                <?php else: ?>
+                                    <h4 class="up-page-title"><i class="mdi mdi-school-outline"></i> School Information</h4>
+                                    <div class="up-page-sub">School profile, officials, and payment gateway credentials.</div>
+                                <?php endif; ?>
+                                <hr class="up-divider">
                                 <?php echo $this->session->flashdata('msg'); ?>
                                 <?php if ($this->session->flashdata('success')): ?>
-                                    <div class="alert alert-success alert-dismissible fade show mt-2" role="alert">
+                                    <div class="up-flash up-flash-success" role="alert">
                                         <?= $this->session->flashdata('success'); ?>
                                         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                                             <span aria-hidden="true">&times;</span>
@@ -47,7 +61,7 @@
                                     </div>
                                 <?php endif; ?>
                                 <?php if ($this->session->flashdata('warning')): ?>
-                                    <div class="alert alert-warning alert-dismissible fade show mt-2" role="alert">
+                                    <div class="up-flash up-flash-info" role="alert">
                                         <?= $this->session->flashdata('warning'); ?>
                                         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                                             <span aria-hidden="true">&times;</span>
@@ -55,19 +69,13 @@
                                     </div>
                                 <?php endif; ?>
                                 <?php if ($this->session->flashdata('danger')): ?>
-                                    <div class="alert alert-danger alert-dismissible fade show mt-2" role="alert">
+                                    <div class="up-flash up-flash-danger" role="alert">
                                         <?= $this->session->flashdata('danger'); ?>
                                         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                                             <span aria-hidden="true">&times;</span>
                                         </button>
                                     </div>
                                 <?php endif; ?>
-                                <div class="page-title-right">
-                                    <ol class="breadcrumb p-0 m-0">
-                                        <!-- <li class="breadcrumb-item"><a href="#">Currently login to <b>SY <?php echo $this->session->userdata('sy'); ?> <?php echo $this->session->userdata('semester'); ?></b></a></li> -->
-                                    </ol>
-                                </div>
-                                <div class="clearfix"></div>
                             </div>
                         </div>
                     </div>
@@ -76,17 +84,17 @@
 
                     <div class="col-xl-12 col-sm-6 ">
                         <!-- Portlet card -->
-                        <div class="card">
-                            <div class="card-header bg-primary py-3 text-white">
-                                <div class="card-widgets">
-                                    <a href="javascript:;" data-toggle="reload"><i class="mdi mdi-refresh"></i></a>
-                                    <a data-toggle="collapse" href="#cardCollpase2" role="button" aria-expanded="false" aria-controls="cardCollpase2"><i class="mdi mdi-minus"></i></a>
-                                    <a href="#" data-toggle="remove"><i class="mdi mdi-close"></i></a>
-                                </div>
-                                <h5 class="card-title mb-0 text-white">School Information</h5>
+                        <div class="up-card">
+                            <div class="up-card-head">
+                                <?php if ($canManageMassEmail): ?>
+                                    <h5><i class="mdi mdi-email-cog-outline"></i> Email Delivery Settings</h5>
+                                    <a href="<?= base_url('mass-announcement'); ?>" class="up-btn up-btn-ghost"><i class="mdi mdi-bullhorn-outline"></i> Email Announcement</a>
+                                <?php else: ?>
+                                    <h5><i class="mdi mdi-school-outline"></i> School Information</h5>
+                                <?php endif; ?>
                             </div>
                             <div id="cardCollpase2" class="collapse show">
-                                <div class="card-body">
+                                <div class="up-card-body">
                                     <form role="form" method="post" enctype="multipart/form-data">
                                         <!-- general form elements -->
                                         <div class="card-body">
@@ -209,7 +217,7 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <h4>Dragonpay Credentials</h4>
+                                                <div class="up-section-head"><span class="up-section-dot"></span><span class="up-section-label">Dragonpay Credentials</span><span class="up-section-line"></span></div>
                                                 <div class="row">
                                                     <div class="col-lg-4">
                                                         <div class="form-group">
@@ -232,30 +240,30 @@
                                                     </div>
                                                 </div>
                                             <?php else: ?>
-                                                <div class="alert alert-info">
-                                                    This page is limited to <strong>Mass Email Setup</strong> for Super Admin. School Information fields are managed by Admin account.
+                                                <div class="up-flash up-flash-info">
+                                                    <i class="mdi mdi-information-outline"></i>
+                                                    This page is limited to <strong>Mass Email Setup</strong> for Super Admin. School Information fields are managed by the Admin account.
                                                 </div>
                                             <?php endif; ?>
 
 
 
                                             <?php if ($canManageMassEmail): ?>
-                                                <h4 class="mt-3">Mass Email Setup</h4>
-                                                <div class="mb-3">
+                                                <div class="up-section-head"><span class="up-section-dot"></span><span class="up-section-label">Delivery Configuration</span><span class="up-section-line"></span>
                                                     <button type="button"
-                                                        class="btn btn-outline-info btn-sm"
+                                                        class="up-btn up-btn-ghost"
                                                         data-toggle="collapse"
                                                         data-target="#massEmailSettingsCollapse"
                                                         aria-expanded="<?= $openMassEmail ? 'true' : 'false'; ?>"
                                                         aria-controls="massEmailSettingsCollapse">
-                                                        Setup Email
+                                                        <i class="mdi mdi-tune"></i> Setup Email
                                                     </button>
                                                 </div>
 
                                                 <div id="massEmailSettingsCollapse" class="collapse <?= $openMassEmail ? 'show' : ''; ?>">
-                                                    <div class="border rounded p-3 mb-3">
-                                                        <p class="text-muted mb-3">
-                                                            Sender name is automatic and always uses your school name.
+                                                    <div class="si-panel">
+                                                        <p class="si-panel-note">
+                                                            <i class="mdi mdi-information-outline"></i> Sender name is automatic and always uses your school name.
                                                         </p>
                                                         <input type="hidden" name="return_to" value="Settings/schoolInfo?panel=mass_email">
                                                         <div class="form-row">
@@ -319,10 +327,10 @@
                                                         </div>
 
                                                         <button type="submit"
-                                                            class="btn btn-success"
+                                                            class="up-btn up-btn-primary"
                                                             formaction="<?= site_url('mass-announcement/settings'); ?>"
                                                             formmethod="post">
-                                                            Save Mass Email Settings
+                                                            <i class="mdi mdi-content-save-outline"></i> Save Mass Email Settings
                                                         </button>
                                                     </div>
                                                 </div>
@@ -331,7 +339,7 @@
                                             <?php if (!$canManageMassEmail): ?>
                                                 <div class="row">
                                                     <div class="col-lg-12">
-                                                        <input type="submit" name="submit" class="btn btn-info" value="Update School Information">
+                                                        <input type="submit" name="submit" class="up-btn up-btn-primary" value="Update School Information">
                                                     </div>
                                                 </div>
                                             <?php endif; ?>

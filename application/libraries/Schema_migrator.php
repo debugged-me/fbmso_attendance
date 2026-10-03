@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v20.done';
+    const MARKER = 'schema_migrations_v21.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -45,6 +45,25 @@ class Schema_migrator
     protected function migrations()
     {
         return array(
+
+            // The Backup controller audits downloads as action 'export', but
+            // the enum predates it and silently stored a blank action. ENUM
+            // appends are instant on modern MySQL/MariaDB (no table rebuild).
+            '2026_10_03_audit_action_export' => array(
+                'check' => function () {
+                    $type = $this->columnType('audit_logs', 'action');
+                    return $type !== null && strpos($type, 'export') === false;
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "ALTER TABLE `audit_logs` MODIFY `action` ENUM(
+                            'login','logout','create','update','delete',
+                            'password_reset','password_change','profile_change',
+                            'access_denied','security','export'
+                         ) NOT NULL"
+                    );
+                },
+            ),
 
             // A deleted payment must say why. The cashier's reason is kept
             // with the delete entry so the Payment Activity Log and Super

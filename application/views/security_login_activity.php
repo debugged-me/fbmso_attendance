@@ -13,17 +13,24 @@ require_once APPPATH . 'views/security_partials.php';
   <div class="content-page"><div class="content"><div class="container-fluid">
 
     <div class="row"><div class="col-12">
-      <div class="page-title-box d-flex justify-content-between align-items-center">
-        <h4 class="page-title mb-0"><i class="mdi mdi-login-variant"></i> Login Activity</h4>
+      <div class="page-title-box d-flex justify-content-between align-items-center flex-wrap">
         <div>
-          <a href="<?= base_url('Securityadmin'); ?>" class="btn btn-sm btn-outline-primary"><i class="mdi mdi-shield-account"></i> Dashboard</a>
+          <h4 class="up-page-title mb-0"><i class="mdi mdi-login-variant"></i> Login Activity</h4>
+          <div class="up-page-sub">Recent sign-in attempts across all accounts.</div>
+          <hr class="up-divider" style="margin-bottom:0">
+        </div>
+        <div class="up-header-actions">
+          <a href="<?= base_url('Securityadmin'); ?>" class="up-btn up-btn-ghost"><i class="mdi mdi-shield-account"></i> Dashboard</a>
         </div>
       </div>
     </div></div>
 
     <!-- Filters -->
-    <div class="card">
-      <div class="card-body">
+    <div class="up-card mb-4">
+      <div class="up-card-head">
+        <h5><i class="mdi mdi-filter-variant"></i> Filters</h5>
+      </div>
+      <div class="up-card-body">
         <form method="get" class="form-inline">
           <div class="form-group mr-2 mb-2">
             <input type="text" name="ip" class="form-control form-control-sm" value="<?= sec_e($ip_filter) ?>" placeholder="IP Address" style="width:160px">
@@ -39,27 +46,30 @@ require_once APPPATH . 'views/security_partials.php';
               <option value="logout" <?= $status_filter === 'logout' ? 'selected' : '' ?>>Logout</option>
             </select>
           </div>
-          <button type="submit" class="btn btn-sm btn-primary mb-2 mr-1"><i class="mdi mdi-magnify"></i> Filter</button>
-          <a href="<?= base_url('Securityadmin/login_activity') ?>" class="btn btn-sm btn-outline-secondary mb-2">Clear</a>
+          <button type="submit" class="up-btn up-btn-primary up-btn-sm mb-2 mr-1"><i class="mdi mdi-magnify"></i> Filter</button>
+          <a href="<?= base_url('Securityadmin/login_activity') ?>" class="up-btn up-btn-ghost up-btn-sm mb-2">Clear</a>
         </form>
       </div>
     </div>
 
-    <div class="mb-2 d-flex justify-content-between align-items-center flex-wrap">
-      <span class="text-muted">Total: <strong><?= (int)$total ?></strong> records &middot; Page <strong><?= (int)$page ?></strong> of <strong><?= max(1, (int)ceil($total / $per_page)) ?></strong></span>
+    <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap">
+      <span class="text-muted" style="font-size:.84rem">Total: <strong><?= number_format((int)$total) ?></strong> records &middot; Page <strong><?= (int)$page ?></strong> of <strong><?= max(1, (int)ceil($total / $per_page)) ?></strong></span>
       <?php if ($total > 0): ?>
-      <button class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#purgeLogsModal"><i class="mdi mdi-delete-sweep"></i> Purge Old Logs</button>
+      <button class="up-btn up-btn-danger up-btn-sm" data-toggle="modal" data-target="#purgeLogsModal"><i class="mdi mdi-delete-sweep"></i> Purge Old Logs</button>
       <?php endif; ?>
     </div>
 
     <!-- Purge Logs Modal -->
-    <div class="modal fade" id="purgeLogsModal" tabindex="-1" role="dialog">
-      <div class="modal-dialog" role="document">
+    <div class="modal fade up-modal" id="purgeLogsModal" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
           <form method="post" action="<?= base_url('Securityadmin/purge_login_logs') ?>">
-            <div class="modal-header"><h5 class="modal-title">Purge Login Logs</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
+            <div class="modal-header"><h5 class="modal-title"><i class="mdi mdi-delete-sweep"></i> Purge Login Logs</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
             <div class="modal-body">
-              <p class="text-muted">This will permanently delete login log records. This frees database storage but cannot be undone.</p>
+              <div class="up-note" style="margin-bottom:16px">
+                <i class="mdi mdi-alert-outline"></i>
+                <span>This will permanently delete login log records. This frees database storage but cannot be undone.</span>
+              </div>
               <div class="form-group">
                 <label>Delete logs</label>
                 <select name="days" class="form-control">
@@ -75,16 +85,16 @@ require_once APPPATH . 'views/security_partials.php';
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure? This cannot be undone.')"><i class="mdi mdi-delete"></i> Purge</button>
+              <button type="button" class="up-btn up-btn-ghost" data-dismiss="modal">Cancel</button>
+              <button type="submit" class="up-btn up-btn-danger" onclick="return confirm('Are you sure? This cannot be undone.')"><i class="mdi mdi-delete"></i> Purge</button>
             </div>
           </form>
         </div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header"><i class="mdi mdi-format-list-bulleted"></i> Login Records</div>
+    <div class="up-card">
+      <div class="up-card-head"><h5><i class="mdi mdi-format-list-bulleted"></i> Login Records</h5></div>
       <div class="table-responsive">
         <table class="table table-sm table-hover mb-0">
           <thead><tr><th>Time</th><th>Username</th><th>Status</th><th>IP Address</th><th>Device</th><th style="width:52px"><span class="sr-only">Details</span></th></tr></thead>

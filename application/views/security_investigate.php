@@ -67,8 +67,8 @@ usort($timeline, function($a, $b) { return strcmp($a['time'], $b['time']); });
   .right-bar, .rightbar-overlay, .mobile-tabbar, #fbmsoVisionMissionModal { display: none !important; }
   .content-page { margin-left: 0 !important; }
   .page-title-box { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
-  .card { border: 1px solid #ccc !important; box-shadow: none !important; page-break-inside: avoid; }
-  .card-header { background: #f5f5f5 !important; border-bottom: 1px solid #ddd !important; font-weight: bold; }
+  .card, .up-card { border: 1px solid #ccc !important; box-shadow: none !important; page-break-inside: avoid; }
+  .card-header, .up-card-head { background: #f5f5f5 !important; border-bottom: 1px solid #ddd !important; font-weight: bold; }
   .alert { border: 1px solid #ccc !important; }
   .badge { border: 1px solid #999 !important; color: #333 !important; background: #f0f0f0 !important; }
   .badge-success { background: #d4edda !important; color: #155724 !important; }
@@ -98,29 +98,33 @@ usort($timeline, function($a, $b) { return strcmp($a['time'], $b['time']); });
     </div>
 
     <div class="row"><div class="col-12">
-      <div class="page-title-box d-flex justify-content-between align-items-center">
-        <h4 class="page-title mb-0"><i class="mdi mdi-magnify"></i> Investigate: <?= sec_e($ip) ?></h4>
-        <div class="no-print">
-          <a href="<?= base_url('Securityadmin'); ?>" class="btn btn-sm btn-outline-primary"><i class="mdi mdi-shield-account"></i> Dashboard</a>
+      <div class="page-title-box d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+          <h4 class="up-page-title mb-0"><i class="mdi mdi-magnify"></i> Investigate: <?= sec_e($ip) ?></h4>
+          <div class="up-page-sub">Forensic report for this IP address.</div>
+          <hr class="up-divider" style="margin-bottom:0">
+        </div>
+        <div class="up-header-actions no-print">
+          <a href="<?= base_url('Securityadmin'); ?>" class="up-btn up-btn-ghost"><i class="mdi mdi-shield-account"></i> Dashboard</a>
         </div>
       </div>
     </div></div>
 
     <?php if ($blacklisted): ?>
-      <div class="alert alert-danger">
+      <div class="up-flash up-flash-danger">
         <strong><i class="mdi mdi-block-helper"></i> This IP is BLACKLISTED.</strong><br>
         Reason: <?= sec_e($blacklisted['reason']) ?><br>
         Blocked by: <?= sec_e($blacklisted['blocked_by']) ?> on <?= sec_e($blacklisted['blocked_at']) ?><br>
         Incident: <?= sec_e($blacklisted['incident_reference'] ?? 'N/A') ?>
       </div>
     <?php else: ?>
-      <div class="alert alert-info d-flex align-items-center justify-content-between no-print">
-        <span>This IP is not currently blacklisted.</span>
+      <div class="up-flash up-flash-info d-flex align-items-center justify-content-between flex-wrap no-print" style="gap:10px">
+        <span><i class="mdi mdi-information-outline"></i> This IP is not currently blacklisted.</span>
         <form method="post" action="<?= base_url('Securityadmin/block_ip') ?>" class="form-inline">
           <input type="hidden" name="ip_address" value="<?= sec_e($ip) ?>">
           <input type="hidden" name="is_permanent" value="1">
           <input type="text" name="reason" class="form-control form-control-sm mr-2" placeholder="Reason" style="width:250px" required>
-          <button type="submit" class="btn btn-danger btn-sm"><i class="mdi mdi-block-helper"></i> Block this IP</button>
+          <button type="submit" class="up-btn up-btn-danger up-btn-sm"><i class="mdi mdi-block-helper"></i> Block this IP</button>
         </form>
       </div>
     <?php endif; ?>
@@ -128,14 +132,14 @@ usort($timeline, function($a, $b) { return strcmp($a['time'], $b['time']); });
     <div class="row">
       <!-- Device Info -->
       <div class="col-md-6">
-        <div class="card">
-          <div class="card-header"><i class="mdi mdi-cellphone-information"></i> Device Information</div>
-          <div class="card-body">
+        <div class="up-card mb-4">
+          <div class="up-card-head"><h5><i class="mdi mdi-cellphone-information"></i> Device Information</h5></div>
+          <div class="up-card-body">
             <?php if (empty($devices)): ?>
-              <p class="text-muted">No device information recorded.</p>
+              <div class="up-empty"><i class="mdi mdi-cellphone-off"></i>No device information recorded.</div>
             <?php else: ?>
               <?php foreach ($devices as $d): ?>
-                <div style="background:#f8f9fa;padding:.75rem;border-radius:6px;font-family:monospace;font-size:.75rem;word-break:break-all;margin-bottom:.5rem"><?= sec_e($d->user_agent ?? 'Unknown') ?></div>
+                <div class="up-panel" style="font-family:monospace;font-size:.75rem;word-break:break-all;margin-bottom:.6rem;padding:12px 14px"><?= sec_e($d->user_agent ?? 'Unknown') ?></div>
                 <?php if (!empty($d->device_fingerprint)): ?>
                   <small class="text-muted">Fingerprint: <?= sec_e($d->device_fingerprint) ?></small>
                 <?php endif; ?>
@@ -147,8 +151,8 @@ usort($timeline, function($a, $b) { return strcmp($a['time'], $b['time']); });
 
       <!-- Accounts Touched -->
       <div class="col-md-6">
-        <div class="card">
-          <div class="card-header"><i class="mdi mdi-account-multiple"></i> Accounts Accessed (<?= count($accounts) ?>)</div>
+        <div class="up-card mb-4">
+          <div class="up-card-head"><h5><i class="mdi mdi-account-multiple-outline"></i> Accounts Accessed <span class="badge badge-primary" style="margin-left:6px"><?= count($accounts) ?></span></h5></div>
           <div class="table-responsive">
             <table class="table table-sm mb-0">
               <thead><tr><th>Account</th><th>Name</th><th></th></tr></thead>
@@ -157,7 +161,7 @@ usort($timeline, function($a, $b) { return strcmp($a['time'], $b['time']); });
                 <tr>
                   <td style="font-family:monospace;font-weight:600"><?= sec_e($a->username) ?></td>
                   <td><?= sec_e($accountNames[$a->username] ?? '—') ?></td>
-                  <td class="no-print"><a href="<?= base_url('Securityadmin/login_activity?username=' . urlencode($a->username)) ?>" class="btn btn-outline-primary btn-sm">View Logins</a></td>
+                  <td class="no-print"><a href="<?= base_url('Securityadmin/login_activity?username=' . urlencode($a->username)) ?>" class="up-btn up-btn-ghost up-btn-sm">View Logins</a></td>
                 </tr>
                 <?php endforeach; ?>
               </tbody>
@@ -168,20 +172,20 @@ usort($timeline, function($a, $b) { return strcmp($a['time'], $b['time']); });
     </div>
 
     <!-- Timeline -->
-    <div class="card">
-      <div class="card-header"><i class="mdi mdi-timeline"></i> Activity Timeline</div>
-      <div class="card-body">
+    <div class="up-card mb-4">
+      <div class="up-card-head"><h5><i class="mdi mdi-timeline-clock-outline"></i> Activity Timeline</h5></div>
+      <div class="up-card-body">
         <?php if (empty($timeline)): ?>
-          <p class="text-muted">No activity recorded for this IP.</p>
+          <div class="up-empty"><i class="mdi mdi-timeline-off-outline"></i>No activity recorded for this IP.</div>
         <?php else: ?>
           <div style="position:relative;padding-left:2rem">
-            <div style="position:absolute;left:.5rem;top:0;bottom:0;width:2px;background:#ddd"></div>
+            <div style="position:absolute;left:.5rem;top:0;bottom:0;width:2px;background:#e6ebf5"></div>
             <?php foreach ($timeline as $t): ?>
               <div style="position:relative;padding-bottom:1rem">
-                <div style="position:absolute;left:-1.5rem;top:.3rem;width:12px;height:12px;border-radius:50%;background:#<?= $t['type']==='danger'?'dc3545':($t['type']==='success'?'28a745':'1a237e') ?>"></div>
-                <div style="font-family:monospace;font-size:.78rem;color:#666"><?= sec_e($t['time']) ?></div>
-                <div style="font-weight:600;font-size:.85rem"><?= sec_e($t['event']) ?></div>
-                <div style="font-size:.8rem;color:#666"><?= sec_e($t['detail']) ?></div>
+                <div style="position:absolute;left:-1.5rem;top:.3rem;width:12px;height:12px;border-radius:50%;background:#<?= $t['type']==='danger'?'d9395f':($t['type']==='success'?'1f9d6b':'4266d4') ?>;box-shadow:0 0 0 3px #eef2fb"></div>
+                <div style="font-family:monospace;font-size:.78rem;color:#6b7a99"><?= sec_e($t['time']) ?></div>
+                <div style="font-weight:700;font-size:.85rem;color:#0d1b4b"><?= sec_e($t['event']) ?></div>
+                <div style="font-size:.8rem;color:#6b7a99"><?= sec_e($t['detail']) ?></div>
               </div>
             <?php endforeach; ?>
           </div>
@@ -192,8 +196,8 @@ usort($timeline, function($a, $b) { return strcmp($a['time'], $b['time']); });
     <div class="row">
       <!-- Login Attempts -->
       <div class="col-lg-6">
-        <div class="card">
-          <div class="card-header"><i class="mdi mdi-login-variant"></i> Login Attempts (<?= count($login_attempts) ?>)</div>
+        <div class="up-card mb-4">
+          <div class="up-card-head"><h5><i class="mdi mdi-login-variant"></i> Login Attempts <span class="badge badge-primary" style="margin-left:6px"><?= count($login_attempts) ?></span></h5></div>
           <div class="table-responsive">
             <table class="table table-sm mb-0">
               <thead><tr><th>Time</th><th>Account</th><th>Name</th><th>Status</th></tr></thead>
@@ -218,8 +222,8 @@ usort($timeline, function($a, $b) { return strcmp($a['time'], $b['time']); });
 
       <!-- Audit Trail -->
       <div class="col-lg-6">
-        <div class="card">
-          <div class="card-header"><i class="mdi mdi-file-document-outline"></i> Audit Trail (<?= count($audit_entries) ?>)</div>
+        <div class="up-card mb-4">
+          <div class="up-card-head"><h5><i class="mdi mdi-file-document-outline"></i> Audit Trail <span class="badge badge-primary" style="margin-left:6px"><?= count($audit_entries) ?></span></h5></div>
           <div class="table-responsive">
             <table class="table table-sm mb-0">
               <thead><tr><th>Time</th><th>Action</th><th>Account</th><th>Description</th></tr></thead>
@@ -240,7 +244,7 @@ usort($timeline, function($a, $b) { return strcmp($a['time'], $b['time']); });
     </div>
 
     <div class="text-center py-3 no-print">
-      <button onclick="window.print()" class="btn btn-primary"><i class="mdi mdi-printer"></i> Print / Save as PDF</button>
+      <button onclick="window.print()" class="up-btn up-btn-primary"><i class="mdi mdi-printer"></i> Print / Save as PDF</button>
     </div>
 
   </div></div>

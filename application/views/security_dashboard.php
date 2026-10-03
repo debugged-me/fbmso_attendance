@@ -13,56 +13,67 @@ require_once APPPATH . 'views/security_partials.php';
   <div class="content-page"><div class="content"><div class="container-fluid">
 
     <div class="row"><div class="col-12">
-      <div class="page-title-box d-flex justify-content-between align-items-center">
-        <h4 class="page-title mb-0">Security</h4>
+      <div class="page-title-box d-flex justify-content-between align-items-center flex-wrap">
         <div>
-          <a href="<?= base_url('Security/sessions'); ?>" class="btn btn-sm btn-outline-primary">Active sessions</a>
-          <a href="<?= base_url('Security/devices'); ?>" class="btn btn-sm btn-outline-primary">Devices</a>
+          <h4 class="up-page-title mb-0"><i class="mdi mdi-shield-lock-outline"></i> Security</h4>
+          <div class="up-page-sub">Sessions, devices, and account protections.</div>
+          <hr class="up-divider" style="margin-bottom:0">
+        </div>
+        <div class="up-header-actions">
+          <a href="<?= base_url('Security/sessions'); ?>" class="up-btn up-btn-ghost"><i class="mdi mdi-account-clock-outline"></i> Active sessions</a>
+          <a href="<?= base_url('Security/devices'); ?>" class="up-btn up-btn-ghost"><i class="mdi mdi-cellphone-link"></i> Devices</a>
         </div>
       </div>
     </div></div>
 
     <?php if ($m = $this->session->flashdata('success')): ?>
-      <div class="alert alert-success"><?= sec_e($m); ?></div>
+      <div class="up-flash up-flash-success"><?= sec_e($m); ?></div>
     <?php endif; ?>
 
     <!-- Audit trail integrity -->
     <?php if (!empty($chain['ok'])): ?>
-      <div class="alert alert-success py-2">
-        Audit trail intact &mdash; <?= (int)$chain['checked']; ?> records verified.
+      <div class="up-flash up-flash-success">
+        <i class="mdi mdi-shield-check-outline"></i>
+        Audit trail intact &mdash; <?= number_format((int)$chain['checked']); ?> records verified.
       </div>
     <?php endif; ?>
 
     <!-- Counters -->
-    <div class="row">
+    <div class="nx-stats mb-4">
       <?php
       $tiles = array(
-        array('Sign-ins today',   $counts['logins_today'],    ''),
-        array('Failed attempts',  $counts['failed_today'],    $counts['failed_today'] > 20 ? 'text-danger' : ''),
-        array('New devices',      $counts['new_devices'],     ''),
-        array('Blocked for retries', $counts['blocked'],      ''),
-        array('Active sessions',  $counts['active_sessions'], ''),
-        array('Locked accounts',  $counts['locked_accounts'], ''),
+        array('Sign-ins today',     $counts['logins_today'],    'blue',   'mdi-login-variant',          base_url('Securityadmin/login_activity'),                 'Login activity'),
+        array('Failed attempts',    $counts['failed_today'],    'rose',   'mdi-alert-circle-outline',   base_url('Securityadmin/login_activity?status=failed'),   'Review failures'),
+        array('New devices',        $counts['new_devices'],     'cyan',   'mdi-cellphone-link',         base_url('Security/devices'),                             'Known devices'),
+        array('Blocked for retries',$counts['blocked'],         'orange', 'mdi-timer-lock-outline',     base_url('Securityadmin'),                                'IP blocks'),
+        array('Active sessions',    $counts['active_sessions'], 'violet', 'mdi-account-clock-outline',  base_url('Security/sessions'),                            'Who is signed in'),
+        array('Locked accounts',    $counts['locked_accounts'], 'green',  'mdi-lock-outline',           base_url('Securityadmin/login_activity?status=failed'),   'See attempts'),
       );
       foreach ($tiles as $t): ?>
-        <div class="col-md-2 col-6">
-          <div class="card"><div class="card-body text-center p-3">
-            <h3 class="mb-0 <?= $t[2]; ?>"><?= (int)$t[1]; ?></h3>
-            <small class="text-muted"><?= sec_e($t[0]); ?></small>
-          </div></div>
-        </div>
+        <a class="nx-stat <?= $t[2]; ?>" href="<?= $t[4]; ?>">
+          <div class="nx-stat-main">
+            <div>
+              <div class="nx-stat-num"><?= number_format((int)$t[1]); ?></div>
+              <div class="nx-stat-label"><?= sec_e($t[0]); ?></div>
+            </div>
+            <div class="nx-stat-icon"><i class="mdi <?= $t[3]; ?>"></i></div>
+          </div>
+          <div class="nx-stat-foot"><?= sec_e($t[5]); ?> <i class="mdi mdi-arrow-right"></i></div>
+        </a>
       <?php endforeach; ?>
     </div>
 
     <!-- Devices seen on several accounts -->
     <?php if (!empty($shared_devices)): ?>
-    <div class="card"><div class="card-body">
-      <h5 class="mb-1">One device, several accounts</h5>
-      <p class="text-muted mb-3" style="font-size:13px">
-        A browser signing into many accounts is what credential spraying looks like.
+    <div class="up-card mb-4">
+      <div class="up-card-head"><h5><i class="mdi mdi-devices"></i> One device, several accounts</h5></div>
+      <div class="up-card-body" style="padding:0">
+      <div class="up-note" style="margin:16px 22px">
+        <i class="mdi mdi-information-outline"></i>
+        <span>A browser signing into many accounts is what credential spraying looks like.
         A shared family phone looks the same &mdash; judge it on the timing:
-        many accounts within minutes is an attack, spread over months is a shared device.
-      </p>
+        many accounts within minutes is an attack, spread over months is a shared device.</span>
+      </div>
       <div class="table-responsive"><table class="table table-sm mb-0">
         <thead><tr><th>Device</th><th>Accounts</th><th>First seen</th><th>Last seen</th></tr></thead>
         <tbody>
@@ -76,15 +87,20 @@ require_once APPPATH . 'views/security_partials.php';
         <?php endforeach; ?>
         </tbody>
       </table></div>
-    </div></div>
+      </div>
+    </div>
     <?php endif; ?>
 
     <!-- Risky sign-ins -->
-    <div class="card"><div class="card-body">
-      <h5 class="mb-1">Sign-ins worth a look</h5>
-      <p class="text-muted mb-3" style="font-size:13px">Last 7 days, highest risk first. A score is a prompt to check, not a verdict.</p>
+    <div class="up-card mb-4">
+      <div class="up-card-head"><h5><i class="mdi mdi-shield-search"></i> Sign-ins worth a look</h5></div>
+      <div class="up-card-body" style="padding:0">
+      <div class="up-note" style="margin:16px 22px">
+        <i class="mdi mdi-information-outline"></i>
+        <span>Last 7 days, highest risk first. A score is a prompt to check, not a verdict.</span>
+      </div>
       <?php if (empty($risky)): ?>
-        <p class="mb-0 text-muted">Nothing scored above zero. Quiet week.</p>
+        <div class="up-empty"><i class="mdi mdi-shield-check-outline"></i>Nothing scored above zero. Quiet week.</div>
       <?php else: ?>
       <div class="table-responsive"><table class="table table-sm mb-0">
         <thead><tr><th>When</th><th>Account</th><th>Risk</th><th>Device</th><th>Why</th></tr></thead>
@@ -101,14 +117,19 @@ require_once APPPATH . 'views/security_partials.php';
         </tbody>
       </table></div>
       <?php endif; ?>
-    </div></div>
+      </div>
+    </div>
 
     <!-- Account changes -->
-    <div class="card"><div class="card-body">
-      <h5 class="mb-1">Recent account changes</h5>
-      <p class="text-muted mb-3" style="font-size:13px">Who changed what, from where. Last 7 days.</p>
+    <div class="up-card mb-4">
+      <div class="up-card-head"><h5><i class="mdi mdi-account-edit-outline"></i> Recent account changes</h5></div>
+      <div class="up-card-body" style="padding:0">
+      <div class="up-note" style="margin:16px 22px">
+        <i class="mdi mdi-information-outline"></i>
+        <span>Who changed what, from where. Last 7 days.</span>
+      </div>
       <?php if (empty($changes)): ?>
-        <p class="mb-0 text-muted">No profile or password changes.</p>
+        <div class="up-empty"><i class="mdi mdi-account-check-outline"></i>No profile or password changes.</div>
       <?php else: ?>
       <div class="table-responsive"><table class="table table-sm mb-0">
         <thead><tr><th>When</th><th>Who</th><th>Field</th><th>Change</th><th>Device</th></tr></thead>
@@ -140,7 +161,8 @@ require_once APPPATH . 'views/security_partials.php';
         </tbody>
       </table></div>
       <?php endif; ?>
-    </div></div>
+      </div>
+    </div>
 
   </div></div>
   <?php include('includes/footer.php'); ?>
