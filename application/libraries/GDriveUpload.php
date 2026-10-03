@@ -320,29 +320,42 @@ class GDriveUpload
         return null;
     }
 
-    private function httpPost($url, $body, array $headers)
+    private function httpPost($url, $body, array $headers, $timeout = 300)
     {
-        $ch = curl_init($url);
-        curl_setopt_array($ch, array(
-            CURLOPT_POST           => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => $headers,
-            CURLOPT_POSTFIELDS     => $body,
-            CURLOPT_CONNECTTIMEOUT => 15,
-            CURLOPT_TIMEOUT        => 120,
-        ));
+        // Two attempts: a shared host's egress occasionally drops a connect
+        // attempt — retrying once hides that from the caller.
+        for ($try = 0; $try < 2; $try++) {
+            if ($try > 0) {
+                sleep(2);
+            }
 
-        $raw     = curl_exec($ch);
-        $curlErr = curl_error($ch);
-        $status  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+            $ch = curl_init($url);
+            curl_setopt_array($ch, array(
+                CURLOPT_POST           => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => $headers,
+                CURLOPT_POSTFIELDS     => $body,
+                CURLOPT_CONNECTTIMEOUT => 30,
+                CURLOPT_TIMEOUT        => $timeout,
+            ));
 
-        if ($raw === false) {
-            $this->error = 'HTTPS request failed: ' . $curlErr;
-            return null;
+            $raw     = curl_exec($ch);
+            $curlErr = curl_errno($ch);
+            $status  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $errMsg  = curl_error($ch);
+            curl_close($ch);
+
+            if ($raw !== false) {
+                return array($status, (string)$raw);
+            }
+            // Only retry transport failures, not HTTP responses.
+            if (!in_array($curlErr, array(CURLE_COULDNT_CONNECT, CURLE_OPERATION_TIMEDOUT, CURLE_SEND_ERROR, CURLE_RECV_ERROR), true)) {
+                break;
+            }
         }
 
-        return array($status, (string)$raw);
+        $this->error = 'HTTPS request failed: ' . $errMsg;
+        return null;
     }
 
     private function httpGet($url, $token)
@@ -351,8 +364,8 @@ class GDriveUpload
         curl_setopt_array($ch, array(
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER     => array('Authorization: Bearer ' . $token),
-            CURLOPT_CONNECTTIMEOUT => 15,
-            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 30,
+            CURLOPT_TIMEOUT        => 60,
         ));
 
         $raw     = curl_exec($ch);

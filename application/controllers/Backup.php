@@ -22,6 +22,7 @@ class Backup extends CI_Controller
         $this->load->database();
         $this->load->helper('url');
         $this->load->model('AuditLogModel');
+        $this->load->model('SettingsModel'); // used by top-nav-bar
         $this->load->library('DbBackup');
     }
 
