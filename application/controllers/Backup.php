@@ -45,6 +45,18 @@ class Backup extends CI_Controller
     }
 
     /**
+     * Mutating endpoints must be POST. CI3 CSRF only guards POST requests —
+     * without this, a GET (e.g. an <img> tag on another page the admin opens)
+     * would run these without any token check.
+     */
+    private function requirePost()
+    {
+        if (strtolower((string)$this->input->method()) !== 'post') {
+            show_error('Method not allowed', 405);
+        }
+    }
+
+    /**
      * Shared token for the cron URL — same construction as
      * Securitycheck::token(), different namespace so the tokens can never be
      * replayed against each other. Set 'backup_cron_token' in config.php to
@@ -268,6 +280,7 @@ class Backup extends CI_Controller
     public function settings()
     {
         $this->requireSuperAdmin();
+        $this->requirePost();
         $this->ensureTables();
 
         $time = static function ($v, $fallback) {
@@ -336,6 +349,7 @@ class Backup extends CI_Controller
     public function run_now()
     {
         $this->requireSuperAdmin();
+        $this->requirePost();
         $this->ensureTables();
 
         @set_time_limit(0);
@@ -378,6 +392,7 @@ class Backup extends CI_Controller
     public function remove($id = 0)
     {
         $this->requireSuperAdmin();
+        $this->requirePost();
         $this->ensureTables();
 
         $run = $this->db->where('id', (int)$id)->get('backup_runs')->row_array();
@@ -531,6 +546,7 @@ class Backup extends CI_Controller
     public function google_disconnect()
     {
         $this->requireSuperAdmin();
+        $this->requirePost();
         $this->ensureTables();
         $this->db->where('id', 1)->update('backup_settings', array(
             'drive_refresh_token' => '',

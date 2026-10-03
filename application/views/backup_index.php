@@ -85,10 +85,13 @@
     </div>
 
     <?php if ($m = $this->session->flashdata('success')): ?>
-      <div class="alert alert-success"><?= $m; ?></div>
+      <div class="alert alert-success"><?= html_escape($m); ?></div>
     <?php endif; ?>
     <?php if ($m = $this->session->flashdata('danger')): ?>
-      <div class="alert alert-danger"><?= $m; ?></div>
+      <div class="alert alert-danger"><?= html_escape($m); ?></div>
+    <?php endif; ?>
+    <?php if ($m = $this->session->flashdata('warning')): ?>
+      <div class="alert alert-warning"><?= html_escape($m); ?></div>
     <?php endif; ?>
 
     <div class="row">
