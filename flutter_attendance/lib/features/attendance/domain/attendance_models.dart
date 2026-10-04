@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// The manual open/closed override an admin sets on an activity.
 /// Mirrors the `activities`.`status` enum on the server.
 enum ActivityStatus {
@@ -293,6 +295,61 @@ class Activity {
         'window_end': windowEnd,
         'sessions': sessions.toJson(),
       };
+}
+
+/// The patch `POST activities/update` gets for an edit — only the fields
+/// the user actually changed. A full-replace payload lets a control that
+/// failed to seed (unresolved dropdown, stale cache, an older server that
+/// never sent `sessions`) wipe the stored value, so anything still equal
+/// to [original] is omitted.
+Map<String, dynamic> buildActivityUpdateFields({
+  required Activity original,
+  required String title,
+  required String description,
+  required String location,
+  required String date,
+  // Resolved "Program — Major" payload; null means the program dropdown
+  // never resolved and the stored value must be left alone.
+  String? program,
+  required ActivitySessions sessions,
+  required ActivityStatus status,
+  required bool autoClose,
+  required int graceMinutes,
+}) {
+  final fields = <String, dynamic>{};
+  if (title != original.title) fields['title'] = title;
+  if (description != original.description) {
+    fields['description'] = description;
+  }
+  if (location != original.location) fields['location'] = location;
+
+  // An unparsable stored date (0000-00-00) must not turn into "today" —
+  // only a visible, different date is sent.
+  if (date.isNotEmpty && date != original.activityDate) {
+    fields['activity_date'] = date;
+  }
+
+  if (program != null && program != original.program) {
+    fields['program'] = program;
+  }
+
+  // Unchanged sessions are omitted so meta.sessions survives untouched; a
+  // deliberately cleared set still serializes to {} and clears them,
+  // exactly like the web form's all-blank windows.
+  final cur = sessions.toJson();
+  if (jsonEncode(cur) != jsonEncode(original.sessions.toJson())) {
+    fields['sessions'] = cur;
+  }
+
+  if (status != original.manualStatus) fields['status'] = status.value;
+
+  // auto_close/grace_minutes share the same meta row — keep them together.
+  if (autoClose != original.autoClose ||
+      graceMinutes != original.graceMinutes) {
+    fields['auto_close'] = autoClose;
+    fields['grace_minutes'] = graceMinutes;
+  }
+  return fields;
 }
 
 /// One row of the student's own attendance log (`GET /api/mobile/attendance/my_logs`).

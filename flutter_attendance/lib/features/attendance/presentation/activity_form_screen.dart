@@ -63,6 +63,15 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
   bool _saving = false;
   String? _error;
 
+  /// The row the form was seeded from — the fresh server row when the
+  /// detail fetch succeeded, otherwise the list item it was opened with.
+  Activity? _src;
+
+  /// Edit mode waits on the fresh-row fetch before showing the fields, so a
+  /// stale cached list item cannot seed blank controls whose save would
+  /// wipe stored values.
+  bool _resolving = false;
+
   bool get _isEdit => widget.activity != null;
   bool get _isCustomProgram => _programChoice == _kCustomProgram;
 
@@ -70,20 +79,64 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
   void initState() {
     super.initState();
     _api = AttendanceApi();
-    final a = widget.activity;
-    _title = TextEditingController(text: a?.title ?? '');
-    _description = TextEditingController(text: a?.description ?? '');
-    _location = TextEditingController(text: a?.location ?? '');
+    _title = TextEditingController();
+    _description = TextEditingController();
+    _location = TextEditingController();
     _programCustom = TextEditingController();
-    _date = TextEditingController(text: a?.activityDate ?? '');
+    _date = TextEditingController();
+    _amIn = TextEditingController();
+    _amOut = TextEditingController();
+    _pmIn = TextEditingController();
+    _pmOut = TextEditingController();
+    _eveIn = TextEditingController();
+    _eveOut = TextEditingController();
+
+    if (_isEdit) {
+      _resolving = true;
+      _resolveSource();
+    } else {
+      _seed(null);
+    }
+  }
+
+  /// Edit mode edits the server's current row, not the list item it was
+  /// opened from — that item may be a stale cache entry predating newer
+  /// fields, and seeding blank controls from it would let a save wipe them.
+  Future<void> _resolveSource() async {
+    final fallback = widget.activity!;
+    Activity fresh;
+    try {
+      fresh = await _api.activity(
+        baseUrl: widget.session.baseUrl,
+        token: widget.session.token,
+        activityId: fallback.activityId,
+      );
+    } catch (_) {
+      fresh = fallback;
+    }
+    if (!mounted) return;
+    setState(() {
+      _resolving = false;
+      _seed(fresh);
+    });
+  }
+
+  /// Seeds every control from [a] — once for a new activity, and once the
+  /// edit source resolves.
+  void _seed(Activity? a) {
+    _src = a;
+    _title.text = a?.title ?? '';
+    _description.text = a?.description ?? '';
+    _location.text = a?.location ?? '';
+    _date.text = a?.activityDate ?? '';
 
     final s = a?.sessions ?? ActivitySessions.empty;
-    _amIn = TextEditingController(text: s.amIn ?? '');
-    _amOut = TextEditingController(text: s.amOut ?? '');
-    _pmIn = TextEditingController(text: s.pmIn ?? '');
-    _pmOut = TextEditingController(text: s.pmOut ?? '');
-    _eveIn = TextEditingController(text: s.eveIn ?? '');
-    _eveOut = TextEditingController(text: s.eveOut ?? '');
+    _amIn.text = s.amIn ?? '';
+    _amOut.text = s.amOut ?? '';
+    _pmIn.text = s.pmIn ?? '';
+    _pmOut.text = s.pmOut ?? '';
+    _eveIn.text = s.eveIn ?? '';
+    _eveOut.text = s.eveOut ?? '';
 
     _status = a?.manualStatus ?? ActivityStatus.open;
     _autoClose = a?.autoClose ?? false;
@@ -149,12 +202,27 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
       );
       if (!mounted) return;
       setState(() {
-        _majors = list;
+        // Keep a stored major the fetched list doesn't know — dropping it
+        // would truncate "Program — Major" to "Program" on save.
+        _majors = [
+          ...list,
+          if (initial != null &&
+              initial.isNotEmpty &&
+              !list.contains(initial))
+            initial,
+        ];
         _majorsLoading = false;
-        _major = (initial != null && list.contains(initial)) ? initial : _major;
+        _major = initial ?? _major;
       });
     } catch (_) {
-      if (mounted) setState(() => _majorsLoading = false);
+      if (!mounted) return;
+      setState(() {
+        _majorsLoading = false;
+        if (initial != null && initial.isNotEmpty) {
+          _majors = [initial];
+          _major = initial;
+        }
+      });
     }
   }
 
@@ -175,6 +243,23 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
         pmOut: _pmOut.text.trim(),
         eveIn: _eveIn.text.trim(),
         eveOut: _eveOut.text.trim(),
+      );
+
+  /// The edit update is a patch of what actually changed, never a full
+  /// replace — see buildActivityUpdateFields.
+  Map<String, dynamic> _updateFields() => buildActivityUpdateFields(
+        original: _src ?? widget.activity!,
+        title: _title.text.trim(),
+        description: _description.text.trim(),
+        location: _location.text.trim(),
+        date: _date.text.trim(),
+        // A null _programChoice means the dropdown never resolved (programs
+        // fetch failed) — the stored program stays untouched.
+        program: _programChoice != null ? _programPayload : null,
+        sessions: _sessions,
+        status: _status,
+        autoClose: _autoClose,
+        graceMinutes: _graceMinutes,
       );
 
   @override
@@ -250,6 +335,12 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
       return;
     }
 
+    final fields = _isEdit ? _updateFields() : const <String, dynamic>{};
+    if (_isEdit && fields.isEmpty) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+
     setState(() {
       _saving = true;
       _error = null;
@@ -260,17 +351,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
             baseUrl: widget.session.baseUrl,
             token: widget.session.token,
             activityId: widget.activity!.activityId,
-            fields: {
-              'title': _title.text.trim(),
-              'description': _description.text.trim(),
-              'location': _location.text.trim(),
-              'program': _programPayload,
-              'activity_date': _date.text.trim(),
-              'sessions': _sessions.toJson(),
-              'status': _status.value,
-              'auto_close': _autoClose,
-              'grace_minutes': _graceMinutes,
-            },
+            fields: fields,
           )
         : await _api.createActivity(
             baseUrl: widget.session.baseUrl,
@@ -342,7 +423,14 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
     return AppScaffold(
       titleWidget: const SizedBox.shrink(),
       showBackButton: true,
-      body: Column(
+      body: _resolving
+          ? const Center(child: CircularProgressIndicator())
+          : _buildForm(context),
+    );
+  }
+
+  Widget _buildForm(BuildContext context) {
+    return Column(
         children: [
           Expanded(
             child: SingleChildScrollView(
@@ -474,8 +562,8 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
                                 ),
                               ),
                             ),
-                            if (widget.activity != null)
-                              ActivityStatePill(activity: widget.activity!),
+                                            if (_src != null)
+                              ActivityStatePill(activity: _src!),
                           ],
                         ),
                         const SizedBox(height: 14),
@@ -623,8 +711,7 @@ class _ActivityFormScreenState extends State<ActivityFormScreen> {
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 
   /// The closed field is one line tall, so a long program name shrinks to

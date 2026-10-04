@@ -71,6 +71,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Scans student QR codes to record attendance.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Unlocks the app with biometrics when enabled.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Connects to a school portal on your local network.</string>
 </dict>

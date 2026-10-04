@@ -834,8 +834,14 @@ class MobileAttendance extends MobileApi
         }
         if (isset($payload['activity_date'])) {
             $date = trim((string)$payload['activity_date']);
-            $st = trim((string)($payload['start_time'] ?? ''));
-            $et = trim((string)($payload['end_time'] ?? ''));
+            // Keep the stored times when the caller moves only the date;
+            // a date-only patch must not zero start_at or null end_at.
+            $st = array_key_exists('start_time', $payload)
+                ? trim((string)$payload['start_time'])
+                : substr((string)($existing->start_time ?? ''), 0, 5);
+            $et = array_key_exists('end_time', $payload)
+                ? trim((string)$payload['end_time'])
+                : substr((string)($existing->end_time ?? ''), 0, 5);
             $data['start_at'] = $date . ' ' . ($st !== '' ? $st . ':00' : '00:00:00');
             $data['end_at']   = ($et !== '') ? ($date . ' ' . $et . ':00') : null;
         }

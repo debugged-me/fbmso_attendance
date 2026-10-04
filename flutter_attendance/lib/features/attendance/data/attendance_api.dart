@@ -472,6 +472,32 @@ class AttendanceApi {
     throw ApiException((data['message'] ?? 'Failed to load majors').toString());
   }
 
+  /// One activity by id — the edit form seeds from this fresh row rather
+  /// than the list item, which can be hours-old cache that predates fields
+  /// like `sessions`/`auto_close` and would seed blank controls whose save
+  /// would wipe the stored values.
+  Future<Activity> activity({
+    required String baseUrl,
+    required String token,
+    required int activityId,
+  }) async {
+    final url = '${_normalize(baseUrl)}/api/mobile/activities/$activityId';
+    try {
+      final response = await _client
+          .get(Uri.parse(url), headers: _headers(token))
+          .timeout(_liveTimeout);
+      final data = _decode(response);
+      if (data['ok'] == true && data['activity'] is Map<String, dynamic>) {
+        return Activity.fromJson(data['activity'] as Map<String, dynamic>);
+      }
+      throw ApiException((data['message'] ?? 'Failed to load').toString());
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(e.toString());
+    }
+  }
+
   /// Create a new activity. Staff only.
   ///
   /// [sessions] carries the am/pm/eve windows exactly like the web form —
