@@ -89,7 +89,9 @@ $autoload['drivers'] = array();
 |
 |	$autoload['helper'] = array('url', 'file');
 */
-$autoload['helper'] = array('url', 'fbmso_email', 'activity_state', 'fbmso_password');
+// mbstring_compat first: production PHP lacks ext/mbstring, and every
+// other entry here (plus controllers/models loaded later) may call mb_*.
+$autoload['helper'] = array('mbstring_compat', 'url', 'fbmso_email', 'activity_state', 'fbmso_password');
 
 /*
 | -------------------------------------------------------------------

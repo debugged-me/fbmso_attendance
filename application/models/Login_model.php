@@ -34,6 +34,8 @@ class Login_model extends CI_Model
   function validate($username, $password)
   {
     $username = trim((string)$username);
+    // Some phone keyboards produce "∅" (U+2205) where students mean "0".
+    $username = str_replace("\u{2205}", '0', $username);
     $password = (string)$password;
 
     if ($username === '' || $password === '') {
@@ -76,7 +78,10 @@ class Login_model extends CI_Model
   private function findLoginCandidates($username)
   {
     // 1) Strict username match (username is the primary key).
-    $byUsername = $this->db->query(
+    // Guard the result: characters outside the table's collation (e.g.
+    // emoji) make MySQL reject the query and query() returns FALSE —
+    // a failed lookup must read as "no match", not crash the request.
+    $byUsernameQ = $this->db->query(
       "
         SELECT *
         FROM o_users
@@ -84,7 +89,8 @@ class Login_model extends CI_Model
         LIMIT 1
       ",
       [$username]
-    )->result_array();
+    );
+    $byUsername = $byUsernameQ === false ? [] : $byUsernameQ->result_array();
 
     // An exact username hit is authoritative: do NOT keep hunting for a
     // normalised sibling. Collisions exist — e.g. '2023-2794' and '20232794'
@@ -98,7 +104,7 @@ class Login_model extends CI_Model
     //    non-dashed forms (e.g. 2024-0194 / 20240194).
     $normalizedInput = preg_replace('/[\s-]+/', '', $username);
 
-    $byIdNumber = $this->db->query(
+    $byIdNumberQ = $this->db->query(
       "
         SELECT *
         FROM o_users
@@ -114,7 +120,8 @@ class Login_model extends CI_Model
         LIMIT 10
       ",
       [$username, $normalizedInput, $normalizedInput, $username, $normalizedInput]
-    )->result_array();
+    );
+    $byIdNumber = $byIdNumberQ === false ? [] : $byIdNumberQ->result_array();
 
     $candidates = [];
     foreach (array_merge($byUsername, $byIdNumber) as $row) {

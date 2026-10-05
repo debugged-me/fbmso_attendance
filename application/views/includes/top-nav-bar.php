@@ -68,7 +68,7 @@
                    if (!isset($this->SettingsModel)) {
                        $this->load->model('SettingsModel');
                    }
-                   $nxTmp = $this->SettingsModel->getSchoolName();
+                   $nxTmp = get_instance()->SettingsModel->getSchoolName();
                    if (is_string($nxTmp) && trim($nxTmp) !== '') {
                        $nxOrgName = $nxTmp;
                    }

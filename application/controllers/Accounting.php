@@ -1865,7 +1865,12 @@ class Accounting extends CI_Controller
 
 		[$sem, $sy] = $this->currentSemSy();
 		$q = trim((string)$this->input->get('q', true));
-		$terms = array_values(array_filter(preg_split('/\s+/u', mb_strtolower($q, 'UTF-8')), function ($t) {
+		$parts = preg_split('/\s+/u', mb_strtolower($q, 'UTF-8'));
+		if ($parts === false) {
+			// The typed text is not valid UTF-8; split without the /u flag.
+			$parts = preg_split('/\s+/', mb_strtolower($q, 'UTF-8'));
+		}
+		$terms = array_values(array_filter($parts ?: [], function ($t) {
 			return $t !== '';
 		}));
 
