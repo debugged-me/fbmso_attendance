@@ -83,6 +83,7 @@ $route['backup/remove/(:num)']   = 'backup/remove/$1';
 $route['error-logs']                  = 'errorlogs/index';
 $route['error-logs/download/(:any)']  = 'errorlogs/download/$1';
 $route['error-logs/clear/(:any)']     = 'errorlogs/clear/$1';
+$route['data-health']                 = 'Datahealth/index';
 $route['fbmso-personnels']        = 'FbmsoPersonnels/index';
 $route['admin/fbmso-personnels']  = 'FbmsoPersonnels/manage';
 

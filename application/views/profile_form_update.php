@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>Attendance MS</title>
+    <title>Attendance Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta content="Responsive bootstrap 4 admin template" name="description" />
     <meta content="Coderthemes" name="author" />
@@ -17,7 +17,7 @@
     <link href="<?= base_url(); ?>assets/css/icons.min.css" rel="stylesheet" type="text/css" />
   <link href="<?= base_url(); ?>assets/css/app.css?v=20260922" rel="stylesheet" type="text/css" id="app-stylesheet" />
     <link rel="stylesheet" href="<?= base_url('assets/css/uniform-page.css?v=2026092802'); ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/update_profile.css?v=2'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/update_profile.css?v=3'); ?>">
 
     <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
     <link rel="stylesheet" href="<?= base_url('assets/fonts/bootstrap-icons/bootstrap-icons.css'); ?>">
@@ -97,6 +97,31 @@ $civilVal      = $pickField(['CivilStatus', 'civilstatus']);
 $contactVal    = $pickField(['contactNo', 'ContactNo']);
 $birthDateVal  = $pickField(['birthDate', 'BirthDate']);
 $ageVal        = $pickField(['Age', 'age']);
+$emailVal      = $pickField(['email', 'Email']);
+$courseVal     = $pickField(['Course1', 'course', 'Course']);
+$majorVal      = $pickField(['Major1', 'major', 'Major']);
+$yearLvlVal    = $pickField(['yearLevel', 'YearLevel']);
+$sectionVal    = $pickField(['section', 'Section']);
+$courseOptions = (isset($courseOptions) && is_array($courseOptions)) ? $courseOptions : [];
+if ($emailVal === '') {
+    // Signup/profile rows predate the email column — fall back to the
+    // login account's email so the field shows whichever value exists.
+    $emailVal = trim((string)($accountEmail ?? ''));
+}
+
+// Banner photo: real upload when one exists, initials otherwise — the
+// goal is simply that staff can see whose record they are changing.
+$photoUrl = trim((string)($photoUrl ?? ''));
+$avatarInitials = '';
+foreach ([$firstNameVal, $lastNameVal] as $part) {
+    if ($part !== '') {
+        $avatarInitials .= strtoupper(substr($part, 0, 1));
+    }
+    if (strlen($avatarInitials) >= 2) break;
+}
+if ($avatarInitials === '') {
+    $avatarInitials = '?';
+}
 ?>
 <div id="wrapper">
     <?php include('includes/top-nav-bar.php'); ?>
@@ -149,6 +174,13 @@ $ageVal        = $pickField(['Age', 'age']);
                         <div class="ring ring-2"></div>
 
                         <div class="banner-text">
+                            <div class="banner-avatar" title="Student photo">
+                                <?php if ($photoUrl !== ''): ?>
+                                    <img src="<?= htmlspecialchars($photoUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="Student photo">
+                                <?php else: ?>
+                                    <span class="avatar-initials"><?= htmlspecialchars($avatarInitials, ENT_QUOTES, 'UTF-8'); ?></span>
+                                <?php endif; ?>
+                            </div>
                             <div class="banner-eyebrow">Student Record &middot; <?= htmlspecialchars($snVal ?: 'N/A', ENT_QUOTES, 'UTF-8'); ?></div>
                             <div class="banner-title"><?= $readOnly ? 'View Profile' : 'Update Profile'; ?></div>
                             <div class="banner-sub">
@@ -182,7 +214,8 @@ $ageVal        = $pickField(['Age', 'age']);
 
                         <form class="parsley-examples" method="post" enctype="multipart/form-data"
                             data-check-availability-url="<?= htmlspecialchars(site_url('Page/checkSignupAvailability'), ENT_QUOTES, 'UTF-8'); ?>"
-                            data-exclude-student-number="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>">
+                            data-exclude-student-number="<?= htmlspecialchars($excludeSn ?? $snVal, ENT_QUOTES, 'UTF-8'); ?>"
+                            data-exclude-email="<?= htmlspecialchars($excludeEmail ?? $emailVal, ENT_QUOTES, 'UTF-8'); ?>">
                             <fieldset class="profile-fieldset" <?= $readOnly ? 'disabled' : ''; ?>>
 
                                 <div class="section-head">
@@ -195,7 +228,10 @@ $ageVal        = $pickField(['Age', 'age']);
                                     <div class="field-group">
                                         <input type="hidden" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>" name="oldStudentNo" required>
                                         <label class="field-label" for="StudentNumber">Student No. <span class="req">*</span></label>
-                                        <input type="text" class="field" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>" name="StudentNumber" id="StudentNumber" <?= $readOnly ? 'readonly' : ''; ?> required>
+                                        <input type="text" class="field" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>" name="StudentNumber" id="StudentNumber"
+                                            inputmode="numeric" autocomplete="off" maxlength="9" pattern="[0-9]+(-[0-9]+)?"
+                                            title="Numbers only — school ID format e.g. 2026-0251"
+                                            <?= $readOnly ? 'readonly' : ''; ?> required>
                                         <?php if (!$readOnly): ?>
                                             <span class="availability-msg" id="student-number-status" aria-live="polite"></span>
                                         <?php endif; ?>
@@ -237,11 +273,16 @@ $ageVal        = $pickField(['Age', 'age']);
                                     </div>
                                     <div class="field-group">
                                         <label class="field-label" for="contactNo">Mobile No.</label>
-                                        <input type="text" class="field" id="contactNo" name="contactNo" value="<?= htmlspecialchars($contactVal, ENT_QUOTES, 'UTF-8'); ?>" placeholder="09XX XXX XXXX">
+                                        <input type="text" class="field" id="contactNo" name="contactNo" value="<?= htmlspecialchars($contactVal, ENT_QUOTES, 'UTF-8'); ?>"
+                                            inputmode="numeric" autocomplete="off" maxlength="11" placeholder="09XXXXXXXXX"
+                                            title="Numbers only — 11-digit mobile number starting with 09">
+                                        <?php if (!$readOnly): ?>
+                                            <span class="availability-msg" id="contact-status" aria-live="polite"></span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
 
-                                <div class="row-fields cols-2">
+                                <div class="row-fields cols-3">
                                     <div class="field-group">
                                         <label class="field-label" for="bday">Birth Date <span class="req">*</span></label>
                                         <input type="date" name="birthDate" id="bday" class="field"
@@ -250,6 +291,13 @@ $ageVal        = $pickField(['Age', 'age']);
                                     <div class="field-group">
                                         <label class="field-label" for="resultBday">Age <span class="req">*</span></label>
                                         <input type="text" name="Age" id="resultBday" class="field" readonly required value="<?= htmlspecialchars($ageVal, ENT_QUOTES, 'UTF-8'); ?>">
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label" for="email">Email</label>
+                                        <input type="email" class="field" id="email" name="email" value="<?= htmlspecialchars($emailVal, ENT_QUOTES, 'UTF-8'); ?>" placeholder="name@example.com" <?= $readOnly ? 'readonly' : ''; ?>>
+                                        <?php if (!$readOnly): ?>
+                                            <span class="availability-msg" id="email-status" aria-live="polite"></span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
 
@@ -299,6 +347,69 @@ $ageVal        = $pickField(['Age', 'age']);
                                     </div>
                                 </div>
 
+                                <div class="section-head">
+                                    <div class="section-dot"></div>
+                                    <div class="section-label">Academic</div>
+                                    <div class="section-line"></div>
+                                </div>
+
+                                <div class="row-fields cols-4">
+                                    <div class="field-group">
+                                        <label class="field-label" for="Course1">Course</label>
+                                        <select id="Course1" name="Course1" class="field">
+                                            <option value="">Select Course</option>
+                                            <?php
+                                            $seenCourse = false;
+                                            foreach ($courseOptions as $cRow):
+                                                $cv = trim((string)($cRow->CourseDescription ?? ''));
+                                                if ($cv === '') continue;
+                                                if ($cv === $courseVal) $seenCourse = true;
+                                            ?>
+                                                <option value="<?= htmlspecialchars($cv, ENT_QUOTES, 'UTF-8'); ?>" <?= $cv === $courseVal ? 'selected' : ''; ?>>
+                                                    <?= htmlspecialchars($cv, ENT_QUOTES, 'UTF-8'); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                            <?php if ($courseVal !== '' && !$seenCourse): ?>
+                                                <option value="<?= htmlspecialchars($courseVal, ENT_QUOTES, 'UTF-8'); ?>" selected><?= htmlspecialchars($courseVal, ENT_QUOTES, 'UTF-8'); ?></option>
+                                            <?php endif; ?>
+                                        </select>
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label" for="Major1">Major</label>
+                                        <select id="Major1" name="Major1" class="field"
+                                            data-majors-url="<?= htmlspecialchars(site_url('Registration/getMajorsByCourse'), ENT_QUOTES, 'UTF-8'); ?>"
+                                            data-current="<?= htmlspecialchars($majorVal, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <option value="">Select Major</option>
+                                            <?php if ($majorVal !== ''): ?>
+                                                <option value="<?= htmlspecialchars($majorVal, ENT_QUOTES, 'UTF-8'); ?>" selected><?= htmlspecialchars($majorVal, ENT_QUOTES, 'UTF-8'); ?></option>
+                                            <?php endif; ?>
+                                        </select>
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label" for="yearLevel">Year Level</label>
+                                        <select id="yearLevel" name="yearLevel" class="field">
+                                            <option value="">Select Year Level</option>
+                                            <?php foreach (['1st' => '1st Year', '2nd' => '2nd Year', '3rd' => '3rd Year', '4th' => '4th Year'] as $yv => $yl): ?>
+                                                <option value="<?= $yv; ?>" <?= $yearLvlVal === $yv ? 'selected' : ''; ?>><?= $yl; ?></option>
+                                            <?php endforeach; ?>
+                                            <?php if ($yearLvlVal !== '' && !in_array($yearLvlVal, ['1st', '2nd', '3rd', '4th'], true)): ?>
+                                                <option value="<?= htmlspecialchars($yearLvlVal, ENT_QUOTES, 'UTF-8'); ?>" selected><?= htmlspecialchars($yearLvlVal, ENT_QUOTES, 'UTF-8'); ?></option>
+                                            <?php endif; ?>
+                                        </select>
+                                    </div>
+                                    <div class="field-group">
+                                        <label class="field-label" for="section">Section</label>
+                                        <select id="section" name="section" class="field"
+                                            data-sections-url="<?= htmlspecialchars(site_url('Registration/getSectionsByCourseYear'), ENT_QUOTES, 'UTF-8'); ?>"
+                                            data-current="<?= htmlspecialchars($sectionVal, ENT_QUOTES, 'UTF-8'); ?>">
+                                            <option value="">Select Section</option>
+                                            <?php if ($sectionVal !== ''): ?>
+                                                <option value="<?= htmlspecialchars($sectionVal, ENT_QUOTES, 'UTF-8'); ?>" selected><?= htmlspecialchars($sectionVal, ENT_QUOTES, 'UTF-8'); ?></option>
+                                            <?php endif; ?>
+                                        </select>
+                                    </div>
+                                </div>
+
                                 <input type="hidden" name="StudentNumber_original" value="<?= htmlspecialchars($snVal, ENT_QUOTES, 'UTF-8'); ?>">
                             </fieldset>
 
@@ -326,6 +437,76 @@ $ageVal        = $pickField(['Age', 'age']);
                                 Changes to this record are stored securely and recorded in the audit log.
                             </div>
                         </form>
+
+                        <?php
+                        $history = is_array($history ?? null) ? $history : [];
+                        $histDiffs = function ($row) {
+                            $old = json_decode((string)($row['old_values'] ?? ''), true);
+                            $new = json_decode((string)($row['new_values'] ?? ''), true);
+                            if (!is_array($new)) return [];
+                            // Only diff keys the update actually wrote —
+                            // columns absent from new_values were left
+                            // untouched, not set to null.
+                            $diffs = [];
+                            // Case-insensitive key match: update payloads
+                            // use 'age'/'province' while the row snapshot
+                            // has 'Age'/'Province' — MySQL columns are
+                            // case-insensitive, so they're the same field.
+                            $oldNorm = [];
+                            if (is_array($old)) {
+                                foreach ($old as $k => $v) $oldNorm[strtolower((string)$k)] = [$k, $v];
+                            }
+                            foreach (array_keys($new) as $f) {
+                                $lk = strtolower((string)$f);
+                                $hasOld = array_key_exists($lk, $oldNorm);
+                                $o = $hasOld ? $oldNorm[$lk][1] : null;
+                                $n = $new[$f];
+                                if ($hasOld && (string)$o === (string)$n) continue;
+                                $diffs[] = ['field' => $hasOld ? $oldNorm[$lk][0] : $f, 'old' => $o, 'new' => $n];
+                            }
+                            return $diffs;
+                        };
+                        ?>
+                        <details class="history-block">
+                            <summary>
+                                <span class="section-dot"></span>
+                                Change History
+                                <span class="history-count"><?= count($history); ?> entr<?= count($history) === 1 ? 'y' : 'ies'; ?></span>
+                            </summary>
+                            <?php if (empty($history)): ?>
+                                <div class="history-empty">No recorded changes for this student yet.</div>
+                            <?php else: ?>
+                                <div class="history-list">
+                                <?php foreach ($history as $row):
+                                    $ok  = (int)($row['succeeded'] ?? 1) === 1;
+                                    $who = trim((string)($row['full_name'] ?? '')) !== '' ? $row['full_name'] : ($row['username'] ?? '');
+                                    $ts  = strtotime((string)($row['event_time'] ?? ''));
+                                    $diffs = $histDiffs($row);
+                                ?>
+                                    <div class="history-item">
+                                        <div class="history-head">
+                                            <span class="history-time"><?= $ts ? date('M j, Y g:i A', $ts) : '—'; ?></span>
+                                            <span class="history-action"><?= htmlspecialchars((string)($row['action'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <?php if (!$ok): ?><span class="history-blocked">blocked</span><?php endif; ?>
+                                            <?php if (!empty($row['module'])): ?><span class="history-table"><?= htmlspecialchars((string)$row['module'], ENT_QUOTES, 'UTF-8'); ?></span><?php endif; ?>
+                                            <span class="history-actor"><?= htmlspecialchars((string)$who, ENT_QUOTES, 'UTF-8'); ?><?= !empty($row['actor_level']) ? ' (' . htmlspecialchars((string)$row['actor_level'], ENT_QUOTES, 'UTF-8') . ')' : ''; ?></span>
+                                        </div>
+                                        <?php if (!empty($row['description'])): ?>
+                                            <div class="history-desc"><?= htmlspecialchars((string)$row['description'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                        <?php endif; ?>
+                                        <?php foreach ($diffs as $d): ?>
+                                            <div class="history-diff">
+                                                <code><?= htmlspecialchars((string)$d['field'], ENT_QUOTES, 'UTF-8'); ?></code>:
+                                                <span class="diff-old"><?= htmlspecialchars(is_scalar($d['old']) ? (string)$d['old'] : json_encode($d['old']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                &rarr;
+                                                <span class="diff-new"><?= htmlspecialchars(is_scalar($d['new']) ? (string)$d['new'] : json_encode($d['new']), ENT_QUOTES, 'UTF-8'); ?></span>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </details>
                     </div>
                 </div>
 
@@ -491,6 +672,7 @@ $('#city').on('change', function () {
     var $form = $('form.parsley-examples');
     var checkUrl = $form.data('check-availability-url') || '';
     var excludeSn = $form.data('exclude-student-number') || '';
+    var excludeEmail = $form.data('exclude-email') || '';
 
     function updateAvailabilityLabel($label, state, text) {
         if (!$label || !$label.length) return;
@@ -508,17 +690,49 @@ $('#city').on('change', function () {
         };
     }
 
+    // Shared guard: block a non-digit key the moment it is pressed (also
+    // fires when the field is already full — keypress happens before the
+    // maxlength refusal, unlike the input event).
+    var NUMBERS_ONLY_MSG = 'This field accepts numbers only.';
+    function bindDigitGuard($input, onRejected) {
+        $input.on('keypress', function (e) {
+            if (e.key && e.key.length === 1 && !/\d/.test(e.key)
+                && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                e.preventDefault();
+                onRejected();
+            }
+        });
+    }
+
+    // Registration-style digits-only input: strip anything that is not a
+    // digit, cap at 8 digits, auto-insert the dash → YYYY-NNNN.
+    var formatStudentNumber = function (value) {
+        var digits = (value || '').replace(/\D/g, '').slice(0, 8);
+        return digits.length > 4 ? digits.slice(0, 4) + '-' + digits.slice(4) : digits;
+    };
+
     var $snInput = $('#StudentNumber');
     var $snStatus = $('#student-number-status');
+    var originalSn = (excludeSn || '').toUpperCase();
     if ($snInput.length && $snStatus.length && checkUrl) {
         var runCheck = debounce(function () {
             var v = ($snInput.val() || '').toUpperCase();
-            $snInput.val(v);
             if (!v) {
                 $snInput.get(0).setCustomValidity('');
                 updateAvailabilityLabel($snStatus, '', '');
                 return;
             }
+
+            // Unchanged value passes as-is — legacy IDs (0011, 0358-2024,
+            // 20232794...) predate the strict format and must stay editable.
+            // A *changed* number must use the school format YYYY-NNNN.
+            if (v !== originalSn && !/^\d{4}-\d{4}$/.test(v)) {
+                var msg = 'New Student No. must use the format YYYY-NNNN (e.g. 2026-0251).';
+                $snInput.get(0).setCustomValidity(msg);
+                updateAvailabilityLabel($snStatus, 'is-muted', msg);
+                return;
+            }
+
             $.post(checkUrl, { field: 'studentnumber', value: v, exclude: excludeSn })
                 .done(function (payload) {
                     var data = (typeof payload === 'object') ? payload
@@ -542,11 +756,221 @@ $('#city').on('change', function () {
                 });
         }, 300);
 
-        $snInput.on('input blur', runCheck);
+        var snNoticeTimer = null;
+        var showSnNotice = function () {
+            updateAvailabilityLabel($snStatus, 'is-bad', NUMBERS_ONLY_MSG);
+            clearTimeout(snNoticeTimer);
+            snNoticeTimer = setTimeout(runCheck, 2500);
+        };
+        bindDigitGuard($snInput, showSnNotice);
+        $snInput.on('input', function () {
+            var raw = $snInput.val() || '';
+            var formatted = formatStudentNumber(raw);
+            if (raw !== formatted) {
+                $snInput.val(formatted);
+                if (/\D/.test(raw)) {
+                    // Pasted text containing letters — same notice as the
+                    // keypress guard (paste bypasses keypress).
+                    showSnNotice();
+                }
+            }
+            runCheck();
+        });
+        $snInput.on('blur', runCheck);
         if (($snInput.val() || '').trim() !== '') {
             // Don't show "available" for the unchanged value on load — just clear.
             updateAvailabilityLabel($snStatus, '', '');
         }
+    }
+
+    // ── Email availability checker (same endpoint, field=email) ──
+    var $emailInput = $('#email');
+    var $emailStatus = $('#email-status');
+    if ($emailInput.length && $emailStatus.length && checkUrl) {
+        var runEmailCheck = debounce(function () {
+            var v = ($emailInput.val() || '').trim();
+            var inputEl = $emailInput.get(0);
+            if (!v) {
+                inputEl.setCustomValidity('');
+                updateAvailabilityLabel($emailStatus, '', '');
+                return;
+            }
+            $.post(checkUrl, { field: 'email', value: v, exclude: excludeEmail })
+                .done(function (payload) {
+                    var data = (typeof payload === 'object') ? payload
+                        : (function () { try { return JSON.parse(payload); } catch (e) { return null; } })();
+                    if (!data || !data.ok) {
+                        updateAvailabilityLabel($emailStatus, 'is-muted', '');
+                        inputEl.setCustomValidity('');
+                        return;
+                    }
+                    if (data.format === false) {
+                        updateAvailabilityLabel($emailStatus, 'is-bad', data.message || 'That email looks misspelled.');
+                        inputEl.setCustomValidity(data.message || 'That email looks misspelled.');
+                    } else if (data.exists) {
+                        updateAvailabilityLabel($emailStatus, 'is-bad', data.message || 'Email already exists.');
+                        inputEl.setCustomValidity(data.message || 'Email already exists.');
+                    } else {
+                        updateAvailabilityLabel($emailStatus, 'is-ok', data.message || 'Email is available.');
+                        inputEl.setCustomValidity('');
+                    }
+                })
+                .fail(function () {
+                    updateAvailabilityLabel($emailStatus, 'is-muted', '');
+                    inputEl.setCustomValidity('');
+                });
+        }, 300);
+
+        $emailInput.on('input blur', runEmailCheck);
+    }
+
+    // ── Mobile No.: numbers only (mirrors myProfile's 09 + 11-digit rule) ──
+    var $contactInput = $('#contactNo');
+    var $contactStatus = $('#contact-status');
+    var originalContact = $contactInput.length ? ($contactInput.val() || '').trim() : '';
+    var contactNoticeTimer = null;
+    if ($contactInput.length) {
+        var showContactNotice = function (text, state) {
+            updateAvailabilityLabel($contactStatus, state || 'is-muted', text);
+            clearTimeout(contactNoticeTimer);
+            if (text) {
+                // After the notice fades, re-validate so a real format
+                // error (if any) is what remains shown.
+                contactNoticeTimer = setTimeout(validateContact, 2500);
+            }
+        };
+
+        var validateContact = function () {
+            if (!$contactInput.length) return;
+            var inputEl = $contactInput.get(0);
+            var v = ($contactInput.val() || '').trim();
+            if (v === '') {
+                inputEl.setCustomValidity('');
+                updateAvailabilityLabel($contactStatus, '', '');
+                return;
+            }
+            // Unchanged legacy values pass; a changed number must be an
+            // 11-digit PH mobile starting with 09.
+            if (v !== originalContact && !/^09\d{9}$/.test(v)) {
+                var msg = 'Mobile number must be 11 digits starting with 09.';
+                inputEl.setCustomValidity(msg);
+                updateAvailabilityLabel($contactStatus, 'is-bad', msg);
+                return;
+            }
+            inputEl.setCustomValidity('');
+            updateAvailabilityLabel($contactStatus, '', '');
+        };
+
+        bindDigitGuard($contactInput, function () {
+            showContactNotice(NUMBERS_ONLY_MSG, 'is-bad');
+        });
+        $contactInput.on('input', function () {
+            var raw = $contactInput.val() || '';
+            var digits = raw.replace(/\D/g, '').slice(0, 11);
+            if (raw !== digits) {
+                $contactInput.val(digits);
+                if (raw.replace(/\D/g, '') !== raw) {
+                    // Something other than a digit was typed/pasted — tell
+                    // the user why it disappeared instead of failing quietly.
+                    showContactNotice('This field accepts numbers only.', 'is-bad');
+                }
+            }
+            validateContact();
+        });
+        $contactInput.on('blur', validateContact);
+    }
+
+    // ── Unsaved-changes guard ──
+    // Any user edit marks the form dirty; navigating away (sidebar link,
+    // back button, tab close) then triggers the browser's leave-site
+    // prompt. Submitting clears the flag so a real save doesn't warn.
+    // (Browsers require this generic prompt — custom modals can't
+    // intercept tab-close/back, so beforeunload is the reliable hook.)
+    var formDirty = false;
+    $('.profile-fieldset').on('input change', 'input, select, textarea', function (e) {
+        // Ignore programmatic events — the province/city/barangay loaders
+        // and the input formatters call .trigger('change'), which has no
+        // originalEvent; only real user interaction should count.
+        if (!e.originalEvent) return;
+        formDirty = true;
+    });
+    $('form.parsley-examples').on('submit', function () {
+        formDirty = false;
+    });
+    window.addEventListener('beforeunload', function (e) {
+        if (!formDirty) return;
+        e.preventDefault();
+        e.returnValue = '';
+    });
+
+    // ── Academic cascades — same AJAX endpoints registration uses ──
+    // Course change refills Major; Course+Year Level refill Section.
+    // The student's stored value is always kept as an option if it isn't in
+    // the returned list, so a save can't silently blank existing data.
+    function refillSelect($sel, html, keepValue) {
+        $sel.html(html || '<option value="">Select</option>');
+        if (keepValue) {
+            var found = false;
+            $sel.find('option').each(function () {
+                if ($(this).attr('value') === keepValue) { found = true; return false; }
+            });
+            if (!found) {
+                $sel.append($('<option>', { value: keepValue, text: keepValue }));
+            }
+            $sel.val(keepValue);
+        }
+    }
+
+    var $courseSel  = $('#Course1');
+    var $majorSel   = $('#Major1');
+    var $yearSel    = $('#yearLevel');
+    var $sectionSel = $('#section');
+
+    function reloadMajors(keep) {
+        if (!$courseSel.length || !$majorSel.length) return;
+        var url  = $majorSel.data('majors-url');
+        var course = $courseSel.val();
+        var current = keep ? ($majorSel.data('current') || '') : '';
+        if (!url || !course) {
+            refillSelect($majorSel, '<option value="">Select Major</option>', current);
+            return;
+        }
+        $.post(url, { course: course }).done(function (html) {
+            refillSelect($majorSel, html, current);
+        });
+    }
+
+    function reloadSections(keep) {
+        if (!$sectionSel.length) return;
+        var url    = $sectionSel.data('sections-url');
+        var course = $courseSel.val();
+        var year   = $yearSel.val();
+        var current = keep ? ($sectionSel.data('current') || '') : '';
+        if (!url || !course || !year) {
+            refillSelect($sectionSel, '<option value="">Select Section</option>', current);
+            return;
+        }
+        $.post(url, { course: course, yearLevel: year }).done(function (html) {
+            refillSelect($sectionSel, html, current);
+        });
+    }
+
+    if ($courseSel.length) {
+        // Initial fill keeps the stored value; later course changes reset
+        // major/section so a stale one can't ride along silently.
+        reloadMajors(true);
+        reloadSections(true);
+        $courseSel.on('change', function (e) {
+            if (!e.originalEvent) return;
+            $majorSel.data('current', '');
+            $sectionSel.data('current', '');
+            reloadMajors(false);
+            reloadSections(false);
+        });
+        $yearSel.on('change', function (e) {
+            if (!e.originalEvent) return;
+            reloadSections(false);
+        });
     }
 });
 </script>

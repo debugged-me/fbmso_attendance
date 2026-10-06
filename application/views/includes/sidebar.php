@@ -256,6 +256,15 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                         </a>
                     </li>
 
+                    <!-- Student data integrity report — read-only scanner
+                         for orphans, dup IDs, bad emails, account gaps. -->
+                    <li class="<?= strpos($currentUriLower, 'data-health') === 0 || strpos($currentUriLower, 'datahealth') === 0 ? 'mm-active active' : ''; ?>">
+                        <a href="<?= base_url('data-health'); ?>" class="waves-effect">
+                            <i class="mdi mdi-heart-pulse"></i>
+                            <span> Data Health </span>
+                        </a>
+                    </li>
+
                 </ul>
             </div>
 
@@ -517,6 +526,13 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     <li>
                         <a href="<?= base_url('FbmsoPersonnels/manage') ?>">
                             <i class="mdi mdi-account-group"></i> <span> FBMSO Officials </span>
+                        </a>
+                    </li>
+
+                    <!-- Student data-health report — read-only, Admin + Super Admin. -->
+                    <li class="<?= strpos($currentUriLower ?? strtolower($currentUri), 'data-health') === 0 || strpos($currentUriLower ?? strtolower($currentUri), 'datahealth') === 0 ? 'mm-active active' : ''; ?>">
+                        <a href="<?= base_url('data-health'); ?>" class="waves-effect">
+                            <i class="mdi mdi-heart-pulse"></i> <span> Data Health </span>
                         </a>
                     </li>
                     <!-- Settings (keep visible) -->

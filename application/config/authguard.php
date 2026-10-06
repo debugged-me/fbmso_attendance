@@ -196,6 +196,11 @@ $config['authguard_roles'] = array(
     // paths, SQL fragments, IPs, and the raw PHP error_log. The controller
     // checks this for itself too.
     'errorlogs/*' => array('Super Admin'),
+
+    // Student data-health report — read-only but lists student names,
+    // emails, and orphan residue, so it stays staff-side. The
+    // controller enforces the same roles itself.
+    'datahealth/*' => array('Super Admin', 'Admin'),
 );
 
 /*

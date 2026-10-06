@@ -3380,6 +3380,109 @@ class StudentModel extends CI_Model
 	}
 
 
+	/**
+	 * Rewrites a student's StudentNumber across every satellite table keyed by
+	 * it. Callers own the three "identity" tables themselves (studentsignup,
+	 * studeprofile, o_users) because those updates also sync name/contact
+	 * fields; this method handles the long tail — payments, attendance,
+	 * grades, enrollment, QR codes, mobile sessions, messaging — so a rename
+	 * does not orphan the student's history.
+	 *
+	 * Mirrors the $targets map in Page::bulkDeleteStudents plus the extra
+	 * tables that carry the key under a different column name. Missing
+	 * tables/columns (production-only schemas like cr_attendance, grades_o)
+	 * are skipped, not fatal — callers run this inside a transaction, so any
+	 * real failure still rolls the whole rename back.
+	 *
+	 * Deliberately NOT touched — append-only audit/forensic records that must
+	 * keep the credential as it was at the time:
+	 *   audit_logs, audit_log, security_audit_logs, atrail, login_logs,
+	 *   login_forensic_captures, login_throttle, password_resets
+	 * Also skipped: attendance / attendance_logs / activity_participants
+	 * (user_id is a different keyspace — nothing in this app writes student
+	 * numbers there) and o_or_blocks.username (OR blocks belong to cashier
+	 * accounts, not students).
+	 *
+	 * @return array  'table.column' => rows rewritten, for audit detail.
+	 */
+	public function cascadeStudentNumberRename($oldSn, $newSn)
+	{
+		$oldSn = trim((string)$oldSn);
+		$newSn = trim((string)$newSn);
+		if ($oldSn === '' || $newSn === '' || strtoupper($oldSn) === strtoupper($newSn)) {
+			return [];
+		}
+
+		$targets = [
+			// Enrollment / academics
+			['semesterstude',          'StudentNumber'],
+			['registration',           'StudentNumber'],
+			['registration',           'IDNumber'],
+			['grades',                 'StudentNumber'],
+			['grades',                 'IDNumber'],
+			['grades_o',               'StudentNumber'],
+			['online_enrollment',      'StudentNumber'],
+			['online_enrollment_deny', 'StudentNumber'],
+			['online_requirements',    'StudentNumber'],
+			['studeadditional',        'StudentNumber'],
+			['studediscount',          'StudentNumber'],
+
+			// Attendance
+			['attendance_daily',       'StudentNumber'],
+			['attendance_scans',       'StudentNumber'],
+			['cr_attendance',          'StudentNumber'],
+			['cr_attendance',          'IDNumber'],
+			['activity_attendance',    'student_number'],
+
+			// Payments / accounting
+			['paymentsaccounts',       'StudentNumber'],
+			['studeaccount',           'StudentNumber'],
+			['online_payments',        'StudentNumber'],
+			['payment_audit_log',      'student_number'],
+
+			// Records & requests
+			['stude_request',          'StudentNumber'],
+			['stude_request_stat',     'StudentNumber'],
+			['document_requests',      'StudentNumber'],
+			['student_requirements',   'StudentNumber'],
+			['student_flags',          'StudentNumber'],
+			['flagged_students',       'StudentNumber'],
+			['student_qr',             'student_number'],
+			['email_logs',             'StudentNumber'],
+			['profiles',               'studentNumber'],
+
+			// Account-linked rows keyed by username (student number)
+			['users',                  'username'],
+			['todos',                  'username'],
+			['notes',                  'user_id'],
+			['o_mobile_tokens',        'username'],
+			['o_mobile_outbox',        'username'],
+			['o_email_verifications',  'username'],
+			['user_devices',           'username'],
+			['user_security_sessions', 'username'],
+			['password_rotation_backup', 'username'],
+			['messages',               'sender_id'],
+			['messages',               'receiver_id'],
+			['typing_status',          'sender_id'],
+			['typing_status',          'receiver_id'],
+		];
+
+		$affected = [];
+		foreach ($targets as $t) {
+			list($table, $column) = $t;
+			if (!$this->db->table_exists($table) || !$this->db->field_exists($column, $table)) {
+				continue;
+			}
+			$this->db->where($column, $oldSn)->update($table, [$column => $newSn]);
+			if ($n = $this->db->affected_rows()) {
+				$affected[$table . '.' . $column] = $n;
+			}
+		}
+
+		return $affected;
+	}
+
+
 
 	function bySection1($section, $course, $major, $semester, $sy)
 	{
@@ -5121,5 +5224,208 @@ class StudentModel extends CI_Model
 		$this->db->select('yearLevel');
 		$query = $this->db->get('subjects');
 		return $query->result();
+	}
+
+	/**
+	 * Read-only integrity scan used by the Data Health page. Finds:
+	 *  - student-keyed rows whose student no longer exists (deletion
+	 *    residue or renames that predated the cascade),
+	 *  - near-duplicate IDs that differ only by the dash (2023-2794
+	 *    vs 20232794) — a real collision/typo risk,
+	 *  - malformed / typo-domain / duplicated / missing emails,
+	 *  - student accounts with no profile row and vice versa,
+	 *  - collation drift on student-key columns (attendance tables
+	 *    use utf8mb4_general_ci while the rest are unicode_ci).
+	 * Every table/column is existence-checked first so production
+	 * schema drift only shrinks the report instead of breaking it.
+	 */
+	public function dataHealthReport()
+	{
+		$coll = 'utf8mb4_unicode_ci';
+		$report = [
+			'canonicalKeys'    => 0,
+			'orphans'          => [],
+			'missingTables'    => [],
+			'nearDuplicates'   => [],
+			'emails'           => ['malformed' => [], 'typoDomains' => [], 'duplicates' => [], 'emptyAccounts' => ['count' => 0, 'samples' => []]],
+			'accountGaps'      => ['accountsWithoutRecord' => [], 'signupsWithoutAccount' => []],
+			'collationDrift'   => [],
+		];
+		if (!$this->db->table_exists('studentsignup')) {
+			return $report;
+		}
+
+		// Every table/column that keys rows to a student. Same map the
+		// rename cascade maintains — a student key in any of these must
+		// resolve to a real student record.
+		$keyedTables = [
+			'semesterstude'          => 'StudentNumber',
+			'studeaccount'           => 'StudentNumber',
+			'paymentsaccounts'       => 'StudentNumber',
+			'online_payments'        => 'StudentNumber',
+			'online_enrollment'      => 'StudentNumber',
+			'online_enrollment_deny' => 'StudentNumber',
+			'online_requirements'    => 'StudentNumber',
+			'registration'           => 'StudentNumber',
+			'grades'                 => 'StudentNumber',
+			'grades_o'               => 'StudentNumber',
+			'attendance_daily'       => 'StudentNumber',
+			'attendance_scans'       => 'StudentNumber',
+			'activity_attendance'    => 'student_number',
+			'cr_attendance'          => 'StudentNumber',
+			'student_qr'             => 'student_number',
+			'student_requirements'   => 'StudentNumber',
+			'stude_request'          => 'StudentNumber',
+			'stude_request_stat'     => 'StudentNumber',
+			'document_requests'      => 'StudentNumber',
+			'flagged_students'       => 'StudentNumber',
+			'student_flags'          => 'StudentNumber',
+			'email_logs'             => 'StudentNumber',
+			'profiles'               => 'studentNumber',
+			'payment_audit_log'      => 'student_number',
+			'studeadditional'        => 'StudentNumber',
+			'studediscount'          => 'StudentNumber',
+			'typing_status'          => 'StudentNumber',
+			'todos'                  => 'username',
+			'notes'                  => 'username',
+			'o_mobile_tokens'        => 'username',
+			'o_mobile_outbox'        => 'username',
+			'o_email_verifications'  => 'username',
+			'user_devices'           => 'username',
+			'user_security_sessions' => 'username',
+			'password_rotation_backup' => 'username',
+		];
+
+		// Canonical student keys → temp table. Collation is pinned to
+		// unicode_ci so comparisons never hit the "illegal mix of
+		// collations" error that general_ci tables (attendance_*)
+		// otherwise trigger against unicode_ci student tables.
+		$this->db->query("CREATE TEMPORARY TABLE _dh_sn (sn VARCHAR(120) CHARACTER SET utf8mb4 COLLATE $coll NOT NULL PRIMARY KEY)");
+		$keys = [];
+		foreach ([['studentsignup', 'StudentNumber'], ['studeprofile', 'StudentNumber'], ['o_users', 'username'], ['o_users', 'IDNumber']] as $src) {
+			list($t, $c) = $src;
+			if (!$this->db->table_exists($t) || !$this->db->field_exists($c, $t)) continue;
+			$rows = $this->db->query("SELECT DISTINCT `$c` AS sn FROM `$t` WHERE `$c` IS NOT NULL AND `$c` != ''")->result_array();
+			foreach ($rows as $r) $keys[trim((string)$r['sn'])] = true;
+		}
+		$keyList = array_keys($keys);
+		$report['canonicalKeys'] = count($keyList);
+		foreach (array_chunk($keyList, 400) as $chunk) {
+			$vals = implode(',', array_map(function ($k) {
+				return '(' . $this->db->escape($k) . ')';
+			}, $chunk));
+			$this->db->query("INSERT IGNORE INTO _dh_sn (sn) VALUES $vals");
+		}
+
+		// ── 1. Orphaned rows per student-keyed table ──
+		foreach ($keyedTables as $t => $c) {
+			if (!$this->db->table_exists($t)) { $report['missingTables'][] = $t; continue; }
+			if (!$this->db->field_exists($c, $t)) { $report['missingTables'][] = "$t.$c"; continue; }
+			// CONVERT-then-COLLATE: some legacy columns are latin1, where a
+			// bare utf8mb4 COLLATE is rejected outright.
+			$where = "`$c` IS NOT NULL AND `$c` != '' AND CONVERT(`$c` USING utf8mb4) COLLATE $coll NOT IN (SELECT sn FROM _dh_sn)";
+			$rows  = (int)$this->db->query("SELECT COUNT(*) AS n FROM `$t` WHERE $where")->row('n');
+			if ($rows === 0) continue;
+			$samples = $this->db->query("SELECT `$c` AS k, COUNT(*) AS n FROM `$t` WHERE $where GROUP BY `$c` ORDER BY n DESC LIMIT 8")->result_array();
+			$report['orphans'][] = ['table' => $t, 'column' => $c, 'rows' => $rows, 'samples' => $samples];
+		}
+
+		// ── 2. Near-duplicate IDs: same digits, different dash ──
+		$byNorm = [];
+		foreach ($keyList as $sn) {
+			$byNorm[str_replace('-', '', $sn)][] = $sn;
+		}
+		foreach ($byNorm as $norm => $variants) {
+			if (count($variants) < 2) continue;
+			sort($variants);
+			// Names help staff tell "same person typed twice" from a real
+			// collision between two different students.
+			$names = [];
+			foreach ($variants as $v) {
+				$name = '';
+				if ($this->db->field_exists('FirstName', 'studentsignup')) {
+					$row = $this->db->select('FirstName, LastName')->where('StudentNumber', $v)->limit(1)->get('studentsignup')->row();
+					if ($row) $name = trim($row->FirstName . ' ' . $row->LastName);
+				}
+				if ($name === '' && $this->db->field_exists('fName', 'o_users')) {
+					$row = $this->db->select('fName, lName')->where('username', $v)->limit(1)->get('o_users')->row();
+					if ($row) $name = trim($row->fName . ' ' . $row->lName);
+				}
+				$names[$v] = $name;
+			}
+			$report['nearDuplicates'][] = ['norm' => $norm, 'variants' => $variants, 'names' => $names];
+		}
+
+		// ── 3. Email problems ──
+		$emailTables = [];
+		foreach (['studentsignup' => 'StudentNumber', 'studeprofile' => 'StudentNumber', 'o_users' => 'username'] as $t => $kc) {
+			if ($this->db->table_exists($t) && $this->db->field_exists('email', $t) && $this->db->field_exists($kc, $t)) {
+				$emailTables[$t] = $kc;
+			}
+		}
+		$malformedW = "email IS NOT NULL AND email != '' AND email NOT LIKE '%@%.%'";
+		$typoW = "email REGEXP 'gmial[.]|gmai[.]|gamil[.]|gmal[.]|gmil[.]|yhoo[.]|yahoo[.]con|hotmial|outlok[.]|iclud[.]|gmail[.]con'";
+		$report['emails']['malformedTotal'] = 0;
+		$report['emails']['typoTotal'] = 0;
+		foreach ($emailTables as $t => $kc) {
+			$report['emails']['malformedTotal'] += (int)$this->db->query("SELECT COUNT(*) AS n FROM `$t` WHERE $malformedW")->row('n');
+			$report['emails']['typoTotal']      += (int)$this->db->query("SELECT COUNT(*) AS n FROM `$t` WHERE $typoW")->row('n');
+			$bad = $this->db->query("SELECT `$kc` AS sn, email FROM `$t` WHERE $malformedW LIMIT 25")->result_array();
+			foreach ($bad as $r) $report['emails']['malformed'][] = ['table' => $t, 'sn' => $r['sn'], 'email' => $r['email']];
+			$typo = $this->db->query("SELECT `$kc` AS sn, email FROM `$t` WHERE $typoW LIMIT 25")->result_array();
+			foreach ($typo as $r) $report['emails']['typoDomains'][] = ['table' => $t, 'sn' => $r['sn'], 'email' => $r['email']];
+		}
+		if ($this->db->table_exists('o_users')) {
+			$report['emails']['duplicatesTotal'] = (int)$this->db->query("SELECT COUNT(*) AS n FROM (SELECT email FROM o_users WHERE email IS NOT NULL AND email != '' GROUP BY email HAVING COUNT(*) > 1) d")->row('n');
+			$dups = $this->db->query("SELECT email, GROUP_CONCAT(username ORDER BY username SEPARATOR ', ') AS users, COUNT(*) AS n FROM o_users WHERE email IS NOT NULL AND email != '' GROUP BY email HAVING n > 1 LIMIT 25")->result_array();
+			$report['emails']['duplicates'] = $dups;
+			$report['emails']['emptyAccounts']['count'] = (int)$this->db
+				->where_in('position', ['Student', 'Stude Applicant'])
+				->group_start()->where('email', '')->or_where('email IS NULL')->group_end()
+				->count_all_results('o_users');
+			$report['emails']['emptyAccounts']['samples'] = $this->db
+				->select('username, fName, lName')
+				->where_in('position', ['Student', 'Stude Applicant'])
+				->group_start()->where('email', '')->or_where('email IS NULL')->group_end()
+				->limit(10)->get('o_users')->result_array();
+		}
+
+		// ── 4. Account gaps ──
+		if ($this->db->table_exists('o_users')) {
+			$profileExists = $this->db->table_exists('studeprofile');
+			$noProfile = $profileExists
+				? " AND NOT EXISTS (SELECT 1 FROM studeprofile p WHERE CONVERT(p.StudentNumber USING utf8mb4) COLLATE $coll = u.username)"
+				: '';
+			$report['accountGaps']['accountsWithoutRecord'] = $this->db->query(
+				"SELECT u.username, CONCAT(u.fName, ' ', u.lName) AS name FROM o_users u
+				 WHERE u.position IN ('Student','Stude Applicant')
+				   AND NOT EXISTS (SELECT 1 FROM studentsignup s WHERE CONVERT(s.StudentNumber USING utf8mb4) COLLATE $coll = u.username)
+				   $noProfile
+				 LIMIT 15")->result_array();
+			$report['accountGaps']['signupsWithoutAccount'] = $this->db->query(
+				"SELECT s.StudentNumber AS sn, CONCAT(s.FirstName, ' ', s.LastName) AS name FROM studentsignup s
+				 WHERE NOT EXISTS (SELECT 1 FROM o_users u WHERE u.username = CONVERT(s.StudentNumber USING utf8mb4) COLLATE $coll)
+				 LIMIT 15")->result_array();
+		}
+
+		// ── 5. Collation drift on student-key columns ──
+		// The reference collation is studentsignup.StudentNumber — every
+		// keyed column should match it or joins/comparisons can throw
+		// "illegal mix of collations" (attendance_* hit this live).
+		$ref = $this->db->query(
+			"SELECT COLLATION_NAME AS c FROM information_schema.COLUMNS
+			 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'studentsignup' AND COLUMN_NAME = 'StudentNumber'")->row('c');
+		if ($ref) {
+			$cols = $this->db->query(
+				"SELECT TABLE_NAME AS t, COLUMN_NAME AS c, COLLATION_NAME AS coll FROM information_schema.COLUMNS
+				 WHERE TABLE_SCHEMA = DATABASE()
+				   AND COLUMN_NAME IN ('StudentNumber','student_number','studentNumber','IDNumber')
+				   AND COLLATION_NAME IS NOT NULL AND COLLATION_NAME != " . $this->db->escape($ref))->result_array();
+			foreach ($cols as $r) {
+				$report['collationDrift'][] = ['table' => $r['t'], 'column' => $r['c'], 'collation' => $r['coll'], 'expected' => $ref];
+			}
+		}
+
+		return $report;
 	}
 }

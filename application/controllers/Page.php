@@ -2351,8 +2351,28 @@ class Page extends CI_Controller
 		$result['religion'] = $this->SettingsModel->get_religion();
 		$this->load->view('profile_page_update', $result);
 		if ($this->input->post('update')) {
+			// The form renders StudentNumber readonly — a changed value in the
+			// POST means a tampered request. Renames belong to editSignup /
+			// updateStudeProfile, which run the duplicate check and the full
+			// cross-table cascade; accepting one here would orphan every
+			// payment, attendance, and enrollment row keyed to the old number.
+			if (strtoupper(trim((string)$this->input->post('StudentNumber'))) !== strtoupper((string)$StudentNumber)) {
+				$this->AuditLogModel->write(
+					'update',
+					'Signup',
+					'studentsignup',
+					(string)$StudentNumber,
+					null,
+					['StudentNumber' => $this->input->post('StudentNumber')],
+					0,
+					'Blocked StudentNumber change via updatestudentsignup (readonly field tampered)'
+				);
+				$this->session->set_flashdata('danger', 'Student Number cannot be changed on this form.');
+				redirect('Page/updatestudentsignup?StudentNumber=' . urlencode($StudentNumber));
+				return;
+			}
 			$data = array(
-				'StudentNumber' => $this->input->post('StudentNumber'),
+				'StudentNumber' => $StudentNumber,
 				'FirstName' => $this->input->post('FirstName'),
 				'MiddleName' => $this->input->post('MiddleName'),
 				'LastName' => $this->input->post('LastName'),
@@ -4697,11 +4717,34 @@ class Page extends CI_Controller
 			}
 		}
 
+		// Duplicate-checker exclusions must point at the stored record —
+		// capture before any flashed input is overlaid below.
+		$curRow = is_array($records) && !empty($records) ? $records[0] : null;
+		$result['excludeSn'] = is_object($curRow) ? trim((string)($curRow->StudentNumber ?? '')) : '';
+		if ($result['excludeSn'] === '') $result['excludeSn'] = (string)$id;
+		$storedEmail = is_object($curRow) ? trim((string)($curRow->email ?? '')) : '';
+
+		// A failed save flashes the submitted values; overlay them so only
+		// the bad field needs fixing rather than retyping the whole form.
+		if ($curRow) {
+			$records[0] = $this->applyOldInputTo($curRow);
+		}
+
 		$result['data'] = $records;
 		// Students may view their profile but cannot change their Student
 		// Number or name — those are identity fields that only the registrar
 		// / admin should edit. Staff get full edit access.
 		$result['readOnly'] = in_array($level, ['Student', 'Stude Applicant'], true);
+		$acct = $this->db->select('email')->where('username', (string)$id)->limit(1)->get('o_users')->row();
+		$result['accountEmail'] = $acct ? trim((string)$acct->email) : '';
+		$result['excludeEmail'] = $storedEmail !== '' ? $storedEmail : $result['accountEmail'];
+		// Photo shown in the page banner so staff can confirm whose record
+		// they are editing before saving changes.
+		$result['photoUrl'] = $this->studentPhotoUrl($id);
+		// Audit trail for this student — edits, renames, and blocked
+		// attempts recorded against this record's key.
+		$result['history']  = $this->AuditLogModel->getRecordHistory($id);
+		$result['courseOptions'] = $this->StudentModel->getCourse();
 		$this->load->view('profile_form_update', $result);
 
 		if ($this->input->post('submit')) {
@@ -4761,6 +4804,15 @@ class Page extends CI_Controller
 				}
 			}
 
+			// Keep the submitted values across a failed save: flash them so
+			// the re-rendered form shows what was typed instead of the
+			// database row — one bad field shouldn't wipe the rest.
+			$failSave = function ($message) use ($id) {
+				$this->session->set_flashdata('old_input', $this->input->post());
+				$this->session->set_flashdata('danger', $message);
+				redirect('Page/updateStudeProfile?id=' . urlencode((string)$id));
+			};
+
 			// Get form data — ONLY include fields that profile_form_update.php
 			// actually submits. Including fields the form doesn't have would
 			// set them to null and wipe existing data (email, Religion, etc.)
@@ -4769,6 +4821,26 @@ class Page extends CI_Controller
 			$strip = function($field) {
 				return strip_tags((string)$this->input->post($field));
 			};
+
+			// Mobile No. — digits only, 11 digits starting with 09 (same
+			// rule myProfile enforces). Separators pasted into the field are
+			// normalized; other non-numeric input is rejected. Unchanged
+			// legacy values pass through untouched.
+			$curRow           = is_array($records) && !empty($records) ? $records[0] : null;
+			$currentContact   = trim((string)($curRow->contactNo ?? ''));
+			$postedContactRaw = $this->input->post('contactNo', true);
+			$postedContactRaw = $postedContactRaw === null ? null : trim((string)$postedContactRaw);
+			$postedContact    = $postedContactRaw === null ? null : preg_replace('/[\s\-()]+/', '', $postedContactRaw);
+			if ($postedContact !== null && $postedContact !== '' && !ctype_digit($postedContact)) {
+				$failSave('Mobile No. accepts numbers only.');
+				return;
+			}
+			if ($postedContact !== null && $postedContact !== '' && $postedContact !== $currentContact
+				&& !preg_match('/^09[0-9]{9}$/', $postedContact)) {
+				$failSave('Mobile number must be 11 digits starting with 09.');
+				return;
+			}
+
 			$data = array(
 				'StudentNumber' => $strip('StudentNumber'),
 				'FirstName'     => $strip('FirstName'),
@@ -4777,7 +4849,7 @@ class Page extends CI_Controller
 				'nameExtn'      => $strip('nameExtn'),
 				'Sex'           => $this->input->post('Sex'),
 				'CivilStatus'   => $this->input->post('CivilStatus'),
-				'contactNo'     => $strip('contactNo'),
+				'contactNo'     => $postedContact !== null ? $postedContact : $currentContact,
 				'birthDate'     => $this->input->post('birthDate'),
 				'Age'           => $this->input->post('Age'),
 				'Province'      => $strip('Province'),
@@ -4787,9 +4859,95 @@ class Page extends CI_Controller
 				'Encoder'       => $this->session->userdata('username')
 			);
 
-			// Get old StudentNumber for updating
-			$oldStudentNo = $this->input->post('oldStudentNo');
-			$newStudentNo = $this->input->post('StudentNumber');
+			// Academic fields are registrar-managed — students posting them
+			// is ignored (forged POSTs can't change course/enrollment), and
+			// absent keys are never merged so they can't wipe stored values.
+			$isStaffEditor = !in_array($level, ['Student', 'Stude Applicant'], true);
+			if ($isStaffEditor) {
+				foreach (['course' => 'Course1', 'major' => 'Major1', 'yearLevel' => 'yearLevel'] as $pCol => $pk) {
+					$acVal = $this->input->post($pk);
+					if ($acVal !== null) {
+						$data[$pCol] = strip_tags((string)$acVal);
+					}
+				}
+			}
+
+			// Old StudentNumber comes from the record this request loaded —
+			// never the posted hidden field, which a tampered form could use
+			// to point the rename (and the o_users WHERE below) at a
+			// different account. Students are pinned to their session above;
+			// staff loaded the record via ?id=.
+			$oldStudentNo = trim((string)$id);
+			if ($oldStudentNo === '') {
+				$this->session->set_flashdata('danger', 'No student record selected.');
+				redirect('Page/profileList');
+				return;
+			}
+			$newStudentNo = trim((string)$this->input->post('StudentNumber'));
+
+			// Numbers only: a changed Student No. must use the school ID
+			// format (YYYY-NNNN) — same rule the registration form enforces.
+			// An unchanged legacy value passes untouched.
+			if (strcasecmp($newStudentNo, $oldStudentNo) !== 0
+				&& !preg_match('/^\d{4}-\d{4}$/', $newStudentNo)) {
+				$failSave('New Student No. must be numbers in the format YYYY-NNNN (e.g. 2026-0251).');
+				return;
+			}
+
+			// Email is an identity-adjacent field: staff may fix a mistyped
+			// address, students may not post one at all (forged POSTs are
+			// ignored — the field is locked for them up in the student block).
+			$postedEmail = null;
+			if (!in_array($level, ['Student', 'Stude Applicant'], true)) {
+				$postedEmail = trim((string)$this->input->post('email'));
+
+				if ($postedEmail !== ''
+					&& (!filter_var($postedEmail, FILTER_VALIDATE_EMAIL) || !$this->isPlausibleEmailDomain($postedEmail))) {
+					$failSave('That email address looks misspelled — please double-check the domain (e.g. gmail.com).');
+					return;
+				}
+
+				// Duplicate check when the address actually changes — two
+				// accounts on one email would make password recovery hit
+				// the wrong student.
+				$currentEmail = '';
+				if (!empty($records) && isset($records[0]->email)) {
+					$currentEmail = trim((string)$records[0]->email);
+				}
+				if ($currentEmail === '') {
+					$acct = $this->db->select('email')->where('username', $oldStudentNo)->limit(1)->get('o_users')->row();
+					$currentEmail = $acct ? trim((string)$acct->email) : '';
+				}
+
+				if ($postedEmail !== '' && strcasecmp($postedEmail, $currentEmail) !== 0) {
+					$this->db->where('email', $postedEmail);
+					$this->db->where('StudentNumber !=', $oldStudentNo);
+					$dupMailProfile = $this->db->count_all_results('studeprofile');
+
+					$this->db->where('email', $postedEmail);
+					$this->db->where('StudentNumber !=', $oldStudentNo);
+					$dupMailSignup = $this->db->count_all_results('studentsignup');
+
+					$this->db->where('email', $postedEmail);
+					$this->db->where('username !=', $oldStudentNo);
+					$dupMailUsers = $this->db->count_all_results('o_users');
+
+					if ($dupMailProfile > 0 || $dupMailSignup > 0 || $dupMailUsers > 0) {
+						$this->AuditLogModel->write(
+							'update',
+							'Profile',
+							'studeprofile',
+							(string)$oldStudentNo,
+							null,
+							['email' => $postedEmail],
+							0,
+							'Blocked update: duplicate email ' . $postedEmail
+						);
+						$failSave('That email already belongs to another account.');
+						return;
+					}
+				}
+			}
 
 			// Server-side duplicate guard for StudentNumber
 			if (strtoupper((string)$newStudentNo) !== strtoupper((string)$oldStudentNo)) {
@@ -4824,8 +4982,7 @@ class Page extends CI_Controller
 						0,
 						'Blocked update: duplicate StudentNumber ' . $newStudentNo
 					);
-					$this->session->set_flashdata('danger', 'Student ID already exists. Please use a different one.');
-					redirect('Page/updateStudeProfile?id=' . urlencode($oldStudentNo));
+					$failSave('Student ID already exists. Please use a different one.');
 					return;
 				}
 			}
@@ -4833,6 +4990,9 @@ class Page extends CI_Controller
 			// Save the profile update.
 			// Wrap all DB writes in a transaction + try/catch so any DB error
 			// shows as a friendly flash message instead of a raw error page.
+			if ($postedEmail !== null) {
+				$data['email'] = $postedEmail;
+			}
 			$this->db->trans_begin();
 			try {
 			$existingProfile = $this->db->where('StudentNumber', $oldStudentNo)->count_all_results('studeprofile');
@@ -4856,28 +5016,38 @@ class Page extends CI_Controller
 				'CivilStatus'   => $this->input->post('CivilStatus'),
 				'birthDate'     => $this->input->post('birthDate'),
 				'age'           => $this->input->post('Age'),
-				'contactNo'     => $this->input->post('contactNo'),
+				'contactNo'     => $postedContact !== null ? $postedContact : $currentContact,
 				'province'      => $this->input->post('Province'),
 				'city'          => $this->input->post('City'),
 				'brgy'          => $this->input->post('Brgy'),
 				'sitio'         => $this->input->post('Sitio'),
 			);
+			if ($postedEmail !== null) {
+				$signupData['email'] = $postedEmail;
+			}
+			if ($isStaffEditor) {
+				foreach (['Course1', 'Major1', 'yearLevel', 'section'] as $acField) {
+					$acVal = $this->input->post($acField);
+					if ($acVal !== null) {
+						$signupData[$acField] = trim((string)$acVal);
+					}
+				}
+			}
 			if ($existingSignup > 0) {
 				$this->db->where('StudentNumber', $oldStudentNo);
 				$this->db->update('studentsignup', $signupData);
 			}
 
-			// Update other tables similarly
-			$this->db->where('StudentNumber', $oldStudentNo);
-			$this->db->update('semesterstude', array('StudentNumber' => $this->input->post('StudentNumber')));
-
-			$this->db->where('StudentNumber', $oldStudentNo);
-			$this->db->update('paymentsaccounts', array('StudentNumber' => $this->input->post('StudentNumber')));
-
-			$this->db->where('StudentNumber', $oldStudentNo);
-			$this->db->update('studeaccount', array('StudentNumber' => $this->input->post('StudentNumber')));
+			// Rewrite the key in every satellite table (payments, attendance,
+			// grades, enrollment, QR, mobile tokens, ...) so a StudentNumber
+			// change does not orphan the student's history. No-op when the
+			// number did not change.
+			$this->StudentModel->cascadeStudentNumberRename($oldStudentNo, $newStudentNo);
 
 			$this->db->where('username', $oldStudentNo);
+			// Only student accounts may be renamed through this form — the
+			// scope keeps a crafted ?id= from ever rewriting a staff login.
+			$this->db->where_in('position', ['Student', 'Stude Applicant']);
 			$usersUpdate = array(
 				'username' => $this->input->post('StudentNumber'),
 				'IDNumber' => $this->input->post('StudentNumber'),
@@ -4885,11 +5055,9 @@ class Page extends CI_Controller
 				'mName'    => $this->input->post('MiddleName'),
 				'lName'    => $this->input->post('LastName')
 			);
-			// Only update email if the form actually submitted one —
-			// profile_form_update.php has no email field, so including
-			// it unconditionally would wipe the existing value.
-			$postedEmail = $this->input->post('email');
-			if ($postedEmail !== null && trim((string)$postedEmail) !== '') {
+			// Email was already validated + duplicate-checked above; only a
+			// staff-submitted value is applied (students never reach this).
+			if ($postedEmail !== null) {
 				$usersUpdate['email'] = $postedEmail;
 			}
 			$this->db->update('o_users', $usersUpdate);
@@ -4908,8 +5076,7 @@ class Page extends CI_Controller
 			} catch (Exception $e) {
 				$this->db->trans_rollback();
 				log_message('error', 'updateStudeProfile failed: ' . $e->getMessage());
-				$this->session->set_flashdata('danger', 'A database error occurred while updating the profile. Please try again or contact support.');
-				redirect('Page/updateStudeProfile?id=' . urlencode($oldStudentNo));
+				$failSave('A database error occurred while updating the profile. Please try again or contact support.');
 				return;
 			}
 
@@ -8056,10 +8223,96 @@ class Page extends CI_Controller
 			// below) at a different account. The posted StudentNumber is the
 			// new value, so the admin can still change it.
 			$whereId = (string)$student->StudentNumber;
+
+			// Keep the admin's edits across a failed save: flash the posted
+			// values so the re-rendered form shows what was typed (one bad
+			// field shouldn't wipe the rest of the form).
+			$failSave = function ($message) use ($whereId) {
+				$this->session->set_flashdata('old_input', $this->input->post());
+				$this->session->set_flashdata('danger', $message);
+				redirect('Page/editSignup?id=' . urlencode($whereId));
+			};
+
 			$newStudentNumber = trim((string)$this->input->post('StudentNumber', true));
 			if ($newStudentNumber === '') {
-				$this->session->set_flashdata('danger', 'Student ID is required.');
-				redirect('Page/editSignup?id=' . urlencode($whereId));
+				$failSave('Student ID is required.');
+				return;
+			}
+
+			// Numbers only: a changed Student No. must use the school ID
+			// format (YYYY-NNNN) — the registration form enforces the same
+			// shape. An unchanged legacy value (0011, 0358-2024, ...) passes.
+			if (strcasecmp($newStudentNumber, $whereId) !== 0
+				&& !preg_match('/^\d{4}-\d{4}$/', $newStudentNumber)) {
+				$failSave('New Student No. must be numbers in the format YYYY-NNNN (e.g. 2026-0251).');
+				return;
+			}
+
+			// Email: admins may fix a mistyped address (students are locked
+			// out of editing it). Validated, and duplicates are blocked so
+			// password recovery can never land on two accounts sharing one
+			// address.
+			// null when the key is absent (forged/stale POST) — a missing
+			// field must leave stored emails alone, not wipe them.
+			$postedEmail  = $this->input->post('email', true);
+			$postedEmail  = $postedEmail === null ? null : trim((string)$postedEmail);
+			$currentEmail = trim((string)($student->email ?? ''));
+			$accountRow   = $this->db->select('email')->where('username', $whereId)->limit(1)->get('o_users')->row();
+			if ($currentEmail === '' && $accountRow) {
+				$currentEmail = trim((string)$accountRow->email);
+			}
+
+			if ($postedEmail !== null && $postedEmail !== ''
+				&& (!filter_var($postedEmail, FILTER_VALIDATE_EMAIL) || !$this->isPlausibleEmailDomain($postedEmail))) {
+				$failSave('That email address looks misspelled — please double-check the domain (e.g. gmail.com).');
+				return;
+			}
+
+			if ($postedEmail !== null && $postedEmail !== '' && strcasecmp($postedEmail, $currentEmail) !== 0) {
+				$this->db->where('email', $postedEmail);
+				$this->db->where('StudentNumber !=', $whereId);
+				$dupMailSignup = $this->db->count_all_results('studentsignup');
+
+				$this->db->where('email', $postedEmail);
+				$this->db->where('StudentNumber !=', $whereId);
+				$dupMailProfile = $this->db->count_all_results('studeprofile');
+
+				$this->db->where('email', $postedEmail);
+				$this->db->where('username !=', $whereId);
+				$dupMailUsers = $this->db->count_all_results('o_users');
+
+				if ($dupMailSignup > 0 || $dupMailProfile > 0 || $dupMailUsers > 0) {
+					$this->AuditLogModel->write(
+						'update',
+						'Signup',
+						'studentsignup',
+						(string)$whereId,
+						null,
+						['email' => $postedEmail],
+						0,
+						'Blocked admin update: duplicate email ' . $postedEmail
+					);
+					$failSave('That email already belongs to another account.');
+					return;
+				}
+			}
+
+			// Mobile No. — digits only, 11 digits starting with 09, matching
+			// the rule myProfile already enforces. Separators an admin might
+			// paste (spaces, dashes) are normalized away; any other
+			// non-numeric input is rejected outright. An unchanged legacy
+			// value is left alone.
+			$currentContact   = trim((string)($student->contactNo ?? ''));
+			$postedContactRaw = $this->input->post('contactNo', true);
+			$postedContactRaw = $postedContactRaw === null ? null : trim((string)$postedContactRaw);
+			$postedContact    = $postedContactRaw === null ? null : preg_replace('/[\s\-()]+/', '', $postedContactRaw);
+			if ($postedContact !== null && $postedContact !== '' && !ctype_digit($postedContact)) {
+				$failSave('Mobile No. accepts numbers only.');
+				return;
+			}
+			if ($postedContact !== null && $postedContact !== '' && $postedContact !== $currentContact
+				&& !preg_match('/^09[0-9]{9}$/', $postedContact)) {
+				$failSave('Mobile number must be 11 digits starting with 09.');
 				return;
 			}
 
@@ -8093,8 +8346,7 @@ class Page extends CI_Controller
 						0,
 						'Blocked admin update: duplicate StudentNumber ' . $newStudentNumber
 					);
-					$this->session->set_flashdata('danger', 'Student ID already exists. Please use a different one.');
-					redirect('Page/editSignup?id=' . urlencode((string)$whereId));
+					$failSave('Student ID already exists. Please use a different one.');
 					return;
 				}
 			}
@@ -8109,12 +8361,23 @@ class Page extends CI_Controller
 				'CivilStatus' => $this->input->post('CivilStatus', true),
 				'birthDate'   => $this->input->post('birthDate', true),
 				'age'         => $this->input->post('Age', true),
-				'contactNo'   => $this->input->post('contactNo', true),
+				'contactNo'   => $postedContact !== null ? $postedContact : $currentContact,
 				'province'    => $this->input->post('Province', true),
 				'city'        => $this->input->post('City', true),
 				'brgy'        => $this->input->post('Brgy', true),
 				'sitio'       => $this->input->post('Sitio', true),
 			];
+			if ($postedEmail !== null) {
+				$updateData['email'] = $postedEmail;
+			}
+			// Academic fields — conditional merge so a forged POST missing
+			// the keys can't null out the stored values.
+			foreach (['Course1', 'Major1', 'yearLevel', 'section'] as $acField) {
+				$acVal = $this->input->post($acField, true);
+				if ($acVal !== null) {
+					$updateData[$acField] = trim((string)$acVal);
+				}
+			}
 
 			// All-or-nothing: a StudentNumber change touches several tables,
 			// and a half-applied one would split the student's records.
@@ -8132,6 +8395,9 @@ class Page extends CI_Controller
 				'mName'    => $this->input->post('MiddleName', true),
 				'lName'    => $this->input->post('LastName', true),
 			];
+			if ($postedEmail !== null) {
+				$syncFields['email'] = $postedEmail;
+			}
 
 			// o_users: update name fields always; update username+IDNumber
 			// only if the StudentNumber actually changed.
@@ -8153,8 +8419,19 @@ class Page extends CI_Controller
 				'CivilStatus' => $this->input->post('CivilStatus', true),
 				'birthDate'   => $this->input->post('birthDate', true),
 				'age'         => $this->input->post('Age', true),
-				'contactNo'   => $this->input->post('contactNo', true),
+				'contactNo'   => $postedContact !== null ? $postedContact : $currentContact,
 			];
+			if ($postedEmail !== null) {
+				$profileSync['email'] = $postedEmail;
+			}
+			// studeprofile uses lowercase column names (course/major) and
+			// has no section column.
+			foreach (['course' => 'Course1', 'major' => 'Major1', 'yearLevel' => 'yearLevel'] as $pCol => $pk) {
+				$acVal = $this->input->post($pk, true);
+				if ($acVal !== null) {
+					$profileSync[$pCol] = trim((string)$acVal);
+				}
+			}
 			if (strtoupper((string)$newStudentNumber) !== strtoupper((string)$whereId)) {
 				$profileSync['StudentNumber'] = $newStudentNumber;
 			}
@@ -8162,26 +8439,18 @@ class Page extends CI_Controller
 			$this->db->update('studeprofile', $profileSync);
 
 			// Only update StudentNumber in related tables when it changed.
+			// The cascade covers every student-keyed satellite table —
+			// payments, attendance (daily/scans/activity), grades, enrollment,
+			// QR codes, mobile tokens, messages — so the rename does not
+			// orphan the student's history.
+			$renamedRows = [];
 			if (strtoupper((string)$newStudentNumber) !== strtoupper((string)$whereId)) {
-				$this->db->where('StudentNumber', $whereId);
-				$this->db->update('semesterstude', ['StudentNumber' => $newStudentNumber]);
-
-				$this->db->where('StudentNumber', $whereId);
-				$this->db->update('paymentsaccounts', ['StudentNumber' => $newStudentNumber]);
-
-				$this->db->where('StudentNumber', $whereId);
-				$this->db->update('studeaccount', ['StudentNumber' => $newStudentNumber]);
-
-				if ($this->db->table_exists('online_payments')) {
-					$this->db->where('StudentNumber', $whereId);
-					$this->db->update('online_payments', ['StudentNumber' => $newStudentNumber]);
-				}
+				$renamedRows = $this->StudentModel->cascadeStudentNumberRename($whereId, $newStudentNumber);
 			}
 
 			$this->db->trans_complete();
 			if ($this->db->trans_status() === false) {
-				$this->session->set_flashdata('danger', 'The student profile could not be saved. Nothing was changed — please try again.');
-				redirect('Page/editSignup?id=' . urlencode($whereId));
+				$failSave('The student profile could not be saved. Nothing was changed — please try again.');
 				return;
 			}
 
@@ -8193,7 +8462,8 @@ class Page extends CI_Controller
 				$oldRow ? (array)$oldRow : null,
 				$updateData,
 				1,
-				'Admin updated student signup profile'
+				'Admin updated student signup profile',
+				$renamedRows ? ['renamed_rows' => $renamedRows] : null
 			);
 
 			$this->session->set_flashdata('success', 'Student profile updated successfully.');
@@ -8209,16 +8479,35 @@ class Page extends CI_Controller
 		$result['yearLevels'] = $this->StudentModel->get_year_levels();  // Fetch year levels
 
 		// Location lists for read-only display
+		// The duplicate-checker exclusions must keep pointing at the stored
+		// record — capture them before any flashed input is overlaid below.
+		$result['excludeSn']    = (string)$student->StudentNumber;
+		$storedEmail            = trim((string)($student->email ?? ''));
+
+		// A failed save flashes the submitted values; overlay them so the
+		// admin only has to fix the bad field, not retype the whole form.
+		$student = $this->applyOldInputTo($student);
+
 		$province = trim((string)($student->Province ?? $student->province ?? ''));
 		$city     = trim((string)($student->City ?? $student->city ?? ''));
 
 		$result['provinces'] = $this->StudentModel->get_provinces();
 		$result['cities']    = $this->StudentModel->get_cities($province);
 		$result['barangays'] = $city !== '' ? $this->StudentModel->get_barangays($city) : [];
+		$result['courseOptions'] = $this->StudentModel->getCourse();
 
 		// Pass the student data for the view
 		$result['data']      = $student;  // Pass the student object to the view
+		$acctEmail = $this->db->select('email')->where('username', (string)$result['excludeSn'])->limit(1)->get('o_users')->row();
+		$result['accountEmail'] = $acctEmail ? trim((string)$acctEmail->email) : '';
+		$result['excludeEmail'] = $storedEmail !== '' ? $storedEmail : $result['accountEmail'];
 		$result['readOnly']  = !$isAdmin;
+		// Photo shown in the page banner so the admin can confirm whose
+		// record is being edited before saving changes.
+		$result['photoUrl'] = $this->studentPhotoUrl($result['excludeSn']);
+		// Audit trail for this student — edits, renames, and blocked
+		// attempts recorded against this record's key.
+		$result['history']  = $this->AuditLogModel->getRecordHistory($result['excludeSn']);
 		$this->load->view('profile_form_update', $result);
 	}
 
@@ -8227,6 +8516,78 @@ class Page extends CI_Controller
 	 * Students that only have a login account (no signup row) still get a
 	 * summary from o_users; hasSignup tells the panel editSignup won't work.
 	 */
+	/**
+	 * Re-apply flashed POST values onto a record row after a failed save.
+	 * The form renders from the database row, so a rejected update would
+	 * otherwise wipe every field the admin had typed. Only the keys the
+	 * form actually posts are overlaid — nothing else can be spoofed in.
+	 */
+	private function applyOldInputTo($row)
+	{
+		if (!is_object($row)) return $row;
+		$old = $this->session->flashdata('old_input');
+		if (!is_array($old)) return $row;
+		$map = [
+			'StudentNumber' => ['StudentNumber', 'studentnumber'],
+			'FirstName'     => ['FirstName', 'firstname'],
+			'MiddleName'    => ['MiddleName', 'middlename'],
+			'LastName'      => ['LastName', 'lastname'],
+			'nameExtn'      => ['nameExtn', 'NameExtn'],
+			'Sex'           => ['Sex', 'sex'],
+			'CivilStatus'   => ['CivilStatus', 'civilstatus'],
+			'birthDate'     => ['birthDate', 'BirthDate'],
+			'Age'           => ['Age', 'age'],
+			'contactNo'     => ['contactNo', 'ContactNo'],
+			'email'         => ['email', 'Email'],
+			'Province'      => ['Province', 'province', 'provincePresent'],
+			'City'          => ['City', 'city', 'CityPresent', 'cityPresent'],
+			'Brgy'          => ['Brgy', 'brgy', 'Barangay', 'barangay', 'BrgyPresent', 'brgyPresent'],
+			'Sitio'         => ['Sitio', 'sitio', 'SitioPresent', 'sitioPresent'],
+			'Course1'       => ['Course1', 'course', 'Course'],
+			'Major1'        => ['Major1', 'major', 'Major'],
+			'yearLevel'     => ['yearLevel', 'YearLevel'],
+			'section'       => ['section', 'Section'],
+		];
+		foreach ($map as $postKey => $props) {
+			if (!array_key_exists($postKey, $old)) continue;
+			$val = trim((string)$old[$postKey]);
+			foreach ($props as $p) $row->$p = $val;
+		}
+		return $row;
+	}
+
+	/**
+	 * Resolve the student's profile photo URL for admin/staff edit pages.
+	 * Tries o_users.avatar first, then studentsignup.imagePath; both are
+	 * filename-only values under upload/profile/. Returns '' when the
+	 * student has no real photo on disk (defaults and missing files are
+	 * treated as "no photo").
+	 */
+	private function studentPhotoUrl($id)
+	{
+		$id = trim((string)$id);
+		if ($id === '') return '';
+
+		$candidates = [];
+		$acct = $this->db->select('avatar')->where('username', $id)->limit(1)->get('o_users')->row();
+		if ($acct) $candidates[] = (string)$acct->avatar;
+		if ($this->db->field_exists('imagePath', 'studentsignup')) {
+			$signup = $this->db->select('imagePath')->where('StudentNumber', $id)->limit(1)->get('studentsignup')->row();
+			if ($signup) $candidates[] = (string)$signup->imagePath;
+		}
+
+		foreach ($candidates as $file) {
+			$file = basename($file);
+			if ($file === '' || in_array(strtolower($file), ['avatar.png', 'default.png', 'default_user.png'], true)) {
+				continue;
+			}
+			if (is_file(FCPATH . 'upload/profile/' . $file)) {
+				return base_url('upload/profile/' . rawurlencode($file));
+			}
+		}
+		return '';
+	}
+
 	public function signupPreview()
 	{
 		$id = trim((string)$this->input->get('id', true));
@@ -8311,6 +8672,61 @@ class Page extends CI_Controller
 	 * Checks studentsignup, studeprofile, and o_users so the same endpoint
 	 * works for both the signup-staging flow and the live profile flow.
 	 */
+	/**
+	 * Reject emails whose domain is a misspelling of a well-known provider.
+	 * FILTER_VALIDATE_EMAIL accepts "user@gmail.comssss" because 'comssss'
+	 * is a syntactically valid TLD — this catches that class of typo by
+	 * requiring any domain containing a provider token to be one of that
+	 * provider's real domains. Non-provider domains only need a sane TLD.
+	 */
+	private function isPlausibleEmailDomain($email)
+	{
+		$at = strrpos((string)$email, '@');
+		if ($at === false) {
+			return false;
+		}
+		$domain = strtolower(trim(substr((string)$email, $at + 1)));
+		if ($domain === '' || strpos($domain, '.') === false) {
+			return false;
+		}
+
+		static $providerDomains = [
+			'gmail.com', 'googlemail.com',
+			'yahoo.com', 'yahoo.com.ph', 'yahoo.ph', 'ymail.com', 'rocketmail.com',
+			'outlook.com', 'hotmail.com', 'hotmail.com.ph', 'live.com', 'msn.com',
+			'icloud.com', 'me.com', 'mac.com',
+			'protonmail.com', 'proton.me', 'pm.me',
+			'aol.com', 'zoho.com', 'gmx.com', 'gmx.net', 'yandex.com',
+			'mail.com', 'fastmail.com', 'tutanota.com', 'inbox.com',
+		];
+		if (in_array($domain, $providerDomains, true)) {
+			return true;
+		}
+
+		// Tokens that almost never legitimately appear inside a non-provider
+		// domain — a hit means a typo like gmai.com / gmail.comssss / yahooo.com.
+		static $providerTokens = [
+			'gmail', 'googlemail', 'gmai', 'gmial', 'gmal', 'gamil', 'gmil',
+			'yahoo', 'ymail', 'yaho', 'rocketmail',
+			'hotmail', 'hotmial', 'hotmai',
+			'outlook', 'outlok',
+			'icloud', 'iclud',
+			'protonmail', 'yandex', 'zohomail',
+		];
+		foreach ($providerTokens as $token) {
+			if (strpos($domain, $token) !== false) {
+				return false;
+			}
+		}
+
+		// Non-provider domain (school, work, etc.) — require a plausible TLD.
+		$tld = substr(strrchr($domain, '.'), 1);
+		if (!preg_match('/^[a-z]{2,15}$/', $tld) && strpos($tld, 'xn--') !== 0) {
+			return false;
+		}
+		return true;
+	}
+
 	public function checkSignupAvailability()
 	{
 		$field   = strtolower(trim((string)$this->input->post('field', true)));
@@ -8364,6 +8780,15 @@ class Page extends CI_Controller
 		} elseif ($field === 'email') {
 			$email = trim($value);
 			if ($email !== '') {
+				if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !$this->isPlausibleEmailDomain($email)) {
+					$response['exists']  = false;
+					$response['format']  = false;
+					$response['message'] = 'Email domain looks misspelled — please double-check it (e.g. gmail.com).';
+					$this->output
+						->set_content_type('application/json')
+						->set_output(json_encode($response));
+					return;
+				}
 				$this->db->where('email', $email);
 				if ($exclude !== '') {
 					$this->db->where('email !=', $exclude);

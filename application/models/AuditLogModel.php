@@ -327,4 +327,30 @@ class AuditLogModel extends CI_Model
             'active_actors'    => (int)($row['active_actors'] ?? 0),
         );
     }
+
+    /**
+     * Audit rows belonging to one record (a student number, typically).
+     * Matches record_pk directly plus mentions inside the JSON payloads
+     * so a StudentNumber rename still surfaces the old-number history —
+     * the rename event itself is logged under the new key while older
+     * edits remain under the previous one.
+     */
+    public function getRecordHistory($recordPk, $limit = 60)
+    {
+        $pk = trim((string)$recordPk);
+        if ($pk === '' || !$this->db->table_exists('audit_logs')) {
+            return array();
+        }
+        return $this->db
+            ->select('event_time, action, module, table_name, record_pk, succeeded, username, full_name, actor_level, description, old_values, new_values, extra')
+            ->group_start()
+                ->where('record_pk', $pk)
+                ->or_like('extra', $pk)
+                ->or_like('old_values', $pk)
+                ->or_like('new_values', $pk)
+            ->group_end()
+            ->order_by('event_time', 'DESC')
+            ->limit(min(200, max(1, (int)$limit)))
+            ->get('audit_logs')->result_array();
+    }
 }

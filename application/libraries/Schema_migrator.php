@@ -814,6 +814,43 @@ class Schema_migrator
                     }
                 },
             ),
+
+            // The change-history view and the tamper-evident record trail
+            // both read audit_logs; installs that predate it would get
+            // silent empty history (or write failures), so create it.
+            '2026_10_07_create_audit_logs' => array(
+                'check' => function () {
+                    return !$this->tableExists('audit_logs');
+                },
+                'run' => function () {
+                    $this->CI->db->query(
+                        "CREATE TABLE `audit_logs` (
+                            `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+                            `event_time` datetime NOT NULL DEFAULT current_timestamp(),
+                            `action` enum('login','logout','create','update','delete','password_reset','password_change','profile_change','access_denied','security','export') NOT NULL,
+                            `module` varchar(100) DEFAULT NULL,
+                            `table_name` varchar(100) DEFAULT NULL,
+                            `record_pk` varchar(100) DEFAULT NULL,
+                            `succeeded` tinyint(1) NOT NULL DEFAULT 1,
+                            `username` varchar(100) DEFAULT NULL,
+                            `full_name` varchar(200) DEFAULT NULL,
+                            `user_id` varchar(50) DEFAULT NULL,
+                            `actor_level` varchar(60) DEFAULT NULL,
+                            `ip_address` varchar(45) DEFAULT NULL,
+                            `user_agent` varchar(255) DEFAULT NULL,
+                            `description` text DEFAULT NULL,
+                            `old_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+                            `new_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+                            `extra` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+                            PRIMARY KEY (`id`),
+                            KEY `idx_action_time` (`action`,`event_time`),
+                            KEY `idx_user_time` (`username`,`event_time`),
+                            KEY `idx_table_pk` (`table_name`,`record_pk`),
+                            KEY `idx_al_role_time` (`actor_level`,`event_time`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                    );
+                },
+            ),
         );
     }
 
