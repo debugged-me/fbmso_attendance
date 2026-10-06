@@ -5239,26 +5239,14 @@ class StudentModel extends CI_Model
 	 * Every table/column is existence-checked first so production
 	 * schema drift only shrinks the report instead of breaking it.
 	 */
-	public function dataHealthReport()
+	/**
+	 * Every table/column that keys rows to a student. Same map the rename
+	 * cascade maintains — a student key in any of these must resolve to a
+	 * real student record.
+	 */
+	protected function orphanKeyedTables()
 	{
-		$coll = 'utf8mb4_unicode_ci';
-		$report = [
-			'canonicalKeys'    => 0,
-			'orphans'          => [],
-			'missingTables'    => [],
-			'nearDuplicates'   => [],
-			'emails'           => ['malformed' => [], 'typoDomains' => [], 'duplicates' => [], 'emptyAccounts' => ['count' => 0, 'samples' => []]],
-			'accountGaps'      => ['accountsWithoutRecord' => [], 'signupsWithoutAccount' => []],
-			'collationDrift'   => [],
-		];
-		if (!$this->db->table_exists('studentsignup')) {
-			return $report;
-		}
-
-		// Every table/column that keys rows to a student. Same map the
-		// rename cascade maintains — a student key in any of these must
-		// resolve to a real student record.
-		$keyedTables = [
+		return [
 			'semesterstude'          => 'StudentNumber',
 			'studeaccount'           => 'StudentNumber',
 			'paymentsaccounts'       => 'StudentNumber',
@@ -5295,11 +5283,18 @@ class StudentModel extends CI_Model
 			'user_security_sessions' => 'username',
 			'password_rotation_backup' => 'username',
 		];
+	}
 
-		// Canonical student keys → temp table. Collation is pinned to
-		// unicode_ci so comparisons never hit the "illegal mix of
-		// collations" error that general_ci tables (attendance_*)
-		// otherwise trigger against unicode_ci student tables.
+	/**
+	 * Build the _dh_sn temp table holding every canonical student number
+	 * (from signup, profile, and login-account sources). Collation is pinned
+	 * to unicode_ci so comparisons never hit the "illegal mix of collations"
+	 * error that general_ci tables otherwise trigger. Returns the key list.
+	 */
+	protected function buildCanonicalSnTempTable()
+	{
+		$coll = 'utf8mb4_unicode_ci';
+		$this->db->query("DROP TEMPORARY TABLE IF EXISTS _dh_sn");
 		$this->db->query("CREATE TEMPORARY TABLE _dh_sn (sn VARCHAR(120) CHARACTER SET utf8mb4 COLLATE $coll NOT NULL PRIMARY KEY)");
 		$keys = [];
 		foreach ([['studentsignup', 'StudentNumber'], ['studeprofile', 'StudentNumber'], ['o_users', 'username'], ['o_users', 'IDNumber']] as $src) {
@@ -5309,13 +5304,58 @@ class StudentModel extends CI_Model
 			foreach ($rows as $r) $keys[trim((string)$r['sn'])] = true;
 		}
 		$keyList = array_keys($keys);
-		$report['canonicalKeys'] = count($keyList);
 		foreach (array_chunk($keyList, 400) as $chunk) {
 			$vals = implode(',', array_map(function ($k) {
 				return '(' . $this->db->escape($k) . ')';
 			}, $chunk));
 			$this->db->query("INSERT IGNORE INTO _dh_sn (sn) VALUES $vals");
 		}
+		return $keyList;
+	}
+
+	/**
+	 * Delete leftover rows from one student-keyed table — the same rows the
+	 * health report flags (key column not in the canonical student set).
+	 * Returns the number of rows deleted, or FALSE if the table name isn't
+	 * on the whitelist. Single-statement DELETE, so it's atomic on its own.
+	 */
+	public function cleanupOrphans($table)
+	{
+		$keyed = $this->orphanKeyedTables();
+		$table = (string)$table;
+		if (!isset($keyed[$table])) {
+			return false;
+		}
+		$c = $keyed[$table];
+		if (!$this->db->table_exists($table) || !$this->db->field_exists($c, $table)) {
+			return 0;
+		}
+		$coll = 'utf8mb4_unicode_ci';
+		$this->buildCanonicalSnTempTable();
+		$where = "`$c` IS NOT NULL AND `$c` != '' AND CONVERT(`$c` USING utf8mb4) COLLATE $coll NOT IN (SELECT sn FROM _dh_sn)";
+		$this->db->query("DELETE FROM `$table` WHERE $where");
+		return (int)$this->db->affected_rows();
+	}
+
+	public function dataHealthReport()
+	{
+		$coll = 'utf8mb4_unicode_ci';
+		$report = [
+			'canonicalKeys'    => 0,
+			'orphans'          => [],
+			'missingTables'    => [],
+			'nearDuplicates'   => [],
+			'emails'           => ['malformed' => [], 'typoDomains' => [], 'duplicates' => [], 'emptyAccounts' => ['count' => 0, 'samples' => []]],
+			'accountGaps'      => ['accountsWithoutRecord' => [], 'signupsWithoutAccount' => []],
+			'collationDrift'   => [],
+		];
+		if (!$this->db->table_exists('studentsignup')) {
+			return $report;
+		}
+
+		$keyedTables = $this->orphanKeyedTables();
+		$keyList = $this->buildCanonicalSnTempTable();
+		$report['canonicalKeys'] = count($keyList);
 
 		// ── 1. Orphaned rows per student-keyed table ──
 		foreach ($keyedTables as $t => $c) {

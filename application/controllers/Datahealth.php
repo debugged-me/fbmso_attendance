@@ -49,4 +49,46 @@ class Datahealth extends CI_Controller
         $data['report'] = $this->StudentModel->dataHealthReport();
         $this->load->view('datahealth_index', $data);
     }
+
+    /**
+     * Remove leftover rows from one record area. POST-only; the area is
+     * validated against the model's whitelist and only rows whose student
+     * key matches no real student are deleted — the same set the report
+     * displays. Each cleanup is audit-logged with the row count.
+     */
+    public function cleanup()
+    {
+        $this->requireDataHealthRole();
+        if (strtolower($this->input->method(true)) !== 'post') {
+            redirect('data-health');
+            return;
+        }
+
+        $area  = trim((string)$this->input->post('area', true));
+        $name  = trim((string)$this->input->post('label', true));
+        $count = $this->StudentModel->cleanupOrphans($area);
+
+        if ($count === false) {
+            $this->session->set_flashdata('danger', 'Unknown record area — nothing was deleted.');
+            redirect('data-health');
+            return;
+        }
+
+        $this->AuditLogModel->write(
+            'delete',
+            'Data Health',
+            $area,
+            null,
+            null,
+            null,
+            1,
+            'Cleaned up leftover records' . ($name !== '' ? ' in ' . $name : '') . ' (' . (int)$count . ' row' . ((int)$count === 1 ? '' : 's') . ' removed)'
+        );
+
+        $this->session->set_flashdata('success',
+            $count > 0
+                ? 'Cleaned up ' . number_format((int)$count) . ' leftover record' . ((int)$count === 1 ? '' : 's') . ($name !== '' ? ' in ' . $name : '') . '.'
+                : 'Nothing to clean — no leftover records found there.');
+        redirect('data-health');
+    }
 }
