@@ -43,6 +43,9 @@ class EmailQueue extends CI_Controller
 		foreach ($rows as $r) {
 			$counts[(string) $r->status] = (int) $r->c;
 		}
+		$this->db->where('status', 'failed');
+		$this->_exclude_bad_addresses();
+		$counts['retryable'] = (int) $this->db->count_all_results('fbmso_email_queue');
 
 		$isAdmin = in_array($level, ['Admin', 'IT', 'Super Admin'], true);
 		$suspended = fbmso_mailqueue_suspended();
@@ -88,6 +91,7 @@ class EmailQueue extends CI_Controller
 		$id = (int) $this->input->get('id', true);
 
 		$this->db->where('status', 'failed');
+		$this->_exclude_bad_addresses();
 		if ($id > 0) {
 			$this->db->where('id', $id);
 		}
@@ -135,6 +139,21 @@ class EmailQueue extends CI_Controller
 		redirect('EmailQueue/key?msg=' . $msg);
 	}
 
+	// Skipped (bad format/typo/no mail server) and Rejected (server refused the
+	// address) rows can only bounce again, and every bounce counts against the
+	// sending domain's hourly failure limit — so Retry leaves them alone.
+	private function _exclude_bad_addresses()
+	{
+		$this->db->not_like('last_error', 'Skipped:', 'after')
+			->not_like('last_error', 'Rejected:', 'after');
+	}
+
+	private static function _is_bad_address_error($lastError)
+	{
+		return strpos((string) $lastError, 'Skipped:') === 0
+			|| strpos((string) $lastError, 'Rejected:') === 0;
+	}
+
 
 	private function _render_page(array $counts, $level, $isAdmin, $suspended, $flash, $showCron)
 	{
@@ -179,10 +198,15 @@ class EmailQueue extends CI_Controller
 
 		// ---- Sender status ------------------------------------------------
 		if ($suspended) {
-			$until = (int) @file_get_contents(fbmso_mailqueue_suspend_file());
+			$flag   = (string) @file_get_contents(fbmso_mailqueue_suspend_file());
+			$until  = (int) $flag;
+			$reason = trim((string) substr($flag, strlen((string) $until) + 1));
+			if ($reason === '') {
+				$reason = 'A send failed with a transient/rate-limit error.';
+			}
 			$senderHtml = '<span class="status cooldown">COOLDOWN until '
 				. $esc(date('Y-m-d H:i:s', $until))
-				. '</span><p class="muted">A send failed with a transient/rate-limit error. The sender is paused.</p>';
+				. '</span><p class="muted">' . $esc($reason) . ' The sender is paused.</p>';
 		} else {
 			$senderHtml = '<span class="status active">Active</span>';
 		}
@@ -194,11 +218,12 @@ class EmailQueue extends CI_Controller
 				$actionsHtml .= '<a class="btn btn-warm" href="' . site_url('EmailQueue/resume') . '">'
 					. 'Clear Cooldown</a>';
 			}
-			if ($counts['failed'] > 0) {
-				$label = 'Retry Failed (' . (int) $counts['failed'] . ')';
+			if ($counts['retryable'] > 0) {
+				$label = 'Retry Failed (' . (int) $counts['retryable'] . ')';
 				$actionsHtml .= '<a class="btn btn-primary" href="' . site_url('EmailQueue/retry') . '">'
 					. $esc($label) . '</a>';
-
+			}
+			if ($counts['failed'] > 0) {
 				$delLabel = 'Delete Failed (' . (int) $counts['failed'] . ')';
 				$actionsHtml .= '<a class="btn btn-danger" href="' . site_url('EmailQueue/delete_failed') . '"'
 					. ' onclick="return confirm(\'Delete all ' . (int) $counts['failed']
@@ -348,12 +373,17 @@ class EmailQueue extends CI_Controller
 
 		$body = '';
 		foreach ($rows as $r) {
+			$badAddress = self::_is_bad_address_error($r->last_error);
+			$skipped    = strpos((string) $r->last_error, 'Skipped:') === 0;
+
 			$retryLink = '';
 			if ($isAdmin && $r->status === 'failed') {
-				$retryLink = ' <a class="retry-one" href="'
-					. site_url('EmailQueue/retry?id=' . (int) $r->id)
-					. '">retry this</a>'
-					. ' <a class="delete-one" href="'
+				if (!$badAddress) {
+					$retryLink = ' <a class="retry-one" href="'
+						. site_url('EmailQueue/retry?id=' . (int) $r->id)
+						. '">retry this</a>';
+				}
+				$retryLink .= ' <a class="delete-one" href="'
 					. site_url('EmailQueue/delete_failed?id=' . (int) $r->id)
 					. '" onclick="return confirm(\'Delete this failed message?\');">delete</a>';
 			}
@@ -362,7 +392,7 @@ class EmailQueue extends CI_Controller
 				. '<td><span class="id">#' . (int) $r->id . '</span></td>'
 				. '<td>' . $esc($r->to_email) . $retryLink . '</td>'
 				. '<td><span class="badge ' . $esc($r->status) . '">' . $esc($r->status) . '</span>'
-				. ' <span class="muted">attempt ' . (int) $r->attempts . '</span></td>'
+				. ' <span class="muted">' . ($skipped ? 'not sent' : 'attempt ' . (int) $r->attempts) . '</span></td>'
 				. '<td><span class="err">' . $esc($r->last_error) . '</span></td>'
 				. '</tr>';
 		}

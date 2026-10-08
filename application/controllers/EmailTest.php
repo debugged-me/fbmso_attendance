@@ -118,10 +118,11 @@ class EmailTest extends CI_Controller
 
 	protected function queueTestEmail(array $form)
 	{
-		if (!filter_var($form['to_email'], FILTER_VALIDATE_EMAIL)) {
+		$invalidReason = fbmso_mailqueue_validate_recipient($form['to_email'], false);
+		if ($invalidReason !== null) {
 			return [
 				'success' => false,
-				'message' => 'Enter a valid recipient email address.',
+				'message' => 'Enter a valid recipient email address (' . $invalidReason . ').',
 				'debug'   => null,
 			];
 		}

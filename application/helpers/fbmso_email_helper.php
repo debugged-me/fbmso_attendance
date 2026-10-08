@@ -62,11 +62,15 @@ if (!function_exists('fbmso_mailqueue_push'))
             }
 
             $toEmail = trim((string)$toEmail);
-    
-            if (
-                $toEmail === '' ||
-                !filter_var($toEmail, FILTER_VALIDATE_EMAIL)
-            ) {
+
+            // Don't queue addresses that can never receive mail (typos,
+            // .local, ...): each bounce counts against the sending domain's
+            // hourly failure limit and blocks mail for everyone else.
+            $invalidReason = fbmso_mailqueue_validate_recipient($toEmail, false);
+            if ($invalidReason !== null) {
+                if ($toEmail !== '') {
+                    log_message('error', 'Mail queue: not queued to=' . $toEmail . ' reason=' . $invalidReason . ' subject=' . mb_substr((string)$subject, 0, 80));
+                }
                 return false;
             }
     
@@ -134,9 +138,10 @@ if (!function_exists('fbmso_mailqueue_suspended'))
 
 if (!function_exists('fbmso_mailqueue_suspend'))
 {
-    function fbmso_mailqueue_suspend($minutes = 15)
+    // File holds "untilTimestamp|reason"; readers (int)-cast the timestamp.
+    function fbmso_mailqueue_suspend($minutes = 15, $reason = '')
     {
-        @file_put_contents(fbmso_mailqueue_suspend_file(), (string) (time() + ($minutes * 60)));
+        @file_put_contents(fbmso_mailqueue_suspend_file(), (time() + ($minutes * 60)) . '|' . $reason);
     }
 }
 
@@ -346,21 +351,115 @@ if (!function_exists('fbmso_mailqueue_deliver'))
         $ci->email->message($body);
 
         if ((bool) $ci->email->send(false)) {
-            return [true, $source];
+            return [true, $source, ''];
         }
 
         $debug = '';
+        $kind  = '';
         if (method_exists($ci->email, 'print_debugger')) {
             // Empty $include => the SMTP conversation only, no header/body dump.
             $debug = trim(strip_tags((string) $ci->email->print_debugger([])));
+            // Classify on the full text; the stored tail below is truncated.
+            $kind  = fbmso_mailqueue_classify_failure($debug);
             // Keep the tail: the greeting banner is noise, the rejection is last.
             $debug = preg_replace('/\s+/', ' ', $debug);
+            // Drop the QUIT reply and CI's generic footer so the tail keeps
+            // the server's actual rejection instead of boilerplate.
+            $debug = preg_replace('/quit: 221 .*?closing connection/i', '', $debug);
+            $debug = trim(str_replace('Unable to send email using PHP SMTP. Your server might not be configured to send mail using this method.', '', $debug));
             if (mb_strlen($debug) > 200) {
                 $debug = '...' . mb_substr($debug, -200);
             }
         }
 
-        return [false, $source . ($debug !== '' ? ': ' . $debug : '')];
+        return [false, $source . ($debug !== '' ? ': ' . $debug : ''), $kind];
+    }
+}
+
+if (!function_exists('fbmso_mailqueue_typo_domain'))
+{
+    /**
+     * Returns the provider a misspelled free-mail domain was meant to be
+     * (gamail.com, gmail.con, gakil.com -> gmail.com), or null.
+     *
+     * A fixed typo list can't keep up, and DNS doesn't help: typo-squatters
+     * register gamil.com, gmai.com, gnail.com... with working MX records, so
+     * mail is "accepted" and then bounces, counting against the sending
+     * domain's hourly failure limit on the host.
+     */
+    function fbmso_mailqueue_typo_domain($domain)
+    {
+        $domain = strtolower(trim((string) $domain));
+        $dot = strpos($domain, '.');
+        if ($dot === false) {
+            return null;
+        }
+        $label  = substr($domain, 0, $dot);
+        $suffix = substr($domain, $dot + 1);
+
+        $providers = ['gmail', 'yahoo', 'hotmail', 'outlook', 'icloud'];
+        // Only "<name>.com"-shaped domains are compared, so subdomains and
+        // country domains (yahoo.com.ph, yahoo.ca, mail.dorsu.edu.ph) pass.
+        $comLike = levenshtein($suffix, 'com') <= 1 || in_array($suffix, ['ocm', 'cmo', 'coom'], true);
+
+        if (in_array($label, $providers, true)) {
+            if ($suffix === 'com') {
+                return null;
+            }
+            // Gmail has no country domains, so anything but gmail.com is a typo.
+            return ($label === 'gmail' || $comLike) ? $label . '.com' : null;
+        }
+
+        // Real providers that happen to sit one letter away from the ones above.
+        $realLookalikes = ['mail', 'email', 'ymail', 'cloud'];
+        if (!$comLike || in_array($label, $realLookalikes, true)) {
+            return null;
+        }
+
+        foreach ($providers as $provider) {
+            if (levenshtein($label, $provider) <= 2) {
+                return $provider . '.com';
+            }
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('fbmso_mailqueue_domain_has_mx'))
+{
+    /**
+     * true when the domain publishes a usable MX host, false when it does not
+     * (none, null MX ".", or "localhost" as parked typo domains use), null when
+     * DNS itself is down — so a resolver hiccup can't fail the whole queue.
+     */
+    function fbmso_mailqueue_domain_has_mx($domain)
+    {
+        static $cache = [];
+        static $dnsWorks = null;
+
+        if (!function_exists('getmxrr')) {
+            return null;
+        }
+        if (array_key_exists($domain, $cache)) {
+            return $cache[$domain];
+        }
+
+        $hosts = [];
+        @getmxrr($domain, $hosts);
+        foreach ($hosts as $host) {
+            $host = strtolower(rtrim(trim((string) $host), '.'));
+            if ($host !== '' && $host !== 'localhost' && strpos($host, '127.') !== 0 && $host !== '0.0.0.0') {
+                return $cache[$domain] = true;
+            }
+        }
+
+        if ($dnsWorks === null) {
+            $probe = [];
+            $dnsWorks = @getmxrr('gmail.com', $probe) && !empty($probe);
+        }
+
+        return $cache[$domain] = ($dnsWorks ? false : null);
     }
 }
 
@@ -373,10 +472,13 @@ if (!function_exists('fbmso_mailqueue_validate_recipient'))
      * Catches:
      * - Missing @ or domain
      * - Fake/local domains (.local, .localhost, .test, .example, .invalid)
-     * - Common typos (gmal.com, gmial.com, gmai.com, etc.)
-     * - Domains with no MX record (won't accept mail)
+     * - Misspelled free-mail domains (gamail.com, gmail.con, gakil.com, ...)
+     * - Domains with no usable MX record (only when $checkDns)
+     *
+     * $checkDns is off at enqueue time so saving a payment or a login never
+     * waits on DNS; the cron re-validates with DNS before sending.
      */
-    function fbmso_mailqueue_validate_recipient($email)
+    function fbmso_mailqueue_validate_recipient($email, $checkDns = true)
     {
         $email = trim(strtolower((string) $email));
 
@@ -388,77 +490,97 @@ if (!function_exists('fbmso_mailqueue_validate_recipient'))
         }
 
         $domain = substr($email, strrpos($email, '@') + 1);
-        if ($domain === '' || $domain === false) {
+        if ($domain === '' || $domain === false || strpos($domain, '.') === false) {
             return 'missing domain';
         }
 
-        // Reject fake/local TLDs that can never receive mail
-        $fakeTlds = array('.local', '.localhost', '.test', '.example', '.invalid', '.dev', '.internal');
+        // Reserved/internal names that can never receive mail
+        $fakeTlds = array('.local', '.localhost', '.localdomain', '.test', '.example', '.invalid', '.internal', '.lan', '.home', '.corp');
         foreach ($fakeTlds as $tld) {
             if (substr($domain, -strlen($tld)) === $tld) {
                 return 'fake/local domain (' . $domain . ')';
             }
         }
-
-        // Common typo domains — these will never deliver
-        $typoDomains = array(
-            'gmal.com'    => 'gmail.com',
-            'gmial.com'   => 'gmail.com',
-            'gmai.com'    => 'gmail.com',
-            'gmaiil.com'  => 'gmail.com',
-            'gnail.com'   => 'gmail.com',
-            'gmal.con'    => 'gmail.com',
-            'gmail.co'    => 'gmail.com',
-            'gmail.cm'    => 'gmail.com',
-            'gmail.con'   => 'gmail.com',
-            'gmaill.com'  => 'gmail.com',
-            'yaho.com'    => 'yahoo.com',
-            'yahho.com'   => 'yahoo.com',
-            'yaho.co'     => 'yahoo.com',
-            'hotmial.com' => 'hotmail.com',
-            'hotmai.com'  => 'hotmail.com',
-            'hotmal.com'  => 'hotmail.com',
-            'outloo.com'  => 'outlook.com',
-            'outlok.com'  => 'outlook.com',
-        );
-        if (isset($typoDomains[$domain])) {
-            return 'likely typo (' . $domain . ' → ' . $typoDomains[$domain] . ')';
+        if (in_array($domain, array('example.com', 'example.net', 'example.org'), true)) {
+            return 'fake/local domain (' . $domain . ')';
         }
 
-        // Check MX record — if the domain has no mail server, skip it
-        // so we don't waste 10 SMTP retries on a dead address.
-        if (function_exists('getmxrr')) {
-            $mx = array();
-            if (!getmxrr($domain, $mx) && !checkdnsrr($domain, 'A')) {
-                return 'no mail server for domain (' . $domain . ')';
-            }
+        $meant = fbmso_mailqueue_typo_domain($domain);
+        if ($meant !== null) {
+            return 'likely typo (' . $domain . ' → ' . $meant . ')';
+        }
+
+        if ($checkDns && fbmso_mailqueue_domain_has_mx($domain) === false) {
+            return 'no mail server for domain (' . $domain . ')';
         }
 
         return null;
     }
 }
 
+if (!function_exists('fbmso_mailqueue_classify_failure'))
+{
+    /**
+     * Classify an SMTP failure from the full debugger text:
+     *  - 'domain_limit'  cPanel's per-hour defer/failure cap for the whole
+     *                    sending domain; everything is discarded until it clears
+     *  - 'throttled'     provider rate limit / transient error
+     *  - 'bad_recipient' RCPT TO refused with 5xx — the address can't receive
+     *  - ''              anything else
+     */
+    function fbmso_mailqueue_classify_failure($text)
+    {
+        $t = strtolower((string) $text);
+
+        if (strpos($t, 'max defers') !== false || strpos($t, 'defers and failures') !== false) {
+            return 'domain_limit';
+        }
+        if (fbmso_mailqueue_is_rate_limited($t)) {
+            return 'throttled';
+        }
+        if (preg_match('/(?:^|[\s>])to:\s*5\d\d/', $t)
+            && !preg_match('/relay|authenticat|sender verify|sender address/', $t)) {
+            return 'bad_recipient';
+        }
+
+        return '';
+    }
+}
+
 if (!function_exists('fbmso_mailqueue_send_now'))
 {
-    // Primary sender, then Brevo relay fallback. Returns [sent, resultText, isRateLimited].
+    // Primary sender, then Brevo relay fallback.
+    // Returns [sent, resultText, failureKind] — see fbmso_mailqueue_classify_failure().
     function fbmso_mailqueue_send_now($ci, $toEmail, $subject, $htmlBody, $schoolName = '', $attachmentPath = '')
     {
         $primaryProfile = fbmso_mailqueue_primary_profile($ci, $schoolName);
-        list($sent, $result) = fbmso_mailqueue_deliver($ci, $toEmail, $subject, $htmlBody, $primaryProfile, $schoolName, $attachmentPath);
+        list($sent, $result, $kind) = fbmso_mailqueue_deliver($ci, $toEmail, $subject, $htmlBody, $primaryProfile, $schoolName, $attachmentPath);
         if ($sent) {
-            return [true, $result, false];
+            return [true, $result, ''];
+        }
+
+        // The recipient was refused outright; the relay would only bounce it too.
+        if ($kind === 'bad_recipient') {
+            return [false, $result, $kind];
         }
 
         $fallbackProfile = fbmso_mailqueue_fallback_profile($ci, $schoolName);
         if ($fallbackProfile) {
-            list($fbSent, $fbResult) = fbmso_mailqueue_deliver($ci, $toEmail, $subject, $htmlBody, $fallbackProfile, $schoolName, $attachmentPath);
+            list($fbSent, $fbResult, $fbKind) = fbmso_mailqueue_deliver($ci, $toEmail, $subject, $htmlBody, $fallbackProfile, $schoolName, $attachmentPath);
             if ($fbSent) {
-                return [true, $fbResult, false];
+                return [true, $fbResult, ''];
             }
             $result .= ' | fallback: ' . $fbResult;
+
+            foreach (['domain_limit', 'throttled', 'bad_recipient'] as $severity) {
+                if ($kind === $severity || $fbKind === $severity) {
+                    $kind = $severity;
+                    break;
+                }
+            }
         }
 
-        return [false, $result, fbmso_mailqueue_is_rate_limited($result)];
+        return [false, $result, $kind];
     }
 }
 
@@ -509,13 +631,14 @@ if (!function_exists('fbmso_mailqueue_process'))
         $summary = ['status' => 'ok', 'picked' => count($rows), 'sent' => 0, 'failed' => 0, 'deferred' => 0, 'skipped' => 0];
 
         foreach ($rows as $i => $row) {
-            // Skip invalid email addresses immediately — don't waste
-            // SMTP attempts on addresses that can never receive mail.
+            // Skip invalid email addresses immediately — every bounce counts
+            // against the sending domain's hourly failure limit on the host.
+            // attempts stays as-is: nothing was sent, and status alone keeps
+            // the row out of the pending pick.
             $invalidReason = fbmso_mailqueue_validate_recipient((string) $row->to_email);
             if ($invalidReason !== null) {
                 $ci->db->where('id', (int) $row->id)->update('fbmso_email_queue', [
                     'status'     => 'failed',
-                    'attempts'   => (int) $maxAttempts,
                     'last_error' => 'Skipped: ' . $invalidReason,
                 ]);
                 $summary['skipped']++;
@@ -526,7 +649,7 @@ if (!function_exists('fbmso_mailqueue_process'))
                 sleep((int) $spacingSeconds);
             }
 
-            list($sent, $result, $rateLimited) = fbmso_mailqueue_send_now(
+            list($sent, $result, $failureKind) = fbmso_mailqueue_send_now(
                 $ci,
                 (string) $row->to_email,
                 (string) $row->subject,
@@ -545,16 +668,35 @@ if (!function_exists('fbmso_mailqueue_process'))
                 continue;
             }
 
-            if ($rateLimited) {
+            if ($failureKind === 'throttled' || $failureKind === 'domain_limit') {
                 // Provider throttling: keep pending (no attempts bump), stop the
-                // batch, and pause all senders for a cooldown window.
+                // batch, and pause all senders for a cooldown window. The host's
+                // defer/failure cap is counted per hour, so sending again any
+                // sooner only adds failures and keeps the domain blocked.
                 $ci->db->where('id', (int) $row->id)->update('fbmso_email_queue', [
                     'last_error' => mb_substr($result, 0, 500),
                 ]);
-                fbmso_mailqueue_suspend();
-                log_message('error', 'Mail queue: provider rate-limit detected, cooling down. ' . mb_substr($result, 0, 200));
+                if ($failureKind === 'domain_limit') {
+                    fbmso_mailqueue_suspend(60, 'The mail host hit its hourly limit of failed deliveries for the sending domain.');
+                } else {
+                    fbmso_mailqueue_suspend(15, 'A send failed with a transient/rate-limit error.');
+                }
+                log_message('error', 'Mail queue: provider rate-limit detected (' . $failureKind . '), cooling down. ' . mb_substr($result, 0, 200));
                 $summary['deferred'] = count($rows) - $i;
                 break;
+            }
+
+            if ($failureKind === 'bad_recipient') {
+                // The server refused this address; retrying can't succeed and
+                // each try is another failure on the domain's hourly limit.
+                $ci->db->where('id', (int) $row->id)->update('fbmso_email_queue', [
+                    'attempts'   => (int) $row->attempts + 1,
+                    'status'     => 'failed',
+                    'last_error' => mb_substr('Rejected: ' . $result, 0, 500),
+                ]);
+                $summary['failed']++;
+                log_message('error', 'Mail queue: recipient rejected id=' . (int) $row->id . ' to=' . $row->to_email . ' reason=' . mb_substr($result, 0, 200));
+                continue;
             }
 
             $attempts = (int) $row->attempts + 1;

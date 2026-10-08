@@ -533,7 +533,9 @@ class MassAnnouncement extends CI_Controller
 
 		foreach ($rows as $row) {
 			$email = trim((string) ($row->email ?? ''));
-			if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			// Also drops typo/.local addresses: one refused BCC fails the whole
+			// SMTP send, and each bounce counts against the host's hourly limit.
+			if (fbmso_mailqueue_validate_recipient($email, false) !== null) {
 				continue;
 			}
 
