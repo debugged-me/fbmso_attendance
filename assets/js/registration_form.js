@@ -528,5 +528,247 @@
 
     window.addEventListener('scroll', updateProgress, { passive: true });
     updateProgress();
+
+    /* ===== Post-registration credentials gate =====
+       Present only when the controller renders registration_success.
+       The modal cannot be dismissed and the page cannot be left until
+       the credentials file has been downloaded. */
+    var credGate = document.getElementById('credGate');
+    if (credGate) {
+      var credData = credGate.dataset || {};
+      var creds = {
+        name: credData.name || '',
+        username: credData.username || '',
+        password: credData.password || '',
+        email: credData.email || '',
+        school: credData.school || '',
+        portal: credData.portal || '',
+        continueUrl: credData.continueUrl || window.location.href
+      };
+
+      var downloaded = false;
+      var credModal = credGate.querySelector('.cred-modal');
+      var $continueBtn = $('#credContinueBtn');
+      var $hint = $('#credHint');
+      var passText = document.getElementById('credPassText');
+
+      document.documentElement.classList.add('cred-locked');
+
+      // Hide the form behind the modal from keyboards and assistive tech.
+      var regCard = document.querySelector('.reg-card');
+      if (regCard) {
+        regCard.setAttribute('aria-hidden', 'true');
+        if ('inert' in regCard) {
+          regCard.inert = true;
+        }
+      }
+
+      function shakeModal() {
+        if (!credModal) {
+          return;
+        }
+        credModal.classList.remove('is-shake');
+        void credModal.offsetWidth; // restart the animation
+        credModal.classList.add('is-shake');
+        $hint.removeClass('is-done').addClass('is-alert');
+      }
+
+      function credFileText() {
+        return [
+          '==================================================',
+          ' ' + (creds.school || 'ATTENDANCE PORTAL').toUpperCase(),
+          ' ACCOUNT CREDENTIALS - KEEP THIS FILE PRIVATE',
+          '==================================================',
+          '',
+          'Name      : ' + creds.name,
+          'Username  : ' + creds.username,
+          'Password  : ' + creds.password,
+          'Email     : ' + creds.email,
+          'Issued    : ' + new Date().toLocaleString(),
+          '',
+          'IMPORTANT - READ THIS',
+          '---------------------',
+          '1. VERIFY YOUR EMAIL BEFORE SIGNING IN. A verification',
+          '   link was sent to ' + creds.email + '. Open it and',
+          '   click "Verify Email & Login" - the account stays',
+          '   locked until you do. Check Spam/Junk if missing.',
+          '',
+          '2. Keep this file private. Anyone holding these',
+          '   credentials can sign in as you.',
+          '',
+          '3. Sign-in page: ' + creds.portal,
+          ''
+        ].join('\r\n');
+      }
+
+      function markDownloaded() {
+        if (downloaded) {
+          return;
+        }
+        downloaded = true;
+        $continueBtn.prop('disabled', false);
+        $hint.removeClass('is-alert').addClass('is-done')
+          .text('Credentials saved - you may now continue.');
+      }
+
+      // --- Leave guards: tab close, refresh, address bar, back button ---
+      window.addEventListener('beforeunload', function(e) {
+        if (downloaded) {
+          return;
+        }
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      });
+
+      // beforeunload is unreliable on a freshly rendered page until the
+      // user interacts with it, so trap the back button explicitly too.
+      try {
+        history.pushState({ credGate: true }, document.title, window.location.href);
+      } catch (err) { /* history may be unavailable in odd contexts */ }
+
+      window.addEventListener('popstate', function() {
+        if (downloaded) {
+          return;
+        }
+        try {
+          history.pushState({ credGate: true }, document.title, window.location.href);
+        } catch (err) {}
+        shakeModal();
+      });
+
+      // Escape and backdrop clicks don't dismiss - they nudge instead.
+      document.addEventListener('keydown', function(e) {
+        if (!downloaded && e.key === 'Escape') {
+          e.preventDefault();
+          shakeModal();
+          return;
+        }
+        // Focus trap: keep Tab cycling inside the modal so the links and
+        // fields behind it can't be reached with the keyboard either.
+        if (e.key === 'Tab' && credModal) {
+          var focusables = credModal.querySelectorAll(
+            'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          );
+          if (!focusables.length) {
+            return;
+          }
+          var first = focusables[0];
+          var last = focusables[focusables.length - 1];
+          if (e.shiftKey && (document.activeElement === first || !credModal.contains(document.activeElement))) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && (document.activeElement === last || !credModal.contains(document.activeElement))) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }, true);
+
+      credGate.addEventListener('click', function(e) {
+        if (e.target === credGate) {
+          shakeModal();
+        }
+      });
+
+      // --- Password reveal ---
+      $('#credPassToggle').on('click', function() {
+        if (!passText) {
+          return;
+        }
+        var showing = passText.getAttribute('data-showing') === '1';
+        passText.textContent = showing ? '••••••••' : creds.password;
+        passText.setAttribute('data-showing', showing ? '0' : '1');
+        $(this).find('i')
+          .removeClass(showing ? 'mdi-eye-off-outline' : 'mdi-eye-outline')
+          .addClass(showing ? 'mdi-eye-outline' : 'mdi-eye-off-outline');
+        var label = showing ? 'Show password' : 'Hide password';
+        this.setAttribute('aria-label', label);
+        this.setAttribute('title', label);
+      });
+
+      // --- Download ---
+      $('#credDownloadBtn').on('click', function() {
+        var fileName = 'attendance-credentials-' + (creds.username || 'account') + '.txt';
+        var blob = null;
+        try {
+          blob = new Blob([credFileText()], { type: 'text/plain;charset=utf-8' });
+        } catch (err) {
+          blob = null;
+        }
+
+        if (blob && window.navigator && window.navigator.msSaveOrOpenBlob) {
+          window.navigator.msSaveOrOpenBlob(blob, fileName);
+          markDownloaded();
+          return;
+        }
+        if (blob) {
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function() {
+            URL.revokeObjectURL(url);
+            if (a.parentNode) {
+              a.parentNode.removeChild(a);
+            }
+          }, 150);
+          markDownloaded();
+          return;
+        }
+        $hint.addClass('is-alert')
+          .text('Download is not supported in this browser - use Copy instead.');
+        shakeModal();
+      });
+
+      // --- Copy to clipboard ---
+      $('#credCopyBtn').on('click', function() {
+        var text = 'Username: ' + creds.username + '\nPassword: ' + creds.password;
+        var btn = this;
+
+        var done = function() {
+          $(btn).addClass('is-copied').find('span').text('Copied!');
+          setTimeout(function() {
+            $(btn).removeClass('is-copied').find('span').text('Copy');
+          }, 1800);
+        };
+        var legacyCopy = function() {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          try {
+            document.execCommand('copy');
+            done();
+          } catch (err) {}
+          document.body.removeChild(ta);
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, legacyCopy);
+        } else {
+          legacyCopy();
+        }
+      });
+
+      // --- Continue ---
+      $continueBtn.on('click', function() {
+        if (!downloaded) {
+          shakeModal();
+          return;
+        }
+        window.location.href = creds.continueUrl;
+      });
+
+      var downloadBtn = document.getElementById('credDownloadBtn');
+      if (downloadBtn) {
+        downloadBtn.focus();
+      }
+    }
   });
 })(window, document, window.jQuery);

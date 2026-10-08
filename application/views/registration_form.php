@@ -13,7 +13,7 @@
   <link href="<?= base_url(); ?>assets/css/app.css?v=20260922" rel="stylesheet" type="text/css" id="app-stylesheet" />
 
   <script src="<?= base_url(); ?>assets/js/jquery-3.6.0.min.js"></script>
-  <link href="<?= base_url(); ?>assets/css/registration_form.css?v=30260922" rel="stylesheet" type="text/css" />
+  <link href="<?= base_url(); ?>assets/css/registration_form.css?v=20261008" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="<?= base_url('assets/css/mobile-shell.css?v=12'); ?>">
   <meta name="theme-color" content="#1a2942">
   <link rel="manifest" href="<?= base_url('manifest.webmanifest?v=3'); ?>">
@@ -328,13 +328,112 @@
     </div>
   </div>
 
+  <?php
+  $regSuccess = (isset($registration_success) && is_array($registration_success)) ? $registration_success : null;
+  if ($regSuccess):
+    $rsIsAdmin = !empty($regSuccess['isAdmin']);
+    $rsEmailOk = !empty($regSuccess['emailQueued']);
+    $rsEsc = static function ($v) {
+      return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
+    };
+  ?>
+  <div class="cred-gate" id="credGate"
+    data-name="<?= $rsEsc($regSuccess['name'] ?? ''); ?>"
+    data-username="<?= $rsEsc($regSuccess['username'] ?? ''); ?>"
+    data-password="<?= $rsEsc($regSuccess['password'] ?? ''); ?>"
+    data-email="<?= $rsEsc($regSuccess['email'] ?? ''); ?>"
+    data-school="<?= $rsEsc($regSuccess['schoolName'] ?? ''); ?>"
+    data-portal="<?= $rsEsc($regSuccess['portalUrl'] ?? base_url()); ?>"
+    data-continue-url="<?= $rsEsc($regSuccess['continueUrl'] ?? base_url()); ?>">
+    <div class="cred-modal" role="dialog" aria-modal="true" aria-labelledby="credTitle" aria-describedby="credDesc">
+      <div class="cred-icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <div class="cred-eyebrow"><?= $rsIsAdmin ? 'Student Account Created' : 'Registration Successful'; ?></div>
+      <h2 class="cred-title" id="credTitle">Save your credentials</h2>
+      <p class="cred-sub" id="credDesc"><?= $rsIsAdmin
+          ? 'This is the only time the student\'s password is shown. Download the file and hand it to them.'
+          : 'This is the only time your password is shown. Download the file and keep it somewhere safe.'; ?></p>
+
+      <?php if ($rsEmailOk): ?>
+        <div class="cred-verify">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+          </svg>
+          <div>
+            <b><?= $rsIsAdmin ? 'The student must verify this email before signing in.' : 'Verify your email before signing in.'; ?></b><br>
+            We sent a verification link to <b><?= $rsEsc($regSuccess['email'] ?? ''); ?></b>.
+            <?= $rsIsAdmin ? 'They need to open it and click' : 'Open it and click'; ?>
+            <b>Verify Email &amp; Login</b> — the account stays locked until then.
+            Check the Spam/Junk folder if it does not arrive.
+          </div>
+        </div>
+      <?php else: ?>
+        <div class="cred-verify is-warn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <div>
+            <b>Account created, but the verification email could not be sent.</b><br>
+            <?= $rsIsAdmin
+                ? 'The student can use "Resend verification email" on the sign-in page to get a new link.'
+                : 'After saving your credentials you will be taken to the resend page so you can request a new link.'; ?>
+          </div>
+        </div>
+      <?php endif; ?>
+
+      <div class="cred-box">
+        <div class="cred-row">
+          <span class="cred-label">Username</span>
+          <span class="cred-value" id="credUserText"><?= $rsEsc($regSuccess['username'] ?? ''); ?></span>
+        </div>
+        <div class="cred-row">
+          <span class="cred-label">Password</span>
+          <span class="cred-value" id="credPassText" data-showing="0">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</span>
+          <button type="button" class="cred-eye" id="credPassToggle" aria-label="Show password" title="Show password">
+            <i class="mdi mdi-eye-outline" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="cred-actions">
+        <button type="button" class="cred-btn cred-btn-primary" id="credDownloadBtn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          <span>Download credentials (.txt)</span>
+        </button>
+        <button type="button" class="cred-btn cred-btn-ghost" id="credCopyBtn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.75a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+          </svg>
+          <span>Copy</span>
+        </button>
+      </div>
+
+      <div class="cred-hint" id="credHint" role="status">Download your credentials to continue — you cannot leave this page until you do.</div>
+
+      <button type="button" class="cred-btn cred-btn-continue" id="credContinueBtn" disabled>
+        <span><?= $rsIsAdmin
+            ? 'Done — Back to Students'
+            : ($rsEmailOk ? 'Continue to Sign In' : 'Continue — Resend Verification Email'); ?></span>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+        </svg>
+      </button>
+    </div>
+  </div>
+  <?php endif; ?>
+
   <script src="<?= base_url(); ?>assets/js/vendor.min.js"></script>
   <script src="<?= base_url(); ?>assets/libs/moment/moment.min.js"></script>
   <script src="<?= base_url(); ?>assets/libs/jquery-scrollto/jquery.scrollTo.min.js"></script>
   <script src="<?= base_url(); ?>assets/libs/sweetalert2/sweetalert2.min.js"></script>
   <script src="<?= base_url(); ?>assets/js/app.min.js"></script>
 
-  <script src="<?= base_url(); ?>assets/js/registration_form.js?v=30260922-3"></script>
+  <script src="<?= base_url(); ?>assets/js/registration_form.js?v=20261008"></script>
   <script src="<?= base_url('assets/js/mobile-shell.js?v=12'); ?>"></script>
   <?php if (empty($isAdmin)): ?>
   <script>

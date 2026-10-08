@@ -376,32 +376,52 @@ class Registration extends CI_Controller
             // 4) Send a one-time verification link. The password is never
             // included in email, and the account stays pending until clicked.
             $verification = $this->EmailVerificationModel->queueForUser($studentNumber);
-            if (empty($verification['ok'])) {
+            $emailQueued  = !empty($verification['ok']);
+            if (!$emailQueued) {
                 log_message('error', 'EMAIL QUEUE FAILED for new account ' . $studentNumber . ' <' . $email . '>');
 
+                // Keep the same follow-up the old redirect carried: the
+                // resend page gets the address pre-filled, staff see the
+                // warning on the profile list after they continue.
                 if ($isAdminFlow) {
                     $this->session->set_flashdata(
                         'warning',
                         'Account created for ' . $studentNumber . ', but the verification email could not be queued. '
                             . 'Ask the user to use Resend verification email on the login page.'
                     );
-                    return redirect('Page/profileList');
                 } else {
                     $this->session->set_flashdata('verification_error', (string)$verification['message']);
                     $this->session->set_flashdata('verification_email', $email);
-                    return redirect('verify-email');
                 }
             }
-            if ($isAdminFlow) {
-                $this->session->set_flashdata('success', 'Account created. A verification email is queued; the user cannot sign in until it is verified.');
-                return redirect('Page/profileList'); // or your admin list page
-            } else {
-                $this->session->set_flashdata(
-                    'info_message',
-                    'Registration successful. Check your email and click Verify Email & Login before signing in.'
-                );
-                return redirect('login');
-            }
+
+            // Show a one-time credentials modal on this page instead of
+            // redirecting. Rendering the result inside this request — rather
+            // than stashing it in flashdata for a second page load — keeps
+            // the plaintext password out of the session store: it exists
+            // only in this response.
+            $data['registration_success'] = [
+                'name'        => $fullName,
+                'username'    => $studentNumber,
+                'password'    => $passwordRaw,
+                'email'       => $email,
+                'emailQueued' => $emailQueued,
+                'emailError'  => $emailQueued ? '' : (string)($verification['message'] ?? ''),
+                'schoolName'  => (string)$this->SettingsModel->getSchoolName(),
+                'portalUrl'   => base_url(),
+                'isAdmin'     => $isAdminFlow,
+                // When the verification email could not be queued, the public
+                // flow continues to the resend page so the user can request a
+                // new link right after saving their credentials.
+                'continueUrl' => $isAdminFlow
+                    ? site_url('Page/profileList')
+                    : ($emailQueued ? site_url('login') : site_url('verify-email')),
+            ];
+
+            // This response contains the plaintext password — never cache it.
+            $this->output->set_header('Cache-Control: no-cache, no-store, must-revalidate');
+            $this->output->set_header('Pragma: no-cache');
+            $this->output->set_header('Expires: 0');
         }
 
         // ----- Render the form view -----
