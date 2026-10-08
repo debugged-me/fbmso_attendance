@@ -23,7 +23,7 @@ class Schema_migrator
     protected $CI;
 
     /** Bumped whenever a migration is added below. */
-    const MARKER = 'schema_migrations_v24.done';
+    const MARKER = 'schema_migrations_v25.done';
 
     /** Advisory lock name + seconds to wait for it. */
     const LOCK_NAME    = 'fbmso_schema_migrator';
@@ -849,6 +849,37 @@ class Schema_migrator
                             KEY `idx_al_role_time` (`actor_level`,`event_time`)
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
                     );
+                },
+            ),
+
+            // Manual password reset: the recovery code is shown once at
+            // registration and on the student's recovery-code page — only
+            // its bcrypt hash is stored. manual_reset_at backs the
+            // completed-reset cooldown so a manual reset and an emailed
+            // temporary password cannot silently rotate over each other.
+            '2026_10_08_manual_reset_columns' => array(
+                'check' => function () {
+                    return $this->tableExists('o_users')
+                        && (!$this->columnExists('o_users', 'recovery_code_hash')
+                            || !$this->columnExists('o_users', 'recovery_code_set_at')
+                            || !$this->columnExists('o_users', 'manual_reset_at'));
+                },
+                'run' => function () {
+                    if (!$this->columnExists('o_users', 'recovery_code_hash')) {
+                        $this->CI->db->query(
+                            "ALTER TABLE `o_users` ADD COLUMN `recovery_code_hash` VARCHAR(255) NULL AFTER `force_change_password`"
+                        );
+                    }
+                    if (!$this->columnExists('o_users', 'recovery_code_set_at')) {
+                        $this->CI->db->query(
+                            "ALTER TABLE `o_users` ADD COLUMN `recovery_code_set_at` DATETIME NULL AFTER `recovery_code_hash`"
+                        );
+                    }
+                    if (!$this->columnExists('o_users', 'manual_reset_at')) {
+                        $this->CI->db->query(
+                            "ALTER TABLE `o_users` ADD COLUMN `manual_reset_at` DATETIME NULL AFTER `recovery_code_set_at`"
+                        );
+                    }
                 },
             ),
         );

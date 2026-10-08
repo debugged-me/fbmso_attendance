@@ -540,6 +540,7 @@
         name: credData.name || '',
         username: credData.username || '',
         password: credData.password || '',
+        recovery: credData.recovery || '',
         email: credData.email || '',
         school: credData.school || '',
         portal: credData.portal || '',
@@ -583,6 +584,7 @@
           'Name      : ' + creds.name,
           'Username  : ' + creds.username,
           'Password  : ' + creds.password,
+          'Recovery  : ' + creds.recovery,
           'Email     : ' + creds.email,
           'Issued    : ' + new Date().toLocaleString(),
           '',
@@ -596,7 +598,12 @@
           '2. Keep this file private. Anyone holding these',
           '   credentials can sign in as you.',
           '',
-          '3. Sign-in page: ' + creds.portal,
+          '3. Forgot your password and email is not working?',
+          '   Use the recovery code on the "Verify identity',
+          '   manually" link on the sign-in page - it resets',
+          '   your password without email.',
+          '',
+          '4. Sign-in page: ' + creds.portal,
           ''
         ].join('\r\n');
       }
@@ -725,7 +732,9 @@
 
       // --- Copy to clipboard ---
       $('#credCopyBtn').on('click', function() {
-        var text = 'Username: ' + creds.username + '\nPassword: ' + creds.password;
+        var text = 'Username: ' + creds.username
+          + '\nPassword: ' + creds.password
+          + '\nRecovery code: ' + creds.recovery;
         var btn = this;
 
         var done = function() {

@@ -429,6 +429,7 @@
             ><?= html_escape($forgotErrorText ?: $forgotInfoText); ?></div>
             <button class="btn-main" id="resetSubmit" type="submit" style="margin-top:12px"><span>Send temporary password</span></button>
           </form>
+          <a class="reset-alt-link" href="<?= site_url('reset-password'); ?>">Can't access your email? Verify identity manually</a>
         </div>
       </div>
     </div>

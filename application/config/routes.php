@@ -11,6 +11,7 @@ $route['upload-image'] = 'Page';
 $route['store-image'] = 'Page/upload';
 $route['page/student'] = 'Page/student';
 $route['verify-email'] = 'VerifyEmail/index';
+$route['reset-password'] = 'Login/manual_reset';
 $route['Registration/getMajorsByCourse'] = 'Registration/getMajorsByCourse';
 $route['Registration/getCitiesByProvince'] = 'Registration/getCitiesByProvince';
 $route['Registration/getBarangaysByCity'] = 'Registration/getBarangaysByCity';

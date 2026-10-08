@@ -588,6 +588,188 @@ class Login extends CI_Controller
     }
 
     /**
+     * Manual (no-email) password reset.
+     *
+     * The emailed temporary password fails exactly when the mailbox is
+     * unreachable — which is also when the owner most needs a way back
+     * in. This verifies identity without sending anything: the recovery
+     * code issued at registration, the QR token on the student card, or
+     * the registered birth date + mobile + email. Success sets a new
+     * password directly, revokes every session/token, and still queues a
+     * notice to the registered address as the takeover backstop.
+     */
+    public function manual_reset()
+    {
+        $this->output->set_header('Cache-Control: no-cache, no-store, must-revalidate');
+        $this->output->set_header('Pragma: no-cache');
+        $this->output->set_header('Expires: 0');
+
+        if ($this->input->method(true) !== 'POST') {
+            $this->load->view('manual_reset', [
+                'site_key' => $this->SettingsModel->getRecaptchaSiteKey(),
+            ]);
+            return;
+        }
+
+        $studentNumber = strtoupper(trim((string)$this->input->post('student_number', true)));
+        $method        = strtolower(trim((string)$this->input->post('method', true)));
+        $newPassword   = (string)$this->input->post('new_password');
+        $confirmPass   = (string)$this->input->post('confirm_password');
+
+        // Repopulate the form after a failure — never the secrets.
+        $old = [
+            'student_number' => $studentNumber,
+            'method'         => $method,
+            'email'          => (string)$this->input->post('email', true),
+            'birthDate'      => (string)$this->input->post('birthDate', true),
+            'contactNo'      => (string)$this->input->post('contactNo', true),
+        ];
+
+        if ($studentNumber === '') {
+            $this->redirect_manual_reset('Enter your Student ID.', $old);
+            return;
+        }
+        if (!in_array($method, ['recovery', 'qr', 'identity'], true)) {
+            $this->redirect_manual_reset('Choose a verification method.', $old);
+            return;
+        }
+        if (strlen($newPassword) < 8) {
+            $this->redirect_manual_reset('The new password must be at least 8 characters.', $old);
+            return;
+        }
+        if ($newPassword !== $confirmPass) {
+            $this->redirect_manual_reset('The new passwords do not match.', $old);
+            return;
+        }
+
+        $recaptchaResponse = (string)$this->input->post('g-recaptcha-response', true);
+        if ($recaptchaResponse === '') {
+            $this->redirect_manual_reset('Please complete the reCAPTCHA.', $old);
+            return;
+        }
+        if (!$this->verify_recaptcha($recaptchaResponse)) {
+            $this->redirect_manual_reset('reCAPTCHA verification failed. Please try again.', $old);
+            return;
+        }
+
+        // Account + IP scopes, the same rules that guard sign-in.
+        $throttleKey = 'mr_' . $studentNumber;
+        $blocked = $this->loginthrottle->check($throttleKey);
+        if ($blocked) {
+            $this->redirect_manual_reset($this->loginthrottle->retryMessage($blocked['retry_after']), $old);
+            return;
+        }
+
+        $fields = [
+            'recovery_code' => (string)$this->input->post('recovery_code', true),
+            'qr_token'      => (string)$this->input->post('qr_token', true),
+            'email'         => $this->normalize_reset_email($this->input->post('email', true)),
+            'birthDate'     => trim((string)$this->input->post('birthDate', true)),
+            'contactNo'     => (string)$this->input->post('contactNo', true),
+        ];
+        // A malformed date can never match — normalise it away early.
+        if ($fields['birthDate'] !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fields['birthDate'])) {
+            $fields['birthDate'] = '';
+        }
+
+        $result = $this->Login_model->manualResetVerify($studentNumber, $method, $fields);
+        if (empty($result['ok'])) {
+            $this->loginthrottle->fail($throttleKey);
+            // Log every refused attempt — throttle rows roll off but a spray
+            // or a guessed identity stays visible here forever. Never the
+            // submitted values, only which method failed on which account.
+            $this->securityaudit->event('MANUAL_RESET_DENIED', [
+                'module'      => 'Login',
+                'status'      => 'denied',
+                'target'      => $studentNumber,
+                'description' => 'Manual reset failed ' . $method . ' verification',
+            ]);
+            $this->redirect_manual_reset((string)($result['message'] ?? ''), $old);
+            return;
+        }
+
+        $user = $result['user'];
+
+        $wait = $this->Login_model->manualResetCooldownRemaining((string)$user['username']);
+        if ($wait > 0) {
+            $mins = (int)ceil($wait / 60);
+            $this->redirect_manual_reset(
+                'This account was already reset a moment ago. Sign in with the new password, or try again in about ' . $mins . ' ' . ($mins === 1 ? 'minute' : 'minutes') . '.',
+                $old
+            );
+            return;
+        }
+
+        $hash = fbmso_password_hash($newPassword);
+        if ($hash === '' || !$this->Login_model->applyManualReset((string)$user['username'], $hash, $method === 'recovery')) {
+            $this->redirect_manual_reset('Unable to reset the password right now. Please try again later.', $old);
+            return;
+        }
+
+        $this->Login_model->queueManualResetNotice($user);
+
+        $this->AuditLogModel->write(
+            'password_reset',
+            'Login',
+            'o_users',
+            $user['username'],
+            null,
+            ['password_reset' => true, 'mode' => 'manual_' . $method],
+            1,
+            'Password reset via manual identity verification',
+            ['target_email' => (string)($user['email'] ?? '')]
+        );
+        $this->securityaudit->event('PASSWORD_RESET', [
+            'module'      => 'Login',
+            'status'      => 'success',
+            'target'      => (string)$user['username'],
+            'table'       => 'o_users',
+            'record_pk'   => (string)$user['username'],
+            'description' => 'Manual password reset via ' . $method . ' verification',
+        ]);
+
+        $this->loginthrottle->succeed($throttleKey);
+        $this->loginthrottle->prune();
+
+        $this->session->set_flashdata(
+            'info_message',
+            'Your password was reset. Sign in with your new password.'
+                . ($method === 'recovery'
+                    ? ' Your recovery code was used up — you can mint a new one from the Recovery Code page after signing in.'
+                    : '')
+        );
+        redirect(base_url('login'), 'refresh');
+    }
+
+    private function redirect_manual_reset($message, array $old = [])
+    {
+        $this->session->set_flashdata('mr_error', (string)$message);
+        $this->session->set_flashdata('mr_old', $old);
+        redirect('reset-password');
+    }
+
+    private function verify_recaptcha($response)
+    {
+        $ch = curl_init('https://www.google.com/recaptcha/api/siteverify');
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => http_build_query([
+                'secret'   => $this->SettingsModel->getRecaptchaSecretKey(),
+                'response' => (string)$response,
+                'remoteip' => $this->input->ip_address(),
+            ]),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+        ]);
+        $verifyResponse = curl_exec($ch);
+        curl_close($ch);
+
+        $json = @json_decode($verifyResponse, true);
+
+        return is_array($json) && !empty($json['success']);
+    }
+
+    /**
      * Email the account holder about a high-risk sign-in.
      *
      * Says what happened and when, and never why it was judged risky. Telling

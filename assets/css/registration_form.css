@@ -1100,3 +1100,11 @@ html.cred-locked body {
   .cred-actions { flex-direction: column; }
   .cred-btn-ghost { width: 100%; }
 }
+
+.cred-note {
+  font-size: .74rem;
+  color: #8a96b0;
+  margin: -4px 0 12px;
+  text-align: left;
+  line-height: 1.4;
+}

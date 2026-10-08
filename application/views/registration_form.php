@@ -341,6 +341,7 @@
     data-name="<?= $rsEsc($regSuccess['name'] ?? ''); ?>"
     data-username="<?= $rsEsc($regSuccess['username'] ?? ''); ?>"
     data-password="<?= $rsEsc($regSuccess['password'] ?? ''); ?>"
+    data-recovery="<?= $rsEsc($regSuccess['recovery'] ?? ''); ?>"
     data-email="<?= $rsEsc($regSuccess['email'] ?? ''); ?>"
     data-school="<?= $rsEsc($regSuccess['schoolName'] ?? ''); ?>"
     data-portal="<?= $rsEsc($regSuccess['portalUrl'] ?? base_url()); ?>"
@@ -396,7 +397,12 @@
             <i class="mdi mdi-eye-outline" aria-hidden="true"></i>
           </button>
         </div>
+        <div class="cred-row">
+          <span class="cred-label">Recovery code</span>
+          <span class="cred-value" id="credRecoveryText"><?= $rsEsc($regSuccess['recovery'] ?? ''); ?></span>
+        </div>
       </div>
+      <p class="cred-note">The recovery code resets your password without email — keep it with this file.</p>
 
       <div class="cred-actions">
         <button type="button" class="cred-btn cred-btn-primary" id="credDownloadBtn">

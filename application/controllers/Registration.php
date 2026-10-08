@@ -284,6 +284,11 @@ class Registration extends CI_Controller
                 return;
             }
 
+            // One-time recovery code for the manual password-reset page —
+            // shown once in the credentials modal/download, stored only as a
+            // hash of the normalized form.
+            $recoveryCode = fbmso_recovery_code();
+
             $this->db->insert('o_users', [
                 'username'   => $studentNumber,
                 'IDNumber'   => $studentNumber,
@@ -297,6 +302,8 @@ class Registration extends CI_Controller
                 // Public/admin-created student accounts cannot sign in until
                 // the verification link sent to this address is opened.
                 'acctStat'   => EmailVerificationModel::ACCOUNT_STATUS,
+                'recovery_code_hash'   => fbmso_password_hash(fbmso_recovery_normalize($recoveryCode)),
+                'recovery_code_set_at' => date('Y-m-d H:i:s'),
                 'dateCreated' => date('Y-m-d'),
             ]);
 
@@ -404,6 +411,7 @@ class Registration extends CI_Controller
                 'name'        => $fullName,
                 'username'    => $studentNumber,
                 'password'    => $passwordRaw,
+                'recovery'    => $recoveryCode,
                 'email'       => $email,
                 'emailQueued' => $emailQueued,
                 'emailError'  => $emailQueued ? '' : (string)($verification['message'] ?? ''),

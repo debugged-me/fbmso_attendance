@@ -199,6 +199,40 @@ if (!function_exists('fbmso_password_fingerprint')) {
     }
 }
 
+if (!function_exists('fbmso_recovery_code')) {
+    /**
+     * Generate a one-time account recovery code in display form,
+     * e.g. 'KQ3M-7T2P-WN9F'. 12 characters from a 32-symbol alphabet with
+     * the look-alikes removed (0/O, 1/I/L) — about 60 bits of entropy.
+     *
+     * Only the bcrypt hash of the NORMALIZED form (fbmso_recovery_normalize)
+     * is ever stored; the dashes exist only for humans.
+     */
+    function fbmso_recovery_code()
+    {
+        $alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+        $raw      = '';
+        for ($i = 0; $i < 12; $i++) {
+            $raw .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+
+        return substr($raw, 0, 4) . '-' . substr($raw, 4, 4) . '-' . substr($raw, 8, 4);
+    }
+}
+
+if (!function_exists('fbmso_recovery_normalize')) {
+    /**
+     * Canonical form of a recovery code for hashing/comparison: uppercase,
+     * dashes and stray whitespace removed. What the user types ('kq3m-7t2p
+     * wn9f') and what the file prints ('KQ3M-7T2P-WN9F') normalize to the
+     * same value, so verification is format-tolerant but value-exact.
+     */
+    function fbmso_recovery_normalize($code)
+    {
+        return strtoupper((string)preg_replace('/[^A-Za-z0-9]/', '', (string)$code));
+    }
+}
+
 if (!function_exists('fbmso_session_reference')) {
     /**
      * Stable, non-reversible reference to a session.

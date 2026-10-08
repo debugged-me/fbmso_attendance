@@ -1,6 +1,13 @@
 <?php
 class Login_model extends CI_Model
 {
+  /**
+   * Valid bcrypt hash of a fixed throwaway string, used only to burn the
+   * same ~100ms of work a real recovery-code verify would cost when there
+   * is no code to compare — keeps response timing from revealing whether
+   * an account exists / holds a recovery code.
+   */
+  private const RECOVERY_DUMMY_HASH = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
 
   function loginImage()
   {
@@ -362,6 +369,257 @@ class Login_model extends CI_Model
       'ok' => true,
       'message' => 'A temporary password is on its way to your email. It usually arrives within a couple of minutes.'
     ];
+  }
+
+  /**
+   * Verify a manual (no-email) password-reset attempt.
+   *
+   * Three independent ways in, all checked inside one call so the caller
+   * can answer every failure with the same generic message:
+   *
+   *   'recovery'  Student ID + the recovery code issued at registration
+   *               (bcrypt-compared against o_users.recovery_code_hash).
+   *   'qr'        Student ID + the 32-hex token on their printed/saved
+   *               student QR card (student_qr.qr_token, active + unexpired).
+   *   'identity'  Student ID + registered email + birth date + mobile —
+   *               the email must match o_users, the facts must match the
+   *               studentsignup or studeprofile record. Knowledge factors,
+   *               the weakest of the three — the notification email and
+   *               the reset audit trail are what catch misuse of this one.
+   *
+   * @return array{ok:bool, user:?array, message:string}
+   */
+  public function manualResetVerify($studentNumber, $method, array $fields)
+  {
+    $studentNumber = strtoupper(trim((string)$studentNumber));
+
+    $generic = 'The details you entered do not match our records. Please check them and try again.';
+    $fail = function ($message = null) use ($generic) {
+      return ['ok' => false, 'user' => null, 'message' => $message !== null ? $message : $generic];
+    };
+    // Recovery attempts that pass the factor check always pay a ~100ms
+    // bcrypt cost. Every refusal below that skips it burns the same work on
+    // a dummy hash instead, so response timing cannot fingerprint which
+    // account exists, is eligible, or actually holds a code.
+    $failEarly = function ($message = null) use ($fail, $method) {
+      if ($method === 'recovery') {
+        fbmso_password_verify('x', self::RECOVERY_DUMMY_HASH);
+      }
+      return $fail($message);
+    };
+
+    $user = $this->db
+      ->where('username', $studentNumber)
+      ->limit(1)
+      ->get('o_users')
+      ->row_array();
+
+    if (!$user) {
+      return $failEarly();
+    }
+
+    // Only self-service student accounts may use the manual path — staff
+    // resets stay a staff-side, audited operation.
+    $position = strtolower(trim((string)($user['position'] ?? '')));
+    if (!in_array($position, ['student', 'stude applicant'], true)) {
+      return $failEarly();
+    }
+
+    $status = strtolower(trim((string)($user['acctStat'] ?? '')));
+    if ($status !== 'active') {
+      // Same disclosure level as the email reset path already makes.
+      return $failEarly($status === 'pending verification'
+        ? 'Verify your email before resetting your password.'
+        : 'Your account is not active. Please contact support.');
+    }
+
+    $ok = false;
+
+    if ($method === 'recovery') {
+      $code  = fbmso_recovery_normalize($fields['recovery_code'] ?? '');
+      $hash  = (string)($user['recovery_code_hash'] ?? '');
+      if ($code === '' || $hash === '') {
+        // Flatten the timing signal: a real verify costs ~100ms of bcrypt,
+        // so without this the instant reply fingerprints accounts that do
+        // hold a code versus those that don't (or don't exist at all).
+        fbmso_password_verify($code !== '' ? $code : 'x', self::RECOVERY_DUMMY_HASH);
+        return $fail($hash === ''
+          ? 'This account has no recovery code yet. Use one of the other verification methods.'
+          : null);
+      }
+      $ok = fbmso_password_verify($code, $hash);
+    } elseif ($method === 'qr') {
+      $token = strtolower(trim((string)($fields['qr_token'] ?? '')));
+      if ($token === '') {
+        return $fail();
+      }
+      $row = $this->db
+        ->where('qr_token', $token)
+        ->where('status', 'active')
+        ->limit(1)
+        ->get('student_qr')
+        ->row_array();
+      if ($row
+        && (empty($row['expires_at']) || strtotime((string)$row['expires_at']) >= time())
+        && strtoupper(trim((string)$row['student_number'])) === $studentNumber) {
+        $ok = true;
+      }
+    } elseif ($method === 'identity') {
+      $email   = strtolower(trim((string)($fields['email'] ?? '')));
+      $birth   = trim((string)($fields['birthDate'] ?? ''));
+      $contact = preg_replace('/\D+/', '', (string)($fields['contactNo'] ?? ''));
+
+      // The email must match the account's registered address, and the
+      // birth date + mobile must match a canonical student record. Empty
+      // stored values never count as a match.
+      $emailOk = $email !== ''
+        && (string)($user['email'] ?? '') !== ''
+        && strtolower((string)$user['email']) === $email;
+
+      $recordOk = false;
+      if ($birth !== '' && $contact !== '') {
+        foreach (['studentsignup', 'studeprofile'] as $table) {
+          if (!$this->db->table_exists($table)) {
+            continue;
+          }
+          $row = $this->db
+            ->where('StudentNumber', $studentNumber)
+            ->limit(1)
+            ->get($table)
+            ->row_array();
+          if (!$row) {
+            continue;
+          }
+          $storedBirth   = trim((string)($row['birthDate'] ?? ''));
+          $storedContact = preg_replace('/\D+/', '', (string)($row['contactNo'] ?? ''));
+          // '0000-00-00' is the schema default for unset dates, not a real
+          // birthday — never let it satisfy the check.
+          if ($storedBirth !== ''
+            && $storedBirth !== '0000-00-00'
+            && $storedContact !== ''
+            && $storedBirth === $birth
+            && $storedContact === $contact) {
+            $recordOk = true;
+            break;
+          }
+        }
+      }
+
+      $ok = $emailOk && $recordOk;
+    } else {
+      return $fail();
+    }
+
+    return $ok
+      ? ['ok' => true, 'user' => $user, 'message' => '']
+      : $fail();
+  }
+
+  /**
+   * Seconds before the account may be reset manually again. Bounds how
+   * fast the password can be re-rotated through this path.
+   */
+  public function manualResetCooldownRemaining($username)
+  {
+    $row = $this->db
+      ->select('manual_reset_at')
+      ->where('username', (string)$username)
+      ->limit(1)
+      ->get('o_users')
+      ->row_array();
+
+    if (!$row || empty($row['manual_reset_at'])) {
+      return 0;
+    }
+
+    $elapsed = time() - strtotime((string)$row['manual_reset_at']);
+
+    return max(0, 300 - $elapsed);
+  }
+
+  /**
+   * Apply a verified manual reset: new bcrypt password, force-change flag
+   * cleared (the user just chose the password), reset timestamp stamped,
+   * every web session and mobile token revoked.
+   *
+   * When the recovery code was the factor that proved identity it is
+   * consumed — a code that was used once (and may have leaked) must not be
+   * able to reset the account again. The owner mints a fresh one from the
+   * Recovery Code page after signing in.
+   */
+  public function applyManualReset($username, $newPasswordHash, $consumeRecoveryCode = false)
+  {
+    $username = (string)$username;
+
+    $set = [
+      'password'              => (string)$newPasswordHash,
+      'force_change_password' => 0,
+      'manual_reset_at'       => date('Y-m-d H:i:s'),
+    ];
+    if ($consumeRecoveryCode) {
+      $set['recovery_code_hash']   = null;
+      $set['recovery_code_set_at'] = null;
+    }
+
+    $updated = $this->db
+      ->where('username', $username)
+      ->update('o_users', $set);
+
+    if (!$updated) {
+      return false;
+    }
+
+    // A reset is how a locked-out or compromised account is recovered —
+    // every existing session and bearer token for it must end.
+    $this->load->library('sessionregistry');
+    $this->sessionregistry->revokeAllForUser($username, 'password reset');
+
+    $this->load->model('MobileTokenModel');
+    $this->MobileTokenModel->revokeAllForUser($username);
+
+    return true;
+  }
+
+  /**
+   * Tell the registered address that a manual reset happened. The mail
+   * stays queued even while sending is broken, and when it does land it
+   * is the backstop that exposes a takeover within minutes.
+   */
+  public function queueManualResetNotice(array $user)
+  {
+    $email = trim((string)($user['email'] ?? ''));
+    if ($email === '') {
+      return false;
+    }
+
+    $schoolSettings = $this->db->get('o_srms_settings')->row();
+    $schoolName = $schoolSettings ? $schoolSettings->SchoolName : 'School Records Management System';
+    $when = date('F j, Y \a\t g:i A');
+
+    $body = '
+      <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; color: #333;">
+        <div style="max-width: 600px; margin: auto; background: white; border-radius: 5px; padding: 20px;">
+          <h2 style="color: #d97706;">Password Changed by Manual Verification</h2>
+          <p>Dear <strong>' . htmlspecialchars((string)($user['fName'] ?? '')) . '</strong>,</p>
+          <p>The password for your <strong>' . htmlspecialchars($schoolName) . '</strong> account
+             (<strong>' . htmlspecialchars((string)($user['username'] ?? '')) . '</strong>)
+             was changed through manual identity verification on ' . htmlspecialchars($when) . '.</p>
+          <p>If this was you, you can ignore this message and sign in with your new password.</p>
+          <p><strong>If this was NOT you,</strong> your account may be compromised — reset your
+             password again immediately and report it to the school office or IT staff.</p>
+          <p style="margin-top: 30px;">Best regards,<br><strong>' . htmlspecialchars($schoolName) . '</strong></p>
+          <hr style="margin-top: 40px;">
+          <p style="font-size: 12px; color: #999;">This is an automated message. Please do not reply.</p>
+        </div>
+      </div>';
+
+    return (bool)fbmso_mailqueue_push(
+      $this,
+      $email,
+      'Security notice: password changed - ' . $schoolName,
+      $body,
+      $schoolName
+    );
   }
 
   /**

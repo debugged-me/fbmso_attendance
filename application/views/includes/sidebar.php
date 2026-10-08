@@ -1412,6 +1412,13 @@ $showOnline = (int)($online_settings->show_online_payments ?? 1);
                     </li>
 
                     <li>
+                        <a href="<?= site_url('student/recovery_code'); ?>" class="waves-effect" title="Recovery Code">
+                            <i class="mdi mdi-shield-key-outline"></i>
+                            <span> Recovery Code </span>
+                        </a>
+                    </li>
+
+                    <li>
                         <a href="<?= base_url('FbmsoPersonnels'); ?>" class="waves-effect">
                             <i class="mdi mdi-account-group"></i>
                             <span> FBMSO Officials </span>

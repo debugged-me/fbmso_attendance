@@ -1699,4 +1699,166 @@ public function my_qr()
     $this->load->view('student_my_qr', $data);
 }
 
+/**
+ * Recovery code page for a signed-in student.
+ *
+ * Only the bcrypt hash of the code is stored (o_users.recovery_code_hash),
+ * so an existing code can never be re-displayed — this page reports whether
+ * one is set and lets the owner rotate it. POST requires the current
+ * password first — without it a stolen session could silently rotate the
+ * code and then use it on the public reset page to take the account. On a
+ * verified POST a fresh code overwrites the hash (the old code dies
+ * immediately), every OTHER session is revoked so a second-device thief
+ * dies with it, and the new code is rendered once in this response for
+ * download/copy. A notice goes to the registered email as the final
+ * backstop so any rotation the owner did not make leaves a trail.
+ */
+public function recovery_code()
+{
+    if (!in_array($this->session->userdata('level'), ['Student','Stude Applicant'], true)) {
+        show_404();
+    }
+
+    $this->output->set_header('Cache-Control: no-cache, no-store, must-revalidate');
+    $this->output->set_header('Pragma: no-cache');
+    $this->output->set_header('Expires: 0');
+
+    $username = (string)$this->session->userdata('username');
+
+    $user = $this->db
+        ->select('username, email, password, fName, lName, recovery_code_hash, recovery_code_set_at')
+        ->where('username', $username)
+        ->limit(1)
+        ->get('o_users')
+        ->row_array();
+
+    if (!$user) {
+        show_404();
+    }
+
+    $data = [
+        'student_number' => $username,
+        'code_set'       => !empty($user['recovery_code_hash']),
+        'code_set_at'    => (string)($user['recovery_code_set_at'] ?? ''),
+        'new_code'       => '',
+        'rotate_error'   => '',
+    ];
+
+    if ($this->input->method(true) === 'POST') {
+        // Step-up auth: rotating a recovery credential must be at least as
+        // hard as changing the password, which also asks for the current
+        // password. Throttled too, or this form becomes a free
+        // password-guessing oracle for anyone holding a session.
+        $this->load->library('loginthrottle');
+        $this->load->library('securityaudit');
+        $throttleKey = 'rc_' . $username;
+        $blocked     = $this->loginthrottle->check($throttleKey);
+
+        if ($blocked) {
+            $data['rotate_error'] = $this->loginthrottle->retryMessage($blocked['retry_after']);
+        } elseif (fbmso_password_match_typed((string)$this->input->post('current_password'), (string)$user['password']) === null) {
+            $this->loginthrottle->fail($throttleKey);
+            $this->securityaudit->event('RECOVERY_CODE_ROTATE_DENIED', [
+                'module'      => 'Student',
+                'status'      => 'denied',
+                'target'      => $username,
+                'description' => 'Recovery code rotation refused: wrong current password',
+            ]);
+            $data['rotate_error'] = 'Your current password is incorrect.';
+        } else {
+            // Same 5-minute cooldown as the manual-reset path so the code
+            // cannot be machine-gunned into existence over and over.
+            $setAt = strtotime((string)($user['recovery_code_set_at'] ?? '') ?: '1970-01-01');
+            if (time() - $setAt < 300 && !empty($user['recovery_code_hash'])) {
+                $data['code_set'] = true;
+                $data['code_set_at'] = (string)$user['recovery_code_set_at'];
+                $data['rotate_error'] = 'A recovery code was generated recently. Please wait a few minutes before generating another.';
+            } else {
+                $newCode = fbmso_recovery_code();
+                $hash    = fbmso_password_hash(fbmso_recovery_normalize($newCode));
+
+                $updated = $hash !== '' && $this->db
+                    ->where('username', $username)
+                    ->update('o_users', [
+                        'recovery_code_hash'   => $hash,
+                        'recovery_code_set_at' => date('Y-m-d H:i:s'),
+                    ]);
+
+                if ($updated) {
+                    $this->loginthrottle->succeed($throttleKey);
+                    $data['code_set']    = true;
+                    $data['code_set_at'] = date('Y-m-d H:i:s');
+                    // Exists only in this response — same rule as registration.
+                    $data['new_code'] = $newCode;
+
+                    // Any session that is not this one — a thief on another
+                    // device or a forgotten login on a shared computer —
+                    // dies here, same as a password change.
+                    $this->load->library('sessionregistry');
+                    $this->sessionregistry->revokeAllForUser($username, 'recovery code rotated', true);
+
+                    $this->queueRecoveryCodeNotice($user);
+                    $this->securityaudit->event('RECOVERY_CODE_ROTATED', [
+                        'module'      => 'Student',
+                        'status'      => 'success',
+                        'target'      => $username,
+                        'table'       => 'o_users',
+                        'record_pk'   => $username,
+                        'description' => 'Student rotated their recovery code',
+                    ]);
+                } else {
+                    $data['rotate_error'] = 'Could not generate a new code right now. Please try again later.';
+                }
+            }
+        }
+    }
+
+    $this->load->view('student_recovery_code', $data);
+}
+
+/**
+ * Queue the "your recovery code changed" email. Deliberately identical in
+ * spirit to the manual-reset notice: when mail works it is the backstop that
+ * exposes a hijacked session rotating the code.
+ */
+private function queueRecoveryCodeNotice(array $user)
+{
+    $email = trim((string)($user['email'] ?? ''));
+    if ($email === '') {
+        return false;
+    }
+
+    $schoolSettings = $this->db->get('o_srms_settings')->row();
+    $schoolName = $schoolSettings ? $schoolSettings->SchoolName : 'School Records Management System';
+    $when = date('F j, Y \a\t g:i A');
+
+    $body = '
+      <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; color: #333;">
+        <div style="max-width: 600px; margin: auto; background: white; border-radius: 5px; padding: 20px;">
+          <h2 style="color: #d97706;">Recovery Code Regenerated</h2>
+          <p>Dear <strong>' . htmlspecialchars((string)($user['fName'] ?? '')) . '</strong>,</p>
+          <p>A new account recovery code was generated for your
+             <strong>' . htmlspecialchars($schoolName) . '</strong> account
+             (<strong>' . htmlspecialchars((string)($user['username'] ?? '')) . '</strong>)
+             on ' . htmlspecialchars($when) . '.
+             Any previous recovery code no longer works.</p>
+          <p>If this was you, you can ignore this message.</p>
+          <p><strong>If this was NOT you,</strong> someone may be signed in to your
+             account — change your password immediately and report it to the
+             school office or IT staff.</p>
+          <p style="margin-top: 30px;">Best regards,<br><strong>' . htmlspecialchars($schoolName) . '</strong></p>
+          <hr style="margin-top: 40px;">
+          <p style="font-size: 12px; color: #999;">This is an automated message. Please do not reply.</p>
+        </div>
+      </div>';
+
+    return (bool)fbmso_mailqueue_push(
+        $this,
+        $email,
+        'Security notice: recovery code regenerated - ' . $schoolName,
+        $body,
+        $schoolName
+    );
+}
+
 }

@@ -326,6 +326,7 @@ $config['authguard_student_routes'] = array(
     'attendance/logs',
     'student/my_qr',
     'studentqr/myqr',
+    'student/recovery_code',
 
     // --- documents, requirements, accounts ----------------------------
     'page/studentrequeststat',

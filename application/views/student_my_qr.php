@@ -319,6 +319,22 @@
         .scan-close-btn{width:100%; min-height:44px}
       }
 
+      /* ===== QR token reveal ===== */
+      .qr-token-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;flex-wrap:wrap}
+      .qr-token-row .chip{cursor:default}
+      .qr-token-row .text-mono{font-size:.8rem;letter-spacing:.05em}
+      .qr-token-btn{
+        display:inline-flex;align-items:center;justify-content:center;
+        width:32px;height:32px;border-radius:10px;border:1px solid var(--line,#e6ebf5);
+        background:var(--card,#fff);color:#6b7a99;cursor:pointer;font-size:16px;
+        transition:all .15s ease;
+      }
+      .qr-token-btn:hover{color:#2a4090;border-color:#c7d2fe;transform:translateY(-1px)}
+      .qr-token-note{
+        max-width:420px;margin:8px auto 0;text-align:center;
+        font-size:.72rem;color:var(--muted);line-height:1.5;
+      }
+
       /* ===== Motion preference ===== */
       @media (prefers-reduced-motion: reduce){
         *{scroll-behavior:auto!important;animation:none!important;transition:none!important}
@@ -465,6 +481,27 @@
                       <i class="mdi mdi-printer" aria-hidden="true"></i> Print
                     </button>
                   </div>
+
+                  <!-- The QR encodes this token — it doubles as a manual
+                       password-reset factor, so it stays masked until asked. -->
+                  <div class="qr-token-row">
+                    <span class="chip">
+                      <i class="mdi mdi-key-variant" aria-hidden="true"></i>
+                      <span>QR token:</span>
+                      <span class="text-mono" id="qrTokenText">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</span>
+                    </span>
+                    <button type="button" id="qrTokenEye" class="qr-token-btn" title="Show token" aria-label="Show token">
+                      <i class="mdi mdi-eye-outline" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" id="qrTokenCopy" class="qr-token-btn" title="Copy token" aria-label="Copy token">
+                      <i class="mdi mdi-content-copy" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                  <p class="qr-token-note">
+                    This token resets your password on the sign-in page without email
+                    (Forgot password &rarr; Verify identity manually). Anyone holding it
+                    can reset your account — keep it private like the QR itself.
+                  </p>
                 </div>
               </div>
             </div>
@@ -610,6 +647,48 @@
         }
       });
       ro.observe(qrEl);
+
+      /* ===== QR token reveal / copy ===== */
+      const qrTokenText = document.getElementById('qrTokenText');
+      const qrTokenEye  = document.getElementById('qrTokenEye');
+      const qrTokenCopy = document.getElementById('qrTokenCopy');
+      let tokenShown = false;
+
+      if (qrTokenEye && qrTokenText) {
+        qrTokenEye.addEventListener('click', function () {
+          tokenShown = !tokenShown;
+          qrTokenText.textContent = tokenShown ? (token || '') : '••••••••';
+          qrTokenEye.title = tokenShown ? 'Hide token' : 'Show token';
+          qrTokenEye.setAttribute('aria-label', qrTokenEye.title);
+          const icon = qrTokenEye.querySelector('i');
+          if (icon) {
+            icon.classList.toggle('mdi-eye-outline', !tokenShown);
+            icon.classList.toggle('mdi-eye-off-outline', tokenShown);
+          }
+        });
+      }
+
+      if (qrTokenCopy) {
+        qrTokenCopy.addEventListener('click', function () {
+          const done = function () {
+            qrTokenCopy.innerHTML = '<i class="mdi mdi-check" aria-hidden="true"></i>';
+            setTimeout(function () {
+              qrTokenCopy.innerHTML = '<i class="mdi mdi-content-copy" aria-hidden="true"></i>';
+            }, 2000);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(token || '').then(done, done);
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = token || '';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); } catch (e) {}
+            document.body.removeChild(ta);
+            done();
+          }
+        });
+      }
 
       /* ===== Download / Print the whole card ===== */
       const qrCardEl = document.getElementById('qrBankCard');
